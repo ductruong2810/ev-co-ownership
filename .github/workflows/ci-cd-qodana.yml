@@ -1,0 +1,54 @@
+name: CI/CD with Qodana
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  qodana:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+            distribution: 'temurin'
+            java-version: '17'
+
+      - name: Cache Maven
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+              
+      - name: Build with Maven
+        run: mvn clean install --batch-mode
+              
+      - name: Run tests
+        run: mvn test --batch-mode
+
+      - name: 'Qodana Scan'
+        uses: JetBrains/qodana-action@v2025.2
+        env:
+          QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}
+        with:
+          # When pr-mode is set to true, Qodana analyzes only the files that have been changed
+          pr-mode: false
+          use-caches: true
+          post-pr-comment: true
+          use-annotations: true
+          # Upload Qodana results (SARIF, other artifacts, logs) as an artifact to the job
+          upload-result: false
+          # quick-fixes available in Ultimate and Ultimate Plus plans
+          push-fixes: 'none'
