@@ -1,4 +1,4 @@
 package com.group8.evcoownership.dto;
 
-public class b {
+public class UserRequestDTO {
 }
