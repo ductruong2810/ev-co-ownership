@@ -3,6 +3,10 @@ package com.group8.evcoownership.entity;
 import com.group8.evcoownership.enums.Role;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "Users")
@@ -33,10 +37,13 @@ public class User {
     @Column(name = "Role", length = 20)
     private Role role;
 
-    @Column(name = "CreatedAt", insertable = false, updatable = false)
-    private java.time.LocalDateTime createdAt;
+    @CreationTimestamp
+    @Column(name = "CreatedAt", updatable = false, nullable = false)
+    private LocalDateTime createdAt;
 
-    @Column(name = "UpdatedAt", insertable = false, updatable = false)
-    private java.time.LocalDateTime updatedAt;
+    @UpdateTimestamp
+    @Column(name = "UpdatedAt")
+    private LocalDateTime updatedAt;
+
 }
 

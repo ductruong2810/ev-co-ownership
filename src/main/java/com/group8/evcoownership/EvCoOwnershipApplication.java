@@ -14,5 +14,4 @@ public class EvCoOwnershipApplication {
         System.setProperty("DB_URL", dotenv.get("DB_URL"));
         SpringApplication.run(EvCoOwnershipApplication.class, args);
     }
-
 }
