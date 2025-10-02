@@ -1,5 +1,6 @@
 package com.group8.evcoownership.entity;
 
+import com.group8.evcoownership.enums.VotingStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -36,7 +37,7 @@ public class Voting {
     private LocalDateTime deadline;
 
     @Column(name = "Status", length = 20)
-    private String status = "Open";  // default
+    private VotingStatus status;  // default
 
     // Quan hệ 1-nhìu với VotingOption
     @OneToMany(mappedBy = "voting", cascade = CascadeType.ALL, orphanRemoval = true)
