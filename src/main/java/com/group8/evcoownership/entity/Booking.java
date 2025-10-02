@@ -1,29 +1,44 @@
 package com.group8.evcoownership.entity;
 
+import com.group8.evcoownership.enums.BookingStatus;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+
 import java.time.LocalDateTime;
 
+@Entity
+@Table(name = "Booking")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
-@Table(name = "OwnershipGroup")
 @Builder
-
-public class OwnershipGroup {
+public class Booking {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "BookingID")
+    private Long bookingId;
 
-    @Column(name = "GroupID")
-    private Long groupId;
+    @ManyToOne
+    @JoinColumn(name = "UserID", nullable = false)
+    private User user;
 
-    @Column(name = "GroupName", nullable = false, length = 100)
-    private String groupName;
+    @ManyToOne
+    @JoinColumn(name = "VehicleID", nullable = false)
+    private Vehicle vehicle;
+
+    @Column(name = "StartDateTime")
+    private LocalDateTime startDateTime;
+
+    @Column(name = "EndDateTime")
+    private LocalDateTime endDateTime;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "Status")
+    private BookingStatus status;
+
+    @Column(name = "Priority")
+    private Integer priority;
 
     @Column(name = "CreatedAt", updatable = false)
     private LocalDateTime createdAt;
