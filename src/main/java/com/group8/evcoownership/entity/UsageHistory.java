@@ -3,6 +3,7 @@ package com.group8.evcoownership.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -34,10 +35,10 @@ public class UsageHistory {
     private LocalDateTime endTime;
 
     @Column(name = "DistanceDriven", precision = 8, scale = 2)
-    private Double distanceDriven;
+    private BigDecimal distanceDriven;
 
     @Column(name = "EnergyConsumed", precision = 8, scale = 2)
-    private Double energyConsumed;
+    private BigDecimal energyConsumed;
 
     @Column(name = "CreatedAt", updatable = false, insertable = false)
     private LocalDateTime createdAt;

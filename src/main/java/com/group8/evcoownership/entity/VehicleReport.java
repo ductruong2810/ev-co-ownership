@@ -5,6 +5,7 @@ import com.group8.evcoownership.enums.Cleanliness;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -33,7 +34,7 @@ public class VehicleReport {
     private Integer mileage;
 
     @Column(name = "FuelOrChargeLevel", precision = 5, scale = 2)
-    private Double fuelOrChargeLevel;
+    private BigDecimal fuelOrChargeLevel;
 
     @Column(name = "Damages", columnDefinition = "NVARCHAR(MAX)")
     private String damages;

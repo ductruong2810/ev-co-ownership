@@ -34,6 +34,12 @@ public class CheckInOut {
     @Column(name = "Notes")
     private String notes;
 
-    @Column(name = "UpdatedAt", insertable = false)
+    @Column(name = "UpdatedAt")
     private LocalDateTime updatedAt;
+
+    // Tự động gán khi update
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }
