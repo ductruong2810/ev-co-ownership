@@ -1,29 +1,36 @@
 package com.group8.evcoownership.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+
 import java.time.LocalDateTime;
 
-@Data
+@Entity
+@Table(name = "Vehicle")
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
-@Table(name = "OwnershipGroup")
 @Builder
-
-public class OwnershipGroup {
+public class Vehicle {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "VehicleID")
+    private Long vehicleId;
 
-    @Column(name = "GroupID")
-    private Long groupId;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "GroupID", nullable = false, unique = true)
+    private OwnershipGroup group;
 
-    @Column(name = "GroupName", nullable = false, length = 100)
-    private String groupName;
+    @Column(name = "Brand", length = 100)
+    private String brand;
+
+    @Column(name = "Model", length = 100)
+    private String model;
+
+    @Column(name = "LicensePlate", unique = true, length = 20)
+    private String licensePlate;
 
     @Column(name = "CreatedAt", updatable = false)
     private LocalDateTime createdAt;
@@ -42,5 +49,4 @@ public class OwnershipGroup {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
-    }
-}
+    }}

@@ -45,7 +45,13 @@ public class OwnershipShare {
     private BigDecimal ownerShipPercentage;
     //Dung double la cut
 
-    @Column(name = "UpdatedAt", insertable = false)
+    @Column(name = "UpdatedAt")
     private LocalDateTime updatedAt;
+
+    // Tự động gán khi update
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }
 

@@ -43,14 +43,22 @@ public class Contract {
     @Column(name = "PenaltyRate", precision = 5, scale = 2)
     private BigDecimal penaltyRate;
 
-    @Column(name = "CreatedAt", insertable = false, updatable = false)
+    @Column(name = "CreatedAt", updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "UpdatedAt", insertable = false, updatable = false)
+    @Column(name = "UpdatedAt")
     private LocalDateTime updatedAt;
 
+    // Tự động gán khi insert
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
 
-
-
-
+    // Tự động gán khi update
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }
