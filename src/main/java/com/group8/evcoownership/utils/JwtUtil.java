@@ -14,7 +14,6 @@ import java.util.Date;
 public class JwtUtil {
 
     private final String SECRET_KEY = "supersecretkeysupersecretkey123456"; // tối thiểu 32 ký tự
-    private final long EXPIRATION = 1000 * 60 * 60; // 1h
 
     private Key getSigningKey() {
         return Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
