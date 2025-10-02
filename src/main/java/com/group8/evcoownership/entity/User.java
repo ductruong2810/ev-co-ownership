@@ -3,9 +3,6 @@ package com.group8.evcoownership.entity;
 import com.group8.evcoownership.enums.Role;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-
 import java.time.LocalDateTime;
 
 @Entity
@@ -19,7 +16,7 @@ public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "UserID")
-    private Integer userId;
+    private Long userId;
 
     @Column(name = "FullName", nullable = false, length = 100)
     private String fullName;
@@ -43,12 +40,10 @@ public class User {
     @Column(name = "Role", length = 20)
     private Role role;
 
-    @CreationTimestamp
-    @Column(name = "CreatedAt", updatable = false, nullable = false)
+    @Column(name = "CreatedAt", updatable = false, nullable = false, insertable = false)
     private LocalDateTime createdAt;
 
-    @UpdateTimestamp
-    @Column(name = "UpdatedAt")
+    @Column(name = "UpdatedAt", insertable = false)
     private LocalDateTime updatedAt;
 }
 
