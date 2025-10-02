@@ -17,7 +17,7 @@ public class VotingOption {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "OptionID")
-    private Integer optionId;
+    private Long optionId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "VotingID", nullable = false)

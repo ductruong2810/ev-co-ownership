@@ -36,6 +36,7 @@ public class Voting {
     @Column(name = "Deadline")
     private LocalDateTime deadline;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "Status", length = 20)
     private VotingStatus status;  // default
 

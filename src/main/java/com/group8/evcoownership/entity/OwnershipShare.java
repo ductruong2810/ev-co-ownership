@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -40,7 +42,8 @@ public class OwnershipShare {
     private LocalDateTime joinDate;
 
     @Column(name = "OwnershipPercentage", precision = 5, scale = 2)
-    private Double ownerShipPercentage;
+    private BigDecimal ownerShipPercentage;
+    //Dung double la cut
 
     @Column(name = "UpdatedAt", insertable = false)
     private LocalDateTime updatedAt;
