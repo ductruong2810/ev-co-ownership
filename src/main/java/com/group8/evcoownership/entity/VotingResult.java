@@ -16,11 +16,11 @@ import java.time.LocalDateTime;
 @Builder
 
 public class VotingResult {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "ResultID")
-    private Integer resultId;
+    private Long resultId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "VotingID", nullable = false)

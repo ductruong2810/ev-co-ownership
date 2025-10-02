@@ -40,10 +40,23 @@ public class User {
     @Column(name = "Role", length = 20)
     private Role role;
 
-    @Column(name = "CreatedAt", updatable = false, nullable = false, insertable = false)
+    @Column(name = "CreatedAt", updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "UpdatedAt", insertable = false)
+    @Column(name = "UpdatedAt")
     private LocalDateTime updatedAt;
+
+    // Tự động gán khi insert
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+
+    // Tự động gán khi update
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }
 
