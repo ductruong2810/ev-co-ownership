@@ -3,9 +3,6 @@ package com.group8.evcoownership.entity;
 import com.group8.evcoownership.enums.Role;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-
 import java.time.LocalDateTime;
 
 @Entity
