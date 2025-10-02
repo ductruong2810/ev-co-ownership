@@ -19,9 +19,9 @@ public class Vehicle {
     @Column(name = "VehicleID")
     private Long vehicleId;
 
-//    @OneToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name = "GroupID", nullable = false, unique = true)
-//    private OwnershipGroup group;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "GroupID", nullable = false, unique = true)
+    private OwnershipGroup group;
 
     @Column(name = "Brand", length = 100)
     private String brand;
