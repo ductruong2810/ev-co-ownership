@@ -29,8 +29,6 @@ public class AuthService {
             throw new RuntimeException("Invalid credentials");
         }
 
-        String token = jwtUtil.generateToken(user);
-
         //Trả về Accesstoken và rfToken meo meo
         return LoginResponseDTO.builder()
                 .accessToken(jwtUtil.generateToken(user))
