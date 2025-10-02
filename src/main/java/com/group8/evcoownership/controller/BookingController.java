@@ -1,15 +1,9 @@
 package com.group8.evcoownership.controller;
 
-import com.group8.evcoownership.dto.BookingRequestDTO;
-import com.group8.evcoownership.dto.BookingResponseDTO;
 import com.group8.evcoownership.entity.Booking;
-import com.group8.evcoownership.entity.User;
-import com.group8.evcoownership.entity.Vehicle;
 import com.group8.evcoownership.service.BookingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
-
-import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/api/bookings")
