@@ -21,19 +21,25 @@ public class User {
     @Column(name = "UserID")
     private Integer userId;
 
-    @Column(name = "FullName", nullable = false)
+    @Column(name = "FullName", nullable = false, length = 100)
     private String fullName;
 
-    @Column(name = "Email", nullable = false, unique = true)
+    @Column(name = "Email", nullable = false, unique = true, length = 100)
     private String email;
 
     @Column(name = "PasswordHash", nullable = false)
     private String passwordHash;
 
-    @Column(name = "PhoneNumber")
+    @Column(name = "PhoneNumber", length = 20)
     private String phoneNumber;
 
-    @Enumerated(EnumType.STRING)   // Hibernate sẽ lưu "CO_OWNER", "STAFF", "ADMIN" hoặc map về value
+    @Column(name = "CitizenID", unique = true, length = 20)
+    private String citizenId;
+
+    @Column(name = "DriverLicense", unique = true, length = 30)
+    private String driverLicense;
+
+    @Enumerated(EnumType.STRING)
     @Column(name = "Role", length = 20)
     private Role role;
 
@@ -44,6 +50,5 @@ public class User {
     @UpdateTimestamp
     @Column(name = "UpdatedAt")
     private LocalDateTime updatedAt;
-
 }
 
