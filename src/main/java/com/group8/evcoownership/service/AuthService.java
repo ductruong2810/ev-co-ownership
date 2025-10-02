@@ -30,6 +30,12 @@ public class AuthService {
         }
 
         String token = jwtUtil.generateToken(user);
-        return new LoginResponseDTO(token, user.getEmail(), user.getRole().name());
+
+        //Trả về Accesstoken và rfToken meo meo
+        return LoginResponseDTO.builder()
+                .accessToken(jwtUtil.generateToken(user))
+                .refreshToken(jwtUtil.generateRefreshToken(user))
+                .build();
+
     }
 }
