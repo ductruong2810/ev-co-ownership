@@ -6,3 +6,7 @@ public enum Role {
     ADMIN,
     TECHNICIAN
 }
+// completed / pending , paid...
+
+
+// controler / service / repositoty => db
