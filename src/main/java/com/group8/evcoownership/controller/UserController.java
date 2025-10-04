@@ -23,7 +23,7 @@ public class UserController {
 
     @PostMapping
     public User createUser(@RequestBody User user) {
-        return userService.createUser(user);
+        return userService.createUser(user); // 404 , 400 , 200 , 201 , 500
     }
 }
 
