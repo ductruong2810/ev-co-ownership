@@ -33,6 +33,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
         final String authHeader = request.getHeader("Authorization");
 
+//        String path = request.getRequestURI();
+//        //pỏ qua filter cho các API public
+//        if (path.startsWith("/api/auth/")) {
+//            filterChain.doFilter(request, response);
+//            return;
+//        }
+
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
@@ -51,5 +58,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+        String path = request.getServletPath();
+        // Bỏ qua filter cho các API public (register, login, refresh, swagger docs)
+        return path.startsWith("/api/auth/")
+                || path.startsWith("/v3/api-docs")
+                || path.startsWith("/swagger")
+                || path.startsWith("/swagger-ui");
     }
 }
