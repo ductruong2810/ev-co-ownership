@@ -3,7 +3,6 @@ package com.group8.evcoownership.controller;
 import com.group8.evcoownership.dto.LoginRequestDTO;
 import com.group8.evcoownership.dto.LoginResponseDTO;
 import com.group8.evcoownership.dto.RegisterRequestDTO;
-import com.group8.evcoownership.dto.RegisterResponseDTO;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.service.AuthService;
@@ -56,7 +55,7 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<String> register(@RequestBody RegisterRequestDTO request) {
         authService.register(request);
-        return ResponseEntity.ok("User registered successfully");
+        return ResponseEntity.ok("User registered successfully hihi");
     }
-
+    //chua comment
 }

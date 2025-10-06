@@ -3,7 +3,6 @@ package com.group8.evcoownership.service;
 import com.group8.evcoownership.dto.LoginRequestDTO;
 import com.group8.evcoownership.dto.LoginResponseDTO;
 import com.group8.evcoownership.dto.RegisterRequestDTO;
-import com.group8.evcoownership.dto.RegisterResponseDTO;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.enums.Role;
 import com.group8.evcoownership.repository.UserRepository;
@@ -62,5 +61,5 @@ public class AuthService {
 
         userRepository.save(user);
     }
-
+    //chua comment
 }
