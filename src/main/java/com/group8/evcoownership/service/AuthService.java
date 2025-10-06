@@ -53,9 +53,6 @@ public class AuthService {
                 .fullName(request.getFullName())
                 .email(request.getEmail())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
-                .phoneNumber(request.getPhoneNumber())
-                .citizenId(request.getCitizenId())
-                .driverLicense(request.getDriverLicense())
                 .role(Role.Co_owner)
                 .build();
 
