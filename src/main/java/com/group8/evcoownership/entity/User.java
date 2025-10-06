@@ -36,6 +36,9 @@ public class User {
     @Column(name = "DriverLicense", unique = true, length = 30)
     private String driverLicense;
 
+    @Column(name = "AvatarUrl")
+    private String avatarUrl;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "Role", length = 20)
     private Role role;
