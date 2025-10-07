@@ -1,5 +1,6 @@
 package com.group8.evcoownership.exception;
 
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -58,4 +59,31 @@ public class GlobalExceptionHandler {
         error.put("message", ex.getMessage());
         return ResponseEntity.internalServerError().body(Collections.singletonList(error));
     }
+
+    // 404 - Không tìm thấy entity (ví dụ: Group/Fund không tồn tại)
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<List<Map<String, String>>> handleEntityNotFound(EntityNotFoundException ex) {
+        Map<String, String> error = new LinkedHashMap<>();
+        error.put("field", "entity");
+        error.put("message", ex.getMessage());
+        return ResponseEntity.status(404).body(List.of(error));
+    }
+
+    // 409 - Lỗi nghiệp vụ/xung đột trạng thái (ví dụ: "Nhóm này đã có quỹ rồi!")
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<List<Map<String, String>>> handleIllegalState(IllegalStateException ex) {
+        Map<String, String> error = new LinkedHashMap<>();
+        error.put("field", "logic");
+        error.put("message", ex.getMessage());
+        return ResponseEntity.status(409).body(List.of(error));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<List<Map<String, String>>> handleIllegalArgument(IllegalArgumentException ex) {
+        Map<String, String> error = new LinkedHashMap<>();
+        error.put("field", "amount");    // hoặc "fundId"/"input"
+        error.put("message", ex.getMessage());
+        return ResponseEntity.badRequest().body(List.of(error));
+    }
+
 }
