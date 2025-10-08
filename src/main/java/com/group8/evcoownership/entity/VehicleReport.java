@@ -1,55 +1,63 @@
 package com.group8.evcoownership.entity;
 
-import com.group8.evcoownership.enums.ReportType;
 import com.group8.evcoownership.enums.Cleanliness;
+import com.group8.evcoownership.enums.ReportType;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.Nationalized;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "VehicleReport")
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class VehicleReport {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ReportID")
-    private Long reportId;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "CheckID", nullable = false)
-    private CheckInOut checkInOut;
+    @Column(name = "ReportId", nullable = false)
+    private Long id;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "ReportType")
+    @Column(name = "ReportType", length = 20)
     private ReportType reportType;
 
     @Column(name = "Mileage")
     private Integer mileage;
 
-    @Column(name = "FuelOrChargeLevel", precision = 5, scale = 2)
-    private BigDecimal fuelOrChargeLevel;
+    @Column(name = "ChargeLevel", precision = 5, scale = 2)
+    private BigDecimal chargeLevel;
 
-    @Column(name = "Damages", columnDefinition = "NVARCHAR(MAX)")
+    @Nationalized
+    @Lob
+    @Column(name = "Damages")
     private String damages;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "Cleanliness")
+    @Column(name = "Cleanliness", length = 20)
     private Cleanliness cleanliness;
 
-    @Column(name = "Notes", columnDefinition = "NVARCHAR(MAX)")
+    @Nationalized
+    @Lob
+    @Column(name = "Notes")
     private String notes;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "TechnicianID")
+    @JoinColumn(name = "TechnicianId")
     private User technician;
 
-    @Column(name = "CreatedAt", updatable = false, insertable = false)
+    @Column(name = "CreatedAt")
     private LocalDateTime createdAt;
+
+    @PrePersist
+    public void onCreate() {
+        createdAt = LocalDateTime.now();
+    }
+
 }

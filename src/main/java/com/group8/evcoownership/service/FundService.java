@@ -19,8 +19,7 @@ public class FundService {
     private final OwnershipGroupRepository groupRepo;
 
     @Transactional
-    public FundBalanceResponse getBalanceByGroupId(Long groupId)
-    {
+    public FundBalanceResponse getBalanceByGroupId(Long groupId) {
         SharedFund fund = fundRepo.findByGroup_GroupId(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("SharedFund not found"));
         return new FundBalanceResponse(fund.getFundId(), fund.getGroup().getGroupId(), fund.getBalance());
@@ -28,8 +27,8 @@ public class FundService {
 
     @Transactional
     // Tao quy chung cho 1 nhom
-    public SharedFund createForGroup(Long groupId){
-        if(fundRepo.existsByGroup_GroupId(groupId)){
+    public SharedFund createForGroup(Long groupId) {
+        if (fundRepo.existsByGroup_GroupId(groupId)) {
             throw new EntityNotFoundException("SharedFund already exists for group");
         }
         OwnershipGroup group = groupRepo.findById(groupId)
@@ -45,8 +44,7 @@ public class FundService {
 
     @Transactional
     // Lấy quỹ theo groupId; nếu chưa có thì tạo mới rồi trả về.
-    public SharedFund getOrCeateByGroup(Long groupId)
-    {
+    public SharedFund getOrCeateByGroup(Long groupId) {
         return fundRepo.findByGroup_GroupId(groupId)
                 .orElseGet(() -> createForGroup(groupId));
     }

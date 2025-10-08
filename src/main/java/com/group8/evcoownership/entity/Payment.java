@@ -1,49 +1,58 @@
 package com.group8.evcoownership.entity;
 
+import com.group8.evcoownership.enums.PaymentStatus;
+import com.group8.evcoownership.enums.PaymentType;
 import jakarta.persistence.*;
-import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.Nationalized;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+@Getter
+@Setter
 @Entity
-@Table(name = "Payment")
-@Data @NoArgsConstructor @AllArgsConstructor @Builder
 public class Payment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "PaymentID")
-    private Long paymentId;
+    @Column(name = "PaymentId", nullable = false)
+    private Long id;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "FundID", nullable = false)
-    private SharedFund fund;
-
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "UserID", nullable = false)
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "UserId", nullable = false)
     private User user;
 
+    @NotNull
     @Column(name = "Amount", nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
 
-    @CreationTimestamp
     @Column(name = "PaymentDate")
     private LocalDateTime paymentDate;
 
+    @Size(max = 50)
     @Column(name = "PaymentMethod", length = 50)
-    private String paymentMethod; // ví dụ: VNPay, Bank
+    private String paymentMethod;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "Status", length = 20)
-    private String status; // Pending|Success|Failed (theo DB hiện tại)
+    private PaymentStatus status;
 
+    @Size(max = 100)
+    @Nationalized
     @Column(name = "TransactionCode", length = 100)
     private String transactionCode;
 
+    @Nationalized
     @Lob
     @Column(name = "ProviderResponse")
     private String providerResponse;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "PaymentType", length = 20)
-    private String paymentType; // Initial|TopUp|Penalty|Other
+    private PaymentType paymentType;
+
 }

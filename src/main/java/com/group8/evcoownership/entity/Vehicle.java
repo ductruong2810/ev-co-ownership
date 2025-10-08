@@ -1,52 +1,57 @@
 package com.group8.evcoownership.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.Nationalized;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "Vehicle")
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class Vehicle {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "VehicleID")
-    private Long vehicleId;
+    @Column(name = "VehicleId", nullable = false)
+    private Long id;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "GroupID", nullable = false, unique = true)
-    private OwnershipGroup group;
-
+    @Size(max = 100)
+    @Nationalized
     @Column(name = "Brand", length = 100)
     private String brand;
 
+    @Size(max = 100)
+    @Nationalized
     @Column(name = "Model", length = 100)
     private String model;
 
-    @Column(name = "LicensePlate", unique = true, length = 20)
+    @Size(max = 20)
+    @Nationalized
+    @Column(name = "LicensePlate", length = 20)
     private String licensePlate;
 
-    @Column(name = "CreatedAt", updatable = false)
+    @Column(name = "CreatedAt")
     private LocalDateTime createdAt;
 
     @Column(name = "UpdatedAt")
     private LocalDateTime updatedAt;
 
-    // Tự động gán khi insert
     @PrePersist
-    protected void onCreate() {
+    public void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
     }
 
-    // Tự động gán khi update
     @PreUpdate
-    protected void onUpdate() {
+    public void onUpdate() {
         updatedAt = LocalDateTime.now();
-    }}
+    }
+
+}

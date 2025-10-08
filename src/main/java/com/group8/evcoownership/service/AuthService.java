@@ -4,7 +4,6 @@ import com.group8.evcoownership.dto.LoginRequestDTO;
 import com.group8.evcoownership.dto.LoginResponseDTO;
 import com.group8.evcoownership.dto.RegisterRequestDTO;
 import com.group8.evcoownership.entity.User;
-import com.group8.evcoownership.enums.Role;
 import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.utils.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,7 +52,6 @@ public class AuthService {
                 .fullName(request.getFullName())
                 .email(request.getEmail())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
-                .role(Role.Co_owner)
                 .build();
 
         userRepository.save(user);
