@@ -18,7 +18,7 @@ public class BookingService {
 
     @Transactional
     public UsageBooking createBooking(User user, Vehicle vehicle,
-                                 LocalDateTime start, LocalDateTime end) {
+                                      LocalDateTime start, LocalDateTime end) {
 
         if (!bookingRepository.findOverlaps(vehicle, start, end).isEmpty()) {
             throw new RuntimeException("Time slot not available!");

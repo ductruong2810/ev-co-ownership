@@ -15,7 +15,7 @@ public interface BookingRepository extends JpaRepository<UsageBooking, Long> {
             "AND b.status IN ('Pending','Confirmed','Buffer') " +
             "AND (b.startDateTime < :endDateTime AND b.endDateTime > :startDateTime)")
     List<UsageBooking> findOverlaps(Vehicle vehicle,
-                               LocalDateTime startDateTime,
-                               LocalDateTime endDateTime);
+                                    LocalDateTime startDateTime,
+                                    LocalDateTime endDateTime);
 }
 
