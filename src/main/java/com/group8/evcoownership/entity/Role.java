@@ -2,7 +2,10 @@ package com.group8.evcoownership.entity;
 
 import com.group8.evcoownership.enums.RoleName;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "Role")
