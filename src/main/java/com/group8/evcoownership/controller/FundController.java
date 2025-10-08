@@ -15,13 +15,13 @@ public class FundController {
 
     // Api xem so du quy theo groupId
     @GetMapping("/{groupId}")
-    public FundBalanceResponse getFundBalance(@PathVariable("groupId") Long groupId){
+    public FundBalanceResponse getFundBalance(@PathVariable("groupId") Long groupId) {
         return fundService.getBalanceByGroupId(groupId);
     }
 
     // Api tao quy moi cho group
     @PostMapping("/{groupId}")
-    public FundBalanceResponse createFund(@PathVariable Long groupId){
+    public FundBalanceResponse createFund(@PathVariable Long groupId) {
         SharedFund fund = fundService.createForGroup(groupId);
         return new FundBalanceResponse(fund.getFundId(), fund.getGroup().getGroupId(), fund.getBalance());
     }

@@ -1,32 +1,43 @@
 package com.group8.evcoownership.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.Nationalized;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "Expense")
-@Data @NoArgsConstructor @AllArgsConstructor @Builder
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Expense {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ExpenseID")
-    private Long expenseId;
+    @Column(name = "ExpenseId", nullable = false)
+    private Long id;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "FundID", nullable = false)
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "FundId", nullable = false)
     private SharedFund fund;
 
-    @ManyToOne
-    @JoinColumn(name = "IncidentID")
-    private Incident incident; // có thể null
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "IncidentId")
+    private Incident incident;
 
+    @Nationalized
     @Lob
     @Column(name = "Description")
     private String description;
 
+    @NotNull
     @Column(name = "Amount", nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
 

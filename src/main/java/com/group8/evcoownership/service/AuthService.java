@@ -3,8 +3,10 @@ package com.group8.evcoownership.service;
 import com.group8.evcoownership.dto.LoginRequestDTO;
 import com.group8.evcoownership.dto.LoginResponseDTO;
 import com.group8.evcoownership.dto.RegisterRequestDTO;
+import com.group8.evcoownership.entity.Role;
 import com.group8.evcoownership.entity.User;
-import com.group8.evcoownership.enums.Role;
+import com.group8.evcoownership.enums.RoleName;
+import com.group8.evcoownership.repository.RoleRepository;
 import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.utils.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +18,9 @@ public class AuthService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private RoleRepository roleRepository;
 
     @Autowired
     private JwtUtil jwtUtil;
@@ -51,15 +56,21 @@ public class AuthService {
             throw new RuntimeException("Passwords do not match");
         }
 
+        // Tìm role CO_OWNER trong DB
+        Role coOwnerRole = roleRepository.findByRoleName(RoleName.Co_owner)
+                .orElseThrow(() -> new RuntimeException("Role CO_OWNER not found"));
+
+        // Tạo user với role mặc định là Co-owner
         User user = User.builder()
                 .fullName(request.getFullName())
                 .email(request.getEmail())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
-                .role(Role.Co_owner)
+                .role(coOwnerRole)
                 .build();
 
         userRepository.save(user);
     }
+
     //chua comment
 
 
