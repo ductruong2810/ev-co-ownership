@@ -39,9 +39,9 @@ projectJDK: "17" #(Applied in CI/CD pipeline)
   #failureConditions:
   #  severityThresholds:
   #    any: 15
-  #    critical: 5
-  #  testCoverageThresholds:
-  #    fresh: 70
+#    critical: 5
+#  testCoverageThresholds:
+#    fresh: 70
 #    total: 50
 
 #Qodana supports other languages, for example, Python, JavaScript, TypeScript, Go, C#, PHP
