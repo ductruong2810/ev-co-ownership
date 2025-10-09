@@ -37,8 +37,8 @@ projectJDK: "17" #(Applied in CI/CD pipeline)
   # testCoverageThresholds - configures minimum code coverage on a whole project and newly added code
   # Code Coverage is available in Ultimate and Ultimate Plus plans
   #failureConditions:
-  #  severityThresholds:
-  #    any: 15
+#  severityThresholds:
+#    any: 15
 #    critical: 5
 #  testCoverageThresholds:
 #    fresh: 70
