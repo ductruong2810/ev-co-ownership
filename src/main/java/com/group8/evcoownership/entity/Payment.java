@@ -31,6 +31,10 @@ public class Payment {
     @JoinColumn(name = "UserId", nullable = false)
     private User user;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "FundID", nullable = false) // <- cột FundID NOT NULL
+    private SharedFund fund;
+
     @NotNull
     @Column(name = "Amount", nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
