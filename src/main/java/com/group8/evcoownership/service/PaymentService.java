@@ -11,7 +11,6 @@ import com.group8.evcoownership.enums.PaymentType;
 import com.group8.evcoownership.repository.PaymentRepository;
 import com.group8.evcoownership.repository.SharedFundRepository;
 import com.group8.evcoownership.repository.UserRepository;
-import com.group8.evcoownership.service.PaymentService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.Hibernate;
