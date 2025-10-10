@@ -31,12 +31,12 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/api/auth/**",
-                                "/v3/api-docs/**",
                                 "/swagger-ui/**",
-                                "/swagger-ui.html"
+                                "/v3/api-docs/**",
+                                "/api/funds/**",
+                                "/api/payments/**",    // tạm mở để test nhanh
+                                "/api/vnpay/**"// tạm permitAll cho dev
                         ).permitAll()
-                        .requestMatchers("/api/funds/**").authenticated()
                         .anyRequest().authenticated()
                 )
 
