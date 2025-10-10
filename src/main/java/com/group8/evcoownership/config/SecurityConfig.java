@@ -33,9 +33,11 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
+                                "/api/auth/**",
                                 "/api/funds/**",
-                                "/api/payments/**",    // tạm mở để test nhanh
-                                "/api/vnpay/**"// tạm permitAll cho dev
+                                "/api/payments/**",
+                                "/api/auth/vnpay/**"
+
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
