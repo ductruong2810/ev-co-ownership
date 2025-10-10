@@ -37,6 +37,9 @@ public class Vehicle {
     @Column(name = "LicensePlate", length = 20)
     private String licensePlate;
 
+    @Column(name = "QrCode")
+    private String qrCode;
+
     @Column(name = "CreatedAt")
     private LocalDateTime createdAt;
 
