@@ -2,10 +2,12 @@ package com.group8.evcoownership.dto;
 
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 @Data
 public class BookingRequestDTO {
     private Long userId;
     private Long vehicleId;
-    private String start;
-    private String end;
+    private LocalDateTime startDateTime;
+    private LocalDateTime endDateTime;
 }

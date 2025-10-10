@@ -1,6 +1,6 @@
 package com.group8.evcoownership.enums;
 
-public enum Role {
+public enum RoleName {
     Co_owner,
     Staff,
     Admin,

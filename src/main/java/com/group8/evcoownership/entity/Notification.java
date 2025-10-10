@@ -1,28 +1,32 @@
 package com.group8.evcoownership.entity;
 
-import com.group8.evcoownership.enums.VotingStatus;
+import com.group8.evcoownership.enums.NotificationType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.Nationalized;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "Voting")
+@Table(name = "Notification")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Voting {
+public class Notification {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "VotingId", nullable = false)
+    @Column(name = "NotificationId", nullable = false)
     private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "UserId")
+    private User user;
 
     @Size(max = 255)
     @Nationalized
@@ -31,30 +35,26 @@ public class Voting {
 
     @Nationalized
     @Lob
-    @Column(name = "Description")
-    private String description;
-
-    @Column(name = "Deadline")
-    private Instant deadline;
+    @Column(name = "Message")
+    private String message;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "Status", length = 20)
-    private VotingStatus status;
+    @Column(name = "NotificationType", length = 50)
+    private NotificationType notificationType;
+
+    @ColumnDefault("0")
+    @Column(name = "IsRead")
+    private Boolean isRead;
+
+    @ColumnDefault("0")
+    @Column(name = "IsDelivered")
+    private Boolean isDelivered;
 
     @Column(name = "CreatedAt")
     private LocalDateTime createdAt;
 
-    @Column(name = "UpdatedAt")
-    private LocalDateTime updatedAt;
-
     @PrePersist
     public void onCreate() {
         createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    public void onUpdate() {
-        updatedAt = LocalDateTime.now();
     }
 }

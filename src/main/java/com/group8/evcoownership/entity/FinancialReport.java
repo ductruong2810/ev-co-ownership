@@ -1,24 +1,30 @@
 package com.group8.evcoownership.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "FinancialReport")
-@Data @NoArgsConstructor @AllArgsConstructor @Builder
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class FinancialReport {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ReportID")
-    private Long reportId;
+    @Column(name = "ReportId", nullable = false)
+    private Long id;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "FundID", nullable = false)
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "FundId", nullable = false)
     private SharedFund fund;
 
     @Column(name = "ReportMonth")
@@ -33,15 +39,25 @@ public class FinancialReport {
     @Column(name = "TotalExpense", precision = 15, scale = 2)
     private BigDecimal totalExpense;
 
-    @ManyToOne(optional = false)
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "GeneratedBy", nullable = false)
     private User generatedBy;
 
-    @CreationTimestamp
-    @Column(name = "CreatedAt", updatable = false)
+    @Column(name = "CreatedAt")
     private LocalDateTime createdAt;
 
-    @UpdateTimestamp
     @Column(name = "UpdatedAt")
     private LocalDateTime updatedAt;
+
+    @PrePersist
+    public void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    public void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }
