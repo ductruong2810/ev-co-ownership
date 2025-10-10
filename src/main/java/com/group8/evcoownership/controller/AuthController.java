@@ -74,5 +74,4 @@ public class AuthController {
         String message = authService.verifyOtp(email, otp);
         return ResponseEntity.ok(Map.of("message", message));
     }
-
 }
