@@ -69,5 +69,18 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
 
     // Lấy booking gần nhất đã hoàn thành (để tính thời gian buffer cho xe)
     List<UsageBooking> findTop1ByVehicleIdAndStatusOrderByEndDateTimeDesc(Long vehicle_id, BookingStatus status);
+
+    @Query(value = """
+                SELECT *
+                FROM UsageBooking
+                WHERE UserId = :userId
+                  AND Status IN ('Pending', 'Confirmed')
+                  AND DATEPART(ISO_WEEK, StartDateTime) = DATEPART(ISO_WEEK, :weekStart)
+                  AND YEAR(StartDateTime) = YEAR(:weekStart)
+                ORDER BY StartDateTime
+            """, nativeQuery = true)
+    List<UsageBooking> findBookingsByUserInWeek(@Param("userId") Long userId,
+                                                @Param("weekStart") LocalDateTime weekStart);
+
 }
 

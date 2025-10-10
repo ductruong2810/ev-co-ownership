@@ -1,85 +1,65 @@
 package com.group8.evcoownership.entity;
 
-import com.group8.evcoownership.enums.UserStatus;
+import com.group8.evcoownership.enums.Role;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import org.hibernate.annotations.Nationalized;
-
+import lombok.*;
 import java.time.LocalDateTime;
-import java.util.List;
 
-
+@Entity
+@Table(name = "Users")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Entity
-@Table(name = "Users")
 public class User {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "UserId", nullable = false)
+    @Column(name = "UserID")
     private Long userId;
 
-    @Size(max = 100)
-    @NotNull
-    @Nationalized
     @Column(name = "FullName", nullable = false, length = 100)
     private String fullName;
 
-    @Size(max = 100)
-    @NotNull
-    @Nationalized
-    @Column(name = "Email", nullable = false, length = 100)
+    @Column(name = "Email", nullable = false, unique = true, length = 100)
     private String email;
 
-    @Size(max = 255)
-    @NotNull
-    @Nationalized
     @Column(name = "PasswordHash", nullable = false)
     private String passwordHash;
 
-    @Size(max = 20)
-    @Nationalized
     @Column(name = "PhoneNumber", length = 20)
     private String phoneNumber;
 
-    @Size(max = 500)
-    @Nationalized
-    @Column(name = "AvatarUrl", length = 500)
+    @Column(name = "CitizenID", unique = true, length = 20)
+    private String citizenId;
+
+    @Column(name = "DriverLicense", unique = true, length = 30)
+    private String driverLicense;
+
+    @Column(name = "AvatarUrl")
     private String avatarUrl;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "RoleId")
+    @Enumerated(EnumType.STRING)
+    @Column(name = "Role", length = 20)
     private Role role;
 
-    @Column(name = "Status", length = 20)
-    @Enumerated(EnumType.STRING)
-    private UserStatus status;
-
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<UserDocument> documents;
-
-    @Column(name = "CreatedAt")
+    @Column(name = "CreatedAt", updatable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "UpdatedAt")
     private LocalDateTime updatedAt;
 
+    // Tự động gán khi insert
     @PrePersist
-    public void onCreate() {
+    protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
     }
 
+    // Tự động gán khi update
     @PreUpdate
-    public void onUpdate() {
+    protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
-
 }
+

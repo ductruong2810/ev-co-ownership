@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class BookingResponseDTO {
+public class BookingSummaryDTO {
     private Long bookingId;
     private String licensePlate;
     private String brand;
@@ -18,3 +18,4 @@ public class BookingResponseDTO {
     private LocalDateTime endDateTime;
     private String status;
 }
+

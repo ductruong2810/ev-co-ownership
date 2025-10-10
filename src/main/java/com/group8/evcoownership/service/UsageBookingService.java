@@ -76,5 +76,10 @@ public class UsageBookingService {
         return usageBookingRepository.findTop1ByVehicleIdAndStatusOrderByEndDateTimeDesc(vehicleId, BookingStatus.Completed)
                 .stream().findFirst().orElse(null);
     }
+
+    //Lấy tất cả booking của user trong tuần chứa weekStart
+    public List<UsageBooking> getBookingsByUserInWeek(Long userId, LocalDateTime weekStart) {
+        return usageBookingRepository.findBookingsByUserInWeek(userId, weekStart);
+    }
 }
 
