@@ -34,6 +34,10 @@ public class SharedFund {
     @Column(name = "UpdatedAt", insertable = false)
     private LocalDateTime updatedAt;
 
+    @Version
+    @Column(name = "Version")
+    private Long version;
+
     @PrePersist
     public void onCreate() {
         if (balance == null) balance = BigDecimal.ZERO;
