@@ -80,7 +80,9 @@ public class AuthService {
     // ================= VERIFY OTP =================
     public String verifyOtp(String email, String otp) {
         try {
+
             if (!otpUtil.verifyOtp(email, otp)) {
+
                 throw new RuntimeException("OTP không hợp lệ hoặc đã hết hạn");
             }
 
@@ -105,8 +107,8 @@ public class AuthService {
             pendingUsers.remove(email);
             return "Đăng ký tài khoản thành công!";
         } catch (Exception e) {
-            e.printStackTrace(); // 💥 Log lỗi thật ra console
-            throw e; // vẫn để Spring trả về 500, nhưng bạn biết lỗi gì
+            e.printStackTrace();
+            throw e; //
         }
     }
 
