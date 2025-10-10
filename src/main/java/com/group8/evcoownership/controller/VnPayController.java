@@ -1,6 +1,6 @@
 package com.group8.evcoownership.controller;
 
-import com.group8.evcoownership.service.PaymentService;
+
 import com.group8.evcoownership.service.VnPay_PaymentService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -11,15 +11,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.group8.evcoownership.service.PaymentService;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-        import java.util.HashMap;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth/vnpay")
