@@ -10,10 +10,7 @@ import com.group8.evcoownership.utils.JwtUtil;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
@@ -44,7 +41,7 @@ public class AuthController {
             return ResponseEntity.ok(LoginResponseDTO.builder()
                     .accessToken(jwtUtil.generateToken(user))
                     .refreshToken(refreshToken)
-                    // hoặc sinh lại mới
+                    //hoặc sinh lại mới
                     .build());
         }
         return ResponseEntity.status(401).build();
@@ -53,13 +50,29 @@ public class AuthController {
     //Register
     //Controller tiếp nhận RegisterRequestDTO
     //sau đó gọi thằng authService.register() để xử lý lozic
-    @PostMapping("/register")
-    //thêm @Valid vào req để Spring tự kiểm tra
-    public ResponseEntity<String> register(@Valid @RequestBody RegisterRequestDTO request) {
-        authService.register(request);
-        return ResponseEntity.ok("User registered successfully hihi");
-
-    }
+//    @PostMapping("/register")
+//    //thêm @Valid vào req để Spring tự kiểm tra
+//    public ResponseEntity<String> register(@Valid @RequestBody RegisterRequestDTO request) {
+//        authService.register(request);
+//        return ResponseEntity.ok("User registered successfully hihi");
+//    }
     //chua comment
+
+    // STEP 1: Gửi OTP
+    @PostMapping("/register/request-otp")
+    public ResponseEntity<Map<String, String>> requestOtp(@Valid @RequestBody RegisterRequestDTO request) {
+        String message = authService.requestOtp(request);
+        return ResponseEntity.ok(Map.of("message", message));
+    }
+
+    // STEP 2: Xác minh OTP
+    @PostMapping("/register/verify-otp")
+    public ResponseEntity<Map<String, String>> verifyOtp(
+            @RequestParam String email,
+            @RequestParam String otp
+    ) {
+        String message = authService.verifyOtp(email, otp);
+        return ResponseEntity.ok(Map.of("message", message));
+    }
 
 }
