@@ -30,10 +30,10 @@ public class User {
     @Column(name = "PhoneNumber", length = 20)
     private String phoneNumber;
 
-    @Column(name = "CitizenID", length = 20)
+    @Column(name = "CitizenID", unique = true, length = 20)
     private String citizenId;
 
-    @Column(name = "DriverLicense", length = 30)
+    @Column(name = "DriverLicense", unique = true, length = 30)
     private String driverLicense;
 
     @Column(name = "AvatarUrl")

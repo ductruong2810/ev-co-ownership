@@ -1,31 +1,33 @@
 package com.group8.evcoownership.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.Nationalized;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+@Entity
+@Table(name = "Contract")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
-@Table(name = "Contract")
 @Builder
-
 public class Contract {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ContractID")
-    private Long contractID;
+    @Column(name = "ContractId", nullable = false)
+    private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "GroupID", nullable = false)
+    @NotNull
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "GroupId", nullable = false)
     private OwnershipGroup group;
 
     @Column(name = "StartDate")
@@ -34,7 +36,9 @@ public class Contract {
     @Column(name = "EndDate")
     private LocalDate endDate;
 
-    @Column(name = "Terms", columnDefinition = "NVARCHAR(MAX)")
+    @Nationalized
+    @Lob
+    @Column(name = "Terms")
     private String terms;
 
     @Column(name = "InitialFee", precision = 15, scale = 2)
@@ -43,22 +47,24 @@ public class Contract {
     @Column(name = "PenaltyRate", precision = 5, scale = 2)
     private BigDecimal penaltyRate;
 
-    @Column(name = "CreatedAt", updatable = false)
+    @ColumnDefault("1")
+    @Column(name = "IsActive")
+    private Boolean isActive;
+
+    @Column(name = "CreatedAt")
     private LocalDateTime createdAt;
 
     @Column(name = "UpdatedAt")
     private LocalDateTime updatedAt;
 
-    // Tự động gán khi insert
     @PrePersist
-    protected void onCreate() {
+    public void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
     }
 
-    // Tự động gán khi update
     @PreUpdate
-    protected void onUpdate() {
+    public void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
 }

@@ -1,39 +1,42 @@
 package com.group8.evcoownership.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.ColumnDefault;
 
 import java.time.LocalDateTime;
 
+@Entity
+@Table(name = "VotingResult")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
-@Table(name = "VotingResult")
 @Builder
-
 public class VotingResult {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ResultID")
-    private Long resultId;
+    @Column(name = "ResultId", nullable = false)
+    private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "VotingID", nullable = false)
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "VotingId", nullable = false)
     private Voting voting;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "UserID", nullable = false)
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "UserId", nullable = false)
     private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "OptionID", nullable = false)
-    private VotingOption option;
+    @ColumnDefault("1")
+    @Column(name = "IsLatest")
+    private Boolean isLatest;
 
-    @Column(name = "VotedAt", insertable = false, updatable = false)
+    @Column(name = "VotedAt")
     private LocalDateTime votedAt;
+
 }

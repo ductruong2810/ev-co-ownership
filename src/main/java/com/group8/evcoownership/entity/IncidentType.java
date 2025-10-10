@@ -10,25 +10,26 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.Nationalized;
 
 @Entity
-@Table(name = "VotingOption")
+@Table(name = "IncidentType")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class VotingOption {
+public class IncidentType {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "OptionId", nullable = false)
+    @Column(name = "IncidentTypeId", nullable = false)
     private Long id;
 
+    @Size(max = 100)
     @NotNull
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "VotingId", nullable = false)
-    private Voting voting;
-
-    @Size(max = 255)
     @Nationalized
-    @Column(name = "OptionText")
-    private String optionText;
+    @Column(name = "TypeName", nullable = false, length = 100)
+    private String typeName;
+
+    @Nationalized
+    @Lob
+    @Column(name = "Description")
+    private String description;
 
 }
