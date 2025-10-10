@@ -1,10 +1,21 @@
 package com.group8.evcoownership.controller;
 
 import com.group8.evcoownership.dto.FundBalanceResponse;
+import com.group8.evcoownership.dto.SharedFundCreateRequest;
+import com.group8.evcoownership.dto.SharedFundDto;
+import com.group8.evcoownership.dto.SharedFundUpdateRequest;
 import com.group8.evcoownership.entity.SharedFund;
 import com.group8.evcoownership.service.FundService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/funds")
@@ -12,6 +23,20 @@ import org.springframework.web.bind.annotation.*;
 public class FundController {
 
     private final FundService fundService;
+    //--------Create------
+    // Api tao quy moi cho group (path)
+    @PostMapping("/{groupId}")
+    public FundBalanceResponse createFund(@PathVariable Long groupId) {
+        SharedFund fund = fundService.createOrGroup(groupId);
+        return new FundBalanceResponse(fund.getFundId(), fund.getGroup().getGroupId(), fund.getBalance());
+    }
+//    @PostMapping
+//    // Tao quy theo body(DTO)
+//    public SharedFund createFund(@Valid @RequestBody SharedFundCreateRequest req) {
+//        return fundService.create(req);
+//    }
+
+    //-------Read------
 
     // Api xem so du quy theo groupId
     @GetMapping("/{groupId}")
@@ -19,11 +44,45 @@ public class FundController {
         return fundService.getBalanceByGroupId(groupId);
     }
 
-    // Api tao quy moi cho group
-    @PostMapping("/{groupId}")
-    public FundBalanceResponse createFund(@PathVariable Long groupId) {
-        SharedFund fund = fundService.createForGroup(groupId);
-        return new FundBalanceResponse(fund.getFundId(), fund.getGroup().getGroupId(), fund.getBalance());
+    // Lay fund theo fundId
+    @GetMapping("/id/{fundId}")
+    public FundBalanceResponse getFundById(@PathVariable("fundId") Long fundId) {
+        return fundService.getById(fundId);
     }
+
+    // Lấy fund theo groupId (trả entity)
+//    @GetMapping("/group/{groupId}")
+//    public SharedFund getByGroup(@PathVariable Long groupId) {
+//        return fundService.getByGroupId(groupId);
+//    }
+
+
+    // Danh sách dạng List
+//    @GetMapping("/funds")
+//    public List<SharedFund> list(
+//            @ParameterObject
+//            @PageableDefault(size = 10, sort = "updatedAt", direction = Sort.Direction.DESC)
+//            Pageable pageable) {
+//        return fundService.list(pageable);
+//    }
+    @GetMapping("/funds")
+    public List<SharedFundDto> list(@ParameterObject Pageable pageable){
+        return fundService.list(pageable);
+    }
+
+
+    //------Update-----
+    @PutMapping("/{fundId}")
+    public SharedFund updateBalance(@PathVariable Long fundId,
+                                    @Valid @RequestBody SharedFundUpdateRequest req) {
+        return fundService.updateBalance(fundId, req);
+    }
+
+    // ====== DELETE ======
+    @DeleteMapping("/{fundId}")
+    public void delete(@PathVariable Long fundId) {
+        fundService.deleteById(fundId);
+    }
+
 
 }
