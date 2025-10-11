@@ -1,5 +1,7 @@
 package com.group8.evcoownership.utils;
 
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -7,29 +9,130 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Slf4j
 @Component
 public class OtpUtil {
-    private static final int OTP_EXPIRATION_MINUTES = 3;
+    private static final int OTP_EXPIRATION_MINUTES = 5; // Tăng từ 3 lên 5 phút
+    private static final int MAX_FAILED_ATTEMPTS = 3; // Giới hạn số lần thử
+    private static final int LOCKOUT_MINUTES = 15; // Khóa 15 phút nếu thử sai quá nhiều
+
     private final Map<String, OtpEntry> otpCache = new ConcurrentHashMap<>();
+    private final Map<String, FailedAttempt> failedAttempts = new ConcurrentHashMap<>();
     private final Random random = new Random();
 
     private record OtpEntry(String otp, LocalDateTime expireAt) {}
 
+    private record FailedAttempt(int count, LocalDateTime lockoutUntil) {}
+
     public String generateOtp(String email) {
-        String otp = String.format("%06d", random.nextInt(999999));
-        otpCache.put(email, new OtpEntry(otp, LocalDateTime.now().plusMinutes(OTP_EXPIRATION_MINUTES)));
+        // Kiểm tra xem email có bị khóa không
+        FailedAttempt attempt = failedAttempts.get(email);
+        if (attempt != null && attempt.lockoutUntil.isAfter(LocalDateTime.now())) {
+            long minutesLeft = java.time.Duration.between(
+                    LocalDateTime.now(),
+                    attempt.lockoutUntil
+            ).toMinutes();
+            log.warn("Email {} is locked out for {} more minutes", email, minutesLeft);
+            throw new RuntimeException(
+                    "Tài khoản tạm thời bị khóa do nhập sai OTP quá nhiều. Vui lòng thử lại sau " + minutesLeft + " phút"
+            );
+        }
+
+        String otp = String.format("%06d", random.nextInt(1000000));
+        LocalDateTime expireAt = LocalDateTime.now().plusMinutes(OTP_EXPIRATION_MINUTES);
+        otpCache.put(email, new OtpEntry(otp, expireAt));
+
+        log.info("Generated OTP for email: {} (expires at: {})", email, expireAt);
         return otp;
     }
 
     public boolean verifyOtp(String email, String otp) {
+        log.info("Verifying OTP for email: {}", email);
+
+        // Kiểm tra lockout
+        FailedAttempt attempt = failedAttempts.get(email);
+        if (attempt != null && attempt.lockoutUntil.isAfter(LocalDateTime.now())) {
+            log.warn("Verification blocked - email {} is locked out", email);
+            return false;
+        }
+
+        // Lấy OTP từ cache
         OtpEntry entry = otpCache.get(email);
-        if (entry == null) return false;
+        if (entry == null) {
+            log.error("No OTP found for email: {}", email);
+            recordFailedAttempt(email);
+            return false;
+        }
+
+        // Kiểm tra hết hạn
         if (entry.expireAt.isBefore(LocalDateTime.now())) {
+            log.error("OTP expired for email: {}", email);
             otpCache.remove(email);
             return false;
         }
+
+        // Kiểm tra OTP khớp
         boolean valid = entry.otp.equals(otp);
-        if (valid) otpCache.remove(email);
+        if (valid) {
+            log.info("OTP verified successfully for email: {}", email);
+            otpCache.remove(email);
+            failedAttempts.remove(email); // Xóa failed attempts khi thành công
+        } else {
+            log.error("Invalid OTP for email: {}", email);
+            recordFailedAttempt(email);
+        }
+
         return valid;
+    }
+
+    private void recordFailedAttempt(String email) {
+        FailedAttempt currentAttempt = failedAttempts.get(email);
+        int newCount = (currentAttempt != null) ? currentAttempt.count + 1 : 1;
+
+        if (newCount >= MAX_FAILED_ATTEMPTS) {
+            LocalDateTime lockoutUntil = LocalDateTime.now().plusMinutes(LOCKOUT_MINUTES);
+            failedAttempts.put(email, new FailedAttempt(newCount, lockoutUntil));
+            log.warn("Email {} locked out until {} due to {} failed attempts",
+                    email, lockoutUntil, newCount);
+        } else {
+            failedAttempts.put(email, new FailedAttempt(newCount, LocalDateTime.now()));
+            log.info("Failed attempt {} for email: {}", newCount, email);
+        }
+    }
+
+    // Dọn dẹp OTP và failed attempts hết hạn mỗi 10 phút
+    @Scheduled(fixedRate = 600000) // 10 phút
+    public void cleanupExpiredEntries() {
+        LocalDateTime now = LocalDateTime.now();
+
+        // Xóa OTP hết hạn
+        otpCache.entrySet().removeIf(entry -> {
+            boolean expired = entry.getValue().expireAt.isBefore(now);
+            if (expired) {
+                log.debug("Removed expired OTP for email: {}", entry.getKey());
+            }
+            return expired;
+        });
+
+        // Xóa failed attempts hết hạn
+        failedAttempts.entrySet().removeIf(entry -> {
+            boolean expired = entry.getValue().lockoutUntil.isBefore(now)
+                    && entry.getValue().count < MAX_FAILED_ATTEMPTS;
+            if (expired) {
+                log.debug("Removed expired failed attempts for email: {}", entry.getKey());
+            }
+            return expired;
+        });
+
+        log.debug("Cleanup completed. OTP cache size: {}, Failed attempts size: {}",
+                otpCache.size(), failedAttempts.size());
+    }
+
+    // Phương thức để kiểm tra trạng thái (dùng cho debugging)
+    public int getRemainingAttempts(String email) {
+        FailedAttempt attempt = failedAttempts.get(email);
+        if (attempt == null) return MAX_FAILED_ATTEMPTS;
+        if (attempt.lockoutUntil.isAfter(LocalDateTime.now())) return 0;
+        return Math.max(0, MAX_FAILED_ATTEMPTS - attempt.count);
     }
 }
