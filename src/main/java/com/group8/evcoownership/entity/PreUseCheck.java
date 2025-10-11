@@ -25,10 +25,6 @@ public class PreUseCheck {
     @JoinColumn(name = "BookingId")
     private UsageBooking booking;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "UserId")
-    private User user;
-
     @Column(name = "ExteriorDamage")
     private Boolean exteriorDamage; // Có hư hỏng bên ngoài không?
 

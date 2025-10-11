@@ -25,10 +25,6 @@ public class VehicleReport {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "VehicleId")
-    private Vehicle vehicle;
-
-    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "BookingId")
     private UsageBooking booking;
 
