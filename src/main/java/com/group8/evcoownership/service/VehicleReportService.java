@@ -34,7 +34,6 @@ public class VehicleReportService {
                 .orElseThrow(() -> new EntityNotFoundException("Booking not found"));
 
         VehicleReport report = VehicleReport.builder()
-                .vehicle(booking.getVehicle())
                 .booking(booking)
                 .reportedBy(booking.getUser())
                 .reportType(ReportType.USER_CHECKOUT)
@@ -66,7 +65,6 @@ public class VehicleReportService {
         }
 
         VehicleReport verification = VehicleReport.builder()
-                .vehicle(userReport.getVehicle())
                 .booking(userReport.getBooking())
                 .reportedBy(getCurrentTechnician())
                 .reportType(ReportType.TECHNICIAN_VERIFICATION)
@@ -122,7 +120,6 @@ public class VehicleReportService {
                 .orElseThrow(() -> new EntityNotFoundException("Technician not found"));
 
         VehicleReport report = VehicleReport.builder()
-                .vehicle(vehicle)
                 .reportedBy(technician)
                 .reportType(reportType)
                 .odometer(mileage)
@@ -134,17 +131,15 @@ public class VehicleReportService {
 
         VehicleReport savedReport = vehicleReportRepository.save(report);
 
-        Map<String, Object> result = Map.of(
+        // Note: Technician sẽ tự quyết định có tạo Maintenance request hay không
+        // Không tự động tạo để tránh sai sót trong phân loại
+
+        return Map.of(
                 "reportId", savedReport.getId(),
                 "reportType", reportType.name(),
                 "vehicleLicensePlate", vehicle.getLicensePlate(),
                 "message", "Vehicle report created successfully"
         );
-
-        // Note: Technician sẽ tự quyết định có tạo Maintenance request hay không
-        // Không tự động tạo để tránh sai sót trong phân loại
-
-        return result;
     }
 
     // Technician phát hiện lỗi nghiêm trọng và tạo Maintenance request
@@ -156,7 +151,7 @@ public class VehicleReportService {
         // Tạo Maintenance request
         MaintenanceService maintenanceService = new MaintenanceService(null, null, null, null, null); // TODO: Inject properly
         Maintenance maintenance = maintenanceService.createMaintenanceRequest(
-                userReport.getVehicle().getId(),
+                userReport.getBooking().getVehicle().getId(),
                 getCurrentTechnician().getUserId(),
                 "Critical issues found by technician: " + criticalIssues + " | " + maintenanceDescription,
                 java.math.BigDecimal.ZERO
@@ -164,9 +159,9 @@ public class VehicleReportService {
 
         // Gửi notification cho tất cả users trong group
         notificationService.sendNotificationToGroup(
-                getUsersInOwnershipGroup(userReport.getVehicle().getId()),
+                getUsersInOwnershipGroup(),
                 "Critical Vehicle Issues Found",
-                "Technician found critical issues with vehicle " + userReport.getVehicle().getLicensePlate() +
+                "Technician found critical issues with vehicle " + userReport.getBooking().getVehicle().getLicensePlate() +
                         ": " + criticalIssues + ". Maintenance request created.",
                 com.group8.evcoownership.enums.NotificationType.maintenance
         );
@@ -181,14 +176,13 @@ public class VehicleReportService {
     // Helper method - TODO: Implement properly
     private User getCurrentTechnician() {
         // This should return the current logged-in technician
-        // For now, return a dummy user
         return userRepository.findById(1L).orElse(null);
     }
 
     // Helper method - TODO: Implement properly
-    private java.util.List<User> getUsersInOwnershipGroup(Long vehicleId) {
+    private java.util.List<User> getUsersInOwnershipGroup() {
         // This should return all users in the vehicle's ownership group
-        // For now, return empty list
+        // For now, return an empty list
         return java.util.List.of();
     }
 

@@ -37,9 +37,7 @@ public class VehicleRejectionService {
                 .orElseThrow(() -> new EntityNotFoundException("Booking not found"));
 
         VehicleRejection rejection = VehicleRejection.builder()
-                .vehicle(booking.getVehicle())
                 .booking(booking)
-                .rejectedBy(booking.getUser())
                 .rejectionReason(rejectionReason)
                 .detailedReason(detailedReason)
                 .photos(String.join(",", photos))
@@ -66,9 +64,8 @@ public class VehicleRejectionService {
         VehicleRejection rejection = vehicleRejectionRepository.findById(rejectionId)
                 .orElseThrow(() -> new EntityNotFoundException("Rejection not found"));
 
-        // Create resolution report
+        // Create a resolution report
         VehicleReport report = VehicleReport.builder()
-                .vehicle(rejection.getVehicle())
                 .booking(rejection.getBooking())
                 .reportedBy(getCurrentTechnician())
                 .reportType(ReportType.REJECTION_RESOLUTION)
@@ -85,11 +82,11 @@ public class VehicleRejectionService {
         rejection.setResolvedAt(LocalDateTime.now());
         vehicleRejectionRepository.save(rejection);
 
-        // Send notification to user
+        // Send notification to a user
         notificationService.sendNotification(
-                rejection.getRejectedBy(),
+                rejection.getBooking().getUser(),
                 "Vehicle Issue Resolved",
-                "The issue with vehicle " + rejection.getVehicle().getLicensePlate() +
+                "The issue with vehicle " + rejection.getBooking().getVehicle().getLicensePlate() +
                         " has been resolved. You can now book again.",
                 com.group8.evcoownership.enums.NotificationType.maintenance
         );
@@ -110,7 +107,6 @@ public class VehicleRejectionService {
     // Helper method - TODO: Implement properly
     private com.group8.evcoownership.entity.User getCurrentTechnician() {
         // This should return the current logged-in technician
-        // For now, return a dummy user
         return userRepository.findById(1L).orElse(null);
     }
 }
