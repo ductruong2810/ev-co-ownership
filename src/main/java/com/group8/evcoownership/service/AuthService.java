@@ -7,7 +7,6 @@ import com.group8.evcoownership.entity.Role;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.enums.RoleName;
 import com.group8.evcoownership.enums.UserStatus;
-import com.group8.evcoownership.exception.GlobalExceptionHandler;
 import com.group8.evcoownership.repository.RoleRepository;
 import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.utils.JwtUtil;
