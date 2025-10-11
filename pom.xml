@@ -146,6 +146,7 @@
                             <artifactId>lombok</artifactId>
                         </exclude>
                     </excludes>
+                    <jvmArguments>-XX:+UseG1GC -XX:+UseStringDeduplication</jvmArguments>
                 </configuration>
             </plugin>
         </plugins>

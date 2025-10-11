@@ -13,13 +13,14 @@ import java.util.Optional;
 @Repository
 public interface VehicleReportRepository extends JpaRepository<VehicleReport, Long> {
 
-    List<VehicleReport> findByVehicleId(Long vehicleId);
+    @Query("SELECT vr FROM VehicleReport vr WHERE vr.booking.vehicle.id = :vehicleId")
+    List<VehicleReport> findByVehicleId(@Param("vehicleId") Long vehicleId);
 
     List<VehicleReport> findByBookingId(Long bookingId);
 
-    @Query("SELECT vr FROM VehicleReport vr WHERE vr.vehicle.id = :vehicleId AND vr.reportType = :reportType ORDER BY vr.createdAt DESC")
+    @Query("SELECT vr FROM VehicleReport vr WHERE vr.booking.vehicle.id = :vehicleId AND vr.reportType = :reportType ORDER BY vr.createdAt DESC")
     List<VehicleReport> findByVehicleIdAndReportTypeOrderByCreatedAtDesc(@Param("vehicleId") Long vehicleId, @Param("reportType") ReportType reportType);
 
-    @Query("SELECT vr FROM VehicleReport vr WHERE vr.vehicle.id = :vehicleId AND vr.reportType = :reportType ORDER BY vr.createdAt DESC")
+    @Query("SELECT vr FROM VehicleReport vr WHERE vr.booking.vehicle.id = :vehicleId AND vr.reportType = :reportType ORDER BY vr.createdAt DESC")
     Optional<VehicleReport> findTop1ByVehicleIdAndReportTypeOrderByCreatedAtDesc(@Param("vehicleId") Long vehicleId, @Param("reportType") ReportType reportType);
 }
