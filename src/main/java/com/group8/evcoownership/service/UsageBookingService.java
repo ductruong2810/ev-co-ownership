@@ -104,7 +104,7 @@ public class UsageBookingService {
 
         // Lấy số giờ đã book trong tuần
         Long bookedHours = usageBookingRepository.getTotalBookedHoursThisWeek(userId, vehicleId, weekStart);
-        Long remainingHours = quotaLimit - bookedHours;
+        long remainingHours = quotaLimit - bookedHours;
 
         quotaInfo.put("quotaLimit", quotaLimit);
         quotaInfo.put("bookedHours", bookedHours);
