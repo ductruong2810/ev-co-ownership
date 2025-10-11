@@ -3,10 +3,7 @@ package com.group8.evcoownership.service;
 import com.group8.evcoownership.entity.UsageBooking;
 import com.group8.evcoownership.entity.VehicleRejection;
 import com.group8.evcoownership.entity.VehicleReport;
-import com.group8.evcoownership.enums.BookingStatus;
-import com.group8.evcoownership.enums.RejectionReason;
-import com.group8.evcoownership.enums.RejectionStatus;
-import com.group8.evcoownership.enums.ReportType;
+import com.group8.evcoownership.enums.*;
 import com.group8.evcoownership.repository.UsageBookingRepository;
 import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.repository.VehicleRejectionRepository;
@@ -41,7 +38,7 @@ public class VehicleRejectionService {
                 .rejectionReason(rejectionReason)
                 .detailedReason(detailedReason)
                 .photos(String.join(",", photos))
-                .status(RejectionStatus.PENDING)
+                .status(RejectionStatus.Pending)
                 .rejectedAt(LocalDateTime.now())
                 .build();
 
@@ -68,7 +65,7 @@ public class VehicleRejectionService {
         VehicleReport report = VehicleReport.builder()
                 .booking(rejection.getBooking())
                 .reportedBy(getCurrentTechnician())
-                .reportType(ReportType.REJECTION_RESOLUTION)
+                .reportType(ReportType.RejectionResolution)
                 .cleanliness(com.group8.evcoownership.enums.Cleanliness.Good)
                 .damages("None")
                 .notes(resolutionNotes)
@@ -78,7 +75,7 @@ public class VehicleRejectionService {
                 .build();
 
         // Update rejection status
-        rejection.setStatus(RejectionStatus.RESOLVED);
+        rejection.setStatus(RejectionStatus.Resolved);
         rejection.setResolvedAt(LocalDateTime.now());
         vehicleRejectionRepository.save(rejection);
 
@@ -96,7 +93,7 @@ public class VehicleRejectionService {
 
     // Lấy danh sách từ chối đang chờ xử lý
     public List<VehicleRejection> getPendingRejections() {
-        return vehicleRejectionRepository.findByStatus(RejectionStatus.PENDING);
+        return vehicleRejectionRepository.findByStatus(RejectionStatus.Pending);
     }
 
     // Lấy lịch sử từ chối của xe
@@ -104,9 +101,13 @@ public class VehicleRejectionService {
         return vehicleRejectionRepository.findByVehicleIdOrderByRejectedAtDesc(vehicleId);
     }
 
-    // Helper method - TODO: Implement properly
+    // Helper method - Get current logged-in technician
     private com.group8.evcoownership.entity.User getCurrentTechnician() {
-        // This should return the current logged-in technician
-        return userRepository.findById(1L).orElse(null);
+        // TODO: Implement proper authentication context
+        // For now, return first technician found
+        return userRepository.findByRoleRoleName(RoleName.Technician)
+                .stream()
+                .findFirst()
+                .orElse(null);
     }
 }

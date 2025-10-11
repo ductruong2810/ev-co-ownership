@@ -36,7 +36,7 @@ public class VehicleReportService {
         VehicleReport report = VehicleReport.builder()
                 .booking(booking)
                 .reportedBy(booking.getUser())
-                .reportType(ReportType.USER_CHECKOUT)
+                .reportType(ReportType.UserCheckout)
                 .odometer(odometer)
                 .batteryLevel(batteryLevel)
                 .damages(damages)
@@ -67,7 +67,7 @@ public class VehicleReportService {
         VehicleReport verification = VehicleReport.builder()
                 .booking(userReport.getBooking())
                 .reportedBy(getCurrentTechnician())
-                .reportType(ReportType.TECHNICIAN_VERIFICATION)
+                .reportType(ReportType.TechnicianVerification)
                 .odometer(userReport.getOdometer())
                 .batteryLevel(userReport.getBatteryLevel())
                 .damages(combinedDamages)
@@ -93,7 +93,7 @@ public class VehicleReportService {
     // Lấy thông tin xe cho user check-in
     public Optional<VehicleReport> getVehicleInfoForCheckin(Long vehicleId) {
         return vehicleReportRepository.findTop1ByVehicleIdAndReportTypeOrderByCreatedAtDesc(
-                vehicleId, ReportType.TECHNICIAN_VERIFICATION
+                vehicleId, ReportType.TechnicianVerification
         );
     }
 

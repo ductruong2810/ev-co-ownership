@@ -94,8 +94,7 @@ public class ExpenseService {
                 "estimatedCost", maintenance.getEstimatedCost(),
                 "actualCost", maintenance.getActualCost(),
                 "totalExpenses", totalExpenses,
-                "variance", maintenance.getActualCost() != null ?
-                        maintenance.getActualCost().subtract(totalExpenses) : null
+                "variance", maintenance.getActualCost().subtract(totalExpenses)
         );
     }
 }

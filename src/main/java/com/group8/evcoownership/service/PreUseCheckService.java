@@ -28,7 +28,6 @@ public class PreUseCheckService {
 
         PreUseCheck check = PreUseCheck.builder()
                 .booking(booking)
-                .user(booking.getUser())
                 .exteriorDamage(exteriorDamage)
                 .interiorClean(interiorClean)
                 .warningLights(warningLights)
