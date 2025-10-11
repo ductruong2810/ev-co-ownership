@@ -9,5 +9,6 @@ public record SharedFundDto(
         BigDecimal balance,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
-) {}
+) {
+}
 

@@ -22,7 +22,7 @@ public class VnPay_PaymentService {
     @Value("${payment.vnPay.returnUrl}")
     private String vnp_ReturnUrl;
     @Value("${payment.vnPay.tmnCode}")
-    private String vnp_TmnCode ;
+    private String vnp_TmnCode;
     @Value("${payment.vnPay.secretKey}")
     private String secretKey;
     @Value("${payment.vnPay.version}")
@@ -38,7 +38,7 @@ public class VnPay_PaymentService {
 
         vnpParamsMap.put("vnp_ReturnUrl", this.vnp_ReturnUrl);
         vnpParamsMap.put("vnp_Amount", String.valueOf(amount));
-        vnpParamsMap.put("vnp_IpAddr",getIpAddress(request));
+        vnpParamsMap.put("vnp_IpAddr", getIpAddress(request));
 
         //build query url
         String queryUrl = getPaymentURL(vnpParamsMap, true);
@@ -66,8 +66,8 @@ public class VnPay_PaymentService {
         vnpParamsMap.put("vnp_Command", this.vnp_Command);
         vnpParamsMap.put("vnp_TmnCode", this.vnp_TmnCode);
         vnpParamsMap.put("vnp_CurrCode", "VND");
-        vnpParamsMap.put("vnp_TxnRef",  getRandomNumber(8));
-        vnpParamsMap.put("vnp_OrderInfo", "Thanh toan don hang:" +  getRandomNumber(8));
+        vnpParamsMap.put("vnp_TxnRef", getRandomNumber(8));
+        vnpParamsMap.put("vnp_OrderInfo", "Thanh toan don hang:" + getRandomNumber(8));
         vnpParamsMap.put("vnp_OrderType", this.orderType);
         vnpParamsMap.put("vnp_Locale", "vn");
         Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("Etc/GMT+7"));
@@ -124,6 +124,7 @@ public class VnPay_PaymentService {
         }
         return sb.toString();
     }
+
     public static String getPaymentURL(Map<String, String> paramsMap, boolean encodeKey) {
         return paramsMap.entrySet().stream()
                 .filter(entry -> entry.getValue() != null && !entry.getValue().isEmpty())

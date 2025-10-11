@@ -5,7 +5,7 @@ import com.group8.evcoownership.dto.PaymentResponse;
 import com.group8.evcoownership.dto.UpdatePaymentRequest;
 import com.group8.evcoownership.enums.PaymentStatus;
 import com.group8.evcoownership.enums.PaymentType;
-import com.group8.evcoownership.service.PaymentService; // interface Service của bạn
+import com.group8.evcoownership.service.PaymentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

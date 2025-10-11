@@ -24,15 +24,23 @@ public class VehicleReport {
     @Column(name = "ReportId", nullable = false)
     private Long id;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "BookingId")
+    private UsageBooking booking;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ReportedBy")
+    private User reportedBy;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "ReportType", length = 20)
     private ReportType reportType;
 
-    @Column(name = "Mileage")
-    private Integer mileage;
+    @Column(name = "Odometer")
+    private Integer odometer;
 
-    @Column(name = "ChargeLevel", precision = 5, scale = 2)
-    private BigDecimal chargeLevel;
+    @Column(name = "BatteryLevel", precision = 5, scale = 2)
+    private BigDecimal batteryLevel;
 
     @Nationalized
     @Lob
@@ -48,9 +56,15 @@ public class VehicleReport {
     @Column(name = "Notes")
     private String notes;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "TechnicianId")
-    private User technician;
+    @Nationalized
+    @Lob
+    @Column(name = "RejectionReason")
+    private String rejectionReason;
+
+    @Nationalized
+    @Lob
+    @Column(name = "ResolutionNotes")
+    private String resolutionNotes;
 
     @Column(name = "CreatedAt")
     private LocalDateTime createdAt;

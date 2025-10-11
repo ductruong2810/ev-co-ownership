@@ -12,7 +12,8 @@ public class CreatePaymentRequest {
     @NotNull
     private Long userId;
     private Long fundId;
-    @NotNull @DecimalMin("0.01")
+    @NotNull
+    @DecimalMin("0.01")
     private BigDecimal amount;
 
     private String paymentMethod;

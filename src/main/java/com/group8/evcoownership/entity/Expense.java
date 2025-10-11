@@ -23,14 +23,15 @@ public class Expense {
     @Column(name = "ExpenseId", nullable = false)
     private Long id;
 
-    @NotNull
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "FundId", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "FundId")
     private SharedFund fund;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "IncidentId")
-    private Incident incident;
+    @Column(name = "SourceType", length = 20)
+    private String sourceType; // "MAINTENANCE", "VEHICLE_REPORT", "INCIDENT"
+
+    @Column(name = "SourceId")
+    private Long sourceId; // ID của source entity
 
     @Nationalized
     @Lob

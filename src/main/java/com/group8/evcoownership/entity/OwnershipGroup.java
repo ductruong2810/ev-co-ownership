@@ -38,6 +38,9 @@ public class OwnershipGroup {
     @OneToMany(mappedBy = "group", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
     private List<OwnershipShare> ownershipShares;
 
+    @OneToOne(mappedBy = "ownershipGroup", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Vehicle vehicle;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "CreatedBy")
     private User createdBy;
