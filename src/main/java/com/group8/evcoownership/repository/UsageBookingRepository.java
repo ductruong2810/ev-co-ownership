@@ -1,7 +1,6 @@
 package com.group8.evcoownership.repository;
 
 import com.group8.evcoownership.entity.UsageBooking;
-import com.group8.evcoownership.enums.BookingStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -26,12 +25,22 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
                                      @Param("vehicleId") Long vehicleId,
                                      @Param("weekStart") LocalDateTime weekStart);
 
-    // Kiểm tra trùng giờ với buffer 1h sau mỗi booking
+    //Tính quota limit dựa trên ownership percentage (168h/tuần * ownership%)
+    @Query(value = """
+                SELECT CAST(168 * (os.OwnershipPercentage / 100.0) AS INT)
+                FROM OwnershipShare os
+                INNER JOIN Vehicle v ON v.GroupId = os.GroupId
+                WHERE os.UserId = :userId AND v.VehicleId = :vehicleId
+            """, nativeQuery = true)
+    Long getQuotaLimitByOwnershipPercentage(@Param("userId") Long userId,
+                                            @Param("vehicleId") Long vehicleId);
+
+    // Kiểm tra trùng giờ với buffer 1h sau mỗi booking (để kỹ thuật viên kiểm tra và sạc pin)
     @Query(value = """
                 SELECT COUNT(*)
                 FROM UsageBooking
                 WHERE VehicleId = :vehicleId
-                  AND Status IN ('Pending', 'Confirmed')
+                  AND Status IN ('Pending', 'Confirmed', 'Buffer')
                   AND (
                       (:start BETWEEN StartDateTime AND DATEADD(HOUR, 1, EndDateTime))
                       OR (:end BETWEEN StartDateTime AND DATEADD(HOUR, 1, EndDateTime))
@@ -42,18 +51,37 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
                                             @Param("start") LocalDateTime start,
                                             @Param("end") LocalDateTime end);
 
-
-    // Lấy danh sách booking của xe trong 1 ngày (để hiển thị slot trống)
+    // Kiểm tra trùng giờ với buffer 1h (loại trừ booking hiện tại)
     @Query(value = """
-                SELECT *
+                SELECT COUNT(*)
                 FROM UsageBooking
                 WHERE VehicleId = :vehicleId
-                  AND Status IN ('Pending','Confirmed')
-                  AND CAST(StartDateTime AS date) = :date
-                ORDER BY StartDateTime
+                  AND BookingId != :excludeBookingId
+                  AND Status IN ('Pending', 'Confirmed', 'Buffer')
+                  AND (
+                      (:start BETWEEN StartDateTime AND DATEADD(HOUR, 1, EndDateTime))
+                      OR (:end BETWEEN StartDateTime AND DATEADD(HOUR, 1, EndDateTime))
+                      OR (StartDateTime BETWEEN :start AND :end)
+                  )
             """, nativeQuery = true)
-    List<UsageBooking> findByVehicleIdAndDate(@Param("vehicleId") Long vehicleId,
-                                              @Param("date") LocalDate date);
+    long countOverlappingBookingsWithBufferExcluding(@Param("vehicleId") Long vehicleId,
+                                                     @Param("excludeBookingId") Long excludeBookingId,
+                                                     @Param("start") LocalDateTime start,
+                                                     @Param("end") LocalDateTime end);
+
+
+    // Lấy danh sách booking của xe trong 1 ngày với thông tin user (để hiển thị slot trống)
+    @Query("""
+                SELECT ub
+                FROM UsageBooking ub
+                JOIN FETCH ub.user u
+                WHERE ub.vehicle.id = :vehicleId
+                  AND ub.status IN ('Pending', 'Confirmed')
+                  AND CAST(ub.startDateTime AS date) = :date
+                ORDER BY ub.startDateTime
+            """)
+    List<UsageBooking> findByVehicleIdAndDateWithUser(@Param("vehicleId") Long vehicleId,
+                                                      @Param("date") LocalDate date);
 
 
     // Lấy booking sắp tới của user (để hiển thị trong dashboard)
@@ -67,8 +95,6 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
             """)
     List<UsageBooking> findUpcomingBookingsByUser(@Param("userId") Long userId);
 
-    // Lấy booking gần nhất đã hoàn thành (để tính thời gian buffer cho xe)
-    List<UsageBooking> findTop1ByVehicleIdAndStatusOrderByEndDateTimeDesc(Long vehicle_id, BookingStatus status);
 
     @Query(value = """
                 SELECT *
@@ -81,6 +107,24 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
             """, nativeQuery = true)
     List<UsageBooking> findBookingsByUserInWeek(@Param("userId") Long userId,
                                                 @Param("weekStart") LocalDateTime weekStart);
+
+    // Tìm các booking bị ảnh hưởng bởi maintenance period
+    @Query("""
+                SELECT ub
+                FROM UsageBooking ub
+                JOIN FETCH ub.user u
+                WHERE ub.vehicle.id = :vehicleId
+                  AND ub.status IN ('Pending', 'Confirmed')
+                  AND (
+                      (ub.startDateTime BETWEEN :startDateTime AND :endDateTime)
+                      OR (ub.endDateTime BETWEEN :startDateTime AND :endDateTime)
+                      OR (ub.startDateTime <= :startDateTime AND ub.endDateTime >= :endDateTime)
+                  )
+                ORDER BY ub.startDateTime
+            """)
+    List<UsageBooking> findAffectedBookings(@Param("vehicleId") Long vehicleId,
+                                            @Param("startDateTime") LocalDateTime startDateTime,
+                                            @Param("endDateTime") LocalDateTime endDateTime);
 
 }
 

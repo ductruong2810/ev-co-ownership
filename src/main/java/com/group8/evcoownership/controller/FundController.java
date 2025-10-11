@@ -1,7 +1,6 @@
 package com.group8.evcoownership.controller;
 
 import com.group8.evcoownership.dto.FundBalanceResponse;
-import com.group8.evcoownership.dto.SharedFundCreateRequest;
 import com.group8.evcoownership.dto.SharedFundDto;
 import com.group8.evcoownership.dto.SharedFundUpdateRequest;
 import com.group8.evcoownership.entity.SharedFund;
@@ -9,10 +8,7 @@ import com.group8.evcoownership.service.FundService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,6 +19,7 @@ import java.util.List;
 public class FundController {
 
     private final FundService fundService;
+
     //--------Create------
     // Api tao quy moi cho group (path)
     @PostMapping("/{groupId}")
@@ -66,7 +63,7 @@ public class FundController {
 //        return fundService.list(pageable);
 //    }
     @GetMapping("/funds")
-    public List<SharedFundDto> list(@ParameterObject Pageable pageable){
+    public List<SharedFundDto> list(@ParameterObject Pageable pageable) {
         return fundService.list(pageable);
     }
 

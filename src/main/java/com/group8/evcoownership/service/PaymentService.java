@@ -14,7 +14,9 @@ import com.group8.evcoownership.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.Hibernate;
-import org.springframework.data.domain.*;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -114,10 +116,10 @@ public class PaymentService {
                     .orElseThrow(() -> new EntityNotFoundException("User not found: " + req.getUserId()));
             p.setUser(user);
         }
-        if (req.getAmount() != null)           p.setAmount(req.getAmount());
-        if (req.getPaymentMethod() != null)    p.setPaymentMethod(req.getPaymentMethod());
-        if (req.getPaymentType() != null)      p.setPaymentType(req.getPaymentType());
-        if (req.getTransactionCode() != null)  p.setTransactionCode(req.getTransactionCode());
+        if (req.getAmount() != null) p.setAmount(req.getAmount());
+        if (req.getPaymentMethod() != null) p.setPaymentMethod(req.getPaymentMethod());
+        if (req.getPaymentType() != null) p.setPaymentType(req.getPaymentType());
+        if (req.getTransactionCode() != null) p.setTransactionCode(req.getTransactionCode());
         if (req.getProviderResponse() != null) p.setProviderResponse(req.getProviderResponse());
         if (req.getStatus() != null) {
             p.setStatus(req.getStatus());

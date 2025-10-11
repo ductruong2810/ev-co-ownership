@@ -9,11 +9,10 @@ import com.group8.evcoownership.entity.SharedFund;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
 import com.group8.evcoownership.repository.SharedFundRepository;
 import jakarta.persistence.EntityNotFoundException;
-import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -24,7 +23,7 @@ public class FundService {
     private final SharedFundRepository fundRepo;
     private final OwnershipGroupRepository groupRepo;
 
-   // -------Create--------
+    // -------Create--------
     @Transactional
     // Tạo SharedFund mới cho một group cụ thể.
     public SharedFund createOrGroup(Long groupId) {
@@ -44,7 +43,7 @@ public class FundService {
 
     @Transactional
     // Tao  SharedFund qua body DTO
-    public SharedFund create(SharedFundCreateRequest req){
+    public SharedFund create(SharedFundCreateRequest req) {
         return createOrGroup(req.getGroupId());
     }
 
@@ -59,17 +58,17 @@ public class FundService {
 
     // Lay SharedFund theo fundId
     @Transactional(readOnly = true)
-    public FundBalanceResponse getById(Long fundId){
+    public FundBalanceResponse getById(Long fundId) {
         SharedFund fund = fundRepo.findById(fundId)
                 .orElseThrow(() -> new EntityNotFoundException("SharedFund not found"));
-        return  new FundBalanceResponse(fund.getFundId(), fund.getGroup().getGroupId(), fund.getBalance());
+        return new FundBalanceResponse(fund.getFundId(), fund.getGroup().getGroupId(), fund.getBalance());
 //        return fundRepo.findById(fundId)
 //                .orElseThrow(() -> new EntityNotFoundException("SharedFund not found"));
     }
 
     // Lay SharedFund theo groupId
     @Transactional(readOnly = true)
-    public SharedFund getByGroupId(Long groupId){
+    public SharedFund getByGroupId(Long groupId) {
         return fundRepo.findByGroup_GroupId(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("SharedFund not found"));
     }
@@ -81,11 +80,11 @@ public class FundService {
 //    }
 
     @Transactional(readOnly = true)
-    public List<SharedFundDto> list(Pageable pageable){
+    public List<SharedFundDto> list(Pageable pageable) {
         return fundRepo.findAll(pageable).map(f ->
                 new SharedFundDto(
                         f.getFundId(),
-                        f.getGroup()!=null ? f.getGroup().getGroupId() : null,
+                        f.getGroup() != null ? f.getGroup().getGroupId() : null,
                         f.getBalance(),
                         f.getCreatedAt(),
                         f.getUpdatedAt()
@@ -102,21 +101,20 @@ public class FundService {
     }
 
     //-------Update-------
-    public SharedFund updateBalance(Long id, SharedFundUpdateRequest req){
-        SharedFund fund =  fundRepo.findById(id)
+    public SharedFund updateBalance(Long id, SharedFundUpdateRequest req) {
+        SharedFund fund = fundRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("SharedFund not found"));
         fund.setBalance(req.getBalance());// chi update, khong tang giam
         return fundRepo.save(fund);
     }
 
     //------delete-------
-    public void deleteById(Long fundId){
-        if(!fundRepo.existsById(fundId)){
+    public void deleteById(Long fundId) {
+        if (!fundRepo.existsById(fundId)) {
             throw new EntityNotFoundException("SharedFund not found" + fundId);
         }
         fundRepo.deleteById(fundId);
     }
-
 
 
 }

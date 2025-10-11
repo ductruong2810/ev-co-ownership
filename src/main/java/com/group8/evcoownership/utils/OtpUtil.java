@@ -20,9 +20,11 @@ public class OtpUtil {
     private final Map<String, FailedAttempt> failedAttempts = new ConcurrentHashMap<>();
     private final Random random = new Random();
 
-    private record OtpEntry(String otp, LocalDateTime expireAt) {}
+    private record OtpEntry(String otp, LocalDateTime expireAt) {
+    }
 
-    private record FailedAttempt(int count, LocalDateTime lockoutUntil) {}
+    private record FailedAttempt(int count, LocalDateTime lockoutUntil) {
+    }
 
     public String generateOtp(String email) {
         // Kiểm tra xem email có bị khóa không

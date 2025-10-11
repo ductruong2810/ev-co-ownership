@@ -16,7 +16,9 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     List<Payment> findAllBy(Pageable pageable);
 
     List<Payment> findAllByUser_UserId(Long userId, Pageable pageable);
+
     List<Payment> findAllByStatus(PaymentStatus status, Pageable pageable);
+
     List<Payment> findAllByPaymentType(PaymentType type, Pageable pageable);
 
     List<Payment> findAllByUser_UserIdAndStatusAndPaymentType(
@@ -24,8 +26,8 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     );
 
 
-
     // Nếu dùng VNPay, nên có lookup theo mã giao dịch (txnRef)
     Optional<Payment> findByTransactionCode(String transactionCode);
+
     boolean existsByTransactionCode(String transactionCode);
 }
