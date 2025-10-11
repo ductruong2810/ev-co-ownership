@@ -12,10 +12,11 @@ import java.util.List;
 @Repository
 public interface VehicleRejectionRepository extends JpaRepository<VehicleRejection, Long> {
 
-    List<VehicleRejection> findByVehicleIdAndStatus(Long vehicleId, RejectionStatus status);
+    @Query("SELECT vr FROM VehicleRejection vr WHERE vr.booking.vehicle.id = :vehicleId AND vr.status = :status")
+    List<VehicleRejection> findByVehicleIdAndStatus(@Param("vehicleId") Long vehicleId, @Param("status") RejectionStatus status);
 
     List<VehicleRejection> findByStatus(RejectionStatus status);
 
-    @Query("SELECT vr FROM VehicleRejection vr WHERE vr.vehicle.id = :vehicleId ORDER BY vr.rejectedAt DESC")
+    @Query("SELECT vr FROM VehicleRejection vr WHERE vr.booking.vehicle.id = :vehicleId ORDER BY vr.rejectedAt DESC")
     List<VehicleRejection> findByVehicleIdOrderByRejectedAtDesc(@Param("vehicleId") Long vehicleId);
 }
