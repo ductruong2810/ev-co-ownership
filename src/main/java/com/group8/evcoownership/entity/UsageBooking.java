@@ -9,6 +9,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -54,6 +55,13 @@ public class UsageBooking {
     @Column(name = "UpdatedAt")
     private LocalDateTime updatedAt;
 
+    // Relationships với các entity mới
+    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<VehicleCheck> vehicleChecks;
+
+    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Incident> incidents;
+
     @PrePersist
     public void onCreate() {
         createdAt = LocalDateTime.now();
@@ -64,5 +72,4 @@ public class UsageBooking {
     public void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
-
 }

@@ -1,8 +1,5 @@
 package com.group8.evcoownership.dto;
 
-
-import com.group8.evcoownership.enums.PaymentStatus;
-import com.group8.evcoownership.enums.PaymentType;
 import lombok.Builder;
 import lombok.Data;
 
@@ -19,8 +16,8 @@ public class PaymentResponse {
     private BigDecimal amount;
     private LocalDateTime paymentDate;
     private String paymentMethod;
-    private PaymentStatus status;
+    private String status;
     private String transactionCode;
     private String providerResponse;
-    private PaymentType paymentType;
+    private String paymentType;
 }

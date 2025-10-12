@@ -1,8 +1,5 @@
 package com.group8.evcoownership.entity;
 
-import com.group8.evcoownership.enums.DocumentSide;
-import com.group8.evcoownership.enums.DocumentStatus;
-import com.group8.evcoownership.enums.DocumentType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -22,24 +19,20 @@ public class UserDocument {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long documentId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "UserId", nullable = false)
-    private User user;
+    @Column(name = "UserId", nullable = false)
+    private Long userId;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "DocumentType", length = 20)
-    private DocumentType documentType; // CitizenID, DriverLicense
+    private String documentType; // CITIZEN_ID, DRIVER_LICENSE
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "Side", length = 10)
-    private DocumentSide side; // Front, Back
+    private String side; // FRONT, BACK
 
     @Column(name = "ImageUrl", length = 500, nullable = false)
     private String imageUrl;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "Status", length = 20)
-    private DocumentStatus status; // Pending, Approved, Rejected
+    private String status; // PENDING, APPROVED, REJECTED
 
     @Column(name = "ReviewNote")
     private String reviewNote;

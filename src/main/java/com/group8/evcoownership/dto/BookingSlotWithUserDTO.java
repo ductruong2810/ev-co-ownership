@@ -9,13 +9,11 @@ import java.time.LocalDateTime;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class BookingSummaryDTO {
+public class BookingSlotWithUserDTO {
     private Long bookingId;
-    private String licensePlate;
-    private String brand;
-    private String model;
+    private String userFullName;
+    private String userEmail;
     private LocalDateTime startDateTime;
     private LocalDateTime endDateTime;
     private String status;
 }
-

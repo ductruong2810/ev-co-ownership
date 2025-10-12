@@ -40,6 +40,10 @@ public class Vehicle {
     @Column(name = "QrCode")
     private String qrCode;
 
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "GroupId")
+    private OwnershipGroup ownershipGroup;
+
     @Column(name = "CreatedAt")
     private LocalDateTime createdAt;
 
@@ -56,5 +60,4 @@ public class Vehicle {
     public void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
-
 }

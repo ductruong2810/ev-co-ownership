@@ -1,6 +1,5 @@
 package com.group8.evcoownership.entity;
 
-import com.group8.evcoownership.enums.NotificationType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -38,9 +37,8 @@ public class Notification {
     @Column(name = "Message")
     private String message;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "NotificationType", length = 50)
-    private NotificationType notificationType;
+    private String notificationType; // BOOKING, MAINTENANCE, PAYMENT, VOTING, DISPUTE
 
     @ColumnDefault("0")
     @Column(name = "IsRead")

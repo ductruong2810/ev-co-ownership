@@ -1,16 +1,15 @@
 package com.group8.evcoownership.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
 @Data
-@AllArgsConstructor
-@NoArgsConstructor
-public class BookingSlotDTO {
+public class MaintenanceBookingRequestDTO {
+    private Long vehicleId;
     private LocalDateTime startDateTime;
     private LocalDateTime endDateTime;
+    private String reason;
+    private boolean cancelAffectedBookings;
+    private boolean notifyUsers;
 }
-

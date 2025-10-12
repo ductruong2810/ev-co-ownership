@@ -38,19 +38,21 @@ public class OwnershipGroup {
     @OneToMany(mappedBy = "group", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
     private List<OwnershipShare> ownershipShares;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "CreatedBy")
-    private User createdBy;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "ApprovedBy")
-    private User approvedBy;
+    @OneToOne(mappedBy = "ownershipGroup", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Vehicle vehicle;
 
     @Column(name = "CreatedAt")
     private LocalDateTime createdAt;
 
     @Column(name = "UpdatedAt")
     private LocalDateTime updatedAt;
+
+    // Chỉ giữ lại những relationships quan trọng
+    @OneToOne(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Contract contract;
+
+    @OneToOne(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
+    private SharedFund sharedFund;
 
     @PrePersist
     public void onCreate() {
@@ -62,5 +64,4 @@ public class OwnershipGroup {
     public void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
-
 }

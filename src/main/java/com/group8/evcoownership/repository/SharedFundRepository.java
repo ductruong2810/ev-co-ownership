@@ -11,6 +11,7 @@ import java.util.Optional;
 @Repository
 public interface SharedFundRepository extends JpaRepository<SharedFund, Long> {
     Optional<SharedFund> findByGroup_GroupId(long group_GroupId);
+
     Page<SharedFund> findAllByGroup_GroupId(Long groupId, Pageable pageable);
 
     boolean existsByGroup_GroupId(long group_GroupId);
