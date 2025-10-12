@@ -1,5 +1,6 @@
 package com.group8.evcoownership.entity;
 
+import com.group8.evcoownership.enums.PaymentType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -57,8 +58,10 @@ public class Payment {
     @Column(name = "ProviderResponse")
     private String providerResponse;
 
-    @Column(name = "PaymentType", length = 20)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "PaymentType", length = 20, nullable = false)
     private PaymentType paymentType;
+
 
     @Version
     @Column(name = "Version", nullable = false)

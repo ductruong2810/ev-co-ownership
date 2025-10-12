@@ -6,6 +6,8 @@ import com.group8.evcoownership.dto.UpdatePaymentRequest;
 import com.group8.evcoownership.entity.Payment;
 import com.group8.evcoownership.entity.SharedFund;
 import com.group8.evcoownership.entity.User;
+import com.group8.evcoownership.enums.PaymentStatus;
+import com.group8.evcoownership.enums.PaymentType;
 import com.group8.evcoownership.repository.PaymentRepository;
 import com.group8.evcoownership.repository.SharedFundRepository;
 import com.group8.evcoownership.repository.UserRepository;
@@ -52,7 +54,7 @@ public class PaymentService {
                 .status(p.getStatus())
                 .transactionCode(p.getTransactionCode())
                 .providerResponse(p.getProviderResponse())
-                .paymentType(p.getPaymentType())
+                .paymentType(String.valueOf(p.getPaymentType()))
                 .build();
     }
 
@@ -69,7 +71,7 @@ public class PaymentService {
                 .fund(fund)
                 .amount(req.getAmount())
                 .paymentMethod(req.getPaymentMethod())
-                .paymentType(req.getPaymentType())
+                .paymentType(PaymentType.valueOf(req.getPaymentType()))
                 .status("PENDING")
                 .transactionCode(req.getTransactionCode())
                 .build();
@@ -118,7 +120,7 @@ public class PaymentService {
         }
         if (req.getAmount() != null) p.setAmount(req.getAmount());
         if (req.getPaymentMethod() != null) p.setPaymentMethod(req.getPaymentMethod());
-        if (req.getPaymentType() != null) p.setPaymentType(req.getPaymentType());
+        if (req.getPaymentType() != null) p.setPaymentType(PaymentType.valueOf(req.getPaymentType()));
         if (req.getTransactionCode() != null) p.setTransactionCode(req.getTransactionCode());
         if (req.getProviderResponse() != null) p.setProviderResponse(req.getProviderResponse());
         if (req.getStatus() != null) {
@@ -226,7 +228,7 @@ public class PaymentService {
         Payment p = paymentRepo.findById(paymentId)
                 .orElseThrow(() -> new EntityNotFoundException("Payment not found: " + paymentId));
 
-        PaymentStatus current = p.getStatus();
+        PaymentStatus current = PaymentStatus.valueOf(p.getStatus());
         if (current == null) current = PaymentStatus.Pending; // fallback
 
         // Idempotent: nếu đã ở đúng trạng thái, chỉ cập nhật providerResponse (nếu có) rồi trả về
@@ -243,7 +245,7 @@ public class PaymentService {
         switch (target) {
             case Failed -> {
                 // Pending -> Failed
-                p.setStatus(PaymentStatus.Failed);
+                p.setStatus(String.valueOf(PaymentStatus.Failed));
                 if (providerResponseJson != null) p.setProviderResponse(providerResponseJson);
                 paymentRepo.save(p);
             }
@@ -252,7 +254,7 @@ public class PaymentService {
                 if (transactionCode == null || transactionCode.isBlank()) {
                     throw new IllegalArgumentException("transactionCode is required when marking Completed");
                 }
-                p.setStatus(PaymentStatus.Completed);
+                p.setStatus(String.valueOf(PaymentStatus.Completed));
                 p.setTransactionCode(transactionCode);
                 if (p.getPaymentDate() == null) p.setPaymentDate(LocalDateTime.now());
                 if (providerResponseJson != null) p.setProviderResponse(providerResponseJson);
@@ -263,7 +265,7 @@ public class PaymentService {
             }
             case Refunded -> {
                 // Completed -> Refunded
-                p.setStatus(PaymentStatus.Refunded);
+                p.setStatus(String.valueOf(PaymentStatus.Refunded));
                 if (providerResponseJson != null) p.setProviderResponse(providerResponseJson);
 
                 paymentRepo.saveAndFlush(p);
