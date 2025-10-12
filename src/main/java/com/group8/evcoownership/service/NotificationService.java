@@ -2,7 +2,6 @@ package com.group8.evcoownership.service;
 
 import com.group8.evcoownership.entity.Notification;
 import com.group8.evcoownership.entity.User;
-import com.group8.evcoownership.enums.NotificationType;
 import com.group8.evcoownership.enums.RoleName;
 import com.group8.evcoownership.repository.NotificationRepository;
 import com.group8.evcoownership.repository.UserRepository;
@@ -21,7 +20,7 @@ public class NotificationService {
     private final UserRepository userRepository;
 
     // Gửi notification cho một user
-    public void sendNotification(User user, String title, String message, NotificationType type) {
+    public void sendNotification(User user, String title, String message, String type) {
         Notification notification = Notification.builder()
                 .user(user)
                 .title(title)
@@ -35,12 +34,12 @@ public class NotificationService {
     }
 
     // Gửi notification cho nhiều users
-    public void sendNotificationToUsers(List<User> users, String title, String message, NotificationType type) {
+    public void sendNotificationToUsers(List<User> users, String title, String message, String type) {
         users.forEach(user -> sendNotification(user, title, message, type));
     }
 
     // Gửi notification cho tất cả users trong ownership group
-    public void sendNotificationToGroup(List<User> groupUsers, String title, String message, NotificationType type) {
+    public void sendNotificationToGroup(List<User> groupUsers, String title, String message, String type) {
         sendNotificationToUsers(groupUsers, title, message, type);
     }
 
@@ -50,7 +49,7 @@ public class NotificationService {
         List<User> technicians = userRepository.findByRoleRoleName(RoleName.Technician);
 
         if (!technicians.isEmpty()) {
-            sendNotificationToUsers(technicians, title, message, NotificationType.maintenance);
+            sendNotificationToUsers(technicians, title, message, "MAINTENANCE");
         }
     }
 }

@@ -4,8 +4,6 @@ import com.group8.evcoownership.dto.CreatePaymentRequest;
 import com.group8.evcoownership.dto.PaymentResponse;
 import com.group8.evcoownership.dto.PaymentStatusUpdateRequest;
 import com.group8.evcoownership.dto.UpdatePaymentRequest;
-import com.group8.evcoownership.enums.PaymentStatus;
-import com.group8.evcoownership.enums.PaymentType;
 import com.group8.evcoownership.service.PaymentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -38,8 +36,8 @@ public class PaymentController {
     @GetMapping
     public List<PaymentResponse> search(
             @RequestParam(required = false) Long userId,
-            @RequestParam(required = false) PaymentStatus status,
-            @RequestParam(required = false) PaymentType type,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String type,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "id") String sort,      // dùng tên field của entity Payment

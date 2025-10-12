@@ -3,7 +3,6 @@ package com.group8.evcoownership.service;
 import com.group8.evcoownership.entity.Maintenance;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.entity.Vehicle;
-import com.group8.evcoownership.enums.MaintenanceStatus;
 import com.group8.evcoownership.repository.MaintenanceRepository;
 import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.repository.VehicleRepository;
@@ -38,11 +37,11 @@ public class MaintenanceService {
 
         Maintenance maintenance = Maintenance.builder()
                 .vehicle(vehicle)
-                .requestedBy(technician)
+                .requestedBy(technician.getUserId())
                 .requestDate(LocalDateTime.now())
                 .description(description)
                 .estimatedCost(estimatedCost)
-                .maintenanceStatus(MaintenanceStatus.Requested)
+                .maintenanceStatus("PENDING")
                 .build();
 
         return maintenanceRepository.save(maintenance);
@@ -60,7 +59,7 @@ public class MaintenanceService {
         // Update maintenance status
         maintenance.setApprovedBy(approver);
         maintenance.setApprovalDate(LocalDateTime.now());
-        maintenance.setMaintenanceStatus(MaintenanceStatus.Approved);
+        maintenance.setMaintenanceStatus("APPROVED");
         maintenanceRepository.save(maintenance);
 
         // Tạo maintenance booking để block thời gian
@@ -84,8 +83,7 @@ public class MaintenanceService {
                 endDateTime,
                 maintenance.getDescription());
 
-        notificationService.sendNotificationToGroup(groupUsers, title, message,
-                com.group8.evcoownership.enums.NotificationType.maintenance);
+        notificationService.sendNotificationToGroup(groupUsers, title, message, "MAINTENANCE");
 
         result.put("maintenanceId", maintenanceId);
         result.put("maintenanceStatus", "Approved");

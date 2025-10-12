@@ -1,6 +1,5 @@
 package com.group8.evcoownership.entity;
 
-import com.group8.evcoownership.enums.MaintenanceStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -30,10 +29,8 @@ public class Maintenance {
     @JoinColumn(name = "VehicleId", nullable = false)
     private Vehicle vehicle;
 
-    @NotNull
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "RequestedBy", nullable = false)
-    private User requestedBy;
+    @Column(name = "RequestedBy", nullable = false)
+    private Long requestedBy;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ApprovedBy")
@@ -59,8 +56,7 @@ public class Maintenance {
     @Column(name = "ActualCost", precision = 12, scale = 2)
     private BigDecimal actualCost;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "MaintenanceStatus", length = 20)
-    private MaintenanceStatus maintenanceStatus;
+    private String maintenanceStatus; // PENDING, APPROVED, IN_PROGRESS, COMPLETED, CANCELLED
 
 }

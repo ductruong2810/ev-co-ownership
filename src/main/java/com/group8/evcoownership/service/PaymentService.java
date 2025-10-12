@@ -6,8 +6,6 @@ import com.group8.evcoownership.dto.UpdatePaymentRequest;
 import com.group8.evcoownership.entity.Payment;
 import com.group8.evcoownership.entity.SharedFund;
 import com.group8.evcoownership.entity.User;
-import com.group8.evcoownership.enums.PaymentStatus;
-import com.group8.evcoownership.enums.PaymentType;
 import com.group8.evcoownership.repository.PaymentRepository;
 import com.group8.evcoownership.repository.SharedFundRepository;
 import com.group8.evcoownership.repository.UserRepository;
@@ -72,7 +70,7 @@ public class PaymentService {
                 .amount(req.getAmount())
                 .paymentMethod(req.getPaymentMethod())
                 .paymentType(req.getPaymentType())
-                .status(PaymentStatus.Pending)
+                .status("PENDING")
                 .transactionCode(req.getTransactionCode())
                 .build();
 
@@ -87,7 +85,7 @@ public class PaymentService {
     }
 
     @Transactional(readOnly = true)
-    public List<PaymentResponse> search(Long userId, PaymentStatus status, PaymentType type,
+    public List<PaymentResponse> search(Long userId, String status, String type,
                                         int page, int size, String sort, boolean asc) {
         // sort: dùng tên field của entity Payment (vd: id, paymentDate, amount)
         Sort sortObj = asc ? Sort.by(sort).ascending() : Sort.by(sort).descending();
@@ -125,7 +123,7 @@ public class PaymentService {
         if (req.getProviderResponse() != null) p.setProviderResponse(req.getProviderResponse());
         if (req.getStatus() != null) {
             p.setStatus(req.getStatus());
-            if (req.getStatus() == PaymentStatus.Completed && p.getPaymentDate() == null) {
+            if ("COMPLETED".equals(req.getStatus()) && p.getPaymentDate() == null) {
                 p.setPaymentDate(LocalDateTime.now());
             }
         }
@@ -145,12 +143,12 @@ public class PaymentService {
         Payment p = paymentRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Payment not found: " + id));
 
-        if (p.getStatus() == PaymentStatus.Completed) {
+        if ("COMPLETED".equals(p.getStatus())) {
             return toDto(p);
         }
 
         // Chỉ cho phép từ Pending -> Completed
-        if (p.getStatus() != PaymentStatus.Pending) {
+        if (!"PENDING".equals(p.getStatus())) {
             throw new IllegalStateException("Invalid transition: " + p.getStatus() + " -> Completed");
         }
 
@@ -164,7 +162,7 @@ public class PaymentService {
         if (transactionCode != null) {
             p.setTransactionCode(transactionCode);
         }
-        p.setStatus(PaymentStatus.Completed);
+        p.setStatus("COMPLETED");
         if (p.getPaymentDate() == null) {
             p.setPaymentDate(LocalDateTime.now());
         }
@@ -180,16 +178,16 @@ public class PaymentService {
         Payment p = paymentRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Payment not found: " + id));
 
-        if (p.getStatus() == PaymentStatus.Failed) {
+        if ("FAILED".equals(p.getStatus())) {
             return toDto(p);
         }
 
         // Chỉ cho phép từ Pending -> Failed
-        if (p.getStatus() != PaymentStatus.Pending) {
+        if (!"PENDING".equals(p.getStatus())) {
             throw new IllegalStateException("Invalid transition: " + p.getStatus() + " -> Failed");
         }
 
-        p.setStatus(PaymentStatus.Failed);
+        p.setStatus("FAILED");
         if (providerResponseJson != null) {
             p.setProviderResponse(providerResponseJson);
         }
@@ -202,10 +200,10 @@ public class PaymentService {
         Payment p = paymentRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Payment not found: " + id));
 
-        if (p.getStatus() != PaymentStatus.Completed) {
+        if (!"COMPLETED".equals(p.getStatus())) {
             throw new IllegalStateException("Invalid transition: " + p.getStatus() + " -> Refunded");
         }
-        p.setStatus(PaymentStatus.Refunded);
+        p.setStatus("REFUNDED");
         if (providerResponseJson != null) p.setProviderResponse(providerResponseJson);
         return toDto(paymentRepo.save(p));
     }

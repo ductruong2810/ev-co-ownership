@@ -2,14 +2,13 @@ package com.group8.evcoownership.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.Nationalized;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -22,36 +21,43 @@ public class Dispute {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "DisputeId", nullable = false)
-    private Long disputeId;
+    private Long id;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "FundId", nullable = false)
     private SharedFund fund;
 
-    @NotNull
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "UserId", nullable = false)
-    private User user;
+    @Column(name = "CreatedBy")
+    private Long createdBy;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "VehicleReportId")
-    private VehicleReport vehicleReport;
+    @Column(name = "DisputeType", length = 50)
+    private String disputeType; // FINANCIAL, USAGE, DECISION
+
+    @Column(name = "RelatedEntityType", length = 50)
+    private String relatedEntityType; // INCIDENT, PAYMENT, EXPENSE, VOTING
+
+    @Column(name = "RelatedEntityId")
+    private Long relatedEntityId;
 
     @Nationalized
     @Lob
     @Column(name = "Description")
     private String description;
 
-    @Size(max = 20)
-    @ColumnDefault("'Open'")
-    @Column(name = "Status", length = 20)
-    private String status;
+    @Column(name = "DisputedAmount", precision = 12, scale = 2)
+    private BigDecimal disputedAmount;
 
     @Nationalized
     @Lob
-    @Column(name = "ResolutionNote")
-    private String resolutionNote;
+    @Column(name = "Resolution")
+    private String resolution;
+
+    @Column(name = "ResolutionAmount", precision = 12, scale = 2)
+    private BigDecimal resolutionAmount;
+
+    @Column(name = "Status", length = 20)
+    private String status; // OPEN, IN_REVIEW, RESOLVED, CLOSED
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ResolvedBy")
@@ -60,17 +66,11 @@ public class Dispute {
     @Column(name = "CreatedAt")
     private LocalDateTime createdAt;
 
-    @Column(name = "UpdatedAt")
-    private LocalDateTime updatedAt;
+    @Column(name = "ResolvedAt")
+    private LocalDateTime resolvedAt;
 
     @PrePersist
     public void onCreate() {
         createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    public void onUpdate() {
-        updatedAt = LocalDateTime.now();
     }
 }

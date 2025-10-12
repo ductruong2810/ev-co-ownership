@@ -28,7 +28,7 @@ public class Expense {
     private SharedFund fund;
 
     @Column(name = "SourceType", length = 20)
-    private String sourceType; // "MAINTENANCE", "VEHICLE_REPORT", "INCIDENT"
+    private String sourceType; // MAINTENANCE, VEHICLE_CHECK, INCIDENT
 
     @Column(name = "SourceId")
     private Long sourceId; // ID của source entity

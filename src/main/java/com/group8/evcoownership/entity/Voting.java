@@ -1,6 +1,5 @@
 package com.group8.evcoownership.entity;
 
-import com.group8.evcoownership.enums.VotingStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -9,7 +8,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.Nationalized;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
 
 @Entity
@@ -24,6 +22,10 @@ public class Voting {
     @Column(name = "VotingId", nullable = false)
     private Long id;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "GroupId")
+    private OwnershipGroup group;
+
     @Size(max = 255)
     @Nationalized
     @Column(name = "Title")
@@ -34,27 +36,34 @@ public class Voting {
     @Column(name = "Description")
     private String description;
 
-    @Column(name = "Deadline")
-    private Instant deadline;
+    @Column(name = "VotingType", length = 50)
+    private String votingType; // BATTERY_UPGRADE, INSURANCE_CHANGE, SELL_VEHICLE, MAINTENANCE
 
-    @Enumerated(EnumType.STRING)
+    @Nationalized
+    @Lob
+    @Column(name = "Options")
+    private String options; // JSON: ["Option 1", "Option 2", "Option 3"]
+
+    @Nationalized
+    @Lob
+    @Column(name = "Results")
+    private String results; // JSON: {"Option 1": 2, "Option 2": 1}
+
+    @Column(name = "Deadline")
+    private LocalDateTime deadline;
+
     @Column(name = "Status", length = 20)
-    private VotingStatus status;
+    private String status; // ACTIVE, COMPLETED, CANCELLED
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "CreatedBy")
+    private User createdBy;
 
     @Column(name = "CreatedAt")
     private LocalDateTime createdAt;
 
-    @Column(name = "UpdatedAt")
-    private LocalDateTime updatedAt;
-
     @PrePersist
     public void onCreate() {
         createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    public void onUpdate() {
-        updatedAt = LocalDateTime.now();
     }
 }

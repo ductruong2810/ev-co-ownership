@@ -11,8 +11,6 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.Nationalized;
 
 import java.time.LocalDateTime;
-import java.util.List;
-
 
 @Data
 @NoArgsConstructor
@@ -62,9 +60,6 @@ public class User {
     @Enumerated(EnumType.STRING)
     private UserStatus status;
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<UserDocument> documents;
-
     @Column(name = "CreatedAt")
     private LocalDateTime createdAt;
 
@@ -81,5 +76,4 @@ public class User {
     public void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
-
 }
