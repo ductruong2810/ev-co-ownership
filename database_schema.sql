@@ -291,7 +291,7 @@ GO
 CREATE TABLE Payment (
     PaymentId BIGINT IDENTITY(1,1) PRIMARY KEY,
     UserId BIGINT NOT NULL,
-    FundID BIGINT NOT NULL,
+    FundId BIGINT NOT NULL,
     Amount DECIMAL(12,2) NOT NULL,
     PaymentDate DATETIME2 DEFAULT GETDATE(),
     PaymentMethod NVARCHAR(50),
@@ -300,7 +300,7 @@ CREATE TABLE Payment (
     ProviderResponse NVARCHAR(MAX),
     PaymentType NVARCHAR(20),
     FOREIGN KEY (UserId) REFERENCES Users(UserId),
-    FOREIGN KEY (FundID) REFERENCES SharedFund(FundId)
+    FOREIGN KEY (FundId) REFERENCES SharedFund(FundId)
 );
 GO
 
@@ -356,13 +356,13 @@ GO
 
 -- Incident indexes
 CREATE INDEX IX_Incident_BookingId ON Incident(BookingId);
-CREATE INDEX IX_Incident_UserId ON Incident(UserId);
+CREATE INDEX IX_Incident_ResolvedBy ON Incident(ResolvedBy);
 CREATE INDEX IX_Incident_Status ON Incident(Status);
 GO
 
 -- VehicleCheck indexes
 CREATE INDEX IX_VehicleCheck_BookingId ON VehicleCheck(BookingId);
-CREATE INDEX IX_VehicleCheck_UserId ON VehicleCheck(UserId);
+CREATE INDEX IX_VehicleCheck_Status ON VehicleCheck(Status);
 GO
 
 -- UserDocument indexes
@@ -467,7 +467,7 @@ INSERT INTO Expense (FundId, SourceType, SourceId, Description, Amount) VALUES
 GO
 
 -- Insert sample payment
-INSERT INTO Payment (UserId, FundID, Amount, PaymentMethod, Status, PaymentType) VALUES 
+INSERT INTO Payment (UserId, FundId, Amount, PaymentMethod, Status, PaymentType) VALUES 
 (2, 1, 500000.00, 'BANK_TRANSFER', 'COMPLETED', 'CONTRIBUTION');
 GO
 
