@@ -64,4 +64,13 @@ public class Payment {
     @Column(name = "PaymentType", length = 20)
     private PaymentType paymentType;
 
+    @Version
+    @Column(name = "Version", nullable = false)
+    @Builder.Default
+    private Long version = 0L;
+
+    @PrePersist
+    public void prePersist() {
+        if (version == null) version = 0L;
+    }
 }

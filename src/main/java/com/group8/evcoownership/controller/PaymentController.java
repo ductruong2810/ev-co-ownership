@@ -2,6 +2,7 @@ package com.group8.evcoownership.controller;
 
 import com.group8.evcoownership.dto.CreatePaymentRequest;
 import com.group8.evcoownership.dto.PaymentResponse;
+import com.group8.evcoownership.dto.PaymentStatusUpdateRequest;
 import com.group8.evcoownership.dto.UpdatePaymentRequest;
 import com.group8.evcoownership.enums.PaymentStatus;
 import com.group8.evcoownership.enums.PaymentType;
@@ -52,6 +53,12 @@ public class PaymentController {
     public PaymentResponse update(@PathVariable Long id,
                                   @Valid @RequestBody UpdatePaymentRequest req) {
         return paymentService.update(id, req);
+    }
+
+    @PutMapping("/{id}/status")
+    public PaymentResponse updateStatus(@PathVariable Long id,
+                                        @Valid @RequestBody PaymentStatusUpdateRequest req) {
+        return paymentService.updateStatus(id, req.status(), req.transactionCode(), req.providerResponseJson());
     }
 
     // DELETE
