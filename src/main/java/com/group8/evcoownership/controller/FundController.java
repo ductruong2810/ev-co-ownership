@@ -1,5 +1,6 @@
 package com.group8.evcoownership.controller;
 
+import com.group8.evcoownership.dto.AmountRequest;
 import com.group8.evcoownership.dto.FundBalanceResponse;
 import com.group8.evcoownership.dto.SharedFundDto;
 import com.group8.evcoownership.dto.SharedFundUpdateRequest;
@@ -44,7 +45,7 @@ public class FundController {
     // Lay fund theo fundId
     @GetMapping("/id/{fundId}")
     public FundBalanceResponse getFundById(@PathVariable("fundId") Long fundId) {
-        return fundService.getById(fundId);
+        return fundService.getBalanceByFundId(fundId);
     }
 
     // Lấy fund theo groupId (trả entity)
@@ -82,4 +83,19 @@ public class FundController {
     }
 
 
+    // Tăng quỹ theo fundId
+    @PostMapping("/{fundId}/increase")
+    public FundBalanceResponse increase(@PathVariable Long fundId,
+                                        @Valid @RequestBody AmountRequest req) {
+        fundService.increaseBalance(fundId, req.amount());
+        return fundService.getBalanceByFundId(fundId);
+    }
+
+    // Giảm quỹ theo fundId
+    @PostMapping("/{fundId}/decrease")
+    public FundBalanceResponse decrease(@PathVariable Long fundId,
+                                        @Valid @RequestBody AmountRequest req) {
+        fundService.decreaseBalance(fundId, req.amount());
+        return fundService.getBalanceByFundId(fundId);
+    }
 }
