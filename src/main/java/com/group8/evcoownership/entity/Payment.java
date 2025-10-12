@@ -1,7 +1,5 @@
 package com.group8.evcoownership.entity;
 
-import com.group8.evcoownership.enums.PaymentStatus;
-import com.group8.evcoownership.enums.PaymentType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -32,7 +30,7 @@ public class Payment {
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "FundID", nullable = false) // <- cột FundID NOT NULL
+    @JoinColumn(name = "FundID", nullable = false)
     private SharedFund fund;
 
     @NotNull
@@ -46,9 +44,8 @@ public class Payment {
     @Column(name = "PaymentMethod", length = 50)
     private String paymentMethod;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "Status", length = 20)
-    private PaymentStatus status;
+    private String status; // PENDING, COMPLETED, FAILED, CANCELLED
 
     @Size(max = 100)
     @Nationalized
@@ -60,8 +57,6 @@ public class Payment {
     @Column(name = "ProviderResponse")
     private String providerResponse;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "PaymentType", length = 20)
-    private PaymentType paymentType;
-
+    private String paymentType; // CONTRIBUTION, PENALTY, MAINTENANCE_FEE
 }

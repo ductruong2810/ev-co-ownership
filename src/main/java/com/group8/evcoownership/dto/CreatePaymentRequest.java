@@ -1,6 +1,5 @@
 package com.group8.evcoownership.dto;
 
-import com.group8.evcoownership.enums.PaymentType;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -17,6 +16,6 @@ public class CreatePaymentRequest {
     private BigDecimal amount;
 
     private String paymentMethod;
-    private PaymentType paymentType;
+    private String paymentType;
     private String transactionCode;
 }

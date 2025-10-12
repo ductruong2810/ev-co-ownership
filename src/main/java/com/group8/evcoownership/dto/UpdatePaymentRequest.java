@@ -1,7 +1,5 @@
 package com.group8.evcoownership.dto;
 
-import com.group8.evcoownership.enums.PaymentStatus;
-import com.group8.evcoownership.enums.PaymentType;
 import jakarta.validation.constraints.DecimalMin;
 import lombok.Data;
 
@@ -13,8 +11,8 @@ public class UpdatePaymentRequest {
     @DecimalMin("0.01")
     private BigDecimal amount;
     private String paymentMethod;
-    private PaymentType paymentType;
-    private PaymentStatus status;
+    private String paymentType;
+    private String status;
     private String transactionCode;
     private String providerResponse;
 }

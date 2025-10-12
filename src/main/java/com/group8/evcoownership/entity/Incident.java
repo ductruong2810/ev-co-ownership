@@ -1,14 +1,11 @@
 package com.group8.evcoownership.entity;
 
-import com.group8.evcoownership.enums.IncidentResolution;
-import com.group8.evcoownership.enums.IncidentStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.Nationalized;
 
 import java.math.BigDecimal;
@@ -31,14 +28,8 @@ public class Incident {
     @JoinColumn(name = "BookingId", nullable = false)
     private UsageBooking booking;
 
-    @NotNull
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "UserId", nullable = false)
-    private User user;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "IncidentTypeId")
-    private IncidentType incidentType;
+    @Column(name = "IncidentType", length = 50)
+    private String incidentType; // BATTERY_FAILURE, ACCIDENT, TECHNICAL_ISSUE, DAMAGE
 
     @Nationalized
     @Lob
@@ -48,36 +39,35 @@ public class Incident {
     @Column(name = "EstimatedCost", precision = 12, scale = 2)
     private BigDecimal estimatedCost;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "Status", length = 20)
-    private IncidentStatus status;
+    @Column(name = "ActualCost", precision = 12, scale = 2)
+    private BigDecimal actualCost;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "Resolution", length = 20)
-    private IncidentResolution resolution;
+    @Column(name = "Status", length = 20)
+    private String status; // REPORTED, INVESTIGATING, RESOLVED
+
+    @Nationalized
+    @Lob
+    @Column(name = "ImageUrls")
+    private String imageUrls; // JSON array of image URLs
+
+    @Column(name = "IncidentDate")
+    private LocalDateTime incidentDate;
+
+    @Column(name = "ResolvedDate")
+    private LocalDateTime resolvedDate;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ResolvedBy")
     private User resolvedBy;
 
-    @ColumnDefault("NULL")
-    @Column(name = "ResolvedDate")
-    private LocalDateTime resolvedDate;
-
     @Column(name = "CreatedAt")
     private LocalDateTime createdAt;
-
-    @Column(name = "UpdatedAt")
-    private LocalDateTime updatedAt;
 
     @PrePersist
     public void onCreate() {
         createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    public void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        if (incidentDate == null) {
+            incidentDate = LocalDateTime.now();
+        }
     }
 }

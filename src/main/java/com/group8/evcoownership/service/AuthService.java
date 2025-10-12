@@ -174,7 +174,7 @@ public class AuthService {
             }
 
             // OTP hợp lệ - Tạo tài khoản user
-            User user = createUser(request);
+            createUser(request);
 
             // Xóa thông tin pending
             pendingUsers.remove(email);
@@ -195,7 +195,7 @@ public class AuthService {
     /**
      * Tạo user mới từ thông tin đăng ký
      */
-    private User createUser(RegisterRequestDTO request) {
+    private void createUser(RegisterRequestDTO request) {
         log.info("Creating new user with email: {}", request.getEmail());
 
         // Lấy role Co_owner
@@ -216,7 +216,7 @@ public class AuthService {
                 .build();
 
         // Lưu vào database
-        return userRepository.save(user);
+        userRepository.save(user);
     }
 
     /**

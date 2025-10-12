@@ -212,7 +212,7 @@ public class UsageBookingService {
                     booking.getUser(),
                     "Booking Cancelled",
                     "Your booking has been cancelled due to: " + request.getReason(),
-                    com.group8.evcoownership.enums.NotificationType.system
+                    "SYSTEM"
             );
             result.put("notificationSent", true);
             result.put("notificationMessage", "Your booking has been cancelled due to: " + request.getReason());
@@ -276,7 +276,7 @@ public class UsageBookingService {
                                 booking.getUser(),
                                 "Booking Cancelled - Vehicle Maintenance",
                                 "Your booking has been cancelled due to vehicle maintenance: " + request.getReason(),
-                                com.group8.evcoownership.enums.NotificationType.maintenance
+                                "MAINTENANCE"
                         );
                     }
                 }

@@ -1,7 +1,5 @@
 package com.group8.evcoownership.entity;
 
-import com.group8.evcoownership.enums.Cleanliness;
-import com.group8.evcoownership.enums.ReportType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -13,28 +11,23 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "VehicleReport")
+@Table(name = "VehicleCheck")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class VehicleReport {
+public class VehicleCheck {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ReportId", nullable = false)
+    @Column(name = "Id", nullable = false)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "BookingId")
     private UsageBooking booking;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "ReportedBy")
-    private User reportedBy;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "ReportType", length = 20)
-    private ReportType reportType;
+    @Column(name = "CheckType", length = 20)
+    private String checkType; // PRE_USE, POST_USE, REJECTION
 
     @Column(name = "Odometer")
     private Integer odometer;
@@ -42,14 +35,8 @@ public class VehicleReport {
     @Column(name = "BatteryLevel", precision = 5, scale = 2)
     private BigDecimal batteryLevel;
 
-    @Nationalized
-    @Lob
-    @Column(name = "Damages")
-    private String damages;
-
-    @Enumerated(EnumType.STRING)
     @Column(name = "Cleanliness", length = 20)
-    private Cleanliness cleanliness;
+    private String cleanliness; // CLEAN, DIRTY, VERY_DIRTY
 
     @Nationalized
     @Lob
@@ -58,13 +45,11 @@ public class VehicleReport {
 
     @Nationalized
     @Lob
-    @Column(name = "RejectionReason")
-    private String rejectionReason;
+    @Column(name = "Issues")
+    private String issues; // JSON array of issues
 
-    @Nationalized
-    @Lob
-    @Column(name = "ResolutionNotes")
-    private String resolutionNotes;
+    @Column(name = "Status", length = 20)
+    private String status; // PASSED, REJECTED, PENDING
 
     @Column(name = "CreatedAt")
     private LocalDateTime createdAt;
@@ -73,5 +58,4 @@ public class VehicleReport {
     public void onCreate() {
         createdAt = LocalDateTime.now();
     }
-
 }
