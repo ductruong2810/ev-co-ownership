@@ -1,0 +1,208 @@
+// EV Co-ownership Database Schema for dbdiagram.io
+// Copy this code and paste into https://dbdiagram.io
+
+Table Roles {
+  RoleId bigint [pk, increment]
+  RoleName varchar(30) [unique, not null]
+}
+
+Table Users {
+  UserId bigint [pk, increment]
+  FullName varchar(100) [not null]
+  Email varchar(100) [unique, not null]
+  PasswordHash varchar(255) [not null]
+  PhoneNumber varchar(20)
+  AvatarUrl varchar(500)
+  RoleId bigint [ref: > Roles.RoleId]
+  Status varchar(20) [default: 'ACTIVE']
+  CreatedAt datetime [default: `now()`]
+  UpdatedAt datetime [default: `now()`]
+}
+
+Table OwnershipGroup {
+  GroupId bigint [pk, increment]
+  GroupName varchar(100) [not null]
+  Status varchar(20) [default: 'ACTIVE']
+  CreatedAt datetime [default: `now()`]
+  UpdatedAt datetime [default: `now()`]
+}
+
+Table OwnershipShare {
+  ShareId bigint [pk, increment]
+  UserId bigint [ref: > Users.UserId, not null]
+  GroupId bigint [ref: > OwnershipGroup.GroupId, not null]
+  SharePercentage decimal(5,2) [not null, note: 'Must be > 0 and <= 100']
+  
+  indexes {
+    (UserId, GroupId) [unique]
+  }
+}
+
+Table Vehicle {
+  VehicleId bigint [pk, increment]
+  Brand varchar(100)
+  Model varchar(100)
+  LicensePlate varchar(20)
+  QrCode varchar(255)
+  GroupId bigint [ref: - OwnershipGroup.GroupId]
+  CreatedAt datetime [default: `now()`]
+  UpdatedAt datetime [default: `now()`]
+}
+
+Table Contract {
+  ContractId bigint [pk, increment]
+  GroupId bigint [ref: - OwnershipGroup.GroupId, not null]
+  ContractContent text
+  ContractUrl varchar(500)
+  SignedAt datetime
+}
+
+Table SharedFund {
+  FundId bigint [pk, increment]
+  GroupId bigint [ref: - OwnershipGroup.GroupId, not null]
+  Balance decimal(15,2) [default: 0]
+  CreatedAt datetime [default: `now()`]
+  UpdatedAt datetime [default: `now()`]
+  Version bigint [default: 1]
+}
+
+Table UsageBooking {
+  BookingId bigint [pk, increment]
+  UserId bigint [ref: > Users.UserId, not null]
+  VehicleId bigint [ref: > Vehicle.VehicleId, not null]
+  StartDateTime datetime [not null]
+  EndDateTime datetime [not null]
+  Status varchar(20) [default: 'PENDING']
+  Purpose varchar(500)
+  CreatedAt datetime [default: `now()`]
+  UpdatedAt datetime [default: `now()`]
+}
+
+Table Maintenance {
+  MaintenanceId bigint [pk, increment]
+  VehicleId bigint [ref: > Vehicle.VehicleId, not null]
+  RequestedBy bigint [not null]
+  ApprovedBy bigint [ref: > Users.UserId]
+  RequestDate datetime [default: `now()`]
+  ApprovalDate datetime
+  NextDueDate date
+  Description text
+  EstimatedCost decimal(12,2)
+  ActualCost decimal(12,2)
+  MaintenanceStatus varchar(20) [default: 'PENDING']
+}
+
+Table Notification {
+  NotificationId bigint [pk, increment]
+  UserId bigint [ref: > Users.UserId]
+  Title varchar(255)
+  Message text
+  NotificationType varchar(50)
+  IsRead boolean [default: false]
+  IsDelivered boolean [default: false]
+  CreatedAt datetime [default: `now()`]
+}
+
+Table Incident {
+  IncidentId bigint [pk, increment]
+  BookingId bigint [ref: > UsageBooking.BookingId, not null]
+  IncidentType varchar(50) [note: 'BATTERY_FAILURE, ACCIDENT, TECHNICAL_ISSUE, DAMAGE']
+  Description text
+  EstimatedCost decimal(12,2)
+  ActualCost decimal(12,2)
+  Status varchar(20) [default: 'REPORTED']
+  ImageUrls text [note: 'JSON array of image URLs']
+  IncidentDate datetime [default: `now()`]
+  ResolvedDate datetime
+  ResolvedBy bigint [ref: > Users.UserId]
+  CreatedAt datetime [default: `now()`]
+}
+
+Table VehicleCheck {
+  Id bigint [pk, increment]
+  BookingId bigint [ref: > UsageBooking.BookingId]
+  CheckType varchar(20) [note: 'PRE_USE, POST_USE, REJECTION']
+  Odometer int
+  BatteryLevel decimal(5,2)
+  Cleanliness varchar(20) [note: 'CLEAN, DIRTY, VERY_DIRTY']
+  Notes text
+  Issues text [note: 'JSON array of issues']
+  Status varchar(20) [note: 'PASSED, REJECTED, PENDING']
+  CreatedAt datetime [default: `now()`]
+}
+
+Table UserDocument {
+  DocumentId bigint [pk, increment]
+  UserId bigint [not null]
+  DocumentType varchar(20) [note: 'CITIZEN_ID, DRIVER_LICENSE']
+  Side varchar(10) [note: 'FRONT, BACK']
+  ImageUrl varchar(500) [not null]
+  Status varchar(20) [default: 'PENDING']
+  ReviewNote text
+  ReviewedBy bigint [ref: > Users.UserId]
+  CreatedAt datetime [default: `now()`]
+  UpdatedAt datetime [default: `now()`]
+}
+
+Table Voting {
+  VotingId bigint [pk, increment]
+  GroupId bigint [ref: > OwnershipGroup.GroupId]
+  Title varchar(255)
+  Description text
+  VotingType varchar(50) [note: 'BATTERY_UPGRADE, INSURANCE_CHANGE, SELL_VEHICLE, MAINTENANCE']
+  Options text [note: 'JSON: ["Option 1", "Option 2", "Option 3"]']
+  Results text [note: 'JSON: {"Option 1": 2, "Option 2": 1}']
+  Deadline datetime
+  Status varchar(20) [default: 'ACTIVE']
+  CreatedBy bigint [ref: > Users.UserId]
+  CreatedAt datetime [default: `now()`]
+}
+
+Table Dispute {
+  DisputeId bigint [pk, increment]
+  FundId bigint [ref: > SharedFund.FundId, not null]
+  CreatedBy bigint
+  DisputeType varchar(50) [note: 'FINANCIAL, USAGE, DECISION']
+  RelatedEntityType varchar(50) [note: 'INCIDENT, PAYMENT, EXPENSE, VOTING']
+  RelatedEntityId bigint
+  Description text
+  DisputedAmount decimal(12,2)
+  Resolution text
+  ResolutionAmount decimal(12,2)
+  Status varchar(20) [default: 'OPEN']
+  ResolvedBy bigint [ref: > Users.UserId]
+  CreatedAt datetime [default: `now()`]
+  ResolvedAt datetime
+}
+
+Table Expense {
+  ExpenseId bigint [pk, increment]
+  FundId bigint [ref: > SharedFund.FundId]
+  SourceType varchar(50) [note: 'MAINTENANCE, INCIDENT, VEHICLE_CHECK']
+  SourceId bigint
+  Description text
+  Amount decimal(12,2) [not null]
+  ExpenseDate datetime [default: `now()`]
+}
+
+Table Payment {
+  PaymentId bigint [pk, increment]
+  UserId bigint [ref: > Users.UserId, not null]
+  FundID bigint [ref: > SharedFund.FundId, not null]
+  Amount decimal(12,2) [not null]
+  PaymentDate datetime [default: `now()`]
+  PaymentMethod varchar(50)
+  Status varchar(20) [default: 'PENDING']
+  TransactionCode varchar(100)
+  ProviderResponse text
+  PaymentType varchar(20) [note: 'CONTRIBUTION, PENALTY, MAINTENANCE_FEE']
+}
+
+Table OtpToken {
+  TokenId bigint [pk, increment]
+  Email varchar(100) [not null]
+  OtpCode varchar(6) [not null]
+  ExpiresAt datetime [not null]
+  IsUsed boolean [default: false]
+  CreatedAt datetime [default: `now()`]
+}

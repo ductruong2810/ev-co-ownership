@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Entity
 @Table(name = "Roles")
 @Data
@@ -22,4 +24,8 @@ public class Role {
     @Enumerated(EnumType.STRING)
     @Column(name = "RoleName", length = 30, nullable = false, unique = true)
     private RoleName roleName;
+
+    // Relationships với User
+    @OneToMany(mappedBy = "role", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<User> users;
 }
