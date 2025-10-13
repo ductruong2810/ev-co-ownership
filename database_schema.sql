@@ -91,6 +91,19 @@ CREATE TABLE Vehicle (
 GO
 
 -- =============================================
+-- VEHICLE IMAGES TABLE
+-- =============================================
+CREATE TABLE VehicleImages (
+    ImageId BIGINT IDENTITY(1,1) PRIMARY KEY,
+    VehicleId BIGINT NOT NULL,
+    ImageUrl NVARCHAR(500) NOT NULL,
+    ImageType NVARCHAR(20) NOT NULL,
+    UploadedAt DATETIME2 DEFAULT GETDATE(),
+    FOREIGN KEY (VehicleId) REFERENCES Vehicle(VehicleId)
+);
+GO
+
+-- =============================================
 -- 6. CONTRACT TABLE
 -- =============================================
 CREATE TABLE Contract (
@@ -334,6 +347,11 @@ GO
 -- Vehicle indexes
 CREATE INDEX IX_Vehicle_GroupId ON Vehicle(GroupId);
 CREATE INDEX IX_Vehicle_LicensePlate ON Vehicle(LicensePlate);
+GO
+
+-- VehicleImages indexes
+CREATE INDEX IX_VehicleImages_VehicleId ON VehicleImages(VehicleId);
+CREATE INDEX IX_VehicleImages_ImageType ON VehicleImages(ImageType);
 GO
 
 -- Booking indexes

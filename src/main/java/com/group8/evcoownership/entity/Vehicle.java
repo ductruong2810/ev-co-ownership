@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.Nationalized;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "Vehicle")
@@ -43,6 +44,9 @@ public class Vehicle {
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "GroupId")
     private OwnershipGroup ownershipGroup;
+
+    @OneToMany(mappedBy = "vehicle", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<VehicleImage> images;
 
     @Column(name = "CreatedAt")
     private LocalDateTime createdAt;
