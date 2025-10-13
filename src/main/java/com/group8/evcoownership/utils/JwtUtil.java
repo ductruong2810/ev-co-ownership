@@ -6,6 +6,10 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Component;
+import io.jsonwebtoken.Claims;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+
 
 import java.security.Key;
 import java.util.Date;
@@ -63,4 +67,25 @@ public class JwtUtil {
             return false;
         }
     }
+
+    /**
+     * Lấy thời gian hết hạn từ token
+     */
+    public LocalDateTime getExpirationFromToken(String token) {
+        try {
+            Claims claims = Jwts.parserBuilder()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+
+            Date expiration = claims.getExpiration();
+            return expiration.toInstant()
+                    .atZone(ZoneId.systemDefault())
+                    .toLocalDateTime();
+        } catch (JwtException e) {
+            throw new RuntimeException("Token không hợp lệ");
+        }
+    }
+
 }

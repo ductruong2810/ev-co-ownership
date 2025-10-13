@@ -7,8 +7,12 @@ import com.group8.evcoownership.dto.ResendOtpRequestDTO;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.service.AuthService;
+import com.group8.evcoownership.service.LogoutService;
 import com.group8.evcoownership.utils.JwtUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,10 +24,14 @@ import java.util.Map;
 
 public class AuthController {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
+
     @Autowired
     private UserRepository userRepository;
     @Autowired
     private AuthService authService;
+    @Autowired
+    private LogoutService logoutService; // ← THÊM DEPENDENCY NÀY
     @Autowired
     private JwtUtil jwtUtil;
 
@@ -87,4 +95,32 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("message", message));
     }
 
+    /// Không cần inject LogoutService nữa
+// Chỉ cần AuthService
+    @PostMapping("/logout")
+    public ResponseEntity<Map<String, String>> logout(HttpServletRequest request) {
+        try {
+            String authHeader = request.getHeader("Authorization");
+
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "error", "Không tìm thấy token"
+                ));
+            }
+
+            String token = authHeader.substring(7);
+
+            // Gọi LogoutService
+            logoutService.logout(token);
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "Đăng xuất thành công"
+            ));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of(
+                    "error", "Có lỗi xảy ra: " + e.getMessage()
+            ));
+        }
+    }
 }
