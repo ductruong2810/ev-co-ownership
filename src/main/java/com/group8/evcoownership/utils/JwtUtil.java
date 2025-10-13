@@ -1,17 +1,16 @@
 package com.group8.evcoownership.utils;
 
 import com.group8.evcoownership.entity.User;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Component;
-import io.jsonwebtoken.Claims;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-
 
 import java.security.Key;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Date;
 
 @Component

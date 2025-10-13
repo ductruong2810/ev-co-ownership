@@ -212,8 +212,8 @@ public class PaymentService {
 
     // Các chuyển trạng thái hợp lệ
     private static final Set<String> ALLOWED = Set.of(
-            key(PaymentStatus.Pending,   PaymentStatus.Completed),
-            key(PaymentStatus.Pending,   PaymentStatus.Failed),
+            key(PaymentStatus.Pending, PaymentStatus.Completed),
+            key(PaymentStatus.Pending, PaymentStatus.Failed),
             key(PaymentStatus.Completed, PaymentStatus.Refunded)
     );
 

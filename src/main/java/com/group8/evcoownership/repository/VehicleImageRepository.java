@@ -10,13 +10,13 @@ import java.util.List;
 
 @Repository
 public interface VehicleImageRepository extends JpaRepository<VehicleImage, Long> {
-    
+
     List<VehicleImage> findByVehicleId(Long vehicleId);
-    
+
     List<VehicleImage> findByVehicleIdAndImageType(Long vehicleId, String imageType);
-    
+
     void deleteByVehicleId(Long vehicleId);
-    
+
     @Query("SELECT vi FROM VehicleImage vi WHERE vi.vehicle.id = :vehicleId ORDER BY vi.uploadedAt DESC")
     List<VehicleImage> findByVehicleIdOrderByUploadedAtDesc(@Param("vehicleId") Long vehicleId);
 }

@@ -1,9 +1,9 @@
 package com.group8.evcoownership.service;
 
-import com.group8.evcoownership.entity.VehicleCheck;
 import com.group8.evcoownership.entity.UsageBooking;
-import com.group8.evcoownership.repository.VehicleCheckRepository;
+import com.group8.evcoownership.entity.VehicleCheck;
 import com.group8.evcoownership.repository.UsageBookingRepository;
+import com.group8.evcoownership.repository.VehicleCheckRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,9 +21,9 @@ public class VehicleCheckService {
     private final UsageBookingRepository usageBookingRepository;
 
     // User tạo pre-use check
-    public VehicleCheck createPreUseCheck(Long bookingId, Long userId, Integer odometer, 
-                                         BigDecimal batteryLevel, String cleanliness, 
-                                         String notes, String issues) {
+    public VehicleCheck createPreUseCheck(Long bookingId, Long userId, Integer odometer,
+                                          BigDecimal batteryLevel, String cleanliness,
+                                          String notes, String issues) {
         UsageBooking booking = usageBookingRepository.findById(bookingId)
                 .orElseThrow(() -> new EntityNotFoundException("Booking not found"));
 
@@ -42,9 +42,9 @@ public class VehicleCheckService {
     }
 
     // User tạo post-use check
-    public VehicleCheck createPostUseCheck(Long bookingId, Long userId, Integer odometer, 
-                                          BigDecimal batteryLevel, String cleanliness, 
-                                          String notes, String issues) {
+    public VehicleCheck createPostUseCheck(Long bookingId, Long userId, Integer odometer,
+                                           BigDecimal batteryLevel, String cleanliness,
+                                           String notes, String issues) {
         UsageBooking booking = usageBookingRepository.findById(bookingId)
                 .orElseThrow(() -> new EntityNotFoundException("Booking not found"));
 

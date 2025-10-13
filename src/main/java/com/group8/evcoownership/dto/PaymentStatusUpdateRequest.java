@@ -8,4 +8,5 @@ public record PaymentStatusUpdateRequest(
         @NotNull PaymentStatus status,
         String transactionCode,       // bắt buộc khi chuyển sang Completed
         String providerResponseJson   // raw JSON từ gateway (nếu có)
-) {}
+) {
+}

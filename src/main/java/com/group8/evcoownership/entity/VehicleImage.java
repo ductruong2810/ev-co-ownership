@@ -19,20 +19,20 @@ public class VehicleImage {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "ImageId")
     private Long imageId;
-    
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "VehicleId")
     private Vehicle vehicle;
-    
+
     @Column(name = "ImageUrl", length = 500)
     private String imageUrl;
-    
+
     @Column(name = "ImageType", length = 20)
     private String imageType; // 'VEHICLE' hoặc 'LICENSE'
-    
+
     @Column(name = "UploadedAt")
     private LocalDateTime uploadedAt;
-    
+
     @PrePersist
     public void onCreate() {
         uploadedAt = LocalDateTime.now();

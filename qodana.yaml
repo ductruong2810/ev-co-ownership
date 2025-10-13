@@ -34,7 +34,7 @@ projectJDK: "17" #(Applied in CI/CD pipeline)
 
   # Quality gate. Will fail the CI/CD pipeline if any condition is not met
   # severityThresholds - configures maximum thresholds for different problem severities
-  # testCoverageThresholds - configures minimum code coverage on a whole project and newly added code
+# testCoverageThresholds - configures minimum code coverage on a whole project and newly added code
 # Code Coverage is available in Ultimate and Ultimate Plus plans
 #failureConditions:
 #  severityThresholds:
