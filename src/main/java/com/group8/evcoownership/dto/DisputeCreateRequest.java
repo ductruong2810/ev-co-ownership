@@ -6,8 +6,10 @@ import lombok.Data;
 
 @Data
 public class DisputeCreateRequest {
-    @NotNull private Long fundId;
-    @NotNull private Long userId;
+    @NotNull
+    private Long fundId;
+    @NotNull
+    private Long userId;
     private Long vehicleReportId;   // optional
     private String description;     // optional
 }
