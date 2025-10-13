@@ -1,9 +1,6 @@
 package com.group8.evcoownership.controller;
 
-import com.group8.evcoownership.dto.LoginRequestDTO;
-import com.group8.evcoownership.dto.LoginResponseDTO;
-import com.group8.evcoownership.dto.RegisterRequestDTO;
-import com.group8.evcoownership.dto.ResendOtpRequestDTO;
+import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.service.AuthService;
@@ -122,5 +119,51 @@ public class AuthController {
                     "error", "Có lỗi xảy ra: " + e.getMessage()
             ));
         }
+    }
+
+    /**
+     * BƯỚC 1: Quên mật khẩu - Gửi OTP
+     */
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Map<String, String>> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequestDTO request) {
+
+        String message = authService.forgotPassword(request.getEmail());
+        return ResponseEntity.ok(Map.of("message", message));
+    }
+
+    /**
+     * BƯỚC 2: Verify OTP - Nhận reset token
+     */
+    @PostMapping("/forgot-password/verify-reset-otp")
+    public ResponseEntity<VerifyResetOtpResponseDTO> verifyResetOtp(
+            @Valid @RequestBody VerifyResetOtpRequestDTO request) {
+
+        VerifyResetOtpResponseDTO response = authService.verifyResetOtp(
+                request.getOtp()
+        );
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * BƯỚC 3: Đặt lại mật khẩu với reset token
+     */
+    @PostMapping("/forgot-password/reset-password")
+    public ResponseEntity<Map<String, String>> resetPassword(
+            @Valid @RequestBody ResetPasswordRequestDTO request) {
+
+        String message = authService.resetPasswordWithToken(request);
+        return ResponseEntity.ok(Map.of("message", message));
+    }
+
+    /**
+     * Resend OTP (optional)
+     */
+    @PostMapping("/forgot-password/resend-otp")
+    public ResponseEntity<Map<String, String>> resendPasswordResetOtp(
+            @Valid @RequestBody ForgotPasswordRequestDTO request) {
+
+        String message = authService.resendPasswordResetOtp(request.getEmail());
+        return ResponseEntity.ok(Map.of("message", message));
     }
 }

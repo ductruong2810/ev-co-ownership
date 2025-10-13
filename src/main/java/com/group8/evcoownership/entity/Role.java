@@ -26,6 +26,6 @@ public class Role {
     private RoleName roleName;
 
     // Relationships với User
-    @OneToMany(mappedBy = "role", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "role", fetch = FetchType.LAZY)
     private List<User> users;
 }
