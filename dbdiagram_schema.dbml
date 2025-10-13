@@ -49,6 +49,14 @@ Table Vehicle {
   UpdatedAt datetime [default: `now()`]
 }
 
+Table VehicleImages {
+  ImageId bigint [pk, increment]
+  VehicleId bigint [ref: > Vehicle.VehicleId, not null]
+  ImageUrl varchar(500) [not null]
+  ImageType varchar(20) [not null, note: 'VEHICLE or LICENSE']
+  UploadedAt datetime [default: `now()`]
+}
+
 Table Contract {
   ContractId bigint [pk, increment]
   GroupId bigint [ref: - OwnershipGroup.GroupId, not null]
