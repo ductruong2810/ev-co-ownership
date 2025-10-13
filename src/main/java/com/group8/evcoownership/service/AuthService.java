@@ -5,6 +5,7 @@ import com.group8.evcoownership.entity.Role;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.enums.RoleName;
 import com.group8.evcoownership.enums.UserStatus;
+import com.group8.evcoownership.exception.InvalidCredentialsException;
 import com.group8.evcoownership.repository.RoleRepository;
 import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.utils.JwtUtil;
@@ -50,14 +51,14 @@ public class AuthService {
     // ================= LOGIN =================
     public LoginResponseDTO login(LoginRequestDTO request) {
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new InvalidCredentialsException("Email hoặc mật khẩu không chính xác"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            throw new RuntimeException("Invalid credentials");
+            throw new InvalidCredentialsException("Email hoặc mật khẩu không chính xác");
         }
 
         if (user.getStatus() != UserStatus.Active) {
-            throw new RuntimeException("Account is not active. Please verify your email first.");
+            throw new IllegalStateException("Tài khoản chưa được kích hoạt. Vui lòng xác thực email.");
         }
 
         return LoginResponseDTO.builder()
@@ -355,7 +356,6 @@ public class AuthService {
             throw new RuntimeException("Đã xảy ra lỗi trong quá trình đặt lại mật khẩu. Vui lòng thử lại.");
         }
     }
-
     // ================= RESEND OTP FOR PASSWORD RESET =================
     /**
      * Gửi lại OTP cho reset password
@@ -402,5 +402,56 @@ public class AuthService {
      */
     private String generateResetToken() {
         return java.util.UUID.randomUUID().toString();
+    }
+
+    // ================= CHANGE PASSWORD (ĐÃ LOGIN) =================
+    /**
+     * Đổi mật khẩu khi user đã đăng nhập
+     */
+    public String changePassword(String email, ChangePasswordRequestDTO request) {
+        log.info("Processing change password request for email: {}", email);
+
+        // Validate input
+        if (email == null || email.trim().isEmpty()) {
+            throw new IllegalArgumentException("Email không được để trống");
+        }
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new IllegalArgumentException("Mật khẩu mới và xác nhận mật khẩu không khớp");
+        }
+
+        try {
+            // Lấy user từ database
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> {
+                        log.error("User not found for email: {}", email);
+                        return new IllegalArgumentException("Không tìm thấy tài khoản");
+                    });
+
+            // Kiểm tra mật khẩu cũ có đúng không
+            if (!passwordEncoder.matches(request.getOldPassword(), user.getPasswordHash())) {
+                log.warn("Invalid old password for email: {}", email);
+                throw new IllegalArgumentException("Mật khẩu cũ không chính xác");
+            }
+
+            // Kiểm tra mật khẩu mới không được trùng với mật khẩu cũ
+            if (passwordEncoder.matches(request.getNewPassword(), user.getPasswordHash())) {
+                log.warn("New password same as old password for email: {}", email);
+                throw new IllegalArgumentException("Mật khẩu mới phải khác mật khẩu cũ");
+            }
+
+            // Cập nhật mật khẩu mới
+            user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+            userRepository.save(user);
+
+            log.info("Password changed successfully for email: {}", email);
+            return "Đổi mật khẩu thành công!";
+
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Unexpected error during password change for email {}: {}",
+                    email, e.getMessage(), e);
+            throw new RuntimeException("Đã xảy ra lỗi trong quá trình đổi mật khẩu. Vui lòng thử lại.");
+        }
     }
 }
