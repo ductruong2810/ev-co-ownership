@@ -2,89 +2,129 @@ package com.group8.evcoownership.utils;
 
 import com.group8.evcoownership.entity.User;
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.security.Key;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 @Component
 public class JwtUtil {
 
-    private final String SECRET_KEY = "supersecretkeysupersecretkey123456"; // tối thiểu 32 ký tự
+    @Value("${jwt.secret}")
+    private String secret;
 
-    private Key getSigningKey() {
-        return Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
-    }
+    @Value("${jwt.expiration}")
+    private long expiration; // 15 phút
 
-    // Tạo token
+    @Value("${jwt.refresh-expiration}")
+    private long refreshExpiration; // 7 ngày =
+
+    @Value("${jwt.remember-me-expiration}")
+    private long rememberMeExpiration; // 30 ngày
+
+    /**
+     * Generate Access Token (luôn 15 phút hoặc 1 giờ)
+     */
     public String generateToken(User user) {
         return Jwts.builder()
-                .setSubject(user.getEmail()) // hoặc userId
-                .claim("userId", user.getUserId())
-                .claim("fullName", user.getFullName())
-                .claim("phoneNumber", user.getPhoneNumber())
-                .claim("role", user.getRole().getRoleName())
-                .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60))
+                .setSubject(user.getEmail())
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    // Tạo Refresh Token (7 ngày)
+    /**
+     * Generate Refresh Token (default - 7 ngày)
+     */
     public String generateRefreshToken(User user) {
+        return generateRefreshToken(user, false);
+    }
+
+    /**
+     * Generate Refresh Token với Remember Me option
+     * @param user User object
+     * @param rememberMe true = 30 ngày, false = 7 ngày
+     */
+    public String generateRefreshToken(User user, boolean rememberMe) {
+        long expiry = rememberMe ? rememberMeExpiration : refreshExpiration;
+
         return Jwts.builder()
                 .setSubject(user.getEmail())
-                .claim("userId", user.getUserId())
-                .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 7)) // 7 ngày
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + expiry))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    // Lấy email từ token
+    /**
+     * Extract email từ token
+     */
     public String extractEmail(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
-                .build()
-                .parseClaimsJws(token)
-                .getBody()
-                .getSubject();
+        return extractClaim(token, Claims::getSubject);
     }
 
-    // Kiểm tra token hợp lệ
+    /**
+     * Extract expiration date từ token
+     */
+    public Date extractExpiration(String token) {
+        return extractClaim(token, Claims::getExpiration);
+    }
+
+    /**
+     * Validate token (check signature và expiration)
+     */
     public boolean validateToken(String token) {
         try {
-            Jwts.parserBuilder().setSigningKey(getSigningKey()).build().parseClaimsJws(token);
+            Jwts.parserBuilder()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token);
             return true;
-        } catch (JwtException e) {
+        } catch (Exception e) {
             return false;
         }
     }
 
     /**
-     * Lấy thời gian hết hạn từ token
+     * Check if token is expired
      */
-    public LocalDateTime getExpirationFromToken(String token) {
+    public boolean isTokenExpired(String token) {
         try {
-            Claims claims = Jwts.parserBuilder()
-                    .setSigningKey(getSigningKey())
-                    .build()
-                    .parseClaimsJws(token)
-                    .getBody();
-
-            Date expiration = claims.getExpiration();
-            return expiration.toInstant()
-                    .atZone(ZoneId.systemDefault())
-                    .toLocalDateTime();
-        } catch (JwtException e) {
-            throw new RuntimeException("Token không hợp lệ");
+            return extractExpiration(token).before(new Date());
+        } catch (Exception e) {
+            return true;
         }
     }
 
+    /**
+     * Extract specific claim từ token
+     */
+    private <T> T extractClaim(String token, java.util.function.Function<Claims, T> claimsResolver) {
+        final Claims claims = extractAllClaims(token);
+        return claimsResolver.apply(claims);
+    }
+
+    /**
+     * Extract tất cả claims từ token
+     */
+    private Claims extractAllClaims(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+    }
+
+    /**
+     * Get signing key từ secret
+     */
+    private SecretKey getSigningKey() {
+        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+    }
 }

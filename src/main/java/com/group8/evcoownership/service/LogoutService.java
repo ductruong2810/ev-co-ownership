@@ -1,65 +1,80 @@
 package com.group8.evcoownership.service;
 
 import com.group8.evcoownership.utils.JwtUtil;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-@Slf4j
 @Service
 public class LogoutService {
+
+    private static final Logger log = LoggerFactory.getLogger(LogoutService.class);
 
     @Autowired
     private JwtUtil jwtUtil;
 
-    // Lưu token blacklist trong memory
-    private final Map<String, LocalDateTime> tokenBlacklist = new ConcurrentHashMap<>();
+    // Blacklist lưu token đã logout
+    // Key: token, Value: expiration date
+    private final Map<String, Date> blacklistedTokens = new ConcurrentHashMap<>();
 
     /**
-     * Thêm token vào blacklist khi logout
+     * Logout - Thêm token vào blacklist
      */
     public void logout(String token) {
         if (token == null || token.trim().isEmpty()) {
-            log.warn("Attempted to blacklist empty token");
-            return;
+            throw new IllegalArgumentException("Token không được để trống");
         }
 
         try {
-            LocalDateTime expirationTime = jwtUtil.getExpirationFromToken(token);
-            tokenBlacklist.put(token, expirationTime);
-            log.info("Token added to blacklist, expires at: {}", expirationTime);
+            // Validate token trước khi blacklist
+            if (!jwtUtil.validateToken(token)) {
+                throw new IllegalArgumentException("Token không hợp lệ hoặc đã hết hạn");
+            }
+
+            // Lấy expiration date của token
+            Date expirationDate = jwtUtil.extractExpiration(token);
+
+            // Thêm vào blacklist
+            blacklistedTokens.put(token, expirationDate);
+
+            String email = jwtUtil.extractEmail(token);
+            log.info("User {} logged out successfully. Token blacklisted.", email);
+
+            // Cleanup expired tokens (optional - chạy định kỳ)
+            cleanupExpiredTokens();
+
         } catch (Exception e) {
-            log.error("Error blacklisting token: {}", e.getMessage());
-            throw new RuntimeException("Không thể đăng xuất. Token không hợp lệ.");
+            log.error("Logout failed: {}", e.getMessage());
+            throw new RuntimeException("Không thể đăng xuất: " + e.getMessage());
         }
     }
 
     /**
-     * Kiểm tra token có trong blacklist không
+     * Kiểm tra token có bị blacklist không
      */
     public boolean isTokenBlacklisted(String token) {
-        return tokenBlacklist.containsKey(token);
+        return blacklistedTokens.containsKey(token);
     }
 
     /**
-     * Dọn dẹp tokens đã hết hạn mỗi 1 giờ
+     * Cleanup tokens đã hết hạn khỏi blacklist
+     * (Gọi định kỳ để tiết kiệm memory)
      */
-    @Scheduled(fixedRate = 3600000)
-    public void cleanupExpiredTokens() {
-        LocalDateTime now = LocalDateTime.now();
+    private void cleanupExpiredTokens() {
+        Date now = new Date();
+        blacklistedTokens.entrySet().removeIf(entry -> entry.getValue().before(now));
+        log.debug("Cleaned up expired tokens. Remaining blacklisted: {}", blacklistedTokens.size());
+    }
 
-        int beforeSize = tokenBlacklist.size();
-        tokenBlacklist.entrySet().removeIf(entry -> entry.getValue().isBefore(now));
-        int afterSize = tokenBlacklist.size();
-        int removed = beforeSize - afterSize;
-
-        if (removed > 0) {
-            log.info("Cleaned up {} expired tokens from blacklist. Current size: {}", removed, afterSize);
-        }
+    /**
+     * Get số lượng token trong blacklist (for debugging)
+     */
+    public int getBlacklistedTokenCount() {
+        return blacklistedTokens.size();
     }
 }
