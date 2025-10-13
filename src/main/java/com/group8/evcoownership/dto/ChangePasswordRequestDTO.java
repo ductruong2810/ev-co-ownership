@@ -7,7 +7,6 @@ import lombok.Data;
 
 @Data
 public class ChangePasswordRequestDTO {
-
     //10/13/2025
     @NotBlank(message = "Mật khẩu cũ không được để trống")
     private String oldPassword;
