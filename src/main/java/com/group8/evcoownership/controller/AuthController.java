@@ -1,7 +1,8 @@
 package com.group8.evcoownership.controller;
 
-import com.group8.evcoownership.dto.*;
+import org.springframework.security.core.Authentication;
 import com.group8.evcoownership.entity.User;
+import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.service.AuthService;
 import com.group8.evcoownership.service.LogoutService;
@@ -12,9 +13,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.Map;
+
 
 @RestController
 @RequestMapping("/api/auth")
@@ -164,6 +166,22 @@ public class AuthController {
             @Valid @RequestBody ForgotPasswordRequestDTO request) {
 
         String message = authService.resendPasswordResetOtp(request.getEmail());
+        return ResponseEntity.ok(Map.of("message", message));
+    }
+
+    /**
+     * Đổi mật khẩu (cần đăng nhập)
+     */
+    @PostMapping("/change-password")
+    public ResponseEntity<Map<String, String>> changePassword(
+            @Valid @RequestBody ChangePasswordRequestDTO request,
+            Authentication authentication) {
+
+        // Lấy email từ user đã đăng nhập
+        User user = (User) authentication.getPrincipal();
+        String email = user.getEmail();
+
+        String message = authService.changePassword(email, request);
         return ResponseEntity.ok(Map.of("message", message));
     }
 }
