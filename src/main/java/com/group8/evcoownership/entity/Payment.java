@@ -32,7 +32,7 @@ public class Payment {
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "FundID", nullable = false)
+    @JoinColumn(name = "FundId", nullable = false)
     private SharedFund fund;
 
     @NotNull
