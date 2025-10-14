@@ -22,9 +22,69 @@ public class GlobalExceptionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-    //Xử lý lỗi validation từ @Valid
+    // ========== 401 - Unauthorized (MỨC ƯU TIÊN CAO) ==========
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ErrorResponseDTO> handleInvalidCredentials(
+            InvalidCredentialsException ex, WebRequest request) {
+
+        logger.warn("Invalid credentials attempt from: {}", request.getDescription(false));
+
+        ErrorResponseDTO response = new ErrorResponseDTO(
+                HttpStatus.UNAUTHORIZED.value(),
+                "Unauthorized",
+                ex.getMessage(),
+                request.getDescription(false).replace("uri=", "")
+        );
+        return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
+    }
+
+    // ========== 404 - Not Found ==========
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<ErrorResponseDTO> handleEntityNotFound(
+            EntityNotFoundException ex, WebRequest request) {
+
+        ErrorResponseDTO errorResponse = new ErrorResponseDTO(
+                HttpStatus.NOT_FOUND.value(),
+                "Not Found",
+                ex.getMessage(),
+                request.getDescription(false).replace("uri=", "")
+        );
+        return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
+    }
+
+    // ========== 409 - Conflict ==========
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ErrorResponseDTO> handleIllegalState(
+            IllegalStateException ex, WebRequest request) {
+
+        ErrorResponseDTO errorResponse = new ErrorResponseDTO(
+                HttpStatus.CONFLICT.value(),
+                "Conflict",
+                ex.getMessage(),
+                request.getDescription(false).replace("uri=", "")
+        );
+        return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
+    }
+
+    // ========== 400 - Bad Request ==========
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponseDTO> handleIllegalArgument(
+            IllegalArgumentException ex, WebRequest request) {
+
+        ErrorResponseDTO response = new ErrorResponseDTO(
+                HttpStatus.BAD_REQUEST.value(),
+                "Bad Request",
+                ex.getMessage(),
+                request.getDescription(false).replace("uri=", "")
+        );
+        return ResponseEntity.badRequest().body(response);
+    }
+
+    // ========== Validation Errors ==========
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<?> handleValidationErrors(MethodArgumentNotValidException ex, WebRequest request) {
+    public ResponseEntity<?> handleValidationErrors(
+            MethodArgumentNotValidException ex, WebRequest request) {
+
         List<Map<String, String>> errors = new ArrayList<>();
 
         // Field-level errors
@@ -35,7 +95,7 @@ public class GlobalExceptionHandler {
             errors.add(err);
         });
 
-        // Class-level errors (như @PasswordMatches)
+        // Class-level errors
         ex.getBindingResult().getGlobalErrors().forEach(error -> {
             Map<String, String> err = new HashMap<>();
             err.put("field", "global");
@@ -53,7 +113,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(response);
     }
 
-    // Xử lý các constraint khác
+    // ========== Constraint Violations ==========
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<?> handleConstraintViolation(ConstraintViolationException ex) {
         List<Map<String, String>> errors = new ArrayList<>();
@@ -68,7 +128,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(errors);
     }
 
-    // Fallback cho các lỗi khác
+    // ========== 500 - Fallback (ĐẶT CUỐI CÙNG) ==========
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDTO> handleAll(Exception ex, WebRequest request) {
         logger.error("An unexpected error occurred: ", ex);
@@ -81,40 +141,5 @@ public class GlobalExceptionHandler {
         );
 
         return ResponseEntity.internalServerError().body(response);
-    }
-
-    // 404 - Không tìm thấy entity (ví dụ: Group/Fund không tồn tại)
-    @ExceptionHandler(EntityNotFoundException.class)
-    public ResponseEntity<ErrorResponseDTO> handleEntityNotFound(EntityNotFoundException ex, WebRequest request) {
-        ErrorResponseDTO errorResponse = new ErrorResponseDTO(
-                HttpStatus.NOT_FOUND.value(),
-                "Not Found",
-                ex.getMessage(),
-                request.getDescription(false).replace("uri=", "") // Lấy đường dẫn API
-        );
-        return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
-    }
-
-    // 409 - Lỗi nghiệp vụ/xung đột trạng thái (ví dụ: "Nhóm này đã có quỹ rồi!")
-    @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<ErrorResponseDTO> handleIllegalState(IllegalStateException ex, WebRequest request) {
-        ErrorResponseDTO errorResponse = new ErrorResponseDTO(
-                HttpStatus.CONFLICT.value(),
-                "Conflict",
-                ex.getMessage(),
-                request.getDescription(false).replace("uri=", "")
-        );
-        return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
-    }
-
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ErrorResponseDTO> handleIllegalArgument(IllegalArgumentException ex, WebRequest request) {
-        ErrorResponseDTO response = new ErrorResponseDTO(
-                HttpStatus.BAD_REQUEST.value(),
-                "Bad Request",
-                ex.getMessage(),
-                request.getDescription(false).replace("uri=", "")
-        );
-        return ResponseEntity.badRequest().body(response);
     }
 }

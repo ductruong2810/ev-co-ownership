@@ -6,6 +6,8 @@ import com.group8.evcoownership.dto.UpdatePaymentRequest;
 import com.group8.evcoownership.entity.Payment;
 import com.group8.evcoownership.entity.SharedFund;
 import com.group8.evcoownership.entity.User;
+import com.group8.evcoownership.enums.PaymentStatus;
+import com.group8.evcoownership.enums.PaymentType;
 import com.group8.evcoownership.repository.PaymentRepository;
 import com.group8.evcoownership.repository.SharedFundRepository;
 import com.group8.evcoownership.repository.UserRepository;
@@ -20,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +31,7 @@ public class PaymentService {
     private final PaymentRepository paymentRepo;
     private final UserRepository userRepo;
     private final SharedFundRepository fundRepo;
+    private final FundService fundService;
 
     // Map Entity -> DTO
     private PaymentResponse toDto(Payment p) {
@@ -42,15 +46,15 @@ public class PaymentService {
         return PaymentResponse.builder()
                 .id(p.getId())
                 .userId(uId)
-                .fundId(fId)
+                .fundId(p.getFund() != null ? p.getFund().getFundId() : null)
                 .userFullName(uName)
                 .amount(p.getAmount())
                 .paymentDate(p.getPaymentDate())
                 .paymentMethod(p.getPaymentMethod())
-                .status(p.getStatus())
+                .status(p.getStatus() != null ? p.getStatus().name() : null)
                 .transactionCode(p.getTransactionCode())
                 .providerResponse(p.getProviderResponse())
-                .paymentType(p.getPaymentType())
+                .paymentType(String.valueOf(p.getPaymentType()))
                 .build();
     }
 
@@ -67,8 +71,8 @@ public class PaymentService {
                 .fund(fund)
                 .amount(req.getAmount())
                 .paymentMethod(req.getPaymentMethod())
-                .paymentType(req.getPaymentType())
-                .status("PENDING")
+                .paymentType(PaymentType.valueOf(req.getPaymentType()))
+                .status(PaymentStatus.Pending)
                 .transactionCode(req.getTransactionCode())
                 .build();
 
@@ -116,12 +120,13 @@ public class PaymentService {
         }
         if (req.getAmount() != null) p.setAmount(req.getAmount());
         if (req.getPaymentMethod() != null) p.setPaymentMethod(req.getPaymentMethod());
-        if (req.getPaymentType() != null) p.setPaymentType(req.getPaymentType());
+        if (req.getPaymentType() != null) p.setPaymentType(PaymentType.valueOf(req.getPaymentType()));
         if (req.getTransactionCode() != null) p.setTransactionCode(req.getTransactionCode());
         if (req.getProviderResponse() != null) p.setProviderResponse(req.getProviderResponse());
         if (req.getStatus() != null) {
-            p.setStatus(req.getStatus());
-            if ("COMPLETED".equals(req.getStatus()) && p.getPaymentDate() == null) {
+            PaymentStatus target = PaymentStatus.valueOf(req.getStatus());
+            p.setStatus(target);
+            if (target == PaymentStatus.Completed && p.getPaymentDate() == null) {
                 p.setPaymentDate(LocalDateTime.now());
             }
         }
@@ -141,12 +146,12 @@ public class PaymentService {
         Payment p = paymentRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Payment not found: " + id));
 
-        if ("COMPLETED".equals(p.getStatus())) {
+        if (p.getStatus() == PaymentStatus.Completed) {
             return toDto(p);
         }
 
         // Chỉ cho phép từ Pending -> Completed
-        if (!"PENDING".equals(p.getStatus())) {
+        if (p.getStatus() != PaymentStatus.Pending) {
             throw new IllegalStateException("Invalid transition: " + p.getStatus() + " -> Completed");
         }
 
@@ -160,7 +165,7 @@ public class PaymentService {
         if (transactionCode != null) {
             p.setTransactionCode(transactionCode);
         }
-        p.setStatus("COMPLETED");
+        p.setStatus(PaymentStatus.Completed);
         if (p.getPaymentDate() == null) {
             p.setPaymentDate(LocalDateTime.now());
         }
@@ -176,16 +181,16 @@ public class PaymentService {
         Payment p = paymentRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Payment not found: " + id));
 
-        if ("FAILED".equals(p.getStatus())) {
+        if (p.getStatus() == PaymentStatus.Failed) {
             return toDto(p);
         }
 
         // Chỉ cho phép từ Pending -> Failed
-        if (!"PENDING".equals(p.getStatus())) {
+        if (p.getStatus() != PaymentStatus.Pending) {
             throw new IllegalStateException("Invalid transition: " + p.getStatus() + " -> Failed");
         }
 
-        p.setStatus("FAILED");
+        p.setStatus(PaymentStatus.Failed);
         if (providerResponseJson != null) {
             p.setProviderResponse(providerResponseJson);
         }
@@ -198,11 +203,78 @@ public class PaymentService {
         Payment p = paymentRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Payment not found: " + id));
 
-        if (!"COMPLETED".equals(p.getStatus())) {
+        if (p.getStatus() != PaymentStatus.Completed) {
             throw new IllegalStateException("Invalid transition: " + p.getStatus() + " -> Refunded");
         }
-        p.setStatus("REFUNDED");
+        p.setStatus(PaymentStatus.Refunded);
         if (providerResponseJson != null) p.setProviderResponse(providerResponseJson);
+        return toDto(paymentRepo.save(p));
+    }
+
+    // Các chuyển trạng thái hợp lệ
+    private static final Set<String> ALLOWED = Set.of(
+            key(PaymentStatus.Pending, PaymentStatus.Completed),
+            key(PaymentStatus.Pending, PaymentStatus.Failed),
+            key(PaymentStatus.Completed, PaymentStatus.Refunded)
+    );
+
+    private static String key(PaymentStatus from, PaymentStatus to) {
+        return from.name() + "->" + to.name();
+    }
+
+    @Transactional
+    public PaymentResponse updateStatus(Long paymentId, PaymentStatus target,
+                                        String transactionCode, String providerResponseJson) {
+
+        Payment p = paymentRepo.findById(paymentId)
+                .orElseThrow(() -> new EntityNotFoundException("Payment not found: " + paymentId));
+
+        PaymentStatus current = p.getStatus() != null ? p.getStatus() : PaymentStatus.Pending;
+
+        // Idempotent: nếu đã ở đúng trạng thái, chỉ cập nhật providerResponse (nếu có) rồi trả về
+        if (current == target) {
+            if (providerResponseJson != null) p.setProviderResponse(providerResponseJson);
+            return toDto(paymentRepo.save(p));
+        }
+
+        String transition = key(current, target);
+        if (!ALLOWED.contains(transition)) {
+            throw new IllegalStateException("Invalid status transition: " + current + " -> " + target);
+        }
+
+        switch (target) {
+            case Failed -> {
+                // Pending -> Failed
+                p.setStatus(PaymentStatus.Failed);
+                if (providerResponseJson != null) p.setProviderResponse(providerResponseJson);
+                paymentRepo.save(p);
+            }
+            case Completed -> {
+                // Pending -> Completed
+                if (transactionCode == null || transactionCode.isBlank()) {
+                    throw new IllegalArgumentException("transactionCode is required when marking Completed");
+                }
+                p.setStatus(PaymentStatus.Completed);
+                p.setTransactionCode(transactionCode);
+                if (p.getPaymentDate() == null) p.setPaymentDate(LocalDateTime.now());
+                if (providerResponseJson != null) p.setProviderResponse(providerResponseJson);
+
+                paymentRepo.saveAndFlush(p); // flush trước khi cộng quỹ
+                // Cộng quỹ đúng 1 lần khi chốt Completed
+                fundService.increaseBalance(p.getFund().getFundId(), p.getAmount());
+            }
+            case Refunded -> {
+                // Completed -> Refunded
+                p.setStatus(PaymentStatus.Refunded);
+                if (providerResponseJson != null) p.setProviderResponse(providerResponseJson);
+
+                paymentRepo.saveAndFlush(p);
+                // Hoàn quỹ đúng 1 lần khi chuyển Refunded
+                fundService.decreaseBalance(p.getFund().getFundId(), p.getAmount());
+            }
+            default -> throw new IllegalStateException("Unsupported target: " + target);
+        }
+
         return toDto(paymentRepo.save(p));
     }
 

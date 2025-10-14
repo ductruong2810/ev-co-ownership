@@ -10,6 +10,7 @@ import com.group8.evcoownership.repository.OwnershipGroupRepository;
 import com.group8.evcoownership.repository.SharedFundRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -58,12 +59,14 @@ public class FundService {
 
     // Lay SharedFund theo fundId
     @Transactional(readOnly = true)
-    public FundBalanceResponse getById(Long fundId) {
+    public FundBalanceResponse getBalanceByFundId(Long fundId) {
         SharedFund fund = fundRepo.findById(fundId)
-                .orElseThrow(() -> new EntityNotFoundException("SharedFund not found"));
-        return new FundBalanceResponse(fund.getFundId(), fund.getGroup().getGroupId(), fund.getBalance());
-//        return fundRepo.findById(fundId)
-//                .orElseThrow(() -> new EntityNotFoundException("SharedFund not found"));
+                .orElseThrow(() -> new EntityNotFoundException("SharedFund not found: " + fundId));
+        return new FundBalanceResponse(
+                fund.getFundId(),
+                fund.getGroup().getGroupId(),
+                fund.getBalance()
+        );
     }
 
     // Lay SharedFund theo groupId
@@ -114,6 +117,66 @@ public class FundService {
             throw new EntityNotFoundException("SharedFund not found" + fundId);
         }
         fundRepo.deleteById(fundId);
+    }
+
+
+    private static final int MAX_RETRY = 3;
+
+    // ... (các hàm CRUD bạn đã có ở trên)
+
+    /**
+     * Tăng quỹ (nạp tiền)
+     */
+    @Transactional
+    public void increaseBalance(Long fundId, BigDecimal amount) {
+        updateBalanceWithRetry(fundId, amount, true);
+    }
+
+    /**
+     * Giảm quỹ (chi/hoàn tiền)
+     */
+    @Transactional
+    public void decreaseBalance(Long fundId, BigDecimal amount) {
+        updateBalanceWithRetry(fundId, amount, false);
+    }
+
+    /**
+     * Core update với optimistic locking + retry
+     */
+    private void updateBalanceWithRetry(Long fundId, BigDecimal amount, boolean increase) {
+        if (amount == null || amount.signum() <= 0) {
+            throw new IllegalArgumentException("Amount must be > 0");
+        }
+
+        int attempts = 0;
+        while (true) {
+            attempts++;
+            try {
+                SharedFund fund = fundRepo.findById(fundId)
+                        .orElseThrow(() -> new EntityNotFoundException("SharedFund not found: " + fundId));
+
+                BigDecimal current = fund.getBalance() == null ? BigDecimal.ZERO : fund.getBalance();
+
+                if (!increase && amount.compareTo(current) > 0) {
+                    throw new IllegalStateException("Số dư quỹ không đủ để chi!");
+                }
+
+                BigDecimal newBalance = increase ? current.add(amount) : current.subtract(amount);
+                fund.setBalance(newBalance);
+
+                fundRepo.saveAndFlush(fund); // sẽ ném OptimisticLock nếu version bị đổi
+                return; // OK
+            } catch (OptimisticLockingFailureException e) {
+                if (attempts >= MAX_RETRY) {
+                    throw new IllegalStateException("Cập nhật quỹ thất bại do tranh chấp đồng thời. Vui lòng thử lại.", e);
+                }
+                // ngắt nhịp rất ngắn trước khi thử lại (tùy chọn)
+                try {
+                    Thread.sleep(20L * attempts);
+                } catch (InterruptedException ignored) {
+                }
+            }
+        }
     }
 
 
