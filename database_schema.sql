@@ -127,6 +127,7 @@ CREATE TABLE SharedFund
     CreatedAt    DATETIME2      DEFAULT GETDATE(),
     UpdatedAt    DATETIME2      DEFAULT GETDATE(),
     Version      BIGINT         DEFAULT 0,
+    CONSTRAINT UQ_SharedFund_Group UNIQUE (GroupId),
     FOREIGN KEY (GroupId) REFERENCES OwnershipGroup (GroupId)
 );
 GO

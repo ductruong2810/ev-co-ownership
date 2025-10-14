@@ -22,8 +22,8 @@ public class SharedFund {
     @Column(name = "FundId", nullable = false)
     private Long fundId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "GroupId", nullable = false)
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "GroupId", nullable = false, unique = true)
     private OwnershipGroup group;
 
     @Column(name = "Balance", precision = 15, scale = 2)

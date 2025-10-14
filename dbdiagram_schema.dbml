@@ -78,6 +78,10 @@ Table SharedFund {
   CreatedAt datetime [default: `now()`]
   UpdatedAt datetime [default: `now()`]
   Version bigint [default: 0]
+
+  indexes {
+    GroupId [unique, name: 'UQ_SharedFund_Group']
+  }
 }
 
 Table UsageBooking {

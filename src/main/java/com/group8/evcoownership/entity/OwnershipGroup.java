@@ -56,7 +56,7 @@ public class OwnershipGroup {
     @OneToOne(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
     private Contract contract;
 
-    @OneToOne(mappedBy = "ownershipGroup", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToOne(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
     private SharedFund sharedFund;
 
     @PrePersist
