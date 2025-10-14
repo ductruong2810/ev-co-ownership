@@ -46,12 +46,12 @@ public class PaymentService {
         return PaymentResponse.builder()
                 .id(p.getId())
                 .userId(uId)
-                .fundId(fId)
+                .fundId(p.getFund() != null ? p.getFund().getFundId() : null)
                 .userFullName(uName)
                 .amount(p.getAmount())
                 .paymentDate(p.getPaymentDate())
                 .paymentMethod(p.getPaymentMethod())
-                .status(p.getStatus())
+                .status(p.getStatus() != null ? p.getStatus().name() : null)
                 .transactionCode(p.getTransactionCode())
                 .providerResponse(p.getProviderResponse())
                 .paymentType(String.valueOf(p.getPaymentType()))
@@ -72,7 +72,7 @@ public class PaymentService {
                 .amount(req.getAmount())
                 .paymentMethod(req.getPaymentMethod())
                 .paymentType(PaymentType.valueOf(req.getPaymentType()))
-                .status("PENDING")
+                .status(PaymentStatus.Pending)
                 .transactionCode(req.getTransactionCode())
                 .build();
 
@@ -124,8 +124,9 @@ public class PaymentService {
         if (req.getTransactionCode() != null) p.setTransactionCode(req.getTransactionCode());
         if (req.getProviderResponse() != null) p.setProviderResponse(req.getProviderResponse());
         if (req.getStatus() != null) {
-            p.setStatus(req.getStatus());
-            if ("COMPLETED".equals(req.getStatus()) && p.getPaymentDate() == null) {
+            PaymentStatus target = PaymentStatus.valueOf(req.getStatus());
+            p.setStatus(target);
+            if (target == PaymentStatus.Completed && p.getPaymentDate() == null) {
                 p.setPaymentDate(LocalDateTime.now());
             }
         }
@@ -145,12 +146,12 @@ public class PaymentService {
         Payment p = paymentRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Payment not found: " + id));
 
-        if ("COMPLETED".equals(p.getStatus())) {
+        if (p.getStatus() == PaymentStatus.Completed) {
             return toDto(p);
         }
 
         // Chỉ cho phép từ Pending -> Completed
-        if (!"PENDING".equals(p.getStatus())) {
+        if (p.getStatus() != PaymentStatus.Pending) {
             throw new IllegalStateException("Invalid transition: " + p.getStatus() + " -> Completed");
         }
 
@@ -164,7 +165,7 @@ public class PaymentService {
         if (transactionCode != null) {
             p.setTransactionCode(transactionCode);
         }
-        p.setStatus("COMPLETED");
+        p.setStatus(PaymentStatus.Completed);
         if (p.getPaymentDate() == null) {
             p.setPaymentDate(LocalDateTime.now());
         }
@@ -180,16 +181,16 @@ public class PaymentService {
         Payment p = paymentRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Payment not found: " + id));
 
-        if ("FAILED".equals(p.getStatus())) {
+        if (p.getStatus() == PaymentStatus.Failed) {
             return toDto(p);
         }
 
         // Chỉ cho phép từ Pending -> Failed
-        if (!"PENDING".equals(p.getStatus())) {
+        if (p.getStatus() != PaymentStatus.Pending) {
             throw new IllegalStateException("Invalid transition: " + p.getStatus() + " -> Failed");
         }
 
-        p.setStatus("FAILED");
+        p.setStatus(PaymentStatus.Failed);
         if (providerResponseJson != null) {
             p.setProviderResponse(providerResponseJson);
         }
@@ -202,10 +203,10 @@ public class PaymentService {
         Payment p = paymentRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Payment not found: " + id));
 
-        if (!"COMPLETED".equals(p.getStatus())) {
+        if (p.getStatus() != PaymentStatus.Completed) {
             throw new IllegalStateException("Invalid transition: " + p.getStatus() + " -> Refunded");
         }
-        p.setStatus("REFUNDED");
+        p.setStatus(PaymentStatus.Refunded);
         if (providerResponseJson != null) p.setProviderResponse(providerResponseJson);
         return toDto(paymentRepo.save(p));
     }
@@ -228,8 +229,7 @@ public class PaymentService {
         Payment p = paymentRepo.findById(paymentId)
                 .orElseThrow(() -> new EntityNotFoundException("Payment not found: " + paymentId));
 
-        PaymentStatus current = PaymentStatus.valueOf(p.getStatus());
-        if (current == null) current = PaymentStatus.Pending; // fallback
+        PaymentStatus current = p.getStatus() != null ? p.getStatus() : PaymentStatus.Pending;
 
         // Idempotent: nếu đã ở đúng trạng thái, chỉ cập nhật providerResponse (nếu có) rồi trả về
         if (current == target) {
@@ -245,7 +245,7 @@ public class PaymentService {
         switch (target) {
             case Failed -> {
                 // Pending -> Failed
-                p.setStatus(String.valueOf(PaymentStatus.Failed));
+                p.setStatus(PaymentStatus.Failed);
                 if (providerResponseJson != null) p.setProviderResponse(providerResponseJson);
                 paymentRepo.save(p);
             }
@@ -254,7 +254,7 @@ public class PaymentService {
                 if (transactionCode == null || transactionCode.isBlank()) {
                     throw new IllegalArgumentException("transactionCode is required when marking Completed");
                 }
-                p.setStatus(String.valueOf(PaymentStatus.Completed));
+                p.setStatus(PaymentStatus.Completed);
                 p.setTransactionCode(transactionCode);
                 if (p.getPaymentDate() == null) p.setPaymentDate(LocalDateTime.now());
                 if (providerResponseJson != null) p.setProviderResponse(providerResponseJson);
@@ -265,7 +265,7 @@ public class PaymentService {
             }
             case Refunded -> {
                 // Completed -> Refunded
-                p.setStatus(String.valueOf(PaymentStatus.Refunded));
+                p.setStatus(PaymentStatus.Refunded);
                 if (providerResponseJson != null) p.setProviderResponse(providerResponseJson);
 
                 paymentRepo.saveAndFlush(p);

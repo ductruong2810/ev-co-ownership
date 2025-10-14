@@ -29,6 +29,9 @@ public class SharedFund {
     @Column(name = "Balance", precision = 15, scale = 2)
     private BigDecimal balance;
 
+    @Column(name = "TargetAmount", precision = 15, scale = 2)
+    private BigDecimal targetAmount;
+
     @Column(name = "CreatedAt", updatable = false, insertable = false)
     private LocalDateTime createdAt;
 
@@ -46,6 +49,7 @@ public class SharedFund {
     @PrePersist
     public void onCreate() {
         if (balance == null) balance = BigDecimal.ZERO;
+        if (targetAmount == null) targetAmount = BigDecimal.ZERO;
     }
 
     @PreUpdate
