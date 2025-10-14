@@ -14,7 +14,7 @@ GO
 -- =============================================
 CREATE TABLE Roles
 (
-    RoleId   BIGINT IDENTITY(1,1) PRIMARY KEY,
+    RoleId   BIGINT IDENTITY (1,1) PRIMARY KEY,
     RoleName NVARCHAR(30) NOT NULL UNIQUE
 );
 GO
@@ -24,7 +24,7 @@ GO
 -- =============================================
 CREATE TABLE Users
 (
-    UserId       BIGINT IDENTITY(1,1) PRIMARY KEY,
+    UserId       BIGINT IDENTITY (1,1) PRIMARY KEY,
     FullName     NVARCHAR(100) NOT NULL,
     Email        NVARCHAR(100) NOT NULL UNIQUE,
     PasswordHash NVARCHAR(255) NOT NULL,
@@ -32,8 +32,8 @@ CREATE TABLE Users
     AvatarUrl    NVARCHAR(500),
     RoleId       BIGINT,
     Status       NVARCHAR(20) DEFAULT 'Active',
-    CreatedAt    DATETIME2 DEFAULT GETDATE(),
-    UpdatedAt    DATETIME2 DEFAULT GETDATE(),
+    CreatedAt    DATETIME2    DEFAULT GETDATE(),
+    UpdatedAt    DATETIME2    DEFAULT GETDATE(),
     FOREIGN KEY (RoleId) REFERENCES Roles (RoleId)
 );
 GO
@@ -43,12 +43,12 @@ GO
 -- =============================================
 CREATE TABLE OwnershipGroup
 (
-    GroupId   BIGINT IDENTITY(1,1) PRIMARY KEY,
-    GroupName NVARCHAR(100) NOT NULL,
-    Status    NVARCHAR(20) DEFAULT 'Pending',
+    GroupId     BIGINT IDENTITY (1,1) PRIMARY KEY,
+    GroupName   NVARCHAR(100) NOT NULL,
+    Status      NVARCHAR(20) DEFAULT 'Pending',
     Description NVARCHAR(MAX),
-    CreatedAt DATETIME2 DEFAULT GETDATE(),
-    UpdatedAt DATETIME2 DEFAULT GETDATE()
+    CreatedAt   DATETIME2    DEFAULT GETDATE(),
+    UpdatedAt   DATETIME2    DEFAULT GETDATE()
 );
 GO
 
@@ -57,12 +57,12 @@ GO
 -- =============================================
 CREATE TABLE OwnershipShare
 (
-    UserId                BIGINT        NOT NULL,
-    GroupId               BIGINT        NOT NULL,
-    GroupRole             NVARCHAR(50)  DEFAULT 'Member',
-    OwnershipPercentage   DECIMAL(5, 2) NOT NULL CHECK (OwnershipPercentage > 0 AND OwnershipPercentage <= 100),
-    JoinDate              DATETIME2     DEFAULT GETDATE(),
-    UpdatedAt             DATETIME2     DEFAULT GETDATE(),
+    UserId              BIGINT        NOT NULL,
+    GroupId             BIGINT        NOT NULL,
+    GroupRole           NVARCHAR(50) DEFAULT 'Member',
+    OwnershipPercentage DECIMAL(5, 2) NOT NULL CHECK (OwnershipPercentage > 0 AND OwnershipPercentage <= 100),
+    JoinDate            DATETIME2    DEFAULT GETDATE(),
+    UpdatedAt           DATETIME2    DEFAULT GETDATE(),
     CONSTRAINT PK_OwnershipShare PRIMARY KEY (UserId, GroupId),
     FOREIGN KEY (UserId) REFERENCES Users (UserId),
     FOREIGN KEY (GroupId) REFERENCES OwnershipGroup (GroupId)
@@ -74,15 +74,15 @@ GO
 -- =============================================
 CREATE TABLE Vehicle
 (
-    VehicleId    BIGINT IDENTITY(1,1) PRIMARY KEY,
-    Brand        NVARCHAR(100),
-    Model        NVARCHAR(100),
-    LicensePlate NVARCHAR(20),
+    VehicleId     BIGINT IDENTITY (1,1) PRIMARY KEY,
+    Brand         NVARCHAR(100),
+    Model         NVARCHAR(100),
+    LicensePlate  NVARCHAR(20),
     ChassisNumber NVARCHAR(30),
-    QrCode       NVARCHAR(255),
-    GroupId      BIGINT,
-    CreatedAt    DATETIME2 DEFAULT GETDATE(),
-    UpdatedAt    DATETIME2 DEFAULT GETDATE(),
+    QrCode        NVARCHAR(255),
+    GroupId       BIGINT,
+    CreatedAt     DATETIME2 DEFAULT GETDATE(),
+    UpdatedAt     DATETIME2 DEFAULT GETDATE(),
     FOREIGN KEY (GroupId) REFERENCES OwnershipGroup (GroupId)
 );
 GO
@@ -92,10 +92,10 @@ GO
 -- =============================================
 CREATE TABLE VehicleImages
 (
-    ImageId    BIGINT IDENTITY(1,1) PRIMARY KEY,
-    VehicleId  BIGINT NOT NULL,
+    ImageId    BIGINT IDENTITY (1,1) PRIMARY KEY,
+    VehicleId  BIGINT        NOT NULL,
     ImageUrl   NVARCHAR(500) NOT NULL,
-    ImageType  NVARCHAR(20) NOT NULL,
+    ImageType  NVARCHAR(20)  NOT NULL,
     UploadedAt DATETIME2 DEFAULT GETDATE(),
     FOREIGN KEY (VehicleId) REFERENCES Vehicle (VehicleId)
 );
@@ -106,7 +106,7 @@ GO
 -- =============================================
 CREATE TABLE Contract
 (
-    ContractId      BIGINT IDENTITY(1,1) PRIMARY KEY,
+    ContractId      BIGINT IDENTITY (1,1) PRIMARY KEY,
     GroupId         BIGINT NOT NULL,
     ContractContent NVARCHAR(MAX),
     ContractUrl     NVARCHAR(500),
@@ -120,13 +120,13 @@ GO
 -- =============================================
 CREATE TABLE SharedFund
 (
-    FundId    BIGINT IDENTITY(1,1) PRIMARY KEY,
-    GroupId   BIGINT NOT NULL,
-    Balance   DECIMAL(15, 2) DEFAULT 0,
+    FundId       BIGINT IDENTITY (1,1) PRIMARY KEY,
+    GroupId      BIGINT NOT NULL,
+    Balance      DECIMAL(15, 2) DEFAULT 0,
     TargetAmount DECIMAL(15, 2) DEFAULT 0,
-    CreatedAt DATETIME2      DEFAULT GETDATE(),
-    UpdatedAt DATETIME2      DEFAULT GETDATE(),
-    Version   BIGINT         DEFAULT 0,
+    CreatedAt    DATETIME2      DEFAULT GETDATE(),
+    UpdatedAt    DATETIME2      DEFAULT GETDATE(),
+    Version      BIGINT         DEFAULT 0,
     FOREIGN KEY (GroupId) REFERENCES OwnershipGroup (GroupId)
 );
 GO
@@ -136,7 +136,7 @@ GO
 -- =============================================
 CREATE TABLE UsageBooking
 (
-    BookingId     BIGINT IDENTITY(1,1) PRIMARY KEY,
+    BookingId     BIGINT IDENTITY (1,1) PRIMARY KEY,
     UserId        BIGINT    NOT NULL,
     VehicleId     BIGINT    NOT NULL,
     StartDateTime DATETIME2 NOT NULL,
@@ -144,8 +144,8 @@ CREATE TABLE UsageBooking
     Status        NVARCHAR(20) DEFAULT 'Pending',
     TotalDuration INT,
     Priority      INT,
-    CreatedAt     DATETIME2 DEFAULT GETDATE(),
-    UpdatedAt     DATETIME2 DEFAULT GETDATE(),
+    CreatedAt     DATETIME2    DEFAULT GETDATE(),
+    UpdatedAt     DATETIME2    DEFAULT GETDATE(),
     FOREIGN KEY (UserId) REFERENCES Users (UserId),
     FOREIGN KEY (VehicleId) REFERENCES Vehicle (VehicleId)
 );
@@ -156,11 +156,11 @@ GO
 -- =============================================
 CREATE TABLE Maintenance
 (
-    MaintenanceId     BIGINT IDENTITY(1,1) PRIMARY KEY,
+    MaintenanceId     BIGINT IDENTITY (1,1) PRIMARY KEY,
     VehicleId         BIGINT NOT NULL,
     RequestedBy       BIGINT NOT NULL,
     ApprovedBy        BIGINT,
-    RequestDate       DATETIME2 DEFAULT GETDATE(),
+    RequestDate       DATETIME2    DEFAULT GETDATE(),
     ApprovalDate      DATETIME2,
     NextDueDate       DATE,
     Description       NVARCHAR(MAX),
@@ -177,7 +177,7 @@ GO
 -- =============================================
 CREATE TABLE Notification
 (
-    NotificationId   BIGINT IDENTITY(1,1) PRIMARY KEY,
+    NotificationId   BIGINT IDENTITY (1,1) PRIMARY KEY,
     UserId           BIGINT,
     Title            NVARCHAR(255),
     Message          NVARCHAR(MAX),
@@ -194,7 +194,7 @@ GO
 -- =============================================
 CREATE TABLE Incident
 (
-    IncidentId    BIGINT IDENTITY(1,1) PRIMARY KEY,
+    IncidentId    BIGINT IDENTITY (1,1) PRIMARY KEY,
     BookingId     BIGINT NOT NULL,
     IncidentType  NVARCHAR(50),
     Description   NVARCHAR(MAX),
@@ -202,11 +202,11 @@ CREATE TABLE Incident
     ActualCost    DECIMAL(12, 2),
     Status        NVARCHAR(20) DEFAULT 'Reported',
     ImageUrls     NVARCHAR(MAX),
-    IncidentDate  DATETIME2 DEFAULT GETDATE(),
+    IncidentDate  DATETIME2    DEFAULT GETDATE(),
     ResolvedDate  DATETIME2,
     ResolvedBy    BIGINT,
     Notes         NVARCHAR(1000),
-    CreatedAt     DATETIME2 DEFAULT GETDATE(),
+    CreatedAt     DATETIME2    DEFAULT GETDATE(),
     FOREIGN KEY (BookingId) REFERENCES UsageBooking (BookingId),
     FOREIGN KEY (ResolvedBy) REFERENCES Users (UserId)
 );
@@ -217,7 +217,7 @@ GO
 -- =============================================
 CREATE TABLE VehicleCheck
 (
-    Id           BIGINT IDENTITY(1,1) PRIMARY KEY,
+    Id           BIGINT IDENTITY (1,1) PRIMARY KEY,
     BookingId    BIGINT,
     CheckType    NVARCHAR(20),
     Odometer     INT,
@@ -236,16 +236,16 @@ GO
 -- =============================================
 CREATE TABLE UserDocument
 (
-    DocumentId   BIGINT IDENTITY(1,1) PRIMARY KEY,
-    UserId       BIGINT NOT NULL,
+    DocumentId   BIGINT IDENTITY (1,1) PRIMARY KEY,
+    UserId       BIGINT        NOT NULL,
     DocumentType NVARCHAR(20),
     Side         NVARCHAR(10),
     ImageUrl     NVARCHAR(500) NOT NULL,
     Status       NVARCHAR(20) DEFAULT 'Pending',
     ReviewNote   NVARCHAR(MAX),
     ReviewedBy   BIGINT,
-    CreatedAt    DATETIME2 DEFAULT GETDATE(),
-    UpdatedAt    DATETIME2 DEFAULT GETDATE(),
+    CreatedAt    DATETIME2    DEFAULT GETDATE(),
+    UpdatedAt    DATETIME2    DEFAULT GETDATE(),
     FOREIGN KEY (ReviewedBy) REFERENCES Users (UserId)
 );
 GO
@@ -255,7 +255,7 @@ GO
 -- =============================================
 CREATE TABLE Voting
 (
-    VotingId    BIGINT IDENTITY(1,1) PRIMARY KEY,
+    VotingId    BIGINT IDENTITY (1,1) PRIMARY KEY,
     GroupId     BIGINT,
     Title       NVARCHAR(255),
     Description NVARCHAR(MAX),
@@ -265,7 +265,7 @@ CREATE TABLE Voting
     Deadline    DATETIME2,
     Status      NVARCHAR(20) DEFAULT 'Active',
     CreatedBy   BIGINT,
-    CreatedAt   DATETIME2 DEFAULT GETDATE(),
+    CreatedAt   DATETIME2    DEFAULT GETDATE(),
     FOREIGN KEY (GroupId) REFERENCES OwnershipGroup (GroupId)
 );
 GO
@@ -275,7 +275,7 @@ GO
 -- =============================================
 CREATE TABLE Dispute
 (
-    DisputeId         BIGINT IDENTITY(1,1) PRIMARY KEY,
+    DisputeId         BIGINT IDENTITY (1,1) PRIMARY KEY,
     FundId            BIGINT NOT NULL,
     CreatedBy         BIGINT,
     DisputeType       NVARCHAR(50),
@@ -287,8 +287,8 @@ CREATE TABLE Dispute
     ResolutionAmount  DECIMAL(12, 2),
     Status            NVARCHAR(20) DEFAULT 'Open',
     ResolvedBy        BIGINT,
-    CreatedAt         DATETIME2 DEFAULT GETDATE(),
-    UpdatedAt         DATETIME2 DEFAULT GETDATE(),
+    CreatedAt         DATETIME2    DEFAULT GETDATE(),
+    UpdatedAt         DATETIME2    DEFAULT GETDATE(),
     ResolvedAt        DATETIME2,
     FOREIGN KEY (FundId) REFERENCES SharedFund (FundId),
     FOREIGN KEY (ResolvedBy) REFERENCES Users (UserId)
@@ -300,7 +300,7 @@ GO
 -- =============================================
 CREATE TABLE Expense
 (
-    ExpenseId   BIGINT IDENTITY(1,1) PRIMARY KEY,
+    ExpenseId   BIGINT IDENTITY (1,1) PRIMARY KEY,
     FundId      BIGINT,
     SourceType  NVARCHAR(50),
     SourceId    BIGINT,
@@ -316,17 +316,17 @@ GO
 -- =============================================
 CREATE TABLE Payment
 (
-    PaymentId        BIGINT IDENTITY(1,1) PRIMARY KEY,
+    PaymentId        BIGINT IDENTITY (1,1) PRIMARY KEY,
     UserId           BIGINT         NOT NULL,
     FundId           BIGINT         NOT NULL,
     Amount           DECIMAL(12, 2) NOT NULL,
-    PaymentDate      DATETIME2 DEFAULT GETDATE(),
+    PaymentDate      DATETIME2    DEFAULT GETDATE(),
     PaymentMethod    NVARCHAR(50),
     Status           NVARCHAR(20) DEFAULT 'Pending',
     TransactionCode  NVARCHAR(100),
     ProviderResponse NVARCHAR(MAX),
     PaymentType      NVARCHAR(20),
-    Version          BIGINT DEFAULT 0,
+    Version          BIGINT       DEFAULT 0,
     FOREIGN KEY (UserId) REFERENCES Users (UserId),
     FOREIGN KEY (FundId) REFERENCES SharedFund (FundId)
 );
@@ -337,10 +337,10 @@ GO
 -- =============================================
 CREATE TABLE OtpToken
 (
-    TokenId   BIGINT IDENTITY(1,1) PRIMARY KEY,
+    TokenId   BIGINT IDENTITY (1,1) PRIMARY KEY,
     Email     NVARCHAR(100) NOT NULL,
-    OtpCode   NVARCHAR(6) NOT NULL,
-    ExpiresAt DATETIME2 NOT NULL,
+    OtpCode   NVARCHAR(6)   NOT NULL,
+    ExpiresAt DATETIME2     NOT NULL,
     IsUsed    BIT       DEFAULT 0,
     CreatedAt DATETIME2 DEFAULT GETDATE()
 );
@@ -418,15 +418,22 @@ GO
 -- =============================================
 
 -- Roles
-INSERT INTO Roles(RoleName) VALUES ('Co_owner'), ('Staff'), ('Admin'), ('Technician');
+INSERT INTO Roles(RoleName)
+VALUES ('Co_owner'),
+       ('Staff'),
+       ('Admin'),
+       ('Technician');
 
 -- Users
 INSERT INTO Users(FullName, Email, PasswordHash, PhoneNumber, RoleId, Status)
-VALUES
-('Alice Co-owner', 'alice@example.com', '$2a$12$jDAn4z57D6u5Pr3Dlzu2mebpyxF4XiJjAYQQgUtpi2iMg3aqNeIN6', '0900000001', 1, 'ACTIVE'),
-('Bob Staff', 'bob@example.com', '$2a$12$HOG0QPsIqB1xmu5GuxCeMugoxHxU2LHSDWsbges5uJ5WnNGBER8Qm', '0900000002', 2, 'ACTIVE'),
-('Carol Admin', 'carol@example.com', '$2a$12$zQ7SSv.Z6SHtN1jRWG4O9OQzqvgyO5kxH11ur/oO2yYpgl93VJLQW', '0900000003', 3, 'ACTIVE'),
-('Terry Technician', 'terry@example.com', '$2a$12$gRZ7aGctqj.2.WN19t8X3uWQUFON/i9m18fMwifRewcJNurCmWEwS', '0900000004', 4, 'ACTIVE');
+VALUES ('Alice Co-owner', 'alice@example.com', '$2a$12$jDAn4z57D6u5Pr3Dlzu2mebpyxF4XiJjAYQQgUtpi2iMg3aqNeIN6',
+        '0900000001', 1, 'ACTIVE'),
+       ('Bob Staff', 'bob@example.com', '$2a$12$HOG0QPsIqB1xmu5GuxCeMugoxHxU2LHSDWsbges5uJ5WnNGBER8Qm', '0900000002', 2,
+        'ACTIVE'),
+       ('Carol Admin', 'carol@example.com', '$2a$12$zQ7SSv.Z6SHtN1jRWG4O9OQzqvgyO5kxH11ur/oO2yYpgl93VJLQW',
+        '0900000003', 3, 'ACTIVE'),
+       ('Terry Technician', 'terry@example.com', '$2a$12$gRZ7aGctqj.2.WN19t8X3uWQUFON/i9m18fMwifRewcJNurCmWEwS',
+        '0900000004', 4, 'ACTIVE');
 
 -- Group
 INSERT INTO OwnershipGroup(GroupName, Status, Description)
@@ -440,9 +447,10 @@ VALUES (1, 1, 'Admin', 50.00);
 -- Bổ sung tỉ lệ sở hữu cho user 2,3
 -- Chỉ Co_owner mới được đồng sở hữu: tạo thêm 2 Co_owner mới (user 5,6)
 INSERT INTO Users (FullName, Email, PasswordHash, PhoneNumber, RoleId, Status)
-VALUES
-('David Co-owner', 'david@example.com', '$2a$12$jxfqrPEtC6qidnrlRfYxSOM9JPdUj24DGnblLX.PnN7dckxaZkwIK', '0900000005', 1, 'Active'),
-('Emma  Co-owner', 'emma@example.com',  '$2a$12$wAfwDpecaFzwNh07OOieZOmSwbrP.Bf2B7dgC/58t0EV1QXNskxlW', '0900000006', 1, 'Active');
+VALUES ('David Co-owner', 'david@example.com', '$2a$12$jxfqrPEtC6qidnrlRfYxSOM9JPdUj24DGnblLX.PnN7dckxaZkwIK',
+        '0900000005', 1, 'Active'),
+       ('Emma  Co-owner', 'emma@example.com', '$2a$12$wAfwDpecaFzwNh07OOieZOmSwbrP.Bf2B7dgC/58t0EV1QXNskxlW',
+        '0900000006', 1, 'Active');
 
 -- Gán tỉ lệ sở hữu cho user 5,6 thay vì Staff/Admin
 INSERT INTO OwnershipShare(UserId, GroupId, GroupRole, OwnershipPercentage)
@@ -464,15 +472,14 @@ VALUES (1, 0, 0, 0);
 
 -- Booking sample
 INSERT INTO UsageBooking(UserId, VehicleId, StartDateTime, EndDateTime, Status)
-VALUES (1, 1, DATEADD(hour,-1, GETDATE()), DATEADD(hour,2, GETDATE()), 'PENDING');
+VALUES (1, 1, DATEADD(hour, -1, GETDATE()), DATEADD(hour, 2, GETDATE()), 'PENDING');
 
 -- Payments demo (Pending, Completed, Failed, Refunded)
 INSERT INTO Payment(UserId, FundId, Amount, PaymentMethod, Status, PaymentType, TransactionCode)
-VALUES
-(1, 1, 1000000, 'BANK_TRANSFER', 'Pending',  'CONTRIBUTION', 'TXN-P-001'),
-(1, 1, 1500000, 'BANK_TRANSFER', 'Completed', 'CONTRIBUTION', 'TXN-C-001'),
-(1, 1, 200000,  'BANK_TRANSFER', 'Failed',    'MAINTENANCE_FEE', 'TXN-F-001'),
-(1, 1, 1500000, 'BANK_TRANSFER', 'Refunded',  'CONTRIBUTION', 'TXN-R-001');
+VALUES (1, 1, 1000000, 'BANK_TRANSFER', 'Pending', 'CONTRIBUTION', 'TXN-P-001'),
+       (1, 1, 1500000, 'BANK_TRANSFER', 'Completed', 'CONTRIBUTION', 'TXN-C-001'),
+       (1, 1, 200000, 'BANK_TRANSFER', 'Failed', 'MAINTENANCE_FEE', 'TXN-F-001'),
+       (1, 1, 1500000, 'BANK_TRANSFER', 'Refunded', 'CONTRIBUTION', 'TXN-R-001');
 
 -- Expense demo
 INSERT INTO Expense(FundId, SourceType, SourceId, Description, Amount)

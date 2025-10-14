@@ -1,7 +1,7 @@
 package com.group8.evcoownership.entity;
 
-import com.group8.evcoownership.enums.PaymentType;
 import com.group8.evcoownership.enums.PaymentStatus;
+import com.group8.evcoownership.enums.PaymentType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;

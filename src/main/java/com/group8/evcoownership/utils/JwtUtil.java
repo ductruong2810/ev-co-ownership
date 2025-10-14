@@ -48,7 +48,8 @@ public class JwtUtil {
 
     /**
      * Generate Refresh Token với Remember Me option
-     * @param user User object
+     *
+     * @param user       User object
      * @param rememberMe true = 30 ngày, false = 7 ngày
      */
     public String generateRefreshToken(User user, boolean rememberMe) {
