@@ -101,15 +101,15 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("message", message));
     }
 
-    // ================= REGISTER - STEP 2: XÁC MINH OTP =================
+    // ================= REGISTER - STEP 2: XÁC MINH OTP (ĐÃ SỬA) =================
     @PostMapping("/register/verify-otp")
-    public ResponseEntity<Map<String, String>> verifyOtp(
-            @RequestBody String email,
-            @RequestBody String otp) {
+    public ResponseEntity<RegisterResponseDTO> verifyOtp(
+            @Valid @RequestBody VerifyOtpRequestDTO request) {
 
-        String message = authService.verifyOtp(email, otp);
-        return ResponseEntity.ok(Map.of("message", message));
+        RegisterResponseDTO response = authService.verifyOtp(request.getOtp());
+        return ResponseEntity.ok(response);
     }
+
 
     // ================= REGISTER - RESEND OTP =================
     @PostMapping("/register/resend-otp")
