@@ -216,8 +216,26 @@ Table Payment {
   Status varchar(20) [default: 'Pending']
   TransactionCode varchar(100)
   ProviderResponse text
-  PaymentType varchar(20) [note: 'CONTRIBUTION, PENALTY, MAINTENANCE_FEE']
+  PaymentType varchar(20) [not null, note: 'CONTRIBUTION, PENALTY, MAINTENANCE_FEE']
   Version bigint [default: 0]
+}
+
+Table FinancialReport {
+  ReportId bigint [pk, increment]
+  FundId bigint [ref: > SharedFund.FundId, not null]
+  ReportMonth int
+  ReportYear int
+  TotalIncome decimal(15,2)
+  TotalExpense decimal(15,2)
+  GeneratedBy bigint [ref: > Users.UserId, not null]
+  CreatedAt datetime [default: `now()`]
+  UpdatedAt datetime [default: `now()`]
+
+  indexes {
+    FundId [name: 'IX_FinancialReport_FundId']
+    GeneratedBy [name: 'IX_FinancialReport_GeneratedBy']
+    (ReportYear, ReportMonth) [name: 'IX_FinancialReport_ReportYear_Month']
+  }
 }
 
 Table OtpToken {
