@@ -104,8 +104,8 @@ public class AuthController {
     // ================= REGISTER - STEP 2: XÁC MINH OTP =================
     @PostMapping("/register/verify-otp")
     public ResponseEntity<Map<String, String>> verifyOtp(
-            @RequestParam String email,
-            @RequestParam String otp) {
+            @RequestBody String email,
+            @RequestBody String otp) {
 
         String message = authService.verifyOtp(email, otp);
         return ResponseEntity.ok(Map.of("message", message));

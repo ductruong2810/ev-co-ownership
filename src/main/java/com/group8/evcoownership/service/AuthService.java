@@ -70,10 +70,11 @@ public class AuthService {
     // ================= REQUEST OTP =================
     public String requestOtp(RegisterRequestDTO request) {
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already registered");
+            throw new IllegalArgumentException("Email đã được đăng ký");
         }
+
         if (!request.getPassword().equals(request.getConfirmPassword())) {
-            throw new RuntimeException("Passwords do not match");
+            throw new IllegalArgumentException("Mật khẩu và xác nhận mật khẩu không khớp");
         }
 
         String otp = otpUtil.generateOtp(request.getEmail());

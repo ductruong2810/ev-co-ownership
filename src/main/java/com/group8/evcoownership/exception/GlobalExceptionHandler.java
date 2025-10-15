@@ -1,6 +1,7 @@
 package com.group8.evcoownership.exception;
 
 import com.group8.evcoownership.dto.ErrorResponseDTO;
+import com.group8.evcoownership.dto.ValidationErrorResponseDTO;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
@@ -13,16 +14,87 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-    // ========== 401 - Unauthorized (MỨC ƯU TIÊN CAO) ==========
+    // ========== VALIDATION ERRORS (ĐÃ SỬA) ==========
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ValidationErrorResponseDTO> handleValidationErrors(
+            MethodArgumentNotValidException ex, WebRequest request) {
+
+        List<ValidationErrorResponseDTO.FieldError> errors = new ArrayList<>();
+
+        // Field-level errors (email, password, fullName...)
+        ex.getBindingResult().getFieldErrors().forEach(error -> {
+            errors.add(ValidationErrorResponseDTO.FieldError.builder()
+                    .field(error.getField())
+                    .message(error.getDefaultMessage())
+                    .build());
+        });
+
+        // ========== ĐÃ SỬA: Class-level errors ==========
+        ex.getBindingResult().getGlobalErrors().forEach(error -> {
+            // Detect loại validation để set field name phù hợp
+            String fieldName = "general";
+            String errorCode = error.getCode();
+
+            if (errorCode != null) {
+                if (errorCode.contains("PasswordMatches") ||
+                        error.getDefaultMessage().toLowerCase().contains("password")) {
+                    fieldName = "password";
+                } else if (errorCode.contains("EmailMatches") ||
+                        error.getDefaultMessage().toLowerCase().contains("email")) {
+                    fieldName = "email";
+                }
+            }
+
+            errors.add(ValidationErrorResponseDTO.FieldError.builder()
+                    .field(fieldName)
+                    .message(error.getDefaultMessage())
+                    .build());
+        });
+
+        ValidationErrorResponseDTO response = ValidationErrorResponseDTO.builder()
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error("Validation Failed")
+                .message("Dữ liệu không hợp lệ")
+                .path(request.getDescription(false).replace("uri=", ""))
+                .errors(errors)
+                .build();
+
+        return ResponseEntity.badRequest().body(response);
+    }
+
+    // ========== CONSTRAINT VIOLATIONS ==========
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ValidationErrorResponseDTO> handleConstraintViolation(
+            ConstraintViolationException ex, WebRequest request) {
+
+        List<ValidationErrorResponseDTO.FieldError> errors = new ArrayList<>();
+
+        ex.getConstraintViolations().forEach(violation -> {
+            errors.add(ValidationErrorResponseDTO.FieldError.builder()
+                    .field(violation.getPropertyPath().toString())
+                    .message(violation.getMessage())
+                    .build());
+        });
+
+        ValidationErrorResponseDTO response = ValidationErrorResponseDTO.builder()
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error("Validation Failed")
+                .message("Dữ liệu không hợp lệ")
+                .path(request.getDescription(false).replace("uri=", ""))
+                .errors(errors)
+                .build();
+
+        return ResponseEntity.badRequest().body(response);
+    }
+
+    // ========== 401 - UNAUTHORIZED ==========
     @ExceptionHandler(InvalidCredentialsException.class)
     public ResponseEntity<ErrorResponseDTO> handleInvalidCredentials(
             InvalidCredentialsException ex, WebRequest request) {
@@ -38,7 +110,7 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
     }
 
-    // ========== 404 - Not Found ==========
+    // ========== 404 - NOT FOUND ==========
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<ErrorResponseDTO> handleEntityNotFound(
             EntityNotFoundException ex, WebRequest request) {
@@ -52,7 +124,7 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
     }
 
-    // ========== 409 - Conflict ==========
+    // ========== 409 - CONFLICT ==========
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ErrorResponseDTO> handleIllegalState(
             IllegalStateException ex, WebRequest request) {
@@ -66,7 +138,7 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
     }
 
-    // ========== 400 - Bad Request ==========
+    // ========== 400 - BAD REQUEST ==========
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponseDTO> handleIllegalArgument(
             IllegalArgumentException ex, WebRequest request) {
@@ -80,55 +152,24 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(response);
     }
 
-    // ========== Validation Errors ==========
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<?> handleValidationErrors(
-            MethodArgumentNotValidException ex, WebRequest request) {
+    // ========== 400 - IMAGE VALIDATION ==========
+    @ExceptionHandler(ImageValidationException.class)
+    public ResponseEntity<ErrorResponseDTO> handleImageValidation(
+            ImageValidationException ex, WebRequest request) {
 
-        List<Map<String, String>> errors = new ArrayList<>();
-
-        // Field-level errors
-        ex.getBindingResult().getFieldErrors().forEach(error -> {
-            Map<String, String> err = new HashMap<>();
-            err.put("field", error.getField());
-            err.put("message", error.getDefaultMessage());
-            errors.add(err);
-        });
-
-        // Class-level errors
-        ex.getBindingResult().getGlobalErrors().forEach(error -> {
-            Map<String, String> err = new HashMap<>();
-            err.put("field", "global");
-            err.put("message", error.getDefaultMessage());
-            errors.add(err);
-        });
+        logger.warn("Image validation failed: {}", ex.getMessage());
 
         ErrorResponseDTO response = new ErrorResponseDTO(
                 HttpStatus.BAD_REQUEST.value(),
-                "Validation Failed",
-                errors.toString(),
+                "Image Validation Failed",
+                ex.getMessage(),
                 request.getDescription(false).replace("uri=", "")
         );
 
         return ResponseEntity.badRequest().body(response);
     }
 
-    // ========== Constraint Violations ==========
-    @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<?> handleConstraintViolation(ConstraintViolationException ex) {
-        List<Map<String, String>> errors = new ArrayList<>();
-
-        ex.getConstraintViolations().forEach(violation -> {
-            Map<String, String> err = new HashMap<>();
-            err.put("field", violation.getPropertyPath().toString());
-            err.put("message", violation.getMessage());
-            errors.add(err);
-        });
-
-        return ResponseEntity.badRequest().body(errors);
-    }
-
-    // ========== 500 - Fallback (ĐẶT CUỐI CÙNG) ==========
+    // ========== 500 - INTERNAL SERVER ERROR (FALLBACK) ==========
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDTO> handleAll(Exception ex, WebRequest request) {
         logger.error("An unexpected error occurred: ", ex);
@@ -136,7 +177,7 @@ public class GlobalExceptionHandler {
         ErrorResponseDTO response = new ErrorResponseDTO(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "Internal Server Error",
-                "An unexpected internal server error occurred.",
+                "Đã xảy ra lỗi không mong muốn",
                 request.getDescription(false).replace("uri=", "")
         );
 
