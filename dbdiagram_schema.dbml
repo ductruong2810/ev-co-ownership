@@ -208,7 +208,7 @@ Table Expense {
 
 Table Payment {
   PaymentId bigint [pk, increment]
-  UserId bigint [ref: > Users.UserId, not null]
+  PayerUserId bigint [ref: > Users.UserId, not null, note: 'User who paid (initiator)']
   FundID bigint [ref: > SharedFund.FundId, not null]
   Amount decimal(12,2) [not null]
   PaymentDate datetime [default: `now()`]
@@ -218,6 +218,20 @@ Table Payment {
   ProviderResponse text
   PaymentType varchar(20) [not null, note: 'CONTRIBUTION, PENALTY, MAINTENANCE_FEE']
   Version bigint [default: 0]
+
+  // Personal payment support (money still goes to fund but tagged as personal)
+  PaymentCategory varchar(20) [default: 'GROUP', note: 'GROUP or PERSONAL']
+  ChargedUserId bigint [ref: > Users.UserId, note: 'User held personally responsible (required when PERSONAL)']
+  SourceDisputeId bigint [ref: > Dispute.DisputeId, note: 'If originated from a dispute']
+  PersonalReason text
+
+  indexes {
+    PaymentCategory [name: 'IX_Payment_Category']
+    ChargedUserId [name: 'IX_Payment_ChargedUserId']
+    SourceDisputeId [name: 'IX_Payment_SourceDisputeId']
+  }
+
+  note: 'Rule: when PaymentCategory = PERSONAL then ChargedUserId must be NOT NULL.'
 }
 
 Table FinancialReport {
@@ -245,4 +259,109 @@ Table OtpToken {
   ExpiresAt datetime [not null]
   IsUsed boolean [default: false]
   CreatedAt datetime [default: `now()`]
+}
+// ===== Add-on: Dispute processing (no change to Dispute) =====
+
+Table DisputeTicket {
+  TicketId bigint [pk, increment]
+  DisputeId bigint [not null, ref: > Dispute.DisputeId]
+
+  Status varchar(30) [not null, default: 'OPEN']         // OPEN/IN_REVIEW/RESOLVED/REJECTED
+  Priority varchar(20) [not null, default: 'MEDIUM']     // LOW/MEDIUM/HIGH/URGENT
+  AssignedTo bigint                                      // Users.UserId (staff)
+  OpenedAt datetime [not null, default: `now()`]
+  DueFirstResponseAt datetime
+  DueResolutionAt datetime
+
+  indexes {
+    DisputeId [name: 'IX_DisputeTicket_DisputeId']
+    Status [name: 'IX_DisputeTicket_Status']
+    AssignedTo [name: 'IX_DisputeTicket_AssignedTo']
+  }
+}
+
+Table DisputeEvent {
+  EventId bigint [pk, increment]
+  TicketId bigint [ref: > DisputeTicket.TicketId]
+
+  ActorUserId bigint
+  ActorRole varchar(20)                                  // USER/STAFF/SYSTEM
+  EventType varchar(40) [not null]                       // CREATED/ATTACHMENT_ADDED/.../CLOSED
+  OldValue varchar(200)
+  NewValue varchar(200)
+  Note text
+  CreatedAt datetime [not null, default: `now()`]
+
+  indexes {
+    TicketId [name: 'IX_DisputeEvent_TicketId']
+    EventType [name: 'IX_DisputeEvent_EventType']
+  }
+}
+
+Table DisputeAttachment {
+  AttachmentId bigint [pk, increment]
+  DisputeId bigint [not null, ref: > Dispute.DisputeId]
+
+  FileName varchar(255) [not null]
+  MimeType varchar(100) [not null]
+  SizeBytes bigint [not null]
+  StorageUrl varchar(1000) [not null]                   // URL S3/Blob/Local
+  Sha256 varchar(64)                                    // checksum (optional)
+  ThumbnailUrl varchar(1000)
+  MetaJson text                                         // EXIF/width/height/OCR...
+  UploadedBy bigint [not null]                          // Users.UserId
+  Visibility varchar(20) [not null, default: 'USER']    // USER/STAFF/INTERNAL
+  Status varchar(20) [not null, default: 'ACTIVE']      // ACTIVE/SOFT_DELETED
+  CreatedAt datetime [not null, default: `now()`]
+  DeletedAt datetime
+
+  indexes {
+    DisputeId [name: 'IX_DisputeAttachment_DisputeId']
+    UploadedBy [name: 'IX_DisputeAttachment_UploadedBy']
+  }
+}
+
+// ===== Outcomes (kết quả xử lý) =====
+
+Table Refund {
+  RefundId bigint [pk, increment]
+  DisputeId bigint [not null, ref: > Dispute.DisputeId]
+
+  Amount decimal(15,2) [not null]
+  Method varchar(30) [not null]                         // VNPAY/BANK/OTHER
+  TxnRef varchar(100)                                   // mã giao dịch
+  Status varchar(20) [not null, default: 'PENDING']     // PENDING/SUCCESS/FAILED
+  CreatedAt datetime [not null, default: `now()`]
+  SettledAt datetime
+  Note text
+
+  // VNPAY integration fields
+  Provider varchar(20) [default: 'VNPAY']               // Payment gateway
+  ProviderTxnRef varchar(100)                           // original VNPAY txn ref
+  ProviderRefundRef varchar(100)                        // VNPAY refund txn ref
+  ReasonCode varchar(20)                                // VNPAY response/err code (e.g., 00)
+  Channel varchar(20)                                   // QR/CARD
+  RawResponse text                                      // gateway JSON payload
+
+  indexes {
+    DisputeId [name: 'IX_Refund_DisputeId']
+    Status [name: 'IX_Refund_Status']
+  }
+}
+Table JournalEntry {
+  EntryId bigint [pk, increment]
+  DisputeId bigint [not null, ref: > Dispute.DisputeId]
+  FundId bigint [not null, ref: > SharedFund.FundId]
+
+  AccountCode varchar(50) [not null]
+  Debit decimal(15,2) [not null, default: 0]
+  Credit decimal(15,2) [not null, default: 0]
+  Memo varchar(255)
+  PostedAt datetime
+  CreatedAt datetime [not null, default: `now()`]
+
+  indexes {
+    DisputeId [name: 'IX_Journal_DisputeId']
+    FundId [name: 'IX_Journal_FundId']
+  }
 }
