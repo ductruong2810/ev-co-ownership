@@ -36,7 +36,8 @@ public class SecurityConfig {
                                 "/api/auth/**",
                                 "/api/funds/**",
                                 "/api/payments/**",
-                                "/api/auth/vnpay/**"
+                                "/api/auth/vnpay/**",
+                                "/api/disputes/**"
 
                         ).permitAll()
                         .anyRequest().authenticated()

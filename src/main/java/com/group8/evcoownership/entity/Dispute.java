@@ -72,10 +72,6 @@ public class Dispute {
     @Column(name = "CreatedAt", updatable = false)
     private LocalDateTime createdAt;
 
-    @UpdateTimestamp
-    @Column(name = "UpdatedAt")
-    private LocalDateTime updatedAt;
-
     @Column(name = "ResolvedAt")
     private LocalDateTime resolvedAt;
 

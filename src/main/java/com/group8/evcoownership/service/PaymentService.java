@@ -212,9 +212,9 @@ public class PaymentService {
 
     // Các chuyển trạng thái hợp lệ
     private static final Set<String> ALLOWED = Set.of(
-            key(PaymentStatus.Pending, PaymentStatus.Completed),
-            key(PaymentStatus.Pending, PaymentStatus.Failed),
-            key(PaymentStatus.Completed, PaymentStatus.Refunded)
+            key(PaymentStatus.PENDING, PaymentStatus.COMPLETED),
+            key(PaymentStatus.PENDING, PaymentStatus.FAILED),
+            key(PaymentStatus.COMPLETED, PaymentStatus.REFUNDED)
     );
 
     private static String key(PaymentStatus from, PaymentStatus to) {
@@ -229,7 +229,7 @@ public class PaymentService {
                 .orElseThrow(() -> new EntityNotFoundException("Payment not found: " + paymentId));
 
         PaymentStatus current = PaymentStatus.valueOf(p.getStatus());
-        if (current == null) current = PaymentStatus.Pending; // fallback
+        if (current == null) current = PaymentStatus.PENDING; // fallback
 
         // Idempotent: nếu đã ở đúng trạng thái, chỉ cập nhật providerResponse (nếu có) rồi trả về
         if (current == target) {
@@ -243,18 +243,18 @@ public class PaymentService {
         }
 
         switch (target) {
-            case Failed -> {
+            case FAILED -> {
                 // Pending -> Failed
-                p.setStatus(String.valueOf(PaymentStatus.Failed));
+                p.setStatus(String.valueOf(PaymentStatus.FAILED));
                 if (providerResponseJson != null) p.setProviderResponse(providerResponseJson);
                 paymentRepo.save(p);
             }
-            case Completed -> {
+            case COMPLETED -> {
                 // Pending -> Completed
                 if (transactionCode == null || transactionCode.isBlank()) {
                     throw new IllegalArgumentException("transactionCode is required when marking Completed");
                 }
-                p.setStatus(String.valueOf(PaymentStatus.Completed));
+                p.setStatus(String.valueOf(PaymentStatus.COMPLETED));
                 p.setTransactionCode(transactionCode);
                 if (p.getPaymentDate() == null) p.setPaymentDate(LocalDateTime.now());
                 if (providerResponseJson != null) p.setProviderResponse(providerResponseJson);
@@ -263,9 +263,9 @@ public class PaymentService {
                 // Cộng quỹ đúng 1 lần khi chốt Completed
                 fundService.increaseBalance(p.getFund().getFundId(), p.getAmount());
             }
-            case Refunded -> {
+            case REFUNDED -> {
                 // Completed -> Refunded
-                p.setStatus(String.valueOf(PaymentStatus.Refunded));
+                p.setStatus(String.valueOf(PaymentStatus.REFUNDED));
                 if (providerResponseJson != null) p.setProviderResponse(providerResponseJson);
 
                 paymentRepo.saveAndFlush(p);
