@@ -1,2 +1,12 @@
-/mvnw text eol=lf
-*.cmd text eol=crlf
+# Ensure proper line ending handling
+* text=auto
+
+# Force UTF-8 encoding for properties files
+*.properties text eol=lf encoding=utf-8
+*.xml text eol=lf encoding=utf-8
+
+# Java source files
+*.java text eol=lf encoding=utf-8
+
+# Maven files
+pom.xml text eol=lf encoding=utf-8

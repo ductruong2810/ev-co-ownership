@@ -56,6 +56,10 @@ public class Incident {
     @Column(name = "ResolvedDate")
     private LocalDateTime resolvedDate;
 
+    @Nationalized
+    @Column(name = "Notes", length = 1000)
+    private String notes; // ghi chú ngắn, optional
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ResolvedBy")
     private User resolvedBy;
@@ -68,6 +72,16 @@ public class Incident {
         createdAt = LocalDateTime.now();
         if (incidentDate == null) {
             incidentDate = LocalDateTime.now();
+        }
+    }
+
+    @PreUpdate
+    public void touchResolvedDate() {
+        if (resolvedDate == null && status != null) {
+            String st = status.trim().toUpperCase();
+            if ("RESOLVED".equals(st)) {
+                resolvedDate = LocalDateTime.now();
+            }
         }
     }
 }

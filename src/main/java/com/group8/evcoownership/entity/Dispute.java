@@ -1,6 +1,7 @@
 package com.group8.evcoownership.entity;
 
 
+import com.group8.evcoownership.enums.DisputeStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -13,8 +14,10 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "Dispute")
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class Dispute {
 
@@ -51,16 +54,16 @@ public class Dispute {
     private BigDecimal disputedAmount;
 
     @Nationalized
-    @Lob
-    @Column(name = "Resolution")
-    private String resolution;
+    @Column(name = "Notes", length = 1000)
+    private String notes; // ghi chú ngắn, optional
 
     @Column(name = "ResolutionAmount", precision = 12, scale = 2)
     private BigDecimal resolutionAmount;
 
-    // Status NVARCHAR(20) DEFAULT 'OPEN' (để String cho khớp schema)
+    // Sử dụng enum để nhất quán trạng thái tranh chấp
+    @Enumerated(EnumType.STRING)
     @Column(name = "Status", length = 20)
-    private String status = "OPEN";
+    private DisputeStatus status;
 
     // FK -> Users(UserId)
     @ManyToOne(fetch = FetchType.LAZY)
@@ -78,8 +81,7 @@ public class Dispute {
     @PreUpdate
     public void touchResolvedAt() {
         if (resolvedAt == null && status != null) {
-            String s = status.trim().toUpperCase();
-            if ("RESOLVED".equals(s) || "CLOSED".equals(s)) {
+            if (status == DisputeStatus.Resolved || status == DisputeStatus.Rejected) {
                 resolvedAt = LocalDateTime.now();
             }
         }

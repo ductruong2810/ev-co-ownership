@@ -38,6 +38,11 @@ public class Vehicle {
     @Column(name = "LicensePlate", length = 20)
     private String licensePlate;
 
+    @Size(max = 30)
+    @Nationalized
+    @Column(name = "ChassisNumber", length = 30)
+    private String chassisNumber; // VIN / số khung xe
+
     @Column(name = "QrCode")
     private String qrCode;
 
