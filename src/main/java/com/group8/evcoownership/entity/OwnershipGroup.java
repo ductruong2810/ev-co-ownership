@@ -35,6 +35,11 @@ public class OwnershipGroup {
     @Column(name = "Status", length = 20)
     private GroupStatus status;
 
+    @Nationalized
+    @Lob
+    @Column(name = "Description")
+    private String description;
+
     @OneToMany(mappedBy = "group", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
     private List<OwnershipShare> ownershipShares;
 

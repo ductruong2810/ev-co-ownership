@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.Nationalized;
 
 import java.math.BigDecimal;
@@ -27,7 +28,7 @@ public class Expense {
     @JoinColumn(name = "FundId")
     private SharedFund fund;
 
-    @Column(name = "SourceType", length = 20)
+    @Column(name = "SourceType", length = 50)
     private String sourceType; // MAINTENANCE, VEHICLE_CHECK, INCIDENT
 
     @Column(name = "SourceId")
@@ -42,6 +43,7 @@ public class Expense {
     @Column(name = "Amount", nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
 
-    @Column(name = "ExpenseDate")
+    @CreationTimestamp
+    @Column(name = "ExpenseDate", nullable = false) // đảm bảo luôn có giá trị
     private LocalDateTime expenseDate;
 }

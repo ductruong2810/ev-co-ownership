@@ -14,7 +14,7 @@ Table Users {
   PhoneNumber varchar(20)
   AvatarUrl varchar(500)
   RoleId bigint [ref: > Roles.RoleId]
-  Status varchar(20) [default: 'ACTIVE']
+  Status varchar(20) [default: 'Active']
   CreatedAt datetime [default: `now()`]
   UpdatedAt datetime [default: `now()`]
 }
@@ -22,19 +22,23 @@ Table Users {
 Table OwnershipGroup {
   GroupId bigint [pk, increment]
   GroupName varchar(100) [not null]
-  Status varchar(20) [default: 'ACTIVE']
+  Status varchar(20) [default: 'Pending']
+  Description text
   CreatedAt datetime [default: `now()`]
   UpdatedAt datetime [default: `now()`]
 }
 
 Table OwnershipShare {
-  ShareId bigint [pk, increment]
   UserId bigint [ref: > Users.UserId, not null]
   GroupId bigint [ref: > OwnershipGroup.GroupId, not null]
-  SharePercentage decimal(5,2) [not null, note: 'Must be > 0 and <= 100']
-  
+  GroupRole varchar(50) [default: 'Member']
+  OwnershipPercentage decimal(5,2) [not null, note: 'Must be > 0 and <= 100']
+  JoinDate datetime [default: `now()`]
+  UpdatedAt datetime [default: `now()`]
+
   indexes {
-    (UserId, GroupId) [unique]
+    (UserId, GroupId) [pk]
+    GroupId [name: 'IX_OwnershipShare_GroupId']
   }
 }
 
@@ -43,6 +47,7 @@ Table Vehicle {
   Brand varchar(100)
   Model varchar(100)
   LicensePlate varchar(20)
+  ChassisNumber varchar(30)
   QrCode varchar(255)
   GroupId bigint [ref: - OwnershipGroup.GroupId]
   CreatedAt datetime [default: `now()`]
@@ -69,9 +74,14 @@ Table SharedFund {
   FundId bigint [pk, increment]
   GroupId bigint [ref: - OwnershipGroup.GroupId, not null]
   Balance decimal(15,2) [default: 0]
+  TargetAmount decimal(15,2) [default: 0]
   CreatedAt datetime [default: `now()`]
   UpdatedAt datetime [default: `now()`]
-  Version bigint [default: 1]
+  Version bigint [default: 0]
+
+  indexes {
+    GroupId [unique, name: 'UQ_SharedFund_Group']
+  }
 }
 
 Table UsageBooking {
@@ -80,8 +90,9 @@ Table UsageBooking {
   VehicleId bigint [ref: > Vehicle.VehicleId, not null]
   StartDateTime datetime [not null]
   EndDateTime datetime [not null]
-  Status varchar(20) [default: 'PENDING']
-  Purpose varchar(500)
+  Status varchar(20) [default: 'Pending']
+  TotalDuration int
+  Priority int
   CreatedAt datetime [default: `now()`]
   UpdatedAt datetime [default: `now()`]
 }
@@ -97,7 +108,7 @@ Table Maintenance {
   Description text
   EstimatedCost decimal(12,2)
   ActualCost decimal(12,2)
-  MaintenanceStatus varchar(20) [default: 'PENDING']
+  MaintenanceStatus varchar(20) [default: 'Pending']
 }
 
 Table Notification {
@@ -118,11 +129,12 @@ Table Incident {
   Description text
   EstimatedCost decimal(12,2)
   ActualCost decimal(12,2)
-  Status varchar(20) [default: 'REPORTED']
+  Status varchar(20) [default: 'Reported']
   ImageUrls text [note: 'JSON array of image URLs']
   IncidentDate datetime [default: `now()`]
   ResolvedDate datetime
   ResolvedBy bigint [ref: > Users.UserId]
+  Notes varchar(1000)
   CreatedAt datetime [default: `now()`]
 }
 
@@ -145,7 +157,7 @@ Table UserDocument {
   DocumentType varchar(20) [note: 'CITIZEN_ID, DRIVER_LICENSE']
   Side varchar(10) [note: 'FRONT, BACK']
   ImageUrl varchar(500) [not null]
-  Status varchar(20) [default: 'PENDING']
+  Status varchar(20) [default: 'Pending']
   ReviewNote text
   ReviewedBy bigint [ref: > Users.UserId]
   CreatedAt datetime [default: `now()`]
@@ -161,7 +173,7 @@ Table Voting {
   Options text [note: 'JSON: ["Option 1", "Option 2", "Option 3"]']
   Results text [note: 'JSON: {"Option 1": 2, "Option 2": 1}']
   Deadline datetime
-  Status varchar(20) [default: 'ACTIVE']
+  Status varchar(20) [default: 'Active']
   CreatedBy bigint [ref: > Users.UserId]
   CreatedAt datetime [default: `now()`]
 }
@@ -175,11 +187,12 @@ Table Dispute {
   RelatedEntityId bigint
   Description text
   DisputedAmount decimal(12,2)
-  Resolution text
+  Notes varchar(1000)
   ResolutionAmount decimal(12,2)
-  Status varchar(20) [default: 'OPEN']
+  Status varchar(20) [default: 'Open']
   ResolvedBy bigint [ref: > Users.UserId]
   CreatedAt datetime [default: `now()`]
+  UpdatedAt datetime [default: `now()`]
   ResolvedAt datetime
 }
 
@@ -200,10 +213,29 @@ Table Payment {
   Amount decimal(12,2) [not null]
   PaymentDate datetime [default: `now()`]
   PaymentMethod varchar(50)
-  Status varchar(20) [default: 'PENDING']
+  Status varchar(20) [default: 'Pending']
   TransactionCode varchar(100)
   ProviderResponse text
-  PaymentType varchar(20) [note: 'CONTRIBUTION, PENALTY, MAINTENANCE_FEE']
+  PaymentType varchar(20) [not null, note: 'CONTRIBUTION, PENALTY, MAINTENANCE_FEE']
+  Version bigint [default: 0]
+}
+
+Table FinancialReport {
+  ReportId bigint [pk, increment]
+  FundId bigint [ref: > SharedFund.FundId, not null]
+  ReportMonth int
+  ReportYear int
+  TotalIncome decimal(15,2)
+  TotalExpense decimal(15,2)
+  GeneratedBy bigint [ref: > Users.UserId, not null]
+  CreatedAt datetime [default: `now()`]
+  UpdatedAt datetime [default: `now()`]
+
+  indexes {
+    FundId [name: 'IX_FinancialReport_FundId']
+    GeneratedBy [name: 'IX_FinancialReport_GeneratedBy']
+    (ReportYear, ReportMonth) [name: 'IX_FinancialReport_ReportYear_Month']
+  }
 }
 
 Table OtpToken {

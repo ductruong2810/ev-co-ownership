@@ -194,6 +194,7 @@ public class AuthService {
     }
 
     // ================= BƯỚC 1: FORGOT PASSWORD - GỬI OTP =================
+
     /**
      * Bước 1: Nhập email, gửi OTP
      */
@@ -239,6 +240,7 @@ public class AuthService {
     }
 
     // ================= BƯỚC 2: VERIFY OTP - CHỈ CẦN OTP =================
+
     /**
      * Bước 2: Verify OTP (không cần email), trả về resetToken
      */
@@ -311,6 +313,7 @@ public class AuthService {
     }
 
     // ================= BƯỚC 3: ĐỔI MẬT KHẨU VỚI RESET TOKEN =================
+
     /**
      * Bước 3: Dùng resetToken để đổi mật khẩu mới
      */
@@ -358,6 +361,7 @@ public class AuthService {
         }
     }
     // ================= RESEND OTP FOR PASSWORD RESET =================
+
     /**
      * Gửi lại OTP cho reset password
      */
@@ -398,6 +402,7 @@ public class AuthService {
     }
 
     // ================= HELPER METHOD =================
+
     /**
      * Generate random reset token
      */
@@ -406,6 +411,7 @@ public class AuthService {
     }
 
     // ================= CHANGE PASSWORD (ĐÃ LOGIN) =================
+
     /**
      * Đổi mật khẩu khi user đã đăng nhập
      */
