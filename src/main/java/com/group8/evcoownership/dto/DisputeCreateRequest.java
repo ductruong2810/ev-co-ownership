@@ -1,15 +1,18 @@
 package com.group8.evcoownership.dto;
 
 
+import com.group8.evcoownership.enums.DisputeType;
+import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import lombok.Data;
+import jakarta.validation.constraints.Size;
 
-@Data
-public class DisputeCreateRequest {
-    @NotNull
-    private Long fundId;
-    @NotNull
-    private Long userId;
-    private Long vehicleReportId;   // optional
-    private String description;     // optional
-}
+import java.math.BigDecimal;
+
+public record DisputeCreateRequest(
+        @NotNull Long fundId,
+        @NotNull Long createdBy,
+        @NotBlank String description,
+        @NotNull @Digits(integer = 10, fraction = 2) BigDecimal amount,
+        @NotNull DisputeType disputeType   // phải thuộc DISPUTE_TYPES
+) {}
