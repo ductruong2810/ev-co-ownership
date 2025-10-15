@@ -1,12 +1,11 @@
 package com.group8.evcoownership.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import lombok.Data;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 
-@Data
-public class DisputeStatusUpdateRequest {
-    @NotBlank
-    private String status;          // Open | Resolved | Rejected
-    private String resolutionNote;  // optional
-    private Long resolvedByUserId;  // optional
-}
+public record DisputeStatusUpdateRequest(
+        @NotBlank @Pattern(regexp = "(?i)OPEN|RESOLVED|REJECTED") String status,
+        String resolutionNote,
+        @NotNull Long resolvedById   // bắt buộc khi -> RESOLVED/REJECTED
+) {}

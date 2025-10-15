@@ -326,7 +326,7 @@ CREATE TABLE Payment
     Status           NVARCHAR(20) DEFAULT 'Pending',
     TransactionCode  NVARCHAR(100),
     ProviderResponse NVARCHAR(MAX),
-    PaymentType      NVARCHAR(20),
+    PaymentType      NVARCHAR(20) NOT NULL,
     Version          BIGINT       DEFAULT 0,
     FOREIGN KEY (UserId) REFERENCES Users (UserId),
     FOREIGN KEY (FundId) REFERENCES SharedFund (FundId)
@@ -334,7 +334,26 @@ CREATE TABLE Payment
 GO
 
 -- =============================================
--- 18. OTP TOKEN TABLE
+-- 18. FINANCIAL REPORT TABLE
+-- =============================================
+CREATE TABLE FinancialReport
+(
+    ReportId     BIGINT IDENTITY (1,1) PRIMARY KEY,
+    FundId       BIGINT         NOT NULL,
+    ReportMonth  INT,
+    ReportYear   INT,
+    TotalIncome  DECIMAL(15, 2),
+    TotalExpense DECIMAL(15, 2),
+    GeneratedBy  BIGINT         NOT NULL,
+    CreatedAt    DATETIME2    DEFAULT GETDATE(),
+    UpdatedAt    DATETIME2    DEFAULT GETDATE(),
+    FOREIGN KEY (FundId) REFERENCES SharedFund (FundId),
+    FOREIGN KEY (GeneratedBy) REFERENCES Users (UserId)
+);
+GO
+
+-- =============================================
+-- 19. OTP TOKEN TABLE
 -- =============================================
 CREATE TABLE OtpToken
 (
@@ -412,6 +431,12 @@ GO
 -- Dispute indexes
 CREATE INDEX IX_Dispute_FundId ON Dispute (FundId);
 CREATE INDEX IX_Dispute_Status ON Dispute (Status);
+GO
+
+-- FinancialReport indexes
+CREATE INDEX IX_FinancialReport_FundId ON FinancialReport (FundId);
+CREATE INDEX IX_FinancialReport_GeneratedBy ON FinancialReport (GeneratedBy);
+CREATE INDEX IX_FinancialReport_ReportYear_Month ON FinancialReport (ReportYear, ReportMonth);
 GO
 
 -- =============================================
@@ -497,6 +522,14 @@ VALUES (1, 'DAMAGE', N'Trầy xước nhẹ', 'Reported');
 -- VehicleCheck demo (sau khi trả xe)
 INSERT INTO VehicleCheck(BookingId, CheckType, Odometer, BatteryLevel, Cleanliness, Status)
 VALUES (1, 'POST_USE', 12000, 85.0, 'CLEAN', 'PASSED');
+
+-- FinancialReport demo (báo cáo tài chính tháng 12/2024)
+INSERT INTO FinancialReport(FundId, ReportMonth, ReportYear, TotalIncome, TotalExpense, GeneratedBy)
+VALUES (1, 12, 2024, 5000000, 300000, 3);
+
+-- FinancialReport demo (báo cáo tài chính tháng 11/2024)
+INSERT INTO FinancialReport(FundId, ReportMonth, ReportYear, TotalIncome, TotalExpense, GeneratedBy)
+VALUES (1, 11, 2024, 4500000, 250000, 3);
 
 
 -- =============================================
