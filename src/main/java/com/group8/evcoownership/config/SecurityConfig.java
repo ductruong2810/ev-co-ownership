@@ -1,5 +1,6 @@
 package com.group8.evcoownership.config;
 
+import com.group8.evcoownership.filter.JwtAuthenticationEntryPoint;
 import com.group8.evcoownership.filter.JwtAuthenticationFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +16,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 public class SecurityConfig {
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -23,11 +25,13 @@ public class SecurityConfig {
     @Autowired
     private JwtAuthenticationFilter jwtAuthFilter;
 
+    @Autowired
+    private JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
-                // stateless cho JWT
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
@@ -38,17 +42,15 @@ public class SecurityConfig {
                                 "/api/payments/**",
                                 "/api/auth/vnpay/**",
                                 "/api/disputes/**"
-
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
-
-                // --------------------------
+                // ========== fix phan nay ==========
                 .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint((req, res, e) -> res.sendError(HttpServletResponse.SC_UNAUTHORIZED))
+                        .authenticationEntryPoint(jwtAuthenticationEntryPoint) // ← THAY ĐỔI
                         .accessDeniedHandler((req, res, e) -> res.sendError(HttpServletResponse.SC_FORBIDDEN))
                 )
-
+                // ==================================
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
