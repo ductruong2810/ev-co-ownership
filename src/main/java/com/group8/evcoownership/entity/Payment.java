@@ -28,8 +28,8 @@ public class Payment {
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "UserId", nullable = false)
-    private User user;
+    @JoinColumn(name = "PayerUserId", nullable = false)
+    private User payer;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "FundId", nullable = false)
@@ -63,6 +63,22 @@ public class Payment {
     @Enumerated(EnumType.STRING)
     @Column(name = "PaymentType", length = 20, nullable = false)
     private PaymentType paymentType;
+
+    @Column(name = "PaymentCategory", length = 20)
+    private String paymentCategory; // GROUP or PERSONAL
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ChargedUserId")
+    private User chargedUser; // required when PERSONAL
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "SourceDisputeId")
+    private Dispute sourceDispute; // if originated from a dispute
+
+    @Lob
+    @Nationalized
+    @Column(name = "PersonalReason")
+    private String personalReason;
 
 
     @Version
