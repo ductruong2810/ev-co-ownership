@@ -1,8 +1,8 @@
 package com.group8.evcoownership.enums;
 
 public enum GroupStatus {
-    Pending,   // chờ duyệt
-    Approve,  // đã duyệt
-    Rejected,  // bị từ chối
-    InActive   // bị khóa / ngừng hoạt động
+    PENDING,   // chờ duyệt
+    APPROVED,  // đã duyệt
+    REJECTED,  // bị từ chối
+    INACTIVE   // bị khóa / ngừng hoạt động
 }

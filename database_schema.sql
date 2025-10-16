@@ -3,7 +3,8 @@
 -- =============================================
 
 -- Create Database
-DROP DATABASE IF EXISTS EVShare;
+ALTER DATABASE [EVShare] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+DROP DATABASE [EVShare];
 GO
 CREATE DATABASE EVShare;
 GO
@@ -31,7 +32,7 @@ CREATE TABLE Users
     PhoneNumber  NVARCHAR(20),
     AvatarUrl    NVARCHAR(500),
     RoleId       BIGINT,
-    Status       NVARCHAR(20) DEFAULT 'Active',
+    Status       NVARCHAR(20) DEFAULT 'ACTIVE',
     CreatedAt    DATETIME2    DEFAULT GETDATE(),
     UpdatedAt    DATETIME2    DEFAULT GETDATE(),
     FOREIGN KEY (RoleId) REFERENCES Roles (RoleId)
@@ -45,7 +46,7 @@ CREATE TABLE OwnershipGroup
 (
     GroupId        BIGINT IDENTITY (1,1) PRIMARY KEY,
     GroupName      NVARCHAR(100) NOT NULL,
-    Status         NVARCHAR(20) DEFAULT 'Pending',
+    Status         NVARCHAR(20) DEFAULT 'PENDING',
     Description    NVARCHAR(MAX),
     MemberCapacity INT,
     CreatedAt      DATETIME2    DEFAULT GETDATE(),
@@ -60,7 +61,7 @@ CREATE TABLE OwnershipShare
 (
     UserId              BIGINT        NOT NULL,
     GroupId             BIGINT        NOT NULL,
-    GroupRole           NVARCHAR(50) DEFAULT 'Member',
+    GroupRole           NVARCHAR(50) DEFAULT 'MEMBER',
     OwnershipPercentage DECIMAL(5, 2) NOT NULL CHECK (OwnershipPercentage > 0 AND OwnershipPercentage <= 100),
     JoinDate            DATETIME2    DEFAULT GETDATE(),
     UpdatedAt           DATETIME2    DEFAULT GETDATE(),
@@ -143,7 +144,7 @@ CREATE TABLE UsageBooking
     VehicleId     BIGINT    NOT NULL,
     StartDateTime DATETIME2 NOT NULL,
     EndDateTime   DATETIME2 NOT NULL,
-    Status        NVARCHAR(20) DEFAULT 'Pending',
+    Status        NVARCHAR(20) DEFAULT 'PENDING',
     TotalDuration INT,
     Priority      INT,
     CreatedAt     DATETIME2    DEFAULT GETDATE(),
@@ -168,7 +169,7 @@ CREATE TABLE Maintenance
     Description       NVARCHAR(MAX),
     EstimatedCost     DECIMAL(12, 2),
     ActualCost        DECIMAL(12, 2),
-    MaintenanceStatus NVARCHAR(20) DEFAULT 'Pending',
+    MaintenanceStatus NVARCHAR(20) DEFAULT 'PENDING',
     FOREIGN KEY (VehicleId) REFERENCES Vehicle (VehicleId),
     FOREIGN KEY (ApprovedBy) REFERENCES Users (UserId)
 );
@@ -202,7 +203,7 @@ CREATE TABLE Incident
     Description   NVARCHAR(MAX),
     EstimatedCost DECIMAL(12, 2),
     ActualCost    DECIMAL(12, 2),
-    Status        NVARCHAR(20) DEFAULT 'Reported',
+    Status        NVARCHAR(20) DEFAULT 'REPORTED',
     ImageUrls     NVARCHAR(MAX),
     IncidentDate  DATETIME2    DEFAULT GETDATE(),
     ResolvedDate  DATETIME2,
@@ -243,7 +244,7 @@ CREATE TABLE UserDocument
     DocumentType NVARCHAR(20),
     Side         NVARCHAR(10),
     ImageUrl     NVARCHAR(500) NOT NULL,
-    Status       NVARCHAR(20) DEFAULT 'Pending',
+    Status       NVARCHAR(20) DEFAULT 'PENDING',
     ReviewNote   NVARCHAR(MAX),
     ReviewedBy   BIGINT,
     CreatedAt    DATETIME2    DEFAULT GETDATE(),
@@ -265,7 +266,7 @@ CREATE TABLE Voting
     Options     NVARCHAR(MAX),
     Results     NVARCHAR(MAX),
     Deadline    DATETIME2,
-    Status      NVARCHAR(20) DEFAULT 'Active',
+    Status      NVARCHAR(20) DEFAULT 'ACTIVE',
     CreatedBy   BIGINT,
     CreatedAt   DATETIME2    DEFAULT GETDATE(),
     FOREIGN KEY (GroupId) REFERENCES OwnershipGroup (GroupId)
@@ -286,8 +287,9 @@ CREATE TABLE Dispute
     Description       NVARCHAR(MAX),
     DisputedAmount    DECIMAL(12, 2),
     Notes             NVARCHAR(1000),
+    Resolution        NVARCHAR(MAX),
     ResolutionAmount  DECIMAL(12, 2),
-    Status            NVARCHAR(20) DEFAULT 'Open',
+    Status            NVARCHAR(20) DEFAULT 'OPEN',
     ResolvedBy        BIGINT,
     CreatedAt         DATETIME2    DEFAULT GETDATE(),
     UpdatedAt         DATETIME2    DEFAULT GETDATE(),
@@ -415,7 +417,7 @@ CREATE TABLE Payment
     Amount           DECIMAL(12, 2) NOT NULL,
     PaymentDate      DATETIME2    DEFAULT GETDATE(),
     PaymentMethod    NVARCHAR(50),
-    Status           NVARCHAR(20) DEFAULT 'Pending',
+    Status           NVARCHAR(20) DEFAULT 'PENDING',
     TransactionCode  NVARCHAR(100),
     ProviderResponse NVARCHAR(MAX),
     PaymentType      NVARCHAR(20)   NOT NULL,
@@ -573,10 +575,10 @@ GO
 
 -- Roles
 INSERT INTO Roles(RoleName)
-VALUES ('Co_owner'),
-       ('Staff'),
-       ('Admin'),
-       ('Technician');
+VALUES ('CO_OWNER'),
+       ('STAFF'),
+       ('ADMIN'),
+       ('TECHNICIAN');
 
 -- Users
 INSERT INTO Users(FullName, Email, PasswordHash, PhoneNumber, RoleId, Status)
@@ -591,25 +593,25 @@ VALUES ('Alice Co-owner', 'alice@example.com', '$2a$12$jDAn4z57D6u5Pr3Dlzu2mebpy
 
 -- Group
 INSERT INTO OwnershipGroup(GroupName, Status, Description)
-VALUES ('EV Group A', 'ACTIVE', 'Nh F3m s F4 h EFu EV');
+VALUES ('EV Group A', 'APPROVED', N'Nhóm sở hữu EV');
 
 -- Shares (example A:50%, B:30%, C:20%)
 -- Người tạo group là Admin của group
 INSERT INTO OwnershipShare(UserId, GroupId, GroupRole, OwnershipPercentage)
-VALUES (1, 1, 'Admin', 50.00);
+VALUES (1, 1, 'ADMIN', 50.00);
 
 -- Bổ sung tỉ lệ sở hữu cho user 2,3
 -- Chỉ Co_owner mới được đồng sở hữu: tạo thêm 2 Co_owner mới (user 5,6)
 INSERT INTO Users (FullName, Email, PasswordHash, PhoneNumber, RoleId, Status)
 VALUES ('David Co-owner', 'david@example.com', '$2a$12$jxfqrPEtC6qidnrlRfYxSOM9JPdUj24DGnblLX.PnN7dckxaZkwIK',
-        '0900000005', 1, 'Active'),
+        '0900000005', 1, 'ACTIVE'),
        ('Emma  Co-owner', 'emma@example.com', '$2a$12$wAfwDpecaFzwNh07OOieZOmSwbrP.Bf2B7dgC/58t0EV1QXNskxlW',
-        '0900000006', 1, 'Active');
+        '0900000006', 1, 'ACTIVE');
 
 -- Gán tỉ lệ sở hữu cho user 5,6 thay vì Staff/Admin
 INSERT INTO OwnershipShare(UserId, GroupId, GroupRole, OwnershipPercentage)
-VALUES (5, 1, 'Member', 30.00),
-       (6, 1, 'Member', 20.00);
+VALUES (5, 1, 'MEMBER', 30.00),
+       (6, 1, 'MEMBER', 20.00);
 
 -- Vehicle
 INSERT INTO Vehicle(Brand, Model, LicensePlate, ChassisNumber, GroupId)
@@ -630,22 +632,22 @@ VALUES (1, 1, DATEADD(hour, -1, GETDATE()), DATEADD(hour, 2, GETDATE()), 'PENDIN
 
 -- Payments demo (Pending, Completed, Failed, Refunded)
 INSERT INTO Payment(PayerUserId, FundId, Amount, PaymentMethod, Status, PaymentType, TransactionCode, PaymentCategory)
-VALUES (1, 1, 1000000, 'BANK_TRANSFER', 'Pending', 'CONTRIBUTION', 'TXN-P-001', 'GROUP'),
-       (1, 1, 1500000, 'BANK_TRANSFER', 'Completed', 'CONTRIBUTION', 'TXN-C-001', 'GROUP'),
-       (1, 1, 200000, 'BANK_TRANSFER', 'Failed', 'MAINTENANCE_FEE', 'TXN-F-001', 'GROUP'),
-       (1, 1, 1500000, 'BANK_TRANSFER', 'Refunded', 'CONTRIBUTION', 'TXN-R-001', 'GROUP');
+VALUES (1, 1, 1000000, 'BANK_TRANSFER', 'PENDING', 'CONTRIBUTION', 'TXN-P-001', 'GROUP'),
+       (1, 1, 1500000, 'BANK_TRANSFER', 'COMPLETED', 'CONTRIBUTION', 'TXN-C-001', 'GROUP'),
+       (1, 1, 200000, 'BANK_TRANSFER', 'FAILED', 'MAINTENANCE_FEE', 'TXN-F-001', 'GROUP'),
+       (1, 1, 1500000, 'BANK_TRANSFER', 'REFUNDED', 'CONTRIBUTION', 'TXN-R-001', 'GROUP');
 
 -- Expense demo
 INSERT INTO Expense(FundId, SourceType, SourceId, Description, Amount)
 VALUES (1, 'MAINTENANCE', NULL, N'Bảo dưỡng định kỳ', 300000);
 
 -- Dispute demo
-INSERT INTO Dispute(FundId, DisputeType, RelatedEntityType, Description, DisputedAmount, Status)
-VALUES (1, 'FINANCIAL', 'PAYMENT', N'Tranh chấp thanh toán', 100000, 'Open');
+INSERT INTO Dispute(FundId, DisputeType, RelatedEntityType, Description, DisputedAmount, Resolution, Status)
+VALUES (1, 'FINANCIAL', 'PAYMENT', N'Tranh chấp thanh toán', 100000, N'Đã giải quyết bằng hoàn tiền', 'OPEN');
 
 -- Incident demo
 INSERT INTO Incident(BookingId, IncidentType, Description, Status)
-VALUES (1, 'DAMAGE', N'Trầy xước nhẹ', 'Reported');
+VALUES (1, 'DAMAGE', N'Trầy xước nhẹ', 'REPORTED');
 
 -- VehicleCheck demo (sau khi trả xe)
 INSERT INTO VehicleCheck(BookingId, CheckType, Odometer, BatteryLevel, Cleanliness, Status)

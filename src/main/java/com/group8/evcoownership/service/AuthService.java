@@ -58,7 +58,7 @@ public class AuthService {
             throw new InvalidCredentialsException("Email hoặc mật khẩu không chính xác");
         }
 
-        if (user.getStatus() != UserStatus.Active) {
+        if (user.getStatus() != UserStatus.ACTIVE) {
             throw new IllegalStateException("Tài khoản chưa được kích hoạt. Vui lòng xác thực email.");
         }
 
@@ -175,7 +175,7 @@ public class AuthService {
     private User createUser(RegisterRequestDTO request) {
         log.info("Creating new user with email: {}", request.getEmail());
 
-        Role coOwnerRole = roleRepository.findByRoleName(RoleName.Co_owner)
+        Role coOwnerRole = roleRepository.findByRoleName(RoleName.CO_OWNER)
                 .orElseThrow(() -> {
                     log.error("Role Co_owner not found in database");
                     return new IllegalStateException("Lỗi cấu hình hệ thống. Vui lòng liên hệ quản trị viên.");
@@ -187,7 +187,7 @@ public class AuthService {
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .phoneNumber(request.getPhone())
                 .role(coOwnerRole)
-                .status(UserStatus.Active)
+                .status(UserStatus.ACTIVE)
                 .build();
 
         return userRepository.save(user); // ← TRẢ VỀ USER
@@ -238,7 +238,7 @@ public class AuthService {
                     return new IllegalArgumentException("Email không tồn tại trong hệ thống");
                 });
 
-        if (user.getStatus() != UserStatus.Active) {
+        if (user.getStatus() != UserStatus.ACTIVE) {
             log.warn("Forgot password attempt for inactive account: {}", email);
             throw new IllegalStateException("Tài khoản chưa được kích hoạt. Vui lòng liên hệ quản trị viên.");
         }
