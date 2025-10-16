@@ -47,6 +47,7 @@ CREATE TABLE OwnershipGroup
     GroupName   NVARCHAR(100) NOT NULL,
     Status      NVARCHAR(20) DEFAULT 'Pending',
     Description NVARCHAR(MAX),
+    MemberCapacity INT,
     CreatedAt   DATETIME2    DEFAULT GETDATE(),
     UpdatedAt   DATETIME2    DEFAULT GETDATE()
 );
@@ -297,6 +298,97 @@ CREATE TABLE Dispute
 GO
 
 -- =============================================
+-- 15b. DISPUTE ADD-ONS TABLES
+-- =============================================
+CREATE TABLE DisputeTicket
+(
+    TicketId           BIGINT IDENTITY (1,1) PRIMARY KEY,
+    DisputeId          BIGINT         NOT NULL,
+    Priority           NVARCHAR(20)   NOT NULL DEFAULT 'MEDIUM',
+    AssignedTo         BIGINT,
+    OpenedAt           DATETIME2      NOT NULL DEFAULT GETDATE(),
+    DueFirstResponseAt DATETIME2,
+    DueResolutionAt    DATETIME2,
+    ClosedAt           DATETIME2,
+    FOREIGN KEY (DisputeId) REFERENCES Dispute (DisputeId),
+    FOREIGN KEY (AssignedTo) REFERENCES Users (UserId)
+);
+GO
+
+CREATE TABLE DisputeEvent
+(
+    EventId     BIGINT IDENTITY (1,1) PRIMARY KEY,
+    TicketId    BIGINT,
+    ActorUserId BIGINT,
+    ActorRole   NVARCHAR(20),
+    EventType   NVARCHAR(40)   NOT NULL,
+    OldValue    NVARCHAR(200),
+    NewValue    NVARCHAR(200),
+    Note        NVARCHAR(MAX),
+    CreatedAt   DATETIME2      NOT NULL DEFAULT GETDATE(),
+    FOREIGN KEY (TicketId) REFERENCES DisputeTicket (TicketId)
+);
+GO
+
+CREATE TABLE DisputeAttachment
+(
+    AttachmentId BIGINT IDENTITY (1,1) PRIMARY KEY,
+    DisputeId    BIGINT       NOT NULL,
+    FileName     NVARCHAR(255) NOT NULL,
+    MimeType     NVARCHAR(100) NOT NULL,
+    SizeBytes    BIGINT        NOT NULL,
+    StorageUrl   NVARCHAR(1000) NOT NULL,
+    Sha256       NVARCHAR(64),
+    ThumbnailUrl NVARCHAR(1000),
+    MetaJson     NVARCHAR(MAX),
+    UploadedBy   BIGINT        NOT NULL,
+    Visibility   NVARCHAR(20)  NOT NULL DEFAULT 'USER',
+    Status       NVARCHAR(20)  NOT NULL DEFAULT 'ACTIVE',
+    CreatedAt    DATETIME2     NOT NULL DEFAULT GETDATE(),
+    DeletedAt    DATETIME2,
+    FOREIGN KEY (DisputeId) REFERENCES Dispute (DisputeId),
+    FOREIGN KEY (UploadedBy) REFERENCES Users (UserId)
+);
+GO
+
+CREATE TABLE Refund
+(
+    RefundId           BIGINT IDENTITY (1,1) PRIMARY KEY,
+    DisputeId          BIGINT         NOT NULL,
+    Amount             DECIMAL(15, 2) NOT NULL,
+    Method             NVARCHAR(30)   NOT NULL,
+    TxnRef             NVARCHAR(100),
+    Status             NVARCHAR(20)   NOT NULL DEFAULT 'PENDING',
+    CreatedAt          DATETIME2      NOT NULL DEFAULT GETDATE(),
+    SettledAt          DATETIME2,
+    Note               NVARCHAR(MAX),
+    Provider           NVARCHAR(20)   DEFAULT 'VNPAY',
+    ProviderTxnRef     NVARCHAR(100),
+    ProviderRefundRef  NVARCHAR(100),
+    ReasonCode         NVARCHAR(20),
+    Channel            NVARCHAR(20),
+    RawResponse        NVARCHAR(MAX),
+    FOREIGN KEY (DisputeId) REFERENCES Dispute (DisputeId)
+);
+GO
+
+CREATE TABLE JournalEntry
+(
+    EntryId     BIGINT IDENTITY (1,1) PRIMARY KEY,
+    DisputeId   BIGINT       NOT NULL,
+    FundId      BIGINT       NOT NULL,
+    AccountCode NVARCHAR(50) NOT NULL,
+    Debit       DECIMAL(15, 2) NOT NULL DEFAULT 0,
+    Credit      DECIMAL(15, 2) NOT NULL DEFAULT 0,
+    Memo        NVARCHAR(255),
+    PostedAt    DATETIME2,
+    CreatedAt   DATETIME2    NOT NULL DEFAULT GETDATE(),
+    FOREIGN KEY (DisputeId) REFERENCES Dispute (DisputeId),
+    FOREIGN KEY (FundId) REFERENCES SharedFund (FundId)
+);
+GO
+
+-- =============================================
 -- 16. EXPENSE TABLE
 -- =============================================
 CREATE TABLE Expense
@@ -318,7 +410,7 @@ GO
 CREATE TABLE Payment
 (
     PaymentId        BIGINT IDENTITY (1,1) PRIMARY KEY,
-    UserId           BIGINT         NOT NULL,
+    PayerUserId      BIGINT         NOT NULL,
     FundId           BIGINT         NOT NULL,
     Amount           DECIMAL(12, 2) NOT NULL,
     PaymentDate      DATETIME2    DEFAULT GETDATE(),
@@ -328,9 +420,20 @@ CREATE TABLE Payment
     ProviderResponse NVARCHAR(MAX),
     PaymentType      NVARCHAR(20) NOT NULL,
     Version          BIGINT       DEFAULT 0,
-    FOREIGN KEY (UserId) REFERENCES Users (UserId),
-    FOREIGN KEY (FundId) REFERENCES SharedFund (FundId)
+    PaymentCategory  NVARCHAR(20) DEFAULT 'GROUP',
+    ChargedUserId    BIGINT,
+    SourceDisputeId  BIGINT,
+    PersonalReason   NVARCHAR(MAX),
+    FOREIGN KEY (PayerUserId) REFERENCES Users (UserId),
+    FOREIGN KEY (ChargedUserId) REFERENCES Users (UserId),
+    FOREIGN KEY (FundId) REFERENCES SharedFund (FundId),
+    FOREIGN KEY (SourceDisputeId) REFERENCES Dispute (DisputeId)
 );
+GO
+
+-- Enforce: when PaymentCategory = 'PERSONAL' then ChargedUserId must be NOT NULL
+ALTER TABLE Payment ADD CONSTRAINT CK_Payment_Personal
+CHECK (PaymentCategory <> 'PERSONAL' OR ChargedUserId IS NOT NULL);
 GO
 
 -- =============================================
@@ -439,6 +542,30 @@ CREATE INDEX IX_FinancialReport_GeneratedBy ON FinancialReport (GeneratedBy);
 CREATE INDEX IX_FinancialReport_ReportYear_Month ON FinancialReport (ReportYear, ReportMonth);
 GO
 
+-- Payment indexes (DBML additions)
+CREATE INDEX IX_Payment_Category ON Payment (PaymentCategory);
+CREATE INDEX IX_Payment_ChargedUserId ON Payment (ChargedUserId);
+CREATE INDEX IX_Payment_SourceDisputeId ON Payment (SourceDisputeId);
+GO
+
+-- Dispute add-ons indexes
+CREATE INDEX IX_DisputeTicket_DisputeId ON DisputeTicket (DisputeId);
+CREATE INDEX IX_DisputeTicket_AssignedTo ON DisputeTicket (AssignedTo);
+CREATE INDEX IX_DisputeTicket_Open ON DisputeTicket (DisputeId, ClosedAt);
+GO
+CREATE INDEX IX_DisputeEvent_TicketId ON DisputeEvent (TicketId);
+CREATE INDEX IX_DisputeEvent_EventType ON DisputeEvent (EventType);
+GO
+CREATE INDEX IX_DisputeAttachment_DisputeId ON DisputeAttachment (DisputeId);
+CREATE INDEX IX_DisputeAttachment_UploadedBy ON DisputeAttachment (UploadedBy);
+GO
+CREATE INDEX IX_Refund_DisputeId ON Refund (DisputeId);
+CREATE INDEX IX_Refund_Status ON Refund (Status);
+GO
+CREATE INDEX IX_Journal_FundId ON JournalEntry (FundId);
+CREATE INDEX IX_Journal_DisputeId ON JournalEntry (DisputeId);
+GO
+
 -- =============================================
 -- SEED DATA (basic, for demo)
 -- =============================================
@@ -501,11 +628,11 @@ INSERT INTO UsageBooking(UserId, VehicleId, StartDateTime, EndDateTime, Status)
 VALUES (1, 1, DATEADD(hour, -1, GETDATE()), DATEADD(hour, 2, GETDATE()), 'PENDING');
 
 -- Payments demo (Pending, Completed, Failed, Refunded)
-INSERT INTO Payment(UserId, FundId, Amount, PaymentMethod, Status, PaymentType, TransactionCode)
-VALUES (1, 1, 1000000, 'BANK_TRANSFER', 'Pending', 'CONTRIBUTION', 'TXN-P-001'),
-       (1, 1, 1500000, 'BANK_TRANSFER', 'Completed', 'CONTRIBUTION', 'TXN-C-001'),
-       (1, 1, 200000, 'BANK_TRANSFER', 'Failed', 'MAINTENANCE_FEE', 'TXN-F-001'),
-       (1, 1, 1500000, 'BANK_TRANSFER', 'Refunded', 'CONTRIBUTION', 'TXN-R-001');
+INSERT INTO Payment(PayerUserId, FundId, Amount, PaymentMethod, Status, PaymentType, TransactionCode, PaymentCategory)
+VALUES (1, 1, 1000000, 'BANK_TRANSFER', 'Pending', 'CONTRIBUTION', 'TXN-P-001', 'GROUP'),
+       (1, 1, 1500000, 'BANK_TRANSFER', 'Completed', 'CONTRIBUTION', 'TXN-C-001', 'GROUP'),
+       (1, 1, 200000, 'BANK_TRANSFER', 'Failed', 'MAINTENANCE_FEE', 'TXN-F-001', 'GROUP'),
+       (1, 1, 1500000, 'BANK_TRANSFER', 'Refunded', 'CONTRIBUTION', 'TXN-R-001', 'GROUP');
 
 -- Expense demo
 INSERT INTO Expense(FundId, SourceType, SourceId, Description, Amount)

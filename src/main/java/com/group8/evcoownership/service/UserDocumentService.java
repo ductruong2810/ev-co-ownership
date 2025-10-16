@@ -63,7 +63,7 @@ public class UserDocumentService {
         logger.info("User {} uploading driver license", userId);
 
         // Kiểm tra user tồn tại
-        User user = userRepository.findById(userId)
+        userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy user"));
 
         // Kiểm tra đã có GPLX chưa
@@ -113,7 +113,7 @@ public class UserDocumentService {
         logger.info("User {} uploading citizen ID", userId);
 
         // Kiểm tra user tồn tại
-        User user = userRepository.findById(userId)
+        userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy user"));
 
         // Kiểm tra đã có CCCD chưa
@@ -352,7 +352,8 @@ public class UserDocumentService {
             }
 
             // Tạo tên file unique
-            String originalFileName = StringUtils.cleanPath(file.getOriginalFilename());
+            String originalFileNameRaw = file.getOriginalFilename();
+            String originalFileName = StringUtils.cleanPath(originalFileNameRaw == null ? "upload.bin" : originalFileNameRaw);
             String fileExtension = originalFileName.substring(originalFileName.lastIndexOf("."));
             String newFileName = documentType + "_" + side + "_" +
                     UUID.randomUUID().toString() + fileExtension;

@@ -5,7 +5,6 @@ import com.group8.evcoownership.entity.Dispute;
 import com.group8.evcoownership.entity.SharedFund;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.enums.DisputeStatus;
-import com.group8.evcoownership.enums.DisputeType;
 import com.group8.evcoownership.enums.RelatedEntityType;
 import com.group8.evcoownership.repository.DisputeRepository;
 import com.group8.evcoownership.repository.SharedFundRepository;
