@@ -29,7 +29,7 @@ projectJDK: "17" #(Applied in CI/CD pipeline)
   #bootstrap: sh ./prepare-qodana.sh
 
   #Install IDE plugins before Qodana execution (Applied in CI/CD pipeline)
-  #plugins:
+#plugins:
 #  - id: <plugin.id> #(plugin id can be found at https://plugins.jetbrains.com)
 
 # Quality gate. Will fail the CI/CD pipeline if any condition is not met

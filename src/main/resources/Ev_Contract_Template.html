@@ -1,51 +1,237 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <title>Hợp đồng Sở hữu Xe Chung • EVShare</title>
     <style>
-        :root{
-            --ink:#111827; --muted:#6b7280; --primary:#0ea5e9; --border:#e5e7eb;
+        :root {
+            --ink: #111827;
+            --muted: #6b7280;
+            --primary: #0ea5e9;
+            --border: #e5e7eb;
         }
-        *{box-sizing:border-box}
-        html,body{margin:0; padding:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; color:var(--ink);}
-        .toolbar{position:sticky; top:0; z-index:10; background:white; border-bottom:1px solid var(--border); padding:12px; display:flex; gap:8px; align-items:center}
-        .btn{border:1px solid var(--border); background:white; padding:8px 12px; border-radius:10px; cursor:pointer; font-weight:600}
-        .btn.primary{background:var(--primary); color:#fff; border-color:var(--primary)}
-        .btn:active{transform:translateY(1px)}
-        .page{max-width:900px; margin:24px auto; background:white; padding:40px 48px; border:1px solid var(--border); border-radius:16px; box-shadow:0 6px 24px rgba(0,0,0,0.06)}
-        header{display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:24px}
-        .logo{display:flex; align-items:center; gap:8px; font-weight:800; letter-spacing:.4px}
-        .logo-mark{width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg,#22d3ee,#3b82f6)}
-        h1{margin:8px 0 0; font-size:26px; line-height:1.25}
-        .subtitle{color:var(--muted)}
-        .meta, .section>h2{display:flex; align-items:center; gap:8px}
-        .grid{display:grid; grid-template-columns:repeat(12,1fr); gap:16px}
-        .card{border:1px solid var(--border); border-radius:14px; padding:16px}
-        .kvs{display:grid; grid-template-columns:180px 1fr; row-gap:10px; column-gap:12px}
-        .key{color:var(--muted)}
-        .val{font-weight:600}
-        table{width:100%; border-collapse:collapse}
-        th,td{padding:10px 12px; border-bottom:1px solid var(--border); text-align:left}
-        th{background:#fafafa; font-size:14px}
-        .section{margin-top:24px}
-        .section>h2{font-size:18px; margin:0 0 10px}
-        .muted{color:var(--muted)}
-        .signatures{display:grid; grid-template-columns:repeat(2,1fr); gap:24px}
-        .sig-box{border:1px dashed var(--border); border-radius:12px; padding:14px}
-        .sig-line{margin-top:40px; border-top:1px solid var(--border); padding-top:6px; font-weight:600}
-        .footnote{margin-top:24px; font-size:12px; color:var(--muted)}
-        .badge{display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; background:#eef2ff; color:#3730a3; border:1px solid #e0e7ff}
-        .flex{display:flex; gap:10px; align-items:center}
-        .right{text-align:right}
-        .nowrap{white-space:nowrap}
-        .break-avoid{break-inside:avoid}
-        @media print{
-            .toolbar{display:none}
-            body{background:white}
-            .page{box-shadow:none; border:none; margin:0; border-radius:0; page-break-after:always}
-            a[href]:after{content:""}
+
+        * {
+            box-sizing: border-box
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+            color: var(--ink);
+        }
+
+        .toolbar {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: white;
+            border-bottom: 1px solid var(--border);
+            padding: 12px;
+            display: flex;
+            gap: 8px;
+            align-items: center
+        }
+
+        .btn {
+            border: 1px solid var(--border);
+            background: white;
+            padding: 8px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600
+        }
+
+        .btn.primary {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary)
+        }
+
+        .btn:active {
+            transform: translateY(1px)
+        }
+
+        .page {
+            max-width: 900px;
+            margin: 24px auto;
+            background: white;
+            padding: 40px 48px;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.06)
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 24px
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 800;
+            letter-spacing: .4px
+        }
+
+        .logo-mark {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #22d3ee, #3b82f6)
+        }
+
+        h1 {
+            margin: 8px 0 0;
+            font-size: 26px;
+            line-height: 1.25
+        }
+
+        .subtitle {
+            color: var(--muted)
+        }
+
+        .meta, .section > h2 {
+            display: flex;
+            align-items: center;
+            gap: 8px
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns:repeat(12, 1fr);
+            gap: 16px
+        }
+
+        .card {
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 16px
+        }
+
+        .kvs {
+            display: grid;
+            grid-template-columns:180px 1fr;
+            row-gap: 10px;
+            column-gap: 12px
+        }
+
+        .key {
+            color: var(--muted)
+        }
+
+        .val {
+            font-weight: 600
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse
+        }
+
+        th, td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+            text-align: left
+        }
+
+        th {
+            background: #fafafa;
+            font-size: 14px
+        }
+
+        .section {
+            margin-top: 24px
+        }
+
+        .section > h2 {
+            font-size: 18px;
+            margin: 0 0 10px
+        }
+
+        .muted {
+            color: var(--muted)
+        }
+
+        .signatures {
+            display: grid;
+            grid-template-columns:repeat(2, 1fr);
+            gap: 24px
+        }
+
+        .sig-box {
+            border: 1px dashed var(--border);
+            border-radius: 12px;
+            padding: 14px
+        }
+
+        .sig-line {
+            margin-top: 40px;
+            border-top: 1px solid var(--border);
+            padding-top: 6px;
+            font-weight: 600
+        }
+
+        .footnote {
+            margin-top: 24px;
+            font-size: 12px;
+            color: var(--muted)
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 12px;
+            background: #eef2ff;
+            color: #3730a3;
+            border: 1px solid #e0e7ff
+        }
+
+        .flex {
+            display: flex;
+            gap: 10px;
+            align-items: center
+        }
+
+        .right {
+            text-align: right
+        }
+
+        .nowrap {
+            white-space: nowrap
+        }
+
+        .break-avoid {
+            break-inside: avoid
+        }
+
+        @media print {
+            .toolbar {
+                display: none
+            }
+
+            body {
+                background: white
+            }
+
+            .page {
+                box-shadow: none;
+                border: none;
+                margin: 0;
+                border-radius: 0;
+                page-break-after: always
+            }
+
+            a[href]:after {
+                content: ""
+            }
         }
     </style>
 </head>
@@ -69,7 +255,8 @@
             </div>
         </div>
         <div class="right">
-            <div class="badge" id="contract-status">DRAFT</div><br/>
+            <div class="badge" id="contract-status">DRAFT</div>
+            <br/>
             <small class="muted">Số hợp đồng: <span data-text="contract.number">—</span></small>
         </div>
     </header>
@@ -82,19 +269,27 @@
         <div class="card break-avoid" style="grid-column: span 7">
             <div class="meta"><strong>Thông tin phương tiện</strong></div>
             <div class="kvs" style="margin-top:10px">
-                <div class="key">Hãng / Model</div><div class="val" data-text="vehicle.model">—</div>
-                <div class="key">Biển số</div><div class="val" data-text="vehicle.plate">—</div>
-                <div class="key">Số VIN</div><div class="val" data-text="vehicle.vin">—</div>
-                <div class="key">Năm SX</div><div class="val" data-text="vehicle.year">—</div>
+                <div class="key">Hãng / Model</div>
+                <div class="val" data-text="vehicle.model">—</div>
+                <div class="key">Biển số</div>
+                <div class="val" data-text="vehicle.plate">—</div>
+                <div class="key">Số VIN</div>
+                <div class="val" data-text="vehicle.vin">—</div>
+                <div class="key">Năm SX</div>
+                <div class="val" data-text="vehicle.year">—</div>
             </div>
         </div>
         <div class="card break-avoid" style="grid-column: span 5">
             <div class="meta"><strong>Hiệu lực hợp đồng</strong></div>
             <div class="kvs" style="margin-top:10px">
-                <div class="key">Ngày hiệu lực</div><div class="val" data-text="contract.effectiveDate">—</div>
-                <div class="key">Ngày kết thúc</div><div class="val" data-text="contract.endDate">—</div>
-                <div class="key">Kỳ hạn</div><div class="val" data-text="contract.termLabel">—</div>
-                <div class="key">Template</div><div class="val" data-text="contract.template">—</div>
+                <div class="key">Ngày hiệu lực</div>
+                <div class="val" data-text="contract.effectiveDate">—</div>
+                <div class="key">Ngày kết thúc</div>
+                <div class="val" data-text="contract.endDate">—</div>
+                <div class="key">Kỳ hạn</div>
+                <div class="val" data-text="contract.termLabel">—</div>
+                <div class="key">Template</div>
+                <div class="val" data-text="contract.template">—</div>
             </div>
         </div>
     </div>
@@ -123,28 +318,37 @@
     <div class="section">
         <h2>2. Góp vốn & Quỹ vận hành</h2>
         <div class="kvs" style="margin-top:6px">
-            <div class="key">Giá trị xe</div><div class="val nowrap" data-text="finance.vehiclePrice">—</div>
-            <div class="key">Quỹ chung ban đầu</div><div class="val nowrap" data-text="finance.initialFund">—</div>
-            <div class="key">Tài khoản quỹ</div><div class="val" data-text="finance.fundAccount">—</div>
-            <div class="key">Nguyên tắc góp</div><div class="val" data-text="finance.contributionRule">—</div>
+            <div class="key">Giá trị xe</div>
+            <div class="val nowrap" data-text="finance.vehiclePrice">—</div>
+            <div class="key">Quỹ chung ban đầu</div>
+            <div class="val nowrap" data-text="finance.initialFund">—</div>
+            <div class="key">Tài khoản quỹ</div>
+            <div class="val" data-text="finance.fundAccount">—</div>
+            <div class="key">Nguyên tắc góp</div>
+            <div class="val" data-text="finance.contributionRule">—</div>
         </div>
-        <p class="muted">Các khoản chi bảo dưỡng, sạc, vệ sinh… được thanh toán từ Quỹ chung; khoản cá nhân (nếu có) do cá nhân chi trả theo bút toán bù trừ.</p>
+        <p class="muted">Các khoản chi bảo dưỡng, sạc, vệ sinh… được thanh toán từ Quỹ chung; khoản cá nhân (nếu có) do
+            cá nhân chi trả theo bút toán bù trừ.</p>
     </div>
 
     <!-- Usage & rules -->
     <div class="section">
         <h2>3. Quyền sử dụng & Lịch đặt</h2>
-        <p>Việc sử dụng xe được thực hiện thông qua hệ thống đặt lịch. Quy tắc ưu tiên: <span data-text="usage.rule">—</span>. Mỗi Bên cam kết tuân thủ lịch đặt và hoàn trả đúng hẹn.</p>
+        <p>Việc sử dụng xe được thực hiện thông qua hệ thống đặt lịch. Quy tắc ưu tiên: <span
+                data-text="usage.rule">—</span>. Mỗi Bên cam kết tuân thủ lịch đặt và hoàn trả đúng hẹn.</p>
     </div>
 
     <div class="section">
         <h2>4. Bảo dưỡng, Sửa chữa & Bảo hiểm</h2>
-        <p>Xe được bảo dưỡng định kỳ theo khuyến nghị của hãng. Trách nhiệm phê duyệt chi phí: <span data-text="maintenance.approval">—</span>. Hợp đồng bảo hiểm: <span data-text="maintenance.insurance">—</span>.</p>
+        <p>Xe được bảo dưỡng định kỳ theo khuyến nghị của hãng. Trách nhiệm phê duyệt chi phí: <span
+                data-text="maintenance.approval">—</span>. Hợp đồng bảo hiểm: <span
+                data-text="maintenance.insurance">—</span>.</p>
     </div>
 
     <div class="section">
         <h2>5. Giải quyết tranh chấp</h2>
-        <p>Tranh chấp phát sinh được ghi nhận trên hệ thống và ưu tiên hòa giải trong Nhóm. Cơ chế biểu quyết: <span data-text="dispute.voting">—</span>. Thẩm quyền cuối cùng theo pháp luật hiện hành.</p>
+        <p>Tranh chấp phát sinh được ghi nhận trên hệ thống và ưu tiên hòa giải trong Nhóm. Cơ chế biểu quyết: <span
+                data-text="dispute.voting">—</span>. Thẩm quyền cuối cùng theo pháp luật hiện hành.</p>
     </div>
 
     <div class="section">
@@ -162,26 +366,36 @@
         <div id="signature-grid" class="signatures">
             <!-- signature boxes injected here -->
         </div>
-        <div class="footnote">Khi ký điện tử, mỗi ô chữ ký sẽ hiển thị tên, thời gian ký và fingerprint của chữ ký.</div>
+        <div class="footnote">Khi ký điện tử, mỗi ô chữ ký sẽ hiển thị tên, thời gian ký và fingerprint của chữ ký.
+        </div>
     </div>
 
     <div class="section" style="margin-top:28px">
-        <div class="muted">Địa điểm ký: <span data-text="contract.location">—</span> · Ngày: <span data-text="contract.signDate">—</span></div>
+        <div class="muted">Địa điểm ký: <span data-text="contract.location">—</span> · Ngày: <span
+                data-text="contract.signDate">—</span></div>
     </div>
 </div>
 
 <script>
     // --- Tiny binding helper -------------------------------------------------
-    function setText(selectorKey, value){
-        document.querySelectorAll(`[data-text="${selectorKey}"]`).forEach(el=> el.textContent = value ?? '—');
-    }
-    function fmtCurrency(v){
-        if(v==null) return '—';
-        try{ return new Intl.NumberFormat('vi-VN',{style:'currency',currency:'VND',maximumFractionDigits:0}).format(v); }
-        catch{ return String(v); }
+    function setText(selectorKey, value) {
+        document.querySelectorAll(`[data-text="${selectorKey}"]`).forEach(el => el.textContent = value ?? '—');
     }
 
-    function render(data){
+    function fmtCurrency(v) {
+        if (v == null) return '—';
+        try {
+            return new Intl.NumberFormat('vi-VN', {
+                style: 'currency',
+                currency: 'VND',
+                maximumFractionDigits: 0
+            }).format(v);
+        } catch {
+            return String(v);
+        }
+    }
+
+    function render(data) {
         // Contract meta
         setText('contract.number', data.contract.number);
         setText('group.name', data.group.name);
@@ -216,14 +430,14 @@
         const tbody = document.getElementById('owners-tbody');
         tbody.innerHTML = '';
         let sum = 0;
-        (data.owners||[]).forEach((o,i)=>{
-            sum += Number(o.share||0);
+        (data.owners || []).forEach((o, i) => {
+            sum += Number(o.share || 0);
             const tr = document.createElement('tr');
             tr.innerHTML = `
-          <td>${i+1}</td>
+          <td>${i + 1}</td>
           <td><strong>${o.name}</strong></td>
-          <td>${o.phone || ''}${o.email? ' · '+o.email:''}</td>
-          <td>${o.idType||''} ${o.idNo||''}</td>
+          <td>${o.phone || ''}${o.email ? ' · ' + o.email : ''}</td>
+          <td>${o.idType || ''} ${o.idNo || ''}</td>
           <td class="right">${(o.share ?? 0)}%</td>`;
             tbody.appendChild(tr);
         });
@@ -232,7 +446,7 @@
         // Signatures grid
         const grid = document.getElementById('signature-grid');
         grid.innerHTML = '';
-        (data.owners||[]).forEach((o)=>{
+        (data.owners || []).forEach((o) => {
             const box = document.createElement('div');
             box.className = 'sig-box';
             box.innerHTML = `
@@ -245,24 +459,65 @@
     }
 
     // --- Demo & helpers ------------------------------------------------------
-    function fillDemo(){
+    function fillDemo() {
         const demo = {
-            contract:{ number:'EVS-2025-001', effectiveDate:'2025-10-20', endDate:'2026-10-19', termLabel:'12 tháng', template:'STANDARD-1.0', status:'Draft', location:'Hà Nội', signDate:'2025-10-20' },
-            group:{ name:'EVShare – Nhóm A' },
-            vehicle:{ model:'VinFast VF 8 Plus', plate:'30A-123.45', vin:'RLVZZZ1EZBW000001', year:2024 },
-            finance:{ vehiclePrice:950_000_000, initialFund:30_000_000, fundAccount:'MB Bank 0123456789 – EVShare Group A', contributionRule:'Theo tỷ lệ sở hữu' },
-            usage:{ rule:'Điểm tín dụng lịch sử & phiên bốc thăm tuần' },
-            maintenance:{ approval:'Biểu quyết > 50% theo tỷ lệ sở hữu cho chi > 5 triệu', insurance:'PVI – Gói vật chất toàn diện' },
-            dispute:{ voting:'Đa số theo tỷ lệ sở hữu; nếu hoà 50/50, ưu tiên lịch sử đóng góp' },
-            owners:[
-                {name:'Nguyễn Văn A', phone:'0901 234 567', email:'a@evshare.vn', idType:'CCCD', idNo:'012345678901', share:40},
-                {name:'Trần Thị B', phone:'0902 234 567', email:'b@evshare.vn', idType:'CCCD', idNo:'012345678902', share:35},
-                {name:'Lê Văn C', phone:'0903 234 567', email:'c@evshare.vn', idType:'CCCD', idNo:'012345678903', share:25}
+            contract: {
+                number: 'EVS-2025-001',
+                effectiveDate: '2025-10-20',
+                endDate: '2026-10-19',
+                termLabel: '12 tháng',
+                template: 'STANDARD-1.0',
+                status: 'Draft',
+                location: 'Hà Nội',
+                signDate: '2025-10-20'
+            },
+            group: {name: 'EVShare – Nhóm A'},
+            vehicle: {model: 'VinFast VF 8 Plus', plate: '30A-123.45', vin: 'RLVZZZ1EZBW000001', year: 2024},
+            finance: {
+                vehiclePrice: 950_000_000,
+                initialFund: 30_000_000,
+                fundAccount: 'MB Bank 0123456789 – EVShare Group A',
+                contributionRule: 'Theo tỷ lệ sở hữu'
+            },
+            usage: {rule: 'Điểm tín dụng lịch sử & phiên bốc thăm tuần'},
+            maintenance: {
+                approval: 'Biểu quyết > 50% theo tỷ lệ sở hữu cho chi > 5 triệu',
+                insurance: 'PVI – Gói vật chất toàn diện'
+            },
+            dispute: {voting: 'Đa số theo tỷ lệ sở hữu; nếu hoà 50/50, ưu tiên lịch sử đóng góp'},
+            owners: [
+                {
+                    name: 'Nguyễn Văn A',
+                    phone: '0901 234 567',
+                    email: 'a@evshare.vn',
+                    idType: 'CCCD',
+                    idNo: '012345678901',
+                    share: 40
+                },
+                {
+                    name: 'Trần Thị B',
+                    phone: '0902 234 567',
+                    email: 'b@evshare.vn',
+                    idType: 'CCCD',
+                    idNo: '012345678902',
+                    share: 35
+                },
+                {
+                    name: 'Lê Văn C',
+                    phone: '0903 234 567',
+                    email: 'c@evshare.vn',
+                    idType: 'CCCD',
+                    idNo: '012345678903',
+                    share: 25
+                }
             ]
         };
         render(demo);
     }
-    function clearAll(){ location.reload(); }
+
+    function clearAll() {
+        location.reload();
+    }
 
     // Auto demo on first load for preview
     fillDemo();
