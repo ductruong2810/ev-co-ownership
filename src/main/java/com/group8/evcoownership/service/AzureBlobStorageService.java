@@ -5,6 +5,7 @@ import com.azure.storage.blob.BlobContainerClient;
 import com.azure.storage.blob.models.BlobHttpHeaders;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -12,10 +13,11 @@ import java.io.IOException;
 import java.util.UUID;
 
 @Service
+@Profile("!test")
 @Slf4j
 public class AzureBlobStorageService {
 
-    @Autowired
+    @Autowired(required = false)
     private BlobContainerClient blobContainerClient;
 
     /**
