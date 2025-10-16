@@ -24,6 +24,7 @@ Table OwnershipGroup {
   GroupName varchar(100) [not null]
   Status varchar(20) [default: 'Pending']
   Description text
+  MemberCapacity int [note: 'Planned number of members in the group']
   CreatedAt datetime [default: `now()`]
   UpdatedAt datetime [default: `now()`]
 }

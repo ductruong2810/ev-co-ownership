@@ -38,10 +38,13 @@ public class PaymentService {
         Long uId = null;
         Long fId = null;
         String uName = null;
-        User u = p.getUser();
+        User u = p.getPayer();
         if (u != null && Hibernate.isInitialized(u)) {
             uId = u.getUserId();
             uName = u.getFullName();
+        }
+        if (p.getFund() != null && Hibernate.isInitialized(p.getFund())) {
+            fId = p.getFund().getFundId();
         }
         return PaymentResponse.builder()
                 .id(p.getId())
@@ -67,7 +70,7 @@ public class PaymentService {
                 .orElseThrow(() -> new EntityNotFoundException("Fund not found: " + req.getFundId()));
 
         Payment p = Payment.builder()
-                .user(user)
+                .payer(user)
                 .fund(fund)
                 .amount(req.getAmount())
                 .paymentMethod(req.getPaymentMethod())
@@ -95,9 +98,9 @@ public class PaymentService {
 
         List<Payment> list;
         if (userId != null && status != null && type != null) {
-            list = paymentRepo.findAllByUser_UserIdAndStatusAndPaymentType(userId, PaymentStatus.valueOf(status), PaymentType.valueOf(type), pageable);
+            list = paymentRepo.findAllByPayer_UserIdAndStatusAndPaymentType(userId, PaymentStatus.valueOf(status), PaymentType.valueOf(type), pageable);
         } else if (userId != null) {
-            list = paymentRepo.findAllByUser_UserId(userId, pageable);
+            list = paymentRepo.findAllByPayer_UserId(userId, pageable);
         } else if (status != null) {
             list = paymentRepo.findAllByStatus(PaymentStatus.valueOf(status), pageable);
         } else if (type != null) {
@@ -116,7 +119,7 @@ public class PaymentService {
         if (req.getUserId() != null) {
             User user = userRepo.findById(req.getUserId())
                     .orElseThrow(() -> new EntityNotFoundException("User not found: " + req.getUserId()));
-            p.setUser(user);
+            p.setPayer(user);
         }
         if (req.getAmount() != null) p.setAmount(req.getAmount());
         if (req.getPaymentMethod() != null) p.setPaymentMethod(req.getPaymentMethod());

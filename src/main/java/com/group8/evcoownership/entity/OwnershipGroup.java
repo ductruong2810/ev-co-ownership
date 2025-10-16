@@ -40,6 +40,9 @@ public class OwnershipGroup {
     @Column(name = "Description")
     private String description;
 
+    @Column(name = "MemberCapacity")
+    private Integer memberCapacity;
+
     @OneToMany(mappedBy = "group", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
     private List<OwnershipShare> ownershipShares;
 

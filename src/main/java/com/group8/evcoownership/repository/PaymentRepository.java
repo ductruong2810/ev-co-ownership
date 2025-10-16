@@ -17,13 +17,13 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     // Dùng cho list trả về List (áp dụng limit/offset/sort qua Pageable)
     List<Payment> findAllBy(Pageable pageable);
 
-    List<Payment> findAllByUser_UserId(Long userId, Pageable pageable);
+    List<Payment> findAllByPayer_UserId(Long userId, Pageable pageable);
 
     List<Payment> findAllByStatus(PaymentStatus status, Pageable pageable);
 
     List<Payment> findAllByPaymentType(PaymentType type, Pageable pageable);
 
-    List<Payment> findAllByUser_UserIdAndStatusAndPaymentType(
+    List<Payment> findAllByPayer_UserIdAndStatusAndPaymentType(
             Long userId, PaymentStatus status, PaymentType type, Pageable pageable
     );
 

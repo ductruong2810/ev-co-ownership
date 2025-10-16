@@ -4,7 +4,6 @@ package com.group8.evcoownership.dto;
 import com.group8.evcoownership.enums.PaymentStatus;
 import jakarta.validation.constraints.NotNull;
 
-import java.math.BigDecimal;
 
 public record PaymentStatusUpdateRequest(
 
