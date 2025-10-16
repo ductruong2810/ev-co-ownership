@@ -189,6 +189,7 @@ Table Dispute {
   Description text
   DisputedAmount decimal(12,2)
   Notes varchar(1000)
+  Resolution text
   ResolutionAmount decimal(12,2)
   Status varchar(20) [default: 'Open']
   ResolvedBy bigint [ref: > Users.UserId]

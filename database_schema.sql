@@ -3,7 +3,8 @@
 -- =============================================
 
 -- Create Database
-DROP DATABASE IF EXISTS EVShare;
+ALTER DATABASE [EVShare] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+DROP DATABASE [EVShare];
 GO
 CREATE DATABASE EVShare;
 GO
@@ -286,6 +287,7 @@ CREATE TABLE Dispute
     Description       NVARCHAR(MAX),
     DisputedAmount    DECIMAL(12, 2),
     Notes             NVARCHAR(1000),
+    Resolution        NVARCHAR(MAX),
     ResolutionAmount  DECIMAL(12, 2),
     Status            NVARCHAR(20) DEFAULT 'OPEN',
     ResolvedBy        BIGINT,
@@ -640,8 +642,8 @@ INSERT INTO Expense(FundId, SourceType, SourceId, Description, Amount)
 VALUES (1, 'MAINTENANCE', NULL, N'Bảo dưỡng định kỳ', 300000);
 
 -- Dispute demo
-INSERT INTO Dispute(FundId, DisputeType, RelatedEntityType, Description, DisputedAmount, Status)
-VALUES (1, 'FINANCIAL', 'PAYMENT', N'Tranh chấp thanh toán', 100000, 'OPEN');
+INSERT INTO Dispute(FundId, DisputeType, RelatedEntityType, Description, DisputedAmount, Resolution, Status)
+VALUES (1, 'FINANCIAL', 'PAYMENT', N'Tranh chấp thanh toán', 100000, N'Đã giải quyết bằng hoàn tiền', 'OPEN');
 
 -- Incident demo
 INSERT INTO Incident(BookingId, IncidentType, Description, Status)

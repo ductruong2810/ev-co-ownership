@@ -110,7 +110,7 @@ public class GlobalExceptionHandler {
         ErrorResponseDTO response = new ErrorResponseDTO(
                 HttpStatus.PAYLOAD_TOO_LARGE.value(),
                 "File Too Large",
-                "Kích thước file vượt quá giới hạn cho phép (tối đa 10MB)",
+                "File size exceeds the allowed limit (maximum 10MB)",
                 request.getDescription(false).replace("uri=", "")
         );
 
@@ -127,7 +127,7 @@ public class GlobalExceptionHandler {
         ErrorResponseDTO response = new ErrorResponseDTO(
                 HttpStatus.BAD_REQUEST.value(),
                 "Bad Request",
-                "Lỗi upload file. Vui lòng kiểm tra lại file và thử lại",
+                "File upload error. Please check the file and try again",
                 request.getDescription(false).replace("uri=", "")
         );
 
@@ -144,7 +144,7 @@ public class GlobalExceptionHandler {
         ErrorResponseDTO response = new ErrorResponseDTO(
                 HttpStatus.UNAUTHORIZED.value(),
                 "Unauthorized",
-                "Email hoặc mật khẩu không đúng",
+                "Invalid email or password",
                 request.getDescription(false).replace("uri=", "")
         );
 
@@ -161,7 +161,7 @@ public class GlobalExceptionHandler {
         ErrorResponseDTO response = new ErrorResponseDTO(
                 HttpStatus.FORBIDDEN.value(),
                 "Forbidden",
-                "Bạn không có quyền truy cập tài nguyên này",
+                "You do not have permission to access this resource",
                 request.getDescription(false).replace("uri=", "")
         );
 
@@ -178,7 +178,7 @@ public class GlobalExceptionHandler {
         ErrorResponseDTO response = new ErrorResponseDTO(
                 HttpStatus.NOT_FOUND.value(),
                 "Not Found",
-                "Endpoint không tồn tại. Vui lòng kiểm tra lại URL",
+                "Endpoint does not exist. Please check the URL",
                 request.getDescription(false).replace("uri=", "")
         );
 
@@ -195,7 +195,7 @@ public class GlobalExceptionHandler {
         ErrorResponseDTO response = new ErrorResponseDTO(
                 HttpStatus.NOT_FOUND.value(),
                 "Not Found",
-                "Endpoint không tồn tại. Vui lòng kiểm tra lại URL",
+                "Endpoint does not exist. Please check the URL",
                 request.getDescription(false).replace("uri=", "")
         );
 
@@ -210,8 +210,9 @@ public class GlobalExceptionHandler {
         logger.warn("Method not allowed: {} for {}", ex.getMethod(), request.getDescription(false));
 
         String supportedMethods = "N/A";
-        if (ex.getSupportedHttpMethods() != null && !ex.getSupportedHttpMethods().isEmpty()) {
-            supportedMethods = ex.getSupportedHttpMethods().stream()
+        var supportedMethodsSet = ex.getSupportedHttpMethods();
+        if (supportedMethodsSet != null && !supportedMethodsSet.isEmpty()) {
+            supportedMethods = supportedMethodsSet.stream()
                     .map(Object::toString)
                     .reduce((a, b) -> a + ", " + b)
                     .orElse("N/A");
@@ -220,7 +221,7 @@ public class GlobalExceptionHandler {
         ErrorResponseDTO response = new ErrorResponseDTO(
                 HttpStatus.METHOD_NOT_ALLOWED.value(),
                 "Method Not Allowed",
-                String.format("Phương thức %s không được hỗ trợ. Phương thức hỗ trợ: %s",
+                String.format("Method %s is not supported. Supported methods: %s",
                         ex.getMethod(), supportedMethods),
                 request.getDescription(false).replace("uri=", "")
         );
@@ -272,7 +273,7 @@ public class GlobalExceptionHandler {
         ErrorResponseDTO response = new ErrorResponseDTO(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "File Storage Error",
-                "Lỗi lưu trữ file. Vui lòng thử lại sau",
+                "File storage error. Please try again later",
                 request.getDescription(false).replace("uri=", "")
         );
 
