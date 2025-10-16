@@ -4,10 +4,14 @@ import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.service.LogoutService;
 import com.group8.evcoownership.utils.JwtUtil;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.security.SignatureException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -20,6 +24,7 @@ import java.io.IOException;
 import java.util.Collections;
 
 @Component
+@Slf4j //slf4j nay de hien thi log errors
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Autowired
@@ -44,44 +49,70 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = authHeader.substring(7);
 
-        // CHECK BLACKLIST
-        if (logoutService.isTokenBlacklisted(token)) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json");
-            response.setCharacterEncoding("UTF-8");
-            response.getWriter().write(
-                    "{\"error\":\"Token đã bị thu hồi. Vui lòng đăng nhập lại.\"}"
-            );
-            response.getWriter().flush();
+        //kiem tra token trống
+        if (token == null || token.trim().isEmpty()) {
+            log.warn("Empty token detected");
+            request.setAttribute("jwt_error", "Token không được để trống");
+            filterChain.doFilter(request, response);
             return;
         }
 
-        if (jwtUtil.validateToken(token)) {
-            String email = jwtUtil.extractEmail(token);
-            User user = userRepository.findByEmail(email).orElse(null);
+        // ========== CHECK BLACKLIST ==========
+        if (logoutService.isTokenBlacklisted(token)) {
+            request.setAttribute("jwt_error", "Token đã bị thu hồi. Vui lòng đăng nhập lại");
+            filterChain.doFilter(request, response);
+            return;
+        }
 
-            if (user != null) {
-                SimpleGrantedAuthority authority = new SimpleGrantedAuthority(
-                        "ROLE_" + user.getRole().getRoleName().toString()
-                );
+        // ========== VALIDATE TOKEN VỚI TRY-CATCH ==========
+        try {
+            if (jwtUtil.validateToken(token)) {
+                String email = jwtUtil.extractEmail(token);
+                User user = userRepository.findByEmail(email).orElse(null);
 
-                // ========== TẠO CUSOM TOKEN ==========
-                UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                        user,
-                        null,
-                        Collections.singletonList(authority)
-                ) {
-                    // Override getName() để tránh gọi toString()
-                    @Override
-                    public String getName() {
-                        // Trả về email thay vì toString()
-                        return user.getEmail();
-                    }
-                };
-                // ========== KẾT THÚC SỬA ==========
+                if (user != null) {
+                    SimpleGrantedAuthority authority = new SimpleGrantedAuthority(
+                            "ROLE_" + user.getRole().getRoleName().toString()
+                    );
 
-                SecurityContextHolder.getContext().setAuthentication(auth);
+                    UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                            user,
+                            null,
+                            Collections.singletonList(authority)
+                    ) {
+                        @Override
+                        public String getName() {
+                            return user.getEmail();
+                        }
+                    };
+
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                } else {
+                    request.setAttribute("jwt_error", "Người dùng không tồn tại");
+                }
+            } else {
+                request.setAttribute("jwt_error", "Token không hợp lệ");
             }
+
+        } catch (ExpiredJwtException e) {
+            log.warn("JWT token expired: {}", e.getMessage());
+            request.setAttribute("jwt_error", "Token đã hết hạn. Vui lòng đăng nhập lại");
+
+        } catch (MalformedJwtException e) {
+            log.warn("Invalid JWT token: {}", e.getMessage());
+            request.setAttribute("jwt_error", "Token không đúng định dạng");
+
+        } catch (SignatureException e) {
+            log.warn("Invalid JWT signature: {}", e.getMessage());
+            request.setAttribute("jwt_error", "Chữ ký token không hợp lệ");
+
+        } catch (IllegalArgumentException e) {
+            log.warn("JWT token is empty: {}", e.getMessage());
+            request.setAttribute("jwt_error", "Token không được để trống");
+
+        } catch (Exception e) {
+            log.error("Cannot set user authentication: {}", e.getMessage());
+            request.setAttribute("jwt_error", "Xác thực token thất bại");
         }
 
         filterChain.doFilter(request, response);
