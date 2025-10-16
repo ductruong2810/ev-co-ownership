@@ -7,10 +7,14 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+
 @Repository
 public interface ExpenseRepository extends JpaRepository<Expense, Long> {
     Page<Expense> findByFund_FundId(Long fundId, Pageable pageable);
+
     Page<Expense> findByFund_FundIdAndSourceType(Long fundId, String sourceType, Pageable pageable);
+
     Page<Expense> findByExpenseDateBetween(LocalDateTime from, LocalDateTime to, Pageable pageable);
+
     Page<Expense> findByFund_FundIdAndExpenseDateBetween(Long fundId, LocalDateTime from, LocalDateTime to, Pageable pageable);
 }

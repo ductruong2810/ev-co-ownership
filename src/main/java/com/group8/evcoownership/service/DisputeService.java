@@ -1,6 +1,9 @@
 package com.group8.evcoownership.service;
 
-import com.group8.evcoownership.dto.*;
+import com.group8.evcoownership.dto.DisputeCreateRequest;
+import com.group8.evcoownership.dto.DisputeResponse;
+import com.group8.evcoownership.dto.DisputeStaffUpdateRequest;
+import com.group8.evcoownership.dto.DisputeStatusUpdateRequest;
 import com.group8.evcoownership.entity.Dispute;
 import com.group8.evcoownership.entity.SharedFund;
 import com.group8.evcoownership.entity.User;
@@ -11,7 +14,10 @@ import com.group8.evcoownership.repository.SharedFundRepository;
 import com.group8.evcoownership.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -93,7 +99,7 @@ public class DisputeService {
         Dispute d = getOrThrow(id);
 
         DisputeStatus from = DisputeStatus.from(d.getStatus());
-        DisputeStatus to   = DisputeStatus.valueOf(req.status());
+        DisputeStatus to = DisputeStatus.valueOf(req.status());
 
         if (from != DisputeStatus.OPEN || to == DisputeStatus.OPEN) {
             throw new IllegalStateException("Invalid transition: " + from + " -> " + to);

@@ -22,4 +22,5 @@ public record DisputeResponse(
         Long resolvedById,
         LocalDateTime createdAt,
         LocalDateTime resolvedAt
-) {}
+) {
+}

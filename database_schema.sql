@@ -43,13 +43,13 @@ GO
 -- =============================================
 CREATE TABLE OwnershipGroup
 (
-    GroupId     BIGINT IDENTITY (1,1) PRIMARY KEY,
-    GroupName   NVARCHAR(100) NOT NULL,
-    Status      NVARCHAR(20) DEFAULT 'Pending',
-    Description NVARCHAR(MAX),
+    GroupId        BIGINT IDENTITY (1,1) PRIMARY KEY,
+    GroupName      NVARCHAR(100) NOT NULL,
+    Status         NVARCHAR(20) DEFAULT 'Pending',
+    Description    NVARCHAR(MAX),
     MemberCapacity INT,
-    CreatedAt   DATETIME2    DEFAULT GETDATE(),
-    UpdatedAt   DATETIME2    DEFAULT GETDATE()
+    CreatedAt      DATETIME2    DEFAULT GETDATE(),
+    UpdatedAt      DATETIME2    DEFAULT GETDATE()
 );
 GO
 
@@ -303,10 +303,10 @@ GO
 CREATE TABLE DisputeTicket
 (
     TicketId           BIGINT IDENTITY (1,1) PRIMARY KEY,
-    DisputeId          BIGINT         NOT NULL,
-    Priority           NVARCHAR(20)   NOT NULL DEFAULT 'MEDIUM',
+    DisputeId          BIGINT       NOT NULL,
+    Priority           NVARCHAR(20) NOT NULL DEFAULT 'MEDIUM',
     AssignedTo         BIGINT,
-    OpenedAt           DATETIME2      NOT NULL DEFAULT GETDATE(),
+    OpenedAt           DATETIME2    NOT NULL DEFAULT GETDATE(),
     DueFirstResponseAt DATETIME2,
     DueResolutionAt    DATETIME2,
     ClosedAt           DATETIME2,
@@ -321,11 +321,11 @@ CREATE TABLE DisputeEvent
     TicketId    BIGINT,
     ActorUserId BIGINT,
     ActorRole   NVARCHAR(20),
-    EventType   NVARCHAR(40)   NOT NULL,
+    EventType   NVARCHAR(40) NOT NULL,
     OldValue    NVARCHAR(200),
     NewValue    NVARCHAR(200),
     Note        NVARCHAR(MAX),
-    CreatedAt   DATETIME2      NOT NULL DEFAULT GETDATE(),
+    CreatedAt   DATETIME2    NOT NULL DEFAULT GETDATE(),
     FOREIGN KEY (TicketId) REFERENCES DisputeTicket (TicketId)
 );
 GO
@@ -333,18 +333,18 @@ GO
 CREATE TABLE DisputeAttachment
 (
     AttachmentId BIGINT IDENTITY (1,1) PRIMARY KEY,
-    DisputeId    BIGINT       NOT NULL,
-    FileName     NVARCHAR(255) NOT NULL,
-    MimeType     NVARCHAR(100) NOT NULL,
-    SizeBytes    BIGINT        NOT NULL,
+    DisputeId    BIGINT         NOT NULL,
+    FileName     NVARCHAR(255)  NOT NULL,
+    MimeType     NVARCHAR(100)  NOT NULL,
+    SizeBytes    BIGINT         NOT NULL,
     StorageUrl   NVARCHAR(1000) NOT NULL,
     Sha256       NVARCHAR(64),
     ThumbnailUrl NVARCHAR(1000),
     MetaJson     NVARCHAR(MAX),
-    UploadedBy   BIGINT        NOT NULL,
-    Visibility   NVARCHAR(20)  NOT NULL DEFAULT 'USER',
-    Status       NVARCHAR(20)  NOT NULL DEFAULT 'ACTIVE',
-    CreatedAt    DATETIME2     NOT NULL DEFAULT GETDATE(),
+    UploadedBy   BIGINT         NOT NULL,
+    Visibility   NVARCHAR(20)   NOT NULL DEFAULT 'USER',
+    Status       NVARCHAR(20)   NOT NULL DEFAULT 'ACTIVE',
+    CreatedAt    DATETIME2      NOT NULL DEFAULT GETDATE(),
     DeletedAt    DATETIME2,
     FOREIGN KEY (DisputeId) REFERENCES Dispute (DisputeId),
     FOREIGN KEY (UploadedBy) REFERENCES Users (UserId)
@@ -353,21 +353,21 @@ GO
 
 CREATE TABLE Refund
 (
-    RefundId           BIGINT IDENTITY (1,1) PRIMARY KEY,
-    DisputeId          BIGINT         NOT NULL,
-    Amount             DECIMAL(15, 2) NOT NULL,
-    Method             NVARCHAR(30)   NOT NULL,
-    TxnRef             NVARCHAR(100),
-    Status             NVARCHAR(20)   NOT NULL DEFAULT 'PENDING',
-    CreatedAt          DATETIME2      NOT NULL DEFAULT GETDATE(),
-    SettledAt          DATETIME2,
-    Note               NVARCHAR(MAX),
-    Provider           NVARCHAR(20)   DEFAULT 'VNPAY',
-    ProviderTxnRef     NVARCHAR(100),
-    ProviderRefundRef  NVARCHAR(100),
-    ReasonCode         NVARCHAR(20),
-    Channel            NVARCHAR(20),
-    RawResponse        NVARCHAR(MAX),
+    RefundId          BIGINT IDENTITY (1,1) PRIMARY KEY,
+    DisputeId         BIGINT         NOT NULL,
+    Amount            DECIMAL(15, 2) NOT NULL,
+    Method            NVARCHAR(30)   NOT NULL,
+    TxnRef            NVARCHAR(100),
+    Status            NVARCHAR(20)   NOT NULL DEFAULT 'PENDING',
+    CreatedAt         DATETIME2      NOT NULL DEFAULT GETDATE(),
+    SettledAt         DATETIME2,
+    Note              NVARCHAR(MAX),
+    Provider          NVARCHAR(20)            DEFAULT 'VNPAY',
+    ProviderTxnRef    NVARCHAR(100),
+    ProviderRefundRef NVARCHAR(100),
+    ReasonCode        NVARCHAR(20),
+    Channel           NVARCHAR(20),
+    RawResponse       NVARCHAR(MAX),
     FOREIGN KEY (DisputeId) REFERENCES Dispute (DisputeId)
 );
 GO
@@ -375,14 +375,14 @@ GO
 CREATE TABLE JournalEntry
 (
     EntryId     BIGINT IDENTITY (1,1) PRIMARY KEY,
-    DisputeId   BIGINT       NOT NULL,
-    FundId      BIGINT       NOT NULL,
-    AccountCode NVARCHAR(50) NOT NULL,
+    DisputeId   BIGINT         NOT NULL,
+    FundId      BIGINT         NOT NULL,
+    AccountCode NVARCHAR(50)   NOT NULL,
     Debit       DECIMAL(15, 2) NOT NULL DEFAULT 0,
     Credit      DECIMAL(15, 2) NOT NULL DEFAULT 0,
     Memo        NVARCHAR(255),
     PostedAt    DATETIME2,
-    CreatedAt   DATETIME2    NOT NULL DEFAULT GETDATE(),
+    CreatedAt   DATETIME2      NOT NULL DEFAULT GETDATE(),
     FOREIGN KEY (DisputeId) REFERENCES Dispute (DisputeId),
     FOREIGN KEY (FundId) REFERENCES SharedFund (FundId)
 );
@@ -418,7 +418,7 @@ CREATE TABLE Payment
     Status           NVARCHAR(20) DEFAULT 'Pending',
     TransactionCode  NVARCHAR(100),
     ProviderResponse NVARCHAR(MAX),
-    PaymentType      NVARCHAR(20) NOT NULL,
+    PaymentType      NVARCHAR(20)   NOT NULL,
     Version          BIGINT       DEFAULT 0,
     PaymentCategory  NVARCHAR(20) DEFAULT 'GROUP',
     ChargedUserId    BIGINT,
@@ -432,8 +432,9 @@ CREATE TABLE Payment
 GO
 
 -- Enforce: when PaymentCategory = 'PERSONAL' then ChargedUserId must be NOT NULL
-ALTER TABLE Payment ADD CONSTRAINT CK_Payment_Personal
-CHECK (PaymentCategory <> 'PERSONAL' OR ChargedUserId IS NOT NULL);
+ALTER TABLE Payment
+    ADD CONSTRAINT CK_Payment_Personal
+        CHECK (PaymentCategory <> 'PERSONAL' OR ChargedUserId IS NOT NULL);
 GO
 
 -- =============================================
@@ -442,14 +443,14 @@ GO
 CREATE TABLE FinancialReport
 (
     ReportId     BIGINT IDENTITY (1,1) PRIMARY KEY,
-    FundId       BIGINT         NOT NULL,
+    FundId       BIGINT NOT NULL,
     ReportMonth  INT,
     ReportYear   INT,
     TotalIncome  DECIMAL(15, 2),
     TotalExpense DECIMAL(15, 2),
-    GeneratedBy  BIGINT         NOT NULL,
-    CreatedAt    DATETIME2    DEFAULT GETDATE(),
-    UpdatedAt    DATETIME2    DEFAULT GETDATE(),
+    GeneratedBy  BIGINT NOT NULL,
+    CreatedAt    DATETIME2 DEFAULT GETDATE(),
+    UpdatedAt    DATETIME2 DEFAULT GETDATE(),
     FOREIGN KEY (FundId) REFERENCES SharedFund (FundId),
     FOREIGN KEY (GeneratedBy) REFERENCES Users (UserId)
 );

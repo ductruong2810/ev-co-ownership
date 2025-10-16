@@ -4,7 +4,6 @@ import com.azure.storage.blob.BlobClient;
 import com.azure.storage.blob.BlobContainerClient;
 import com.azure.storage.blob.models.BlobHttpHeaders;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -17,18 +16,22 @@ import java.util.UUID;
 @Slf4j
 public class AzureBlobStorageService {
 
-    @Autowired(required = false)
-    private BlobContainerClient blobContainerClient;
+    private final BlobContainerClient blobContainerClient;
+
+    public AzureBlobStorageService(BlobContainerClient blobContainerClient) {
+        this.blobContainerClient = blobContainerClient;
+    }
 
     /**
      * Upload file lên Azure Blob Storage
+     *
      * @return URL của file đã upload
      */
     public String uploadFile(MultipartFile file) {
         try {
             String originalFileName = file.getOriginalFilename();
             String fileExtension = getFileExtension(originalFileName);
-            String blobName = UUID.randomUUID().toString() + "_" + System.currentTimeMillis() + fileExtension;
+            String blobName = UUID.randomUUID() + "_" + System.currentTimeMillis() + fileExtension;
 
             BlobClient blobClient = blobContainerClient.getBlobClient(blobName);
 
