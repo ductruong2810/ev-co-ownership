@@ -4,9 +4,10 @@ import com.group8.evcoownership.entity.Expense;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
-
+@Repository
 public interface ExpenseRepository extends JpaRepository<Expense, Long> {
     Page<Expense> findByFund_FundId(Long fundId, Pageable pageable);
     Page<Expense> findByFund_FundIdAndSourceType(Long fundId, String sourceType, Pageable pageable);
