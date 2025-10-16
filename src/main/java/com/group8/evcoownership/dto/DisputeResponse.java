@@ -1,7 +1,6 @@
 package com.group8.evcoownership.dto;
 
 import lombok.Builder;
-import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -23,4 +22,5 @@ public record DisputeResponse(
         Long resolvedById,
         LocalDateTime createdAt,
         LocalDateTime resolvedAt
-) {}
+) {
+}

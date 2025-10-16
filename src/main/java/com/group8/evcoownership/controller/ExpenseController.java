@@ -62,7 +62,7 @@ public class ExpenseController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
             @ParameterObject
             @PageableDefault(size = 20, sort = "expenseDate", direction = Sort.Direction.DESC)
-            Pageable pageable    ) {
+            Pageable pageable) {
         return ResponseEntity.ok(expenseService.list(fundId, sourceType, from, to, pageable));
     }
 
