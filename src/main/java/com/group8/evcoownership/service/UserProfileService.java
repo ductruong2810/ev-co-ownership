@@ -3,6 +3,7 @@ package com.group8.evcoownership.service;
 import com.group8.evcoownership.dto.UserProfileResponseDTO;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.entity.UserDocument;
+import com.group8.evcoownership.exception.ResourceNotFoundException;
 import com.group8.evcoownership.repository.UserDocumentRepository;
 import com.group8.evcoownership.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -23,15 +24,35 @@ public class UserProfileService {
     private UserDocumentRepository userDocumentRepository;
 
     /**
-     * Lấy profile đầy đủ của user (chỉ ảnh documents, không có số CCCD/GPLX)
+     * Lấy profile của user đang login (dùng email từ token)
      */
     public UserProfileResponseDTO getUserProfile(String email) {
         log.info("Fetching profile for user: {}", email);
 
-        // Lấy user từ DB
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
 
+        return buildProfileResponse(user);
+    }
+
+    /**
+     * Lấy profile theo userId (public - không cần token)
+     */
+    public UserProfileResponseDTO getUserProfileById(Long userId) {
+        log.info("Fetching public profile for userId: {}", userId);
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        String.format("Không tìm thấy người dùng với ID: %d", userId)
+                ));
+
+        return buildProfileResponse(user);
+    }
+
+    /**
+     * Build response từ User entity (dùng chung cho cả 2 method)
+     */
+    private UserProfileResponseDTO buildProfileResponse(User user) {
         // Lấy tất cả documents của user
         List<UserDocument> allDocuments = userDocumentRepository.findByUserId(user.getUserId());
 
@@ -87,8 +108,6 @@ public class UserProfileService {
      * TODO: Implement khi có bảng GroupMembers
      */
     private int getGroupsCount(Long userId) {
-        // Query từ bảng GroupMembers hoặc tương tự
-        // Hiện tại return 0 nếu chưa có bảng Groups
-        return 0; // Placeholder - sẽ implement sau
+        return 0;
     }
 }
