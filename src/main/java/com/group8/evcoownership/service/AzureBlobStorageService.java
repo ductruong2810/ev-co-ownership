@@ -16,10 +16,15 @@ import java.util.UUID;
 @Slf4j
 public class AzureBlobStorageService {
 
-    private final BlobContainerClient blobContainerClient;
+    private BlobContainerClient blobContainerClient;
 
+    // For Spring runtime
     public AzureBlobStorageService(BlobContainerClient blobContainerClient) {
         this.blobContainerClient = blobContainerClient;
+    }
+
+    // For test subclassing (NoOp) – not used at runtime
+    protected AzureBlobStorageService() {
     }
 
     /**
