@@ -51,9 +51,11 @@ public class GlobalExceptionHandler {
             String loweredMessage = defaultMessage != null ? defaultMessage.toLowerCase() : "";
 
             if (errorCode != null) {
-                if (errorCode.contains("PasswordMatches") || loweredMessage.contains("password")) {
+                if (errorCode.contains("PasswordMatches") ||
+                        loweredMessage.contains("password")) {
                     fieldName = "password";
-                } else if (errorCode.contains("EmailMatches") || loweredMessage.contains("email")) {
+                } else if (errorCode.contains("EmailMatches") ||
+                        loweredMessage.contains("email")) {
                     fieldName = "email";
                 }
             }
@@ -360,7 +362,7 @@ public class GlobalExceptionHandler {
         ErrorResponseDTO response = new ErrorResponseDTO(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "Internal Server Error",
-                "Đã xảy ra lỗi không xác định. Vui lòng thử lại sau",
+                "An unexpected error occurred",
                 request.getDescription(false).replace("uri=", "")
         );
 

@@ -178,7 +178,23 @@ Table Voting {
   CreatedAt datetime [default: `now()`]
 }
 
-
+Table Dispute {
+  DisputeId bigint [pk, increment]
+  FundId bigint [ref: > SharedFund.FundId, not null]
+  CreatedBy bigint
+  DisputeType varchar(50) [note: 'FINANCIAL, USAGE, DECISION']
+  RelatedEntityType varchar(50) [note: 'INCIDENT, PAYMENT, EXPENSE, VOTING']
+  RelatedEntityId bigint
+  Description text
+  DisputedAmount decimal(12,2)
+  Notes varchar(1000)
+  ResolutionAmount decimal(12,2)
+  Status varchar(20) [default: 'Open']
+  ResolvedBy bigint [ref: > Users.UserId]
+  CreatedAt datetime [default: `now()`]
+  UpdatedAt datetime [default: `now()`]
+  ResolvedAt datetime
+}
 
 Table Expense {
   ExpenseId bigint [pk, increment]
@@ -246,42 +262,23 @@ Table OtpToken {
 }
 // ===== Add-on: Dispute processing (no change to Dispute) =====
 
-Table Dispute {
-  DisputeId bigint [pk, increment]
-  FundId bigint [ref: > SharedFund.FundId, not null]
-  CreatedBy bigint
-  DisputeType varchar(50)
-  RelatedEntityType varchar(50)
-  RelatedEntityId bigint
-  Description text
-  DisputedAmount decimal(12,2)
-  Notes varchar(1000)
-  ResolutionAmount decimal(12,2)
-  Status varchar(20) [not null, default: 'OPEN'] // OPEN/IN_REVIEW/RESOLVED/REJECTED
-  ResolvedBy bigint [ref: > Users.UserId]
-  CreatedAt datetime [default: `now()`]
-  UpdatedAt datetime [default: `now()`]
-  ResolvedAt datetime
-}
-
-// Ticket KHÔNG còn status; dùng ClosedAt
 Table DisputeTicket {
   TicketId bigint [pk, increment]
   DisputeId bigint [not null, ref: > Dispute.DisputeId]
-  Priority varchar(20) [not null, default: 'MEDIUM'] // LOW/MEDIUM/HIGH/URGENT
-  AssignedTo bigint
+
+  Priority varchar(20) [not null, default: 'MEDIUM']
+  AssignedTo bigint [ref: > Users.UserId]          // ⬅️ link tới Users.UserId
   OpenedAt datetime [not null, default: `now()`]
   DueFirstResponseAt datetime
   DueResolutionAt datetime
-  ClosedAt datetime                                   // <— thêm
+  ClosedAt datetime
 
   indexes {
     DisputeId [name: 'IX_DisputeTicket_DisputeId']
-    AssignedTo [name: 'IX_DisputeTicket_AssignedTo']
+    AssignedTo [name: 'IX_DisputeTicket_AssignedTo'] // ⬅️ index cho truy vấn theo staff
     (DisputeId, ClosedAt) [name: 'IX_DisputeTicket_Open']
   }
 }
-
 Table DisputeEvent {
   EventId bigint [pk, increment]
   TicketId bigint [ref: > DisputeTicket.TicketId]
