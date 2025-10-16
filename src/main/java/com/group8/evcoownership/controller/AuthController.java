@@ -73,7 +73,7 @@ public class AuthController {
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
             // 4. Check user status
-            if (user.getStatus() != UserStatus.Active) {
+            if (user.getStatus() != UserStatus.ACTIVE) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(Map.of("error", "Tài khoản chưa được kích hoạt"));
             }

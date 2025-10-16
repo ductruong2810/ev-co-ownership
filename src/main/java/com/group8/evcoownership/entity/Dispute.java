@@ -1,5 +1,8 @@
 package com.group8.evcoownership.entity;
 
+import com.group8.evcoownership.enums.DisputeStatus;
+import com.group8.evcoownership.enums.DisputeType;
+import com.group8.evcoownership.enums.RelatedEntityType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -31,11 +34,13 @@ public class Dispute {
     @Column(name = "CreatedBy")
     private Long createdBy;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "DisputeType", length = 50)
-    private String disputeType; // FINANCIAL, USAGE, DECISION
+    private DisputeType disputeType; // FINANCIAL, USAGE, DECISION
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "RelatedEntityType", length = 50)
-    private String relatedEntityType; // INCIDENT, PAYMENT, EXPENSE, VOTING
+    private RelatedEntityType relatedEntityType; // INCIDENT, PAYMENT, EXPENSE, VOTING
 
     @Column(name = "RelatedEntityId")
     private Long relatedEntityId;
@@ -56,8 +61,9 @@ public class Dispute {
     @Column(name = "ResolutionAmount", precision = 12, scale = 2)
     private BigDecimal resolutionAmount;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "Status", length = 20)
-    private String status; // OPEN, IN_REVIEW, RESOLVED, CLOSED
+    private DisputeStatus status; // OPEN, IN_REVIEW, RESOLVED, CLOSED
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ResolvedBy")

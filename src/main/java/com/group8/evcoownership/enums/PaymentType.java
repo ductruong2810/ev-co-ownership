@@ -1,8 +1,7 @@
 package com.group8.evcoownership.enums;
 
 public enum PaymentType {
-    Initial,
-    TopUp,
-    Penalty,
-    Other
+    CONTRIBUTION,
+    PENALTY,
+    MAINTENANCE_FEE
 }
