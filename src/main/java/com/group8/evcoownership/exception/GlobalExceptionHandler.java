@@ -30,9 +30,10 @@ public class GlobalExceptionHandler {
 
         // Field-level errors (email, password, fullName...)
         ex.getBindingResult().getFieldErrors().forEach(error -> {
+            String defaultMessage = error.getDefaultMessage();
             errors.add(ValidationErrorResponseDTO.FieldError.builder()
                     .field(error.getField())
-                    .message(error.getDefaultMessage())
+                    .message(defaultMessage != null ? defaultMessage : "Invalid value")
                     .build());
         });
 
@@ -41,27 +42,29 @@ public class GlobalExceptionHandler {
             // Detect loại validation để set field name phù hợp
             String fieldName = "general";
             String errorCode = error.getCode();
+            String defaultMessage = error.getDefaultMessage();
+            String loweredMessage = defaultMessage != null ? defaultMessage.toLowerCase() : "";
 
             if (errorCode != null) {
                 if (errorCode.contains("PasswordMatches") ||
-                        error.getDefaultMessage().toLowerCase().contains("password")) {
+                        loweredMessage.contains("password")) {
                     fieldName = "password";
                 } else if (errorCode.contains("EmailMatches") ||
-                        error.getDefaultMessage().toLowerCase().contains("email")) {
+                        loweredMessage.contains("email")) {
                     fieldName = "email";
                 }
             }
 
             errors.add(ValidationErrorResponseDTO.FieldError.builder()
                     .field(fieldName)
-                    .message(error.getDefaultMessage())
+                    .message(defaultMessage != null ? defaultMessage : "Invalid request")
                     .build());
         });
 
         ValidationErrorResponseDTO response = ValidationErrorResponseDTO.builder()
                 .status(HttpStatus.BAD_REQUEST.value())
                 .error("Validation Failed")
-                .message("Dữ liệu không hợp lệ")
+                .message("Invalid data")
                 .path(request.getDescription(false).replace("uri=", ""))
                 .errors(errors)
                 .build();
@@ -76,17 +79,15 @@ public class GlobalExceptionHandler {
 
         List<ValidationErrorResponseDTO.FieldError> errors = new ArrayList<>();
 
-        ex.getConstraintViolations().forEach(violation -> {
-            errors.add(ValidationErrorResponseDTO.FieldError.builder()
-                    .field(violation.getPropertyPath().toString())
-                    .message(violation.getMessage())
-                    .build());
-        });
+        ex.getConstraintViolations().forEach(violation -> errors.add(ValidationErrorResponseDTO.FieldError.builder()
+                .field(violation.getPropertyPath().toString())
+                .message(violation.getMessage())
+                .build()));
 
         ValidationErrorResponseDTO response = ValidationErrorResponseDTO.builder()
                 .status(HttpStatus.BAD_REQUEST.value())
                 .error("Validation Failed")
-                .message("Dữ liệu không hợp lệ")
+                .message("Invalid data")
                 .path(request.getDescription(false).replace("uri=", ""))
                 .errors(errors)
                 .build();
@@ -177,7 +178,7 @@ public class GlobalExceptionHandler {
         ErrorResponseDTO response = new ErrorResponseDTO(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "Internal Server Error",
-                "Đã xảy ra lỗi không mong muốn",
+                "An unexpected error occurred",
                 request.getDescription(false).replace("uri=", "")
         );
 
