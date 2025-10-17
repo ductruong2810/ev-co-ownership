@@ -71,7 +71,8 @@ public class AuthService {
     }
 
     // ================= REQUEST OTP =================
-    public String requestOtp(RegisterRequestDTO request) {
+    //chinh sua tra luon email de frontend xu ly
+    public Map<String, Object> requestOtp(RegisterRequestDTO request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("Email đã được đăng ký");
         }
@@ -81,13 +82,17 @@ public class AuthService {
         }
 
         String otp = otpUtil.generateOtp(request.getEmail());
-        //luu vao cả 2 map
         pendingUsers.put(request.getEmail(), request);
         registerOtpToEmailMap.put(otp, request.getEmail());
-        //gui email
         emailService.sendOtpEmail(request.getEmail(), otp);
 
-        return "OTP đã được gửi đến email: " + request.getEmail();
+        log.info("OTP sent to email: {}", request.getEmail());
+
+        return Map.of(
+                "message", "Mã OTP đã được gửi đến email của bạn",
+                "email", request.getEmail(),
+                "expiresIn", 300 // 5 phút = 300 giây
+        );
     }
 
     // ================= VERIFY OTP (ĐÃ SỬA - TRẢ VỀ TOKEN + USER INFO) =================
@@ -194,7 +199,7 @@ public class AuthService {
     }
 
     // ================= RESEND OTP =================
-    public String resendOtp(String email) {
+    public Map<String, Object> resendOtp(String email) {
         log.info("Resending OTP for email: {}", email);
 
         RegisterRequestDTO request = pendingUsers.get(email);
@@ -207,10 +212,16 @@ public class AuthService {
 
         try {
             String newOtp = otpUtil.generateOtp(email);
+            registerOtpToEmailMap.put(newOtp, email);
             emailService.sendOtpEmail(email, newOtp);
 
             log.info("OTP resent successfully to email: {}", email);
-            return "OTP mới đã được gửi đến email: " + email;
+
+            return Map.of(
+                    "message", "Mã OTP mới đã được gửi đến email của bạn",
+                    "email", email,
+                    "expiresIn", 300
+            );
 
         } catch (RuntimeException e) {
             log.error("Failed to resend OTP to email {}: {}", email, e.getMessage());
