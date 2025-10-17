@@ -240,7 +240,7 @@ public class AuthService {
     }
 
     // ================= FORGOT PASSWORD - GỬI OTP =================
-    public String forgotPassword(String email) {
+    public Map<String, Object> forgotPassword(String email) {
         log.info("Processing forgot password request for email: {}", email);
 
         User user = userRepository.findByEmail(email)
@@ -261,7 +261,12 @@ public class AuthService {
             emailService.sendPasswordResetOtpEmail(email, otp);
 
             log.info("Password reset OTP sent successfully to: {}", email);
-            return "Mã OTP đã được gửi đến email: " + email + ". Mã có hiệu lực trong 5 phút.";
+
+            return Map.of(
+                    "message", "Mã OTP đã được gửi đến email của bạn",
+                    "email", email,
+                    "expiresIn", 300
+            );
 
         } catch (RuntimeException e) {
             log.error("Failed to send password reset OTP to {}: {}", email, e.getMessage());
@@ -374,7 +379,7 @@ public class AuthService {
     }
 
     // ================= RESEND PASSWORD RESET OTP =================
-    public String resendPasswordResetOtp(String email) {
+    public Map<String, Object> resendPasswordResetOtp(String email) {
         log.info("Resending password reset OTP for email: {}", email);
 
         if (!pendingPasswordResets.containsKey(email)) {
@@ -391,7 +396,12 @@ public class AuthService {
             emailService.sendPasswordResetOtpEmail(email, newOtp);
 
             log.info("Password reset OTP resent successfully to: {}", email);
-            return "OTP mới đã được gửi đến email: " + email;
+
+            return Map.of(
+                    "message", "Mã OTP mới đã được gửi đến email của bạn",
+                    "email", email,
+                    "expiresIn", 300
+            );
 
         } catch (RuntimeException e) {
             log.error("Failed to resend password reset OTP to {}: {}", email, e.getMessage());
@@ -402,7 +412,6 @@ public class AuthService {
             throw new RuntimeException("Không thể gửi lại OTP. Vui lòng thử lại sau.");
         }
     }
-
     // ================= CHANGE PASSWORD =================
     public String changePassword(String email, ChangePasswordRequestDTO request) {
         log.info("Processing change password request for email: {}", email);

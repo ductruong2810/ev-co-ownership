@@ -275,8 +275,6 @@
                 <div class="val" data-text="vehicle.plate">—</div>
                 <div class="key">Số VIN</div>
                 <div class="val" data-text="vehicle.vin">—</div>
-                <div class="key">Năm SX</div>
-                <div class="val" data-text="vehicle.year">—</div>
             </div>
         </div>
         <div class="card break-avoid" style="grid-column: span 5">
@@ -288,8 +286,6 @@
                 <div class="val" data-text="contract.endDate">—</div>
                 <div class="key">Kỳ hạn</div>
                 <div class="val" data-text="contract.termLabel">—</div>
-                <div class="key">Template</div>
-                <div class="val" data-text="contract.template">—</div>
             </div>
         </div>
     </div>
@@ -402,11 +398,9 @@
         setText('vehicle.model', data.vehicle.model);
         setText('vehicle.plate', data.vehicle.plate);
         setText('vehicle.vin', data.vehicle.vin);
-        setText('vehicle.year', data.vehicle.year);
         setText('contract.effectiveDate', data.contract.effectiveDate);
         setText('contract.endDate', data.contract.endDate);
         setText('contract.termLabel', data.contract.termLabel);
-        setText('contract.template', data.contract.template);
         setText('contract.location', data.contract.location);
         setText('contract.signDate', data.contract.signDate);
 
@@ -443,19 +437,20 @@
         });
         document.getElementById('ownership-sum').textContent = sum;
 
-        // Signatures grid
+        // Signatures grid: only group admin
         const grid = document.getElementById('signature-grid');
         grid.innerHTML = '';
-        (data.owners || []).forEach((o) => {
+        const admin = (data.owners || [])[0];
+        if (admin) {
             const box = document.createElement('div');
             box.className = 'sig-box';
             box.innerHTML = `
-          <div><strong>${o.name}</strong></div>
-          <div class="muted">Ký & ghi rõ họ tên</div>
+          <div><strong>${admin.name}</strong></div>
+          <div class="muted">Đại diện Nhóm (Admin)</div>
           <div class="sig-line">Chữ ký</div>
-          <div class="muted" style="font-size:12px">Tỷ lệ: ${o.share ?? 0}%</div>`;
+          <div class="muted" style="font-size:12px">Tỷ lệ: ${admin.share ?? 0}%</div>`;
             grid.appendChild(box);
-        });
+        }
     }
 
     // --- Demo & helpers ------------------------------------------------------
@@ -466,13 +461,13 @@
                 effectiveDate: '2025-10-20',
                 endDate: '2026-10-19',
                 termLabel: '12 tháng',
-                template: 'STANDARD-1.0',
+                
                 status: 'Draft',
                 location: 'Hà Nội',
                 signDate: '2025-10-20'
             },
             group: {name: 'EVShare – Nhóm A'},
-            vehicle: {model: 'VinFast VF 8 Plus', plate: '30A-123.45', vin: 'RLVZZZ1EZBW000001', year: 2024},
+            vehicle: {model: 'VinFast VF 8 Plus', plate: '30A-123.45', vin: 'RLVZZZ1EZBW000001'},
             finance: {
                 vehiclePrice: 950_000_000,
                 initialFund: 30_000_000,
