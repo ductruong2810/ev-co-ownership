@@ -17,8 +17,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
 
 @Service
 public class AuthService {
@@ -70,8 +70,8 @@ public class AuthService {
                 .build();
     }
 
-    // ================= REQUEST OTP =================
-    public Map<String, Object> requestOtp(RegisterRequestDTO request) {
+    // ================= REQUEST OTP (REGISTRATION) =================
+    public OtpResponseDTO requestOtp(RegisterRequestDTO request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("Email đã được đăng ký");
         }
@@ -85,13 +85,14 @@ public class AuthService {
         registerOtpToEmailMap.put(otp, request.getEmail());
         emailService.sendOtpEmail(request.getEmail(), otp);
 
-        log.info("OTP sent to email: {}", request.getEmail());
+        log.info("Registration OTP sent to email: {}", request.getEmail());
 
-        return Map.of(
-                "message", "Mã OTP đã được gửi đến email của bạn",
-                "email", request.getEmail(),
-                "expiresIn", 300
-        );
+        return OtpResponseDTO.builder()
+                .email(request.getEmail())
+                .message("Mã OTP đã được gửi đến email của bạn")
+                .type(OtpType.REGISTRATION)
+                .expiresIn(300)
+                .build();
     }
 
     // ================= VERIFY OTP - AUTO DETECT (TRẢ VỀ TYPE) =================
@@ -251,9 +252,9 @@ public class AuthService {
         return userRepository.save(user);
     }
 
-    // ================= RESEND OTP =================
-    public Map<String, Object> resendOtp(String email) {
-        log.info("Resending OTP for email: {}", email);
+    // ================= RESEND OTP (REGISTRATION) =================
+    public OtpResponseDTO resendOtp(String email) {
+        log.info("Resending registration OTP for email: {}", email);
 
         RegisterRequestDTO request = pendingUsers.get(email);
         if (request == null) {
@@ -266,19 +267,20 @@ public class AuthService {
             registerOtpToEmailMap.put(newOtp, email);
             emailService.sendOtpEmail(email, newOtp);
 
-            log.info("OTP resent successfully to email: {}", email);
+            log.info("Registration OTP resent successfully to email: {}", email);
 
-            return Map.of(
-                    "message", "Mã OTP mới đã được gửi đến email của bạn",
-                    "email", email,
-                    "expiresIn", 300
-            );
+            return OtpResponseDTO.builder()
+                    .email(email)
+                    .message("Mã OTP mới đã được gửi đến email của bạn")
+                    .type(OtpType.REGISTRATION)
+                    .expiresIn(300)
+                    .build();
 
         } catch (RuntimeException e) {
-            log.error("Failed to resend OTP to email {}: {}", email, e.getMessage());
+            log.error("Failed to resend registration OTP to email {}: {}", email, e.getMessage());
             throw e;
         } catch (Exception e) {
-            log.error("Unexpected error while resending OTP to email {}: {}", email, e.getMessage(), e);
+            log.error("Unexpected error while resending registration OTP to email {}: {}", email, e.getMessage(), e);
             throw new RuntimeException("Không thể gửi lại OTP. Vui lòng thử lại sau.");
         }
     }
@@ -291,7 +293,7 @@ public class AuthService {
     }
 
     // ================= FORGOT PASSWORD - GỬI OTP =================
-    public Map<String, Object> forgotPassword(String email) {
+    public OtpResponseDTO forgotPassword(String email) {
         log.info("Processing forgot password request for email: {}", email);
 
         User user = userRepository.findByEmail(email)
@@ -313,11 +315,12 @@ public class AuthService {
 
             log.info("Password reset OTP sent successfully to: {}", email);
 
-            return Map.of(
-                    "message", "Mã OTP đã được gửi đến email của bạn",
-                    "email", email,
-                    "expiresIn", 300
-            );
+            return OtpResponseDTO.builder()
+                    .email(email)
+                    .message("Mã OTP đã được gửi đến email của bạn")
+                    .type(OtpType.PASSWORD_RESET)
+                    .expiresIn(300)
+                    .build();
 
         } catch (RuntimeException e) {
             log.error("Failed to send password reset OTP to {}: {}", email, e.getMessage());
@@ -328,8 +331,8 @@ public class AuthService {
         }
     }
 
-    // ================= RESET PASSWORD WITH TOKEN =================
-    public String resetPasswordWithToken(ResetPasswordRequestDTO request) {
+    // ================= RESET PASSWORD WITH TOKEN (AUTO LOGIN) =================
+    public ResetPasswordResponseDTO resetPasswordWithToken(ResetPasswordRequestDTO request) {
         String resetToken = request.getResetToken();
         log.info("Processing password reset with token");
 
@@ -350,12 +353,22 @@ public class AuthService {
             User user = userRepository.findByEmail(email)
                     .orElseThrow(() -> new IllegalStateException("Không tìm thấy tài khoản"));
 
+            // Update password
             user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
             userRepository.save(user);
+
+            // Clean up
             resetTokens.remove(resetToken);
 
-            log.info("Password reset successfully for email: {}", email);
-            return "Đặt lại mật khẩu thành công! Bạn có thể đăng nhập với mật khẩu mới.";
+            // Generate tokens for auto login
+            String accessToken = jwtUtil.generateToken(user);
+
+            log.info("Password reset successfully for email: {} - Auto login enabled", email);
+
+            return ResetPasswordResponseDTO.builder()
+                    .message("Đặt lại mật khẩu thành công! Bạn đã được tự động đăng nhập.")
+                    .accessToken(accessToken)
+                    .build();
 
         } catch (IllegalArgumentException e) {
             throw e;
@@ -365,12 +378,13 @@ public class AuthService {
         }
     }
 
+
     // ================= RESEND PASSWORD RESET OTP =================
-    public Map<String, Object> resendPasswordResetOtp(String email) {
+    public OtpResponseDTO resendPasswordResetOtp(String email) {
         log.info("Resending password reset OTP for email: {}", email);
 
         if (!pendingPasswordResets.containsKey(email)) {
-            log.warn("Resend OTP attempt for non-pending reset: {}", email);
+            log.warn("Resend password reset OTP attempt for non-pending reset: {}", email);
             throw new IllegalStateException("Không tìm thấy yêu cầu đặt lại mật khẩu. Vui lòng yêu cầu lại từ đầu.");
         }
 
@@ -382,11 +396,12 @@ public class AuthService {
 
             log.info("Password reset OTP resent successfully to: {}", email);
 
-            return Map.of(
-                    "message", "Mã OTP mới đã được gửi đến email của bạn",
-                    "email", email,
-                    "expiresIn", 300
-            );
+            return OtpResponseDTO.builder()
+                    .email(email)
+                    .message("Mã OTP mới đã được gửi đến email của bạn")
+                    .type(OtpType.PASSWORD_RESET)
+                    .expiresIn(300)
+                    .build();
 
         } catch (RuntimeException e) {
             log.error("Failed to resend password reset OTP to {}: {}", email, e.getMessage());
