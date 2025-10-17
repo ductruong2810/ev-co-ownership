@@ -151,11 +151,11 @@ public class AuthController {
 
     // ================= FORGOT PASSWORD - STEP 1: GỬI OTP =================
     @PostMapping("/forgot-password")
-    public ResponseEntity<Map<String, String>> forgotPassword(
+    public ResponseEntity<Map<String, Object>> forgotPassword(
             @Valid @RequestBody ForgotPasswordRequestDTO request) {
 
-        String message = authService.forgotPassword(request.getEmail());
-        return ResponseEntity.ok(Map.of("message", message));
+        Map<String, Object> response = authService.forgotPassword(request.getEmail());
+        return ResponseEntity.ok(response);
     }
 
     // ================= FORGOT PASSWORD - STEP 2: VERIFY OTP =================
@@ -178,11 +178,11 @@ public class AuthController {
 
     // ================= FORGOT PASSWORD - RESEND OTP =================
     @PostMapping("/forgot-password/resend-otp")
-    public ResponseEntity<Map<String, String>> resendPasswordResetOtp(
+    public ResponseEntity<Map<String, Object>> resendPasswordResetOtp(
             @Valid @RequestBody ForgotPasswordRequestDTO request) {
 
-        String message = authService.resendPasswordResetOtp(request.getEmail());
-        return ResponseEntity.ok(Map.of("message", message));
+        Map<String, Object> response = authService.resendPasswordResetOtp(request.getEmail());
+        return ResponseEntity.ok(response);
     }
 
     // ================= CHANGE PASSWORD =================
