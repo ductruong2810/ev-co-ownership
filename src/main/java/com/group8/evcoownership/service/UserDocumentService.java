@@ -7,7 +7,6 @@ import com.group8.evcoownership.exception.ResourceNotFoundException;
 import com.group8.evcoownership.exception.UnauthorizedException;
 import com.group8.evcoownership.repository.UserDocumentRepository;
 import com.group8.evcoownership.repository.UserRepository;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

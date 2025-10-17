@@ -8,4 +8,5 @@ public record DisputeStatusUpdateRequest(
         @NotBlank @Pattern(regexp = "(?i)OPEN|RESOLVED|REJECTED") String status,
         String resolutionNote,
         @NotNull Long resolvedById   // bắt buộc khi -> RESOLVED/REJECTED
-) {}
+) {
+}

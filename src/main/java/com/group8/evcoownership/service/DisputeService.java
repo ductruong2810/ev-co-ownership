@@ -1,6 +1,9 @@
 package com.group8.evcoownership.service;
 
-import com.group8.evcoownership.dto.*;
+import com.group8.evcoownership.dto.DisputeCreateRequest;
+import com.group8.evcoownership.dto.DisputeResponse;
+import com.group8.evcoownership.dto.DisputeStaffUpdateRequest;
+import com.group8.evcoownership.dto.DisputeStatusUpdateRequest;
 import com.group8.evcoownership.entity.Dispute;
 import com.group8.evcoownership.entity.SharedFund;
 import com.group8.evcoownership.entity.User;
@@ -11,7 +14,10 @@ import com.group8.evcoownership.repository.SharedFundRepository;
 import com.group8.evcoownership.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,8 +42,8 @@ public class DisputeService {
                 .createdBy(req.createdBy())
                 .description(req.description())
                 .disputedAmount(req.amount())
-                .disputeType(req.disputeType().name()) // enum -> String
-                .status(DisputeStatus.OPEN.name())
+                .disputeType(req.disputeType())
+                .status(DisputeStatus.OPEN)
                 .build();
 
         d = disputeRepo.save(d);
@@ -56,11 +62,11 @@ public class DisputeService {
                 Sort.by("createdAt").descending());
         Page<Dispute> p;
         if (fundId != null && status != null) {
-            p = disputeRepo.findByFund_FundIdAndStatusIgnoreCase(fundId, status, pageable);
+            p = disputeRepo.findByFund_FundIdAndStatus(fundId, DisputeStatus.valueOf(status), pageable);
         } else if (fundId != null) {
             p = disputeRepo.findByFund_FundId(fundId, pageable);
         } else if (status != null) {
-            p = disputeRepo.findByStatusIgnoreCase(status, pageable);
+            p = disputeRepo.findByStatus(DisputeStatus.valueOf(status), pageable);
         } else {
             p = disputeRepo.findAll(pageable);
         }
@@ -73,9 +79,8 @@ public class DisputeService {
         // TODO: kiểm tra role staffUserId (STAFF/ADMIN)
         Dispute d = getOrThrow(id);
 
-        // enum -> String
         RelatedEntityType relType = req.relatedEntityType();
-        d.setRelatedEntityType(relType.name());
+        d.setRelatedEntityType(relType);
         d.setRelatedEntityId(req.relatedEntityId());
         d.setResolution(req.resolution());
         if (req.resolutionAmount() != null) d.setResolutionAmount(req.resolutionAmount());
@@ -92,8 +97,8 @@ public class DisputeService {
         // TODO: kiểm tra role staffUserId (STAFF/ADMIN)
         Dispute d = getOrThrow(id);
 
-        DisputeStatus from = DisputeStatus.from(d.getStatus());
-        DisputeStatus to   = DisputeStatus.valueOf(req.status());
+        DisputeStatus from = d.getStatus();
+        DisputeStatus to = DisputeStatus.valueOf(req.status());
 
         if (from != DisputeStatus.OPEN || to == DisputeStatus.OPEN) {
             throw new IllegalStateException("Invalid transition: " + from + " -> " + to);
@@ -121,7 +126,7 @@ public class DisputeService {
 
         d.setResolvedBy(resolver);
         if (d.getResolvedAt() == null) d.setResolvedAt(LocalDateTime.now());
-        d.setStatus(to.name());
+        d.setStatus(to);
 
         return toDto(d);
     }
@@ -145,14 +150,14 @@ public class DisputeService {
                 d.getId(),
                 d.getFund().getFundId(),
                 d.getCreatedBy(),
-                d.getDisputeType(),
-                d.getRelatedEntityType(),
+                d.getDisputeType() == null ? null : d.getDisputeType().name(),
+                d.getRelatedEntityType() == null ? null : d.getRelatedEntityType().name(),
                 d.getRelatedEntityId(),
                 d.getDescription(),
                 d.getDisputedAmount(),
                 d.getResolution(),
                 d.getResolutionAmount(),
-                d.getStatus(),
+                d.getStatus() == null ? null : d.getStatus().name(),
                 resolvedById,
                 d.getCreatedAt(),
                 d.getResolvedAt()

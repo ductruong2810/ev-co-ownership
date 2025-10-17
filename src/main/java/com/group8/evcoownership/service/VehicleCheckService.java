@@ -76,7 +76,7 @@ public class VehicleCheckService {
                 .build();
 
         // Cancel booking
-        booking.setStatus(com.group8.evcoownership.enums.BookingStatus.Cancelled);
+        booking.setStatus(com.group8.evcoownership.enums.BookingStatus.CANCELLED);
         usageBookingRepository.save(booking);
 
         return vehicleCheckRepository.save(check);

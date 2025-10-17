@@ -70,7 +70,7 @@ public class UsageBookingService {
         booking.setVehicle(vehicle);
         booking.setStartDateTime(start);
         booking.setEndDateTime(end);
-        booking.setStatus(BookingStatus.Pending);
+        booking.setStatus(BookingStatus.PENDING);
 
         return usageBookingRepository.save(booking);
     }
@@ -119,7 +119,7 @@ public class UsageBookingService {
         UsageBooking booking = usageBookingRepository.findById(bookingId)
                 .orElseThrow(() -> new EntityNotFoundException("Booking not found"));
 
-        if (booking.getStatus() != BookingStatus.Pending) {
+        if (booking.getStatus() != BookingStatus.PENDING) {
             throw new IllegalStateException("Only pending bookings can be confirmed");
         }
 
@@ -135,7 +135,7 @@ public class UsageBookingService {
             throw new IllegalStateException("Cannot confirm booking. Time slot conflicts with existing bookings or buffer periods. Please choose another time slot.");
         }
 
-        booking.setStatus(BookingStatus.Confirmed);
+        booking.setStatus(BookingStatus.CONFIRMED);
         return usageBookingRepository.save(booking);
     }
 
@@ -144,11 +144,11 @@ public class UsageBookingService {
         UsageBooking booking = usageBookingRepository.findById(bookingId)
                 .orElseThrow(() -> new EntityNotFoundException("Booking not found"));
 
-        if (booking.getStatus() == BookingStatus.Completed) {
+        if (booking.getStatus() == BookingStatus.COMPLETED) {
             throw new IllegalStateException("Cannot cancel completed bookings");
         }
 
-        booking.setStatus(BookingStatus.Cancelled);
+        booking.setStatus(BookingStatus.CANCELLED);
         return usageBookingRepository.save(booking);
     }
 
@@ -157,11 +157,11 @@ public class UsageBookingService {
         UsageBooking booking = usageBookingRepository.findById(bookingId)
                 .orElseThrow(() -> new EntityNotFoundException("Booking not found"));
 
-        if (booking.getStatus() != BookingStatus.Confirmed) {
+        if (booking.getStatus() != BookingStatus.CONFIRMED) {
             throw new IllegalStateException("Only confirmed bookings can be completed");
         }
 
-        booking.setStatus(BookingStatus.Completed);
+        booking.setStatus(BookingStatus.COMPLETED);
         return usageBookingRepository.save(booking);
     }
 
@@ -170,7 +170,7 @@ public class UsageBookingService {
         UsageBooking completedBooking = usageBookingRepository.findById(completedBookingId)
                 .orElseThrow(() -> new EntityNotFoundException("Booking not found"));
 
-        if (completedBooking.getStatus() != BookingStatus.Completed) {
+        if (completedBooking.getStatus() != BookingStatus.COMPLETED) {
             throw new IllegalStateException("Only completed bookings can have buffer periods");
         }
 
@@ -183,7 +183,7 @@ public class UsageBookingService {
         bufferBooking.setVehicle(completedBooking.getVehicle());
         bufferBooking.setStartDateTime(bufferStart);
         bufferBooking.setEndDateTime(bufferEnd);
-        bufferBooking.setStatus(BookingStatus.Buffer);
+        bufferBooking.setStatus(BookingStatus.BUFFER);
 
         return usageBookingRepository.save(bufferBooking);
     }
@@ -193,11 +193,11 @@ public class UsageBookingService {
         UsageBooking booking = usageBookingRepository.findById(bookingId)
                 .orElseThrow(() -> new EntityNotFoundException("Booking not found"));
 
-        if (booking.getStatus() == BookingStatus.Completed) {
+        if (booking.getStatus() == BookingStatus.COMPLETED) {
             throw new IllegalStateException("Cannot cancel completed bookings");
         }
 
-        booking.setStatus(BookingStatus.Cancelled);
+        booking.setStatus(BookingStatus.CANCELLED);
         usageBookingRepository.save(booking);
 
         Map<String, Object> result = new HashMap<>();
@@ -232,7 +232,7 @@ public class UsageBookingService {
         maintenanceBooking.setVehicle(vehicle);
         maintenanceBooking.setStartDateTime(request.getStartDateTime());
         maintenanceBooking.setEndDateTime(request.getEndDateTime());
-        maintenanceBooking.setStatus(BookingStatus.Buffer); // Sử dụng Buffer status cho maintenance
+        maintenanceBooking.setStatus(BookingStatus.BUFFER); // Sử dụng Buffer status cho maintenance
 
         UsageBooking savedMaintenance = usageBookingRepository.save(maintenanceBooking);
 
@@ -250,8 +250,8 @@ public class UsageBookingService {
 
             List<Map<String, Object>> cancelledBookings = new ArrayList<>();
             for (UsageBooking booking : affectedBookings) {
-                if (booking.getStatus() != BookingStatus.Completed) {
-                    booking.setStatus(BookingStatus.Cancelled);
+                if (booking.getStatus() != BookingStatus.COMPLETED) {
+                    booking.setStatus(BookingStatus.CANCELLED);
                     usageBookingRepository.save(booking);
 
                     Map<String, Object> cancelledBooking = new HashMap<>();
@@ -271,7 +271,7 @@ public class UsageBookingService {
             // Gửi notification cho tất cả user bị ảnh hưởng
             if (request.isNotifyUsers()) {
                 for (UsageBooking booking : affectedBookings) {
-                    if (booking.getStatus() == BookingStatus.Cancelled) {
+                    if (booking.getStatus() == BookingStatus.CANCELLED) {
                         notificationService.sendNotification(
                                 booking.getUser(),
                                 "Booking Cancelled - Vehicle Maintenance",

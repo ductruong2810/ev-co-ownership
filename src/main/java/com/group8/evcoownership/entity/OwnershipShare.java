@@ -45,7 +45,7 @@ public class OwnershipShare {
 
     @PrePersist
     public void onCreate() {
-        if (groupRole == null) groupRole = GroupRole.Member;
+        if (groupRole == null) groupRole = GroupRole.MEMBER;
         if (joinDate == null) joinDate = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
     }

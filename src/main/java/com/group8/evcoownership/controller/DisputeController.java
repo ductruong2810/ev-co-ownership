@@ -1,6 +1,9 @@
 package com.group8.evcoownership.controller;
 
-import com.group8.evcoownership.dto.*;
+import com.group8.evcoownership.dto.DisputeCreateRequest;
+import com.group8.evcoownership.dto.DisputeResponse;
+import com.group8.evcoownership.dto.DisputeStaffUpdateRequest;
+import com.group8.evcoownership.dto.DisputeStatusUpdateRequest;
 import com.group8.evcoownership.service.DisputeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

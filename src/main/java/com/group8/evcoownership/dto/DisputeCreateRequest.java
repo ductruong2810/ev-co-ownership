@@ -14,4 +14,5 @@ public record DisputeCreateRequest(
         @NotBlank String description,
         @NotNull @Digits(integer = 10, fraction = 2) BigDecimal amount,
         @NotNull DisputeType disputeType   // phải thuộc DISPUTE_TYPES
-) {}
+) {
+}
