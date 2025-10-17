@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 
 @RestController
@@ -50,11 +51,9 @@ public class AuthController {
     @PostMapping("/refresh")
     public ResponseEntity<?> refresh(@Valid @RequestBody RefreshTokenRequestDTO request) {
 
-        // Lấy refresh token từ DTO
         String refreshToken = request.getRefreshToken();
 
         try {
-            // 1. Validate refresh token
             if (refreshToken == null || refreshToken.trim().isEmpty()) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body(Map.of("error", "Refresh token không được để trống"));
@@ -65,26 +64,21 @@ public class AuthController {
                         .body(Map.of("error", "Refresh token không hợp lệ hoặc đã hết hạn"));
             }
 
-            // 2. Extract email
             String email = jwtUtil.extractEmail(refreshToken);
 
-            // 3. Find user
             User user = userRepository.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
-            // 4. Check user status
             if (user.getStatus() != UserStatus.ACTIVE) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(Map.of("error", "Tài khoản chưa được kích hoạt"));
             }
 
-            // 5. Generate NEW tokens (Refresh Token Rotation)
             String newAccessToken = jwtUtil.generateToken(user);
             String newRefreshToken = jwtUtil.generateRefreshToken(user);
 
             log.info("Tokens refreshed successfully for user: {}", email);
 
-            // 6. Return new tokens
             return ResponseEntity.ok(LoginResponseDTO.builder()
                     .accessToken(newAccessToken)
                     .refreshToken(newRefreshToken)
@@ -104,21 +98,52 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
-    // ================= REGISTER - STEP 2: XÁC MINH OTP (ĐÃ SỬA) =================
-    @PostMapping("/register/verify-otp")
-    public ResponseEntity<RegisterResponseDTO> verifyOtp(
-            @Valid @RequestBody VerifyOtpRequestDTO request) {
+    // ================= VERIFY OTP CHUNG (UNIFIED) =================
+    @PostMapping("/verify-otp")
+    public ResponseEntity<?> verifyOtp(@Valid @RequestBody VerifyOtpRequestDTO request) {
 
-        RegisterResponseDTO response = authService.verifyOtp(request.getOtp());
-        return ResponseEntity.ok(response);
+        try {
+            VerifyOtpResponseDTO response = authService.verifyOtp(request.getOtp());
+            return ResponseEntity.ok(response);
+
+        } catch (IllegalArgumentException e) {
+            log.error("Validation error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of(
+                            "timestamp", LocalDateTime.now().toString(),
+                            "status", 400,
+                            "error", "Bad Request",
+                            "message", e.getMessage(),
+                            "path", "/api/auth/verify-otp"
+                    ));
+
+        } catch (IllegalStateException e) {
+            log.error("State error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of(
+                            "timestamp", LocalDateTime.now().toString(),
+                            "status", 400,
+                            "error", "Bad Request",
+                            "message", e.getMessage(),
+                            "path", "/api/auth/verify-otp"
+                    ));
+
+        } catch (Exception e) {
+            log.error("Unexpected error: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(
+                            "timestamp", LocalDateTime.now().toString(),
+                            "status", 500,
+                            "error", "Internal Server Error",
+                            "message", "Đã xảy ra lỗi không xác định. Vui lòng thử lại sau",
+                            "path", "/api/auth/verify-otp"
+                    ));
+        }
     }
-
 
     // ================= REGISTER - RESEND OTP =================
     @PostMapping("/register/resend-otp")
-    public ResponseEntity<Map<String, Object>> resendOtp(
-            @Valid @RequestBody ResendOtpRequestDTO request) {
-
+    public ResponseEntity<Map<String, Object>> resendOtp(@Valid @RequestBody ResendOtpRequestDTO request) {
         Map<String, Object> response = authService.resendOtp(request.getEmail());
         return ResponseEntity.ok(response);
     }
@@ -130,17 +155,13 @@ public class AuthController {
             String authHeader = request.getHeader("Authorization");
 
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                return ResponseEntity.badRequest().body(Map.of(
-                        "error", "Không tìm thấy token"
-                ));
+                return ResponseEntity.badRequest().body(Map.of("error", "Không tìm thấy token"));
             }
 
             String token = authHeader.substring(7);
             logoutService.logout(token);
 
-            return ResponseEntity.ok(Map.of(
-                    "message", "Đăng xuất thành công"
-            ));
+            return ResponseEntity.ok(Map.of("message", "Đăng xuất thành công"));
 
         } catch (Exception e) {
             log.error("Logout error: {}", e.getMessage());
@@ -151,36 +172,21 @@ public class AuthController {
 
     // ================= FORGOT PASSWORD - STEP 1: GỬI OTP =================
     @PostMapping("/forgot-password")
-    public ResponseEntity<Map<String, Object>> forgotPassword(
-            @Valid @RequestBody ForgotPasswordRequestDTO request) {
-
+    public ResponseEntity<Map<String, Object>> forgotPassword(@Valid @RequestBody ForgotPasswordRequestDTO request) {
         Map<String, Object> response = authService.forgotPassword(request.getEmail());
-        return ResponseEntity.ok(response);
-    }
-
-    // ================= FORGOT PASSWORD - STEP 2: VERIFY OTP =================
-    @PostMapping("/forgot-password/verify-reset-otp")
-    public ResponseEntity<VerifyResetOtpResponseDTO> verifyResetOtp(
-            @Valid @RequestBody VerifyResetOtpRequestDTO request) {
-
-        VerifyResetOtpResponseDTO response = authService.verifyResetOtp(request.getOtp());
         return ResponseEntity.ok(response);
     }
 
     // ================= FORGOT PASSWORD - STEP 3: RESET PASSWORD =================
     @PostMapping("/forgot-password/reset-password")
-    public ResponseEntity<Map<String, String>> resetPassword(
-            @Valid @RequestBody ResetPasswordRequestDTO request) {
-
+    public ResponseEntity<Map<String, String>> resetPassword(@Valid @RequestBody ResetPasswordRequestDTO request) {
         String message = authService.resetPasswordWithToken(request);
         return ResponseEntity.ok(Map.of("message", message));
     }
 
     // ================= FORGOT PASSWORD - RESEND OTP =================
     @PostMapping("/forgot-password/resend-otp")
-    public ResponseEntity<Map<String, Object>> resendPasswordResetOtp(
-            @Valid @RequestBody ForgotPasswordRequestDTO request) {
-
+    public ResponseEntity<Map<String, Object>> resendPasswordResetOtp(@Valid @RequestBody ForgotPasswordRequestDTO request) {
         Map<String, Object> response = authService.resendPasswordResetOtp(request.getEmail());
         return ResponseEntity.ok(response);
     }
@@ -192,12 +198,11 @@ public class AuthController {
             Authentication authentication) {
 
         try {
-            //Check authentication trước khi dùng
             if (authentication == null || !authentication.isAuthenticated()) {
                 log.warn("Unauthorized change password attempt - no authentication");
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body(Map.of(
-                                "timestamp", java.time.LocalDateTime.now().toString(),
+                                "timestamp", LocalDateTime.now().toString(),
                                 "status", 401,
                                 "error", "Unauthorized",
                                 "message", "Bạn cần đăng nhập để thực hiện thao tác này",
@@ -205,14 +210,13 @@ public class AuthController {
                         ));
             }
 
-            // Lấy email từ token
             String email = authentication.getName();
 
             if (email == null || email.trim().isEmpty()) {
                 log.warn("Invalid authentication - empty email");
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body(Map.of(
-                                "timestamp", java.time.LocalDateTime.now().toString(),
+                                "timestamp", LocalDateTime.now().toString(),
                                 "status", 401,
                                 "error", "Unauthorized",
                                 "message", "Không thể xác thực người dùng",
@@ -220,7 +224,6 @@ public class AuthController {
                         ));
             }
 
-            // Call service
             String message = authService.changePassword(email, request);
             return ResponseEntity.ok(Map.of("message", message));
 
@@ -228,7 +231,7 @@ public class AuthController {
             log.error("Validation error during password change: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of(
-                            "timestamp", java.time.LocalDateTime.now().toString(),
+                            "timestamp", LocalDateTime.now().toString(),
                             "status", 400,
                             "error", "Bad Request",
                             "message", e.getMessage(),
@@ -239,7 +242,7 @@ public class AuthController {
             log.error("Unexpected error during password change: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of(
-                            "timestamp", java.time.LocalDateTime.now().toString(),
+                            "timestamp", LocalDateTime.now().toString(),
                             "status", 500,
                             "error", "Internal Server Error",
                             "message", "Đã xảy ra lỗi không xác định. Vui lòng thử lại",
@@ -247,5 +250,4 @@ public class AuthController {
                     ));
         }
     }
-
 }
