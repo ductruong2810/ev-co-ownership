@@ -4,22 +4,25 @@ import com.group8.evcoownership.enums.GroupStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.Nationalized;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
-@Entity
-@Table(name = "OwnershipGroup")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Entity
+@Table(
+        name = "OwnershipGroup",
+        uniqueConstraints = @UniqueConstraint(
+                name = "UQ_OwnershipGroup_GroupName",
+                columnNames = "GroupName"
+        )
+)
 public class OwnershipGroup {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "GroupId", nullable = false)
@@ -32,8 +35,8 @@ public class OwnershipGroup {
     private String groupName;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "Status", length = 20)
-    private GroupStatus status;
+    @Column(name = "Status", nullable = false, length = 20)
+    private GroupStatus status; // default set in @PrePersist
 
     @Nationalized
     @Lob
@@ -43,33 +46,22 @@ public class OwnershipGroup {
     @Column(name = "MemberCapacity")
     private Integer memberCapacity;
 
-    @OneToMany(mappedBy = "group", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
-    private List<OwnershipShare> ownershipShares;
-
-    @OneToOne(mappedBy = "ownershipGroup", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Vehicle vehicle;
-
-    @Column(name = "CreatedAt")
+    @Column(name = "CreatedAt", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "UpdatedAt")
+    @Column(name = "UpdatedAt", nullable = false)
     private LocalDateTime updatedAt;
-
-    // Chỉ giữ lại những relationships quan trọng
-    @OneToOne(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Contract contract;
-
-    @OneToOne(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
-    private SharedFund sharedFund;
 
     @PrePersist
     public void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
+        final var now = LocalDateTime.now();
+        this.createdAt = now;
+        this.updatedAt = now;
+        if (this.status == null) this.status = GroupStatus.PENDING;
     }
 
     @PreUpdate
     public void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
 }
