@@ -99,9 +99,9 @@ public class AuthController {
 
     // ================= REGISTER - STEP 1: GỬI OTP =================
     @PostMapping("/register/request-otp")
-    public ResponseEntity<Map<String, String>> requestOtp(@Valid @RequestBody RegisterRequestDTO request) {
-        String message = authService.requestOtp(request);
-        return ResponseEntity.ok(Map.of("message", message));
+    public ResponseEntity<Map<String, Object>> requestOtp(@Valid @RequestBody RegisterRequestDTO request) {
+        Map<String, Object> response = authService.requestOtp(request);
+        return ResponseEntity.ok(response);
     }
 
     // ================= REGISTER - STEP 2: XÁC MINH OTP (ĐÃ SỬA) =================
@@ -116,11 +116,11 @@ public class AuthController {
 
     // ================= REGISTER - RESEND OTP =================
     @PostMapping("/register/resend-otp")
-    public ResponseEntity<Map<String, String>> resendOtp(
+    public ResponseEntity<Map<String, Object>> resendOtp(
             @Valid @RequestBody ResendOtpRequestDTO request) {
 
-        String message = authService.resendOtp(request.getEmail());
-        return ResponseEntity.ok(Map.of("message", message));
+        Map<String, Object> response = authService.resendOtp(request.getEmail());
+        return ResponseEntity.ok(response);
     }
 
     // ================= LOGOUT =================
@@ -151,11 +151,11 @@ public class AuthController {
 
     // ================= FORGOT PASSWORD - STEP 1: GỬI OTP =================
     @PostMapping("/forgot-password")
-    public ResponseEntity<Map<String, String>> forgotPassword(
+    public ResponseEntity<Map<String, Object>> forgotPassword(
             @Valid @RequestBody ForgotPasswordRequestDTO request) {
 
-        String message = authService.forgotPassword(request.getEmail());
-        return ResponseEntity.ok(Map.of("message", message));
+        Map<String, Object> response = authService.forgotPassword(request.getEmail());
+        return ResponseEntity.ok(response);
     }
 
     // ================= FORGOT PASSWORD - STEP 2: VERIFY OTP =================
@@ -178,24 +178,74 @@ public class AuthController {
 
     // ================= FORGOT PASSWORD - RESEND OTP =================
     @PostMapping("/forgot-password/resend-otp")
-    public ResponseEntity<Map<String, String>> resendPasswordResetOtp(
+    public ResponseEntity<Map<String, Object>> resendPasswordResetOtp(
             @Valid @RequestBody ForgotPasswordRequestDTO request) {
 
-        String message = authService.resendPasswordResetOtp(request.getEmail());
-        return ResponseEntity.ok(Map.of("message", message));
+        Map<String, Object> response = authService.resendPasswordResetOtp(request.getEmail());
+        return ResponseEntity.ok(response);
     }
 
-    // ================= CHANGE PASSWORD (CẦN ĐĂNG NHẬP) =================
+    // ================= CHANGE PASSWORD =================
     @PostMapping("/change-password")
-    public ResponseEntity<Map<String, String>> changePassword(
+    public ResponseEntity<?> changePassword(
             @Valid @RequestBody ChangePasswordRequestDTO request,
             Authentication authentication) {
 
-        // Lấy email từ user đã đăng nhập
-        User user = (User) authentication.getPrincipal();
-        String email = user.getEmail();
+        try {
+            //Check authentication trước khi dùng
+            if (authentication == null || !authentication.isAuthenticated()) {
+                log.warn("Unauthorized change password attempt - no authentication");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of(
+                                "timestamp", java.time.LocalDateTime.now().toString(),
+                                "status", 401,
+                                "error", "Unauthorized",
+                                "message", "Bạn cần đăng nhập để thực hiện thao tác này",
+                                "path", "/api/auth/change-password"
+                        ));
+            }
 
-        String message = authService.changePassword(email, request);
-        return ResponseEntity.ok(Map.of("message", message));
+            // Lấy email từ token
+            String email = authentication.getName();
+
+            if (email == null || email.trim().isEmpty()) {
+                log.warn("Invalid authentication - empty email");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of(
+                                "timestamp", java.time.LocalDateTime.now().toString(),
+                                "status", 401,
+                                "error", "Unauthorized",
+                                "message", "Không thể xác thực người dùng",
+                                "path", "/api/auth/change-password"
+                        ));
+            }
+
+            // Call service
+            String message = authService.changePassword(email, request);
+            return ResponseEntity.ok(Map.of("message", message));
+
+        } catch (IllegalArgumentException e) {
+            log.error("Validation error during password change: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of(
+                            "timestamp", java.time.LocalDateTime.now().toString(),
+                            "status", 400,
+                            "error", "Bad Request",
+                            "message", e.getMessage(),
+                            "path", "/api/auth/change-password"
+                    ));
+
+        } catch (Exception e) {
+            log.error("Unexpected error during password change: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(
+                            "timestamp", java.time.LocalDateTime.now().toString(),
+                            "status", 500,
+                            "error", "Internal Server Error",
+                            "message", "Đã xảy ra lỗi không xác định. Vui lòng thử lại",
+                            "path", "/api/auth/change-password"
+                    ));
+        }
     }
+
 }

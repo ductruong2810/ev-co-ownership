@@ -32,7 +32,7 @@ public class UserProfileController {
 
     /**
      * GET /api/user/profile/{userId}
-     * Xem profile theo userId (public - không cần token)
+     * Xem profile theo userId (public - không cần token)   
      */
     @GetMapping("/{userId}")
     public ResponseEntity<UserProfileResponseDTO> getUserProfileById(@PathVariable Long userId) {
