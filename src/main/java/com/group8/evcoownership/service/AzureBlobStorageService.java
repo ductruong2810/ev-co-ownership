@@ -10,15 +10,19 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.UUID;
 
-@Service  // ← XÓA @Profile("!test")
+@Service  // runtime service; tests may subclass with no-arg
 @Slf4j
 public class AzureBlobStorageService {
 
-    private final BlobContainerClient blobContainerClient;
+    private BlobContainerClient blobContainerClient;
 
     public AzureBlobStorageService(BlobContainerClient blobContainerClient) {
         this.blobContainerClient = blobContainerClient;
         log.info("AzureBlobStorageService initialized");
+    }
+
+    // For test subclassing (NoOp) – avoid requiring BlobContainerClient
+    protected AzureBlobStorageService() {
     }
 
     public String uploadFile(MultipartFile file) {
