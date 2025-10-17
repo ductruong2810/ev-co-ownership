@@ -2,57 +2,62 @@ package com.group8.evcoownership.entity;
 
 import com.group8.evcoownership.enums.GroupRole;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotNull;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "OwnershipShare")
-@Data
+@Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class OwnershipShare {
+
     @EmbeddedId
     private OwnershipShareId id;
 
-    @MapsId("userId")
+    // FK -> Users(UserId)
+    @MapsId("userId") // maps FK part of composite PK
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "UserId", nullable = false)
     private User user;
 
-    @MapsId("groupId") // ánh xạ phần groupId trong EmbeddedId
+    // FK -> OwnershipGroup(GroupId)
+    @MapsId("groupId")
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "GroupId", nullable = false)
     private OwnershipGroup group;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "GroupRole", length = 50)
-    private GroupRole groupRole;
+    @Column(name = "GroupRole", nullable = false, length = 50)
+    private GroupRole groupRole; // default MEMBER
 
-    @Column(name = "JoinDate")
-    private LocalDateTime joinDate;
-
-    @Column(name = "OwnershipPercentage", precision = 5, scale = 2)
+    @NotNull
+    @DecimalMin(value = "0.01") @DecimalMax(value = "100.00")
+    @Column(name = "OwnershipPercentage", nullable = false, precision = 5, scale = 2)
     private BigDecimal ownershipPercentage;
 
-    @Column(name = "UpdatedAt")
+    @Column(name = "JoinDate", nullable = false)
+    private LocalDateTime joinDate;
+
+    @Column(name = "UpdatedAt", nullable = false)
     private LocalDateTime updatedAt;
 
     @PrePersist
     public void onCreate() {
-        if (groupRole == null) groupRole = GroupRole.MEMBER;
-        if (joinDate == null) joinDate = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
+        final var now = LocalDateTime.now();
+        if (groupRole == null) groupRole = GroupRole.MEMBER; // DB default too
+        if (joinDate == null) joinDate = now;
+        updatedAt = now;
     }
 
     @PreUpdate
     public void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
-
 }
