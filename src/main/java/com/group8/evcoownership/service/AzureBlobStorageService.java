@@ -4,39 +4,38 @@ import com.azure.storage.blob.BlobClient;
 import com.azure.storage.blob.BlobContainerClient;
 import com.azure.storage.blob.models.BlobHttpHeaders;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.UUID;
 
-@Service
-@Profile("!test")
+@Service  // runtime service; tests may subclass with no-arg
 @Slf4j
 public class AzureBlobStorageService {
 
     private BlobContainerClient blobContainerClient;
 
-    // For Spring runtime
     public AzureBlobStorageService(BlobContainerClient blobContainerClient) {
         this.blobContainerClient = blobContainerClient;
+        log.info("AzureBlobStorageService initialized");
     }
 
-    // For test subclassing (NoOp) – not used at runtime
+    // For test subclassing (NoOp) – avoid requiring BlobContainerClient
     protected AzureBlobStorageService() {
     }
 
-    /**
-     * Upload file lên Azure Blob Storage
-     *
-     * @return URL của file đã upload
-     */
     public String uploadFile(MultipartFile file) {
+        if (blobContainerClient == null) {
+            throw new IllegalStateException("BlobContainerClient is null");
+        }
+
         try {
             String originalFileName = file.getOriginalFilename();
             String fileExtension = getFileExtension(originalFileName);
             String blobName = UUID.randomUUID() + "_" + System.currentTimeMillis() + fileExtension;
+
+            log.info("Uploading file: {} as {}", originalFileName, blobName);
 
             BlobClient blobClient = blobContainerClient.getBlobClient(blobName);
 
@@ -57,9 +56,6 @@ public class AzureBlobStorageService {
         }
     }
 
-    /**
-     * Xóa file từ Azure Blob Storage
-     */
     public void deleteFile(String fileUrl) {
         try {
             String blobName = extractBlobName(fileUrl);
@@ -75,18 +71,12 @@ public class AzureBlobStorageService {
         }
     }
 
-    /**
-     * Get file extension
-     */
     private String getFileExtension(String fileName) {
         if (fileName == null) return "";
         int dotIndex = fileName.lastIndexOf('.');
         return (dotIndex == -1) ? "" : fileName.substring(dotIndex);
     }
 
-    /**
-     * Extract blob name from URL
-     */
     private String extractBlobName(String fileUrl) {
         return fileUrl.substring(fileUrl.lastIndexOf("/") + 1);
     }

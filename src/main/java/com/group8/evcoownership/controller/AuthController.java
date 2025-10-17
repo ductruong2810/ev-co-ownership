@@ -93,8 +93,8 @@ public class AuthController {
 
     // ================= REGISTER - STEP 1: GỬI OTP =================
     @PostMapping("/register/request-otp")
-    public ResponseEntity<Map<String, Object>> requestOtp(@Valid @RequestBody RegisterRequestDTO request) {
-        Map<String, Object> response = authService.requestOtp(request);
+    public ResponseEntity<OtpResponseDTO> requestOtp(@Valid @RequestBody RegisterRequestDTO request) {
+        OtpResponseDTO response = authService.requestOtp(request);
         return ResponseEntity.ok(response);
     }
 
@@ -143,8 +143,8 @@ public class AuthController {
 
     // ================= REGISTER - RESEND OTP =================
     @PostMapping("/register/resend-otp")
-    public ResponseEntity<Map<String, Object>> resendOtp(@Valid @RequestBody ResendOtpRequestDTO request) {
-        Map<String, Object> response = authService.resendOtp(request.getEmail());
+    public ResponseEntity<OtpResponseDTO> resendOtp(@Valid @RequestBody ResendOtpRequestDTO request) {
+        OtpResponseDTO response = authService.resendOtp(request.getEmail());
         return ResponseEntity.ok(response);
     }
 
@@ -172,22 +172,23 @@ public class AuthController {
 
     // ================= FORGOT PASSWORD - STEP 1: GỬI OTP =================
     @PostMapping("/forgot-password")
-    public ResponseEntity<Map<String, Object>> forgotPassword(@Valid @RequestBody ForgotPasswordRequestDTO request) {
-        Map<String, Object> response = authService.forgotPassword(request.getEmail());
+    public ResponseEntity<OtpResponseDTO> forgotPassword(@Valid @RequestBody ForgotPasswordRequestDTO request) {
+        OtpResponseDTO response = authService.forgotPassword(request.getEmail());
         return ResponseEntity.ok(response);
     }
 
-    // ================= FORGOT PASSWORD - STEP 3: RESET PASSWORD =================
+    // ================= FORGOT PASSWORD - STEP 3: RESET PASSWORD (AUTO LOGIN) =================
     @PostMapping("/forgot-password/reset-password")
-    public ResponseEntity<Map<String, String>> resetPassword(@Valid @RequestBody ResetPasswordRequestDTO request) {
-        String message = authService.resetPasswordWithToken(request);
-        return ResponseEntity.ok(Map.of("message", message));
+    public ResponseEntity<ResetPasswordResponseDTO> resetPassword(@Valid @RequestBody ResetPasswordRequestDTO request) {
+        ResetPasswordResponseDTO response = authService.resetPasswordWithToken(request);
+        return ResponseEntity.ok(response);
     }
+
 
     // ================= FORGOT PASSWORD - RESEND OTP =================
     @PostMapping("/forgot-password/resend-otp")
-    public ResponseEntity<Map<String, Object>> resendPasswordResetOtp(@Valid @RequestBody ForgotPasswordRequestDTO request) {
-        Map<String, Object> response = authService.resendPasswordResetOtp(request.getEmail());
+    public ResponseEntity<OtpResponseDTO> resendPasswordResetOtp(@Valid @RequestBody ForgotPasswordRequestDTO request) {
+        OtpResponseDTO response = authService.resendPasswordResetOtp(request.getEmail());
         return ResponseEntity.ok(response);
     }
 
