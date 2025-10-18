@@ -252,8 +252,21 @@ public class AuthService {
         return userRepository.save(user);
     }
 
-    // ================= RESEND OTP (REGISTRATION) =================
-    public OtpResponseDTO resendOtp(String email) {
+    // ================= RESEND OTP (UNIFIED - REGISTRATION & PASSWORD_RESET) =================
+    public OtpResponseDTO resendOtp(String email, OtpType type) {
+        log.info("Resending {} OTP for email: {}", type, email);
+
+        if (type == OtpType.REGISTRATION) {
+            return resendRegistrationOtp(email);
+        } else if (type == OtpType.PASSWORD_RESET) {
+            return resendPasswordResetOtp(email);
+        } else {
+            throw new IllegalArgumentException("OTP type không hợp lệ");
+        }
+    }
+
+    // ================= RESEND REGISTRATION OTP (PRIVATE) =================
+    private OtpResponseDTO resendRegistrationOtp(String email) {
         log.info("Resending registration OTP for email: {}", email);
 
         RegisterRequestDTO request = pendingUsers.get(email);
@@ -281,6 +294,39 @@ public class AuthService {
             throw e;
         } catch (Exception e) {
             log.error("Unexpected error while resending registration OTP to email {}: {}", email, e.getMessage(), e);
+            throw new RuntimeException("Không thể gửi lại OTP. Vui lòng thử lại sau.");
+        }
+    }
+
+    // ================= RESEND PASSWORD RESET OTP (PRIVATE) =================
+    private OtpResponseDTO resendPasswordResetOtp(String email) {
+        log.info("Resending password reset OTP for email: {}", email);
+
+        if (!pendingPasswordResets.containsKey(email)) {
+            log.warn("Resend password reset OTP attempt for non-pending reset: {}", email);
+            throw new IllegalStateException("Không tìm thấy yêu cầu đặt lại mật khẩu. Vui lòng yêu cầu lại từ đầu.");
+        }
+
+        try {
+            String newOtp = otpUtil.generateOtp(email);
+            otpToEmailMap.values().removeIf(e -> e.equals(email));
+            otpToEmailMap.put(newOtp, email);
+            emailService.sendPasswordResetOtpEmail(email, newOtp);
+
+            log.info("Password reset OTP resent successfully to: {}", email);
+
+            return OtpResponseDTO.builder()
+                    .email(email)
+                    .message("Mã OTP mới đã được gửi đến email của bạn")
+                    .type(OtpType.PASSWORD_RESET)
+                    .expiresIn(300)
+                    .build();
+
+        } catch (RuntimeException e) {
+            log.error("Failed to resend password reset OTP to {}: {}", email, e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            log.error("Unexpected error while resending password reset OTP to {}: {}", email, e.getMessage(), e);
             throw new RuntimeException("Không thể gửi lại OTP. Vui lòng thử lại sau.");
         }
     }
@@ -360,7 +406,7 @@ public class AuthService {
             // Clean up
             resetTokens.remove(resetToken);
 
-            // Generate tokens for auto login
+            // Generate token for auto login
             String accessToken = jwtUtil.generateToken(user);
 
             log.info("Password reset successfully for email: {} - Auto login enabled", email);
@@ -375,40 +421,6 @@ public class AuthService {
         } catch (Exception e) {
             log.error("Unexpected error during password reset: {}", e.getMessage(), e);
             throw new RuntimeException("Đã xảy ra lỗi trong quá trình đặt lại mật khẩu. Vui lòng thử lại.");
-        }
-    }
-
-
-    // ================= RESEND PASSWORD RESET OTP =================
-    public OtpResponseDTO resendPasswordResetOtp(String email) {
-        log.info("Resending password reset OTP for email: {}", email);
-
-        if (!pendingPasswordResets.containsKey(email)) {
-            log.warn("Resend password reset OTP attempt for non-pending reset: {}", email);
-            throw new IllegalStateException("Không tìm thấy yêu cầu đặt lại mật khẩu. Vui lòng yêu cầu lại từ đầu.");
-        }
-
-        try {
-            String newOtp = otpUtil.generateOtp(email);
-            otpToEmailMap.values().removeIf(e -> e.equals(email));
-            otpToEmailMap.put(newOtp, email);
-            emailService.sendPasswordResetOtpEmail(email, newOtp);
-
-            log.info("Password reset OTP resent successfully to: {}", email);
-
-            return OtpResponseDTO.builder()
-                    .email(email)
-                    .message("Mã OTP mới đã được gửi đến email của bạn")
-                    .type(OtpType.PASSWORD_RESET)
-                    .expiresIn(300)
-                    .build();
-
-        } catch (RuntimeException e) {
-            log.error("Failed to resend password reset OTP to {}: {}", email, e.getMessage());
-            throw e;
-        } catch (Exception e) {
-            log.error("Unexpected error while resending password reset OTP to {}: {}", email, e.getMessage(), e);
-            throw new RuntimeException("Không thể gửi lại OTP. Vui lòng thử lại sau.");
         }
     }
 
