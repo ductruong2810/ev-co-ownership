@@ -47,7 +47,8 @@ public class SecurityConfig {
                                 "/api/auth/vnpay/**",
                                 "/api/disputes/**",
                                 "/api/expenses/**",
-                                "/api/user/profile/**"  // THÊM DÒNG NÀY
+                                "/api/user/profile/**",
+                                "/api/groups"
                         ).permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated()
