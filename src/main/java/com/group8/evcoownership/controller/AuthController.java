@@ -141,10 +141,10 @@ public class AuthController {
         }
     }
 
-    // ================= REGISTER - RESEND OTP =================
-    @PostMapping("/register/resend-otp")
+    // ================= RESEND OTP (UNIFIED - REGISTRATION & PASSWORD_RESET) =================
+    @PostMapping("/resend-otp")
     public ResponseEntity<OtpResponseDTO> resendOtp(@Valid @RequestBody ResendOtpRequestDTO request) {
-        OtpResponseDTO response = authService.resendOtp(request.getEmail());
+        OtpResponseDTO response = authService.resendOtp(request.getEmail(), request.getType());
         return ResponseEntity.ok(response);
     }
 
@@ -181,14 +181,6 @@ public class AuthController {
     @PostMapping("/forgot-password/reset-password")
     public ResponseEntity<ResetPasswordResponseDTO> resetPassword(@Valid @RequestBody ResetPasswordRequestDTO request) {
         ResetPasswordResponseDTO response = authService.resetPasswordWithToken(request);
-        return ResponseEntity.ok(response);
-    }
-
-
-    // ================= FORGOT PASSWORD - RESEND OTP =================
-    @PostMapping("/forgot-password/resend-otp")
-    public ResponseEntity<OtpResponseDTO> resendPasswordResetOtp(@Valid @RequestBody ForgotPasswordRequestDTO request) {
-        OtpResponseDTO response = authService.resendPasswordResetOtp(request.getEmail());
         return ResponseEntity.ok(response);
     }
 
