@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.Nationalized;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -45,6 +46,9 @@ public class Vehicle {
 
     @Column(name = "QrCode")
     private String qrCode;
+
+    @Column(name = "VehicleValue", precision = 15, scale = 2)
+    private BigDecimal vehicleValue;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "GroupId")

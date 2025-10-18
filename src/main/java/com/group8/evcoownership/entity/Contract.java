@@ -30,6 +30,10 @@ public class Contract {
     @JoinColumn(name = "GroupId", nullable = false)
     private OwnershipGroup group;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "TemplateId")
+    private ContractTemplate template;
+
     @Column(name = "StartDate")
     private LocalDate startDate;
 
@@ -41,11 +45,8 @@ public class Contract {
     @Column(name = "Terms")
     private String terms;
 
-    @Column(name = "InitialFee", precision = 15, scale = 2)
-    private BigDecimal initialFee;
-
-    @Column(name = "PenaltyRate", precision = 5, scale = 2)
-    private BigDecimal penaltyRate;
+    @Column(name = "RequiredDepositAmount", precision = 15, scale = 2)
+    private BigDecimal requiredDepositAmount;
 
     @ColumnDefault("1")
     @Column(name = "IsActive")

@@ -77,7 +77,7 @@
             align-items: center;
             gap: 8px;
             font-weight: 800;
-            letter-spacing: .4px
+            letter-spacing: 0
         }
 
         .logo-mark {
@@ -165,12 +165,6 @@
             gap: 24px
         }
 
-        .sig-box {
-            border: 1px dashed var(--border);
-            border-radius: 12px;
-            padding: 14px
-        }
-
         .sig-line {
             margin-top: 40px;
             border-top: 1px solid var(--border);
@@ -192,12 +186,6 @@
             background: #eef2ff;
             color: #3730a3;
             border: 1px solid #e0e7ff
-        }
-
-        .flex {
-            display: flex;
-            gap: 10px;
-            align-items: center
         }
 
         .right {
@@ -316,10 +304,10 @@
         <div class="kvs" style="margin-top:6px">
             <div class="key">Giá trị xe</div>
             <div class="val nowrap" data-text="finance.vehiclePrice">—</div>
-            <div class="key">Quỹ chung ban đầu</div>
-            <div class="val nowrap" data-text="finance.initialFund">—</div>
-            <div class="key">Tài khoản quỹ</div>
-            <div class="val" data-text="finance.fundAccount">—</div>
+            <div class="key">Tiền cọc</div>
+            <div class="val nowrap" data-text="finance.depositAmount">—</div>
+            <div class="key">Mục tiêu quỹ</div>
+            <div class="val nowrap" data-text="finance.targetAmount">—</div>
             <div class="key">Nguyên tắc góp</div>
             <div class="val" data-text="finance.contributionRule">—</div>
         </div>
@@ -406,7 +394,8 @@
 
         // Finance
         setText('finance.vehiclePrice', fmtCurrency(data.finance.vehiclePrice));
-        setText('finance.initialFund', fmtCurrency(data.finance.initialFund));
+        setText('finance.depositAmount', fmtCurrency(data.finance.depositAmount));
+        setText('finance.targetAmount', fmtCurrency(data.finance.targetAmount));
         setText('finance.fundAccount', data.finance.fundAccount);
         setText('finance.contributionRule', data.finance.contributionRule);
 
@@ -468,12 +457,13 @@
             },
             group: {name: 'EVShare – Nhóm A'},
             vehicle: {model: 'VinFast VF 8 Plus', plate: '30A-123.45', vin: 'RLVZZZ1EZBW000001'},
-            finance: {
-                vehiclePrice: 950_000_000,
-                initialFund: 30_000_000,
-                fundAccount: 'MB Bank 0123456789 – EVShare Group A',
-                contributionRule: 'Theo tỷ lệ sở hữu'
-            },
+              finance: {
+                  vehiclePrice: 950_000_000,
+                  depositAmount: 30_000_000,
+                  targetAmount: 50_000_000,
+                  fundAccount: 'MB Bank 0123456789 – EVShare Group A',
+                  contributionRule: 'Theo tỷ lệ sở hữu'
+              },
             usage: {rule: 'Điểm tín dụng lịch sử & phiên bốc thăm tuần'},
             maintenance: {
                 approval: 'Biểu quyết > 50% theo tỷ lệ sở hữu cho chi > 5 triệu',
