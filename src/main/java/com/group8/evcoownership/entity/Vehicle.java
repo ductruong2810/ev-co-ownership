@@ -1,76 +1,60 @@
 package com.group8.evcoownership.entity;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.Nationalized;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Entity
 @Table(name = "Vehicle")
-@Data
+@Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class Vehicle {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "VehicleId", nullable = false)
-    private Long id;
+    private Long Id;
 
-    @Size(max = 100)
     @Nationalized
     @Column(name = "Brand", length = 100)
     private String brand;
 
-    @Size(max = 100)
     @Nationalized
     @Column(name = "Model", length = 100)
     private String model;
 
-    @Size(max = 20)
-    @Nationalized
     @Column(name = "LicensePlate", length = 20)
     private String licensePlate;
 
-    @Size(max = 30)
-    @Nationalized
     @Column(name = "ChassisNumber", length = 30)
-    private String chassisNumber; // VIN / số khung xe
+    private String chassisNumber;
 
-    @Column(name = "QrCode")
+    @Column(name = "QrCode", length = 255)
     private String qrCode;
 
-    @Column(name = "VehicleValue", precision = 15, scale = 2)
-    private BigDecimal vehicleValue;
+    // FK -> OwnershipGroup(GroupId) (DDL không bắt buộc NOT NULL)
+    @Column(name = "GroupId")
+    private Long groupId;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "GroupId")
-    private OwnershipGroup ownershipGroup;
-
-    @OneToMany(mappedBy = "vehicle", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<VehicleImage> images;
-
-    @Column(name = "CreatedAt")
+    @Column(name = "CreatedAt", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "UpdatedAt")
+    @Column(name = "UpdatedAt", nullable = false)
     private LocalDateTime updatedAt;
 
     @PrePersist
     public void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
+        final var now = LocalDateTime.now(); // nếu muốn UTC tuyệt đối: LocalDateTime.now(Clock.systemUTC())
+        this.createdAt = now;
+        this.updatedAt = now;
     }
 
     @PreUpdate
     public void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
 }
