@@ -3,13 +3,15 @@ package com.group8.evcoownership.config;
 import com.azure.storage.blob.BlobContainerClient;
 import com.azure.storage.blob.BlobServiceClient;
 import com.azure.storage.blob.BlobServiceClientBuilder;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
+import org.springframework.context.annotation.Primary;
 
 @Configuration
-@Profile("!test")
+//@Profile("!test")
+@Slf4j
 public class AzureBlobConfig {
 
     @Value("${azure.storage.container-name}")
@@ -19,6 +21,7 @@ public class AzureBlobConfig {
     private String connectionString;
 
     @Bean
+    @Primary
     public BlobServiceClient blobServiceClient() {
         return new BlobServiceClientBuilder()
                 .connectionString(connectionString)
@@ -26,11 +29,8 @@ public class AzureBlobConfig {
     }
 
     @Bean
+    @Primary
     public BlobContainerClient blobContainerClient(BlobServiceClient blobServiceClient) {
-        BlobContainerClient containerClient = blobServiceClient.getBlobContainerClient(containerName);
-        if (!containerClient.exists()) {
-            containerClient.create();
-        }
-        return containerClient;
+        return blobServiceClient.getBlobContainerClient(containerName);
     }
 }
