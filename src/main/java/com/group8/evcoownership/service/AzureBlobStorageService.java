@@ -10,29 +10,28 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.UUID;
 
-@Service  // runtime service; tests may subclass with no-arg
+@Service
 @Slf4j
 public class AzureBlobStorageService {
 
-    private BlobContainerClient blobContainerClient;
+    private final BlobContainerClient blobContainerClient;
 
+    // Constructor injection
     public AzureBlobStorageService(BlobContainerClient blobContainerClient) {
-        this.blobContainerClient = blobContainerClient;
-        log.info("AzureBlobStorageService initialized with BlobContainerClient: {}",
-                blobContainerClient != null ? "configured" : "null");
-    }
+        log.info("========================================");
+        log.info("Initializing AzureBlobStorageService");
+        log.info("BlobContainerClient: {}", blobContainerClient == null ? "NULL" : "NOT NULL");
+        log.info("========================================");
 
-    // For test profile - no BlobContainerClient injection
-    public AzureBlobStorageService() {
-        log.info("AzureBlobStorageService initialized (test mode)");
+        if (blobContainerClient == null) {
+            throw new IllegalStateException("BlobContainerClient cannot be null!");
+        }
+
+        this.blobContainerClient = blobContainerClient;
+        log.info("AzureBlobStorageService initialized successfully!");
     }
 
     public String uploadFile(MultipartFile file) {
-        if (blobContainerClient == null) {
-            log.warn("BlobContainerClient is null, returning mock URL for file: {}", file.getOriginalFilename());
-            return "https://mock-storage.com/files/" + file.getOriginalFilename();
-        }
-
         try {
             String originalFileName = file.getOriginalFilename();
             String fileExtension = getFileExtension(originalFileName);
@@ -54,17 +53,12 @@ public class AzureBlobStorageService {
             return fileUrl;
 
         } catch (IOException e) {
-            log.error("Failed to upload file to Azure: {}", e.getMessage());
-            throw new RuntimeException("Upload thất bại. Vui lòng thử lại: " + e.getMessage(), e);
+            log.error("Failed to upload file to Azure: {}", e.getMessage(), e);
+            throw new RuntimeException("Could not upload file to Azure Blob Storage", e);
         }
     }
 
     public void deleteFile(String fileUrl) {
-        if (blobContainerClient == null) {
-            log.warn("BlobContainerClient is null, mock delete: {}", fileUrl);
-            return;
-        }
-
         try {
             String blobName = extractBlobName(fileUrl);
             BlobClient blobClient = blobContainerClient.getBlobClient(blobName);
@@ -74,7 +68,7 @@ public class AzureBlobStorageService {
                 log.info("File deleted from Azure: {}", blobName);
             }
         } catch (Exception e) {
-            log.error("Failed to delete file from Azure: {}", e.getMessage());
+            log.error("Failed to delete file from Azure: {}", e.getMessage(), e);
             throw new RuntimeException("Could not delete file from Azure Blob Storage", e);
         }
     }
