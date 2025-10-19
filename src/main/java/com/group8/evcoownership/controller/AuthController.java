@@ -82,6 +82,7 @@ public class AuthController {
             return ResponseEntity.ok(LoginResponseDTO.builder()
                     .accessToken(newAccessToken)
                     .refreshToken(newRefreshToken)
+                    .role(user.getRole().getRoleName().name())  // ← THÊM DÒNG NÀY
                     .build());
 
         } catch (Exception e) {
