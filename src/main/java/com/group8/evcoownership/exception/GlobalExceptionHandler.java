@@ -355,6 +355,23 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(response);
     }
 
+    // ========== 400 - INSUFFICIENT DOCUMENTS ==========
+    @ExceptionHandler(InsufficientDocumentsException.class)
+    public ResponseEntity<ErrorResponseDTO> handleInsufficientDocuments(
+            InsufficientDocumentsException ex, WebRequest request) {
+
+        logger.warn("Insufficient documents: {}", ex.getMessage());
+
+        ErrorResponseDTO response = new ErrorResponseDTO(
+                HttpStatus.BAD_REQUEST.value(),
+                "Bad Request",
+                ex.getMessage(),
+                request.getDescription(false).replace("uri=", "")
+        );
+
+        return ResponseEntity.badRequest().body(response);
+    }
+
     // ========== 500 - INTERNAL SERVER ERROR (FALLBACK) ==========
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDTO> handleAll(Exception ex, WebRequest request) {
