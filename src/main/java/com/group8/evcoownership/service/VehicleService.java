@@ -5,6 +5,7 @@ package com.group8.evcoownership.service;
 import com.group8.evcoownership.dto.VehicleCreateRequest;
 import com.group8.evcoownership.dto.VehicleResponse;
 import com.group8.evcoownership.dto.VehicleUpdateRequest;
+import com.group8.evcoownership.entity.OwnershipGroup;
 import com.group8.evcoownership.entity.Vehicle;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
 import com.group8.evcoownership.repository.VehicleRepository;
@@ -26,14 +27,14 @@ public class VehicleService {
         return new VehicleResponse(
                 v.getId(), v.getBrand(), v.getModel(),
                 v.getLicensePlate(), v.getChassisNumber(), v.getQrCode(),
-                v.getGroupId(), v.getCreatedAt(), v.getUpdatedAt()
+                v.getOwnershipGroup().getGroupId(), v.getCreatedAt(), v.getUpdatedAt()
         );
     }
 
     @Transactional
     public VehicleResponse create(VehicleCreateRequest req) {
-        if (!groupRepo.existsById(req.groupId()))
-            throw new EntityNotFoundException("Group not found");
+        OwnershipGroup group = groupRepo.findById(req.groupId())
+                .orElseThrow(() -> new EntityNotFoundException("Group not found"));
         if (vehicleRepo.existsByLicensePlateIgnoreCase(req.licensePlate()))
             throw new IllegalStateException("License plate already exists");
         if (vehicleRepo.existsByChassisNumberIgnoreCase(req.chassisNumber()))
@@ -44,14 +45,14 @@ public class VehicleService {
                 .model(req.model())
                 .licensePlate(req.licensePlate())
                 .chassisNumber(req.chassisNumber())
-                .groupId(req.groupId())
+                .ownershipGroup(group)
                 .build();
 
         // Lưu lần 1 để có VehicleId
         v = vehicleRepo.save(v);
 
         // Tự sinh QR, KHÔNG lấy từ client
-        v.setQrCode(buildQrPayload(v.getId(), v.getLicensePlate(), v.getChassisNumber()));
+        v.setQrCode(buildQrPayload(v.getId(), v.getLicensePlate()));
 
         // Lưu lần 2 sau khi set QR
         v = vehicleRepo.save(v);
@@ -59,7 +60,7 @@ public class VehicleService {
         return toDto(v);
     }
 
-    private String buildQrPayload(Long vehicleId, String licensePlate, String chassisNumber) {
+    private String buildQrPayload(Long vehicleId, String licensePlate) {
         return "EVCO:V" + vehicleId + ":" + licensePlate; // tuỳ bạn định dạng
     }
 
@@ -98,7 +99,7 @@ public class VehicleService {
     public Page<VehicleResponse> listByGroup(Long groupId, Pageable pageable) {
         if (!groupRepo.existsById(groupId))
             throw new EntityNotFoundException("Group not found");
-        return vehicleRepo.findByGroupId(groupId, pageable).map(this::toDto);
+        return vehicleRepo.findByOwnershipGroupGroupId(groupId, pageable).map(this::toDto);
     }
 
     @Transactional
