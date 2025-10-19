@@ -172,7 +172,7 @@ public class OwnershipGroupService {
             var user = userRepository.findByEmail(userEmail)
                     .orElseThrow(() -> new EntityNotFoundException("User not found: " + userEmail));
 
-            var ownershipShare = ownershipShareRepository.findById_UserIdAndGroup_GroupId(user.getUserId(), groupId)
+            var ownershipShare = ownershipShareRepository.findById_UserIdAndGroup_GroupId((user.getUserId()), groupId)
                     .orElse(null);
 
             return ownershipShare != null && ownershipShare.getGroupRole() == GroupRole.ADMIN;
