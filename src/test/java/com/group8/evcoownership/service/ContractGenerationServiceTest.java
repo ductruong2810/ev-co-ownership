@@ -82,7 +82,7 @@ class ContractGenerationServiceTest {
 
         // Setup test vehicle
         testVehicle = Vehicle.builder()
-                .id(TEST_VEHICLE_ID)
+                .Id(TEST_VEHICLE_ID)
                 .brand("VinFast")
                 .model("VF 8 Plus")
                 .licensePlate("30A-123.45")

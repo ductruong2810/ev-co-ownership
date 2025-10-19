@@ -149,7 +149,7 @@ public class ContractTestDataBuilder {
 
         public Vehicle build() {
             return Vehicle.builder()
-                    .id(vehicleId)
+                    .Id(vehicleId)
                     .brand(brand)
                     .model(model)
                     .licensePlate(licensePlate)
