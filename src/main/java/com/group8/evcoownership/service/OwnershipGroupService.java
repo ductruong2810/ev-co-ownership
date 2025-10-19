@@ -98,7 +98,7 @@ public class OwnershipGroupService {
             missingDocs.append("GPLX chưa được duyệt, ");
         }
         
-        if (missingDocs.length() > 0) {
+        if (!missingDocs.isEmpty()) {
             // Xóa dấu phẩy cuối
             String missing = missingDocs.toString().replaceAll(", $", "");
             throw new InsufficientDocumentsException(
