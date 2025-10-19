@@ -59,7 +59,7 @@ public class OwnershipShare {
     public void onCreate() {
         final var now = LocalDateTime.now();
         if (groupRole == null) groupRole = GroupRole.MEMBER; // DB default too
-//        if (depositStatus == null) depositStatus = DepositStatus.PENDING; // Default deposit status
+        if (depositStatus == null) depositStatus = DepositStatus.PENDING; // Default deposit status
         if (joinDate == null) joinDate = now;
         updatedAt = now;
     }

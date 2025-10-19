@@ -25,7 +25,7 @@ public record GroupWithVehicleResponse(
         String qrCode,
         BigDecimal vehicleValue,
         
-        // Vehicle images
-        Map<String, String> vehicleImages
+        // Vehicle images - có thể là String hoặc String[]
+        Map<String, Object> vehicleImages
 ) {
 }

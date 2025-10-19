@@ -19,7 +19,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -171,16 +174,44 @@ public class VehicleService {
 
     // ======== Upload Multiple Vehicle Images ==============
     @Transactional
-    public Map<String, String> uploadMultipleVehicleImages(Long vehicleId, MultipartFile[] images, String[] imageTypes) {
-        Map<String, String> uploadedImages = new HashMap<>();
+    public Map<String, Object> uploadMultipleVehicleImages(Long vehicleId, MultipartFile[] images, String[] imageTypes) {
+        Map<String, Object> uploadedImages = new HashMap<>();
         
+        // Validation: Số lượng images
         if (images.length != imageTypes.length) {
             throw new IllegalArgumentException("Number of images must match number of image types");
+        }
+        
+        // Validation: Giới hạn số lượng images
+        if (images.length > 10) {
+            throw new IllegalArgumentException("Maximum 10 images allowed per vehicle");
+        }
+        
+        // Validation: Image types hợp lệ
+        String[] validImageTypes = {"VEHICLE", "FRONT", "BACK", "LEFT", "RIGHT", "INTERIOR", "ENGINE", "LICENSE", "REGISTRATION"};
+        for (String imageType : imageTypes) {
+            if (!Arrays.asList(validImageTypes).contains(imageType)) {
+                throw new IllegalArgumentException("Invalid image type: " + imageType + ". Valid types: " + Arrays.toString(validImageTypes));
+            }
+        }
+        
+        // Validation: Kích thước file
+        long maxFileSize = 10 * 1024 * 1024; // 10MB
+        for (MultipartFile image : images) {
+            if (image.getSize() > maxFileSize) {
+                throw new IllegalArgumentException("File size exceeds 10MB limit: " + image.getOriginalFilename());
+            }
+            if (image.isEmpty()) {
+                throw new IllegalArgumentException("Empty file not allowed: " + image.getOriginalFilename());
+            }
         }
         
         try {
             Vehicle vehicle = new Vehicle();
             vehicle.setId(vehicleId);
+            
+            // Map để nhóm images theo type
+            Map<String, List<String>> typeImages = new HashMap<>();
             
             for (int i = 0; i < images.length; i++) {
                 String imageUrl = azureBlobStorageService.uploadFile(images[i]);
@@ -193,14 +224,35 @@ public class VehicleService {
                 vehicleImg.setVehicle(vehicle);
                 vehicleImageRepository.save(vehicleImg);
                 
-                uploadedImages.put(imageType + "_" + i, imageUrl);
+                // Nhóm images theo type
+                typeImages.computeIfAbsent(imageType, k -> new ArrayList<>()).add(imageUrl);
+            }
+            
+            // Convert sang format response
+            for (Map.Entry<String, List<String>> entry : typeImages.entrySet()) {
+                String imageType = entry.getKey();
+                List<String> urls = entry.getValue();
+                
+                // Nếu chỉ có 1 image, trả về string
+                // Nếu có nhiều images, trả về array
+                if (urls.size() == 1) {
+                    uploadedImages.put(imageType, urls.get(0));
+                } else {
+                    uploadedImages.put(imageType, urls.toArray(new String[0]));
+                }
             }
             
         } catch (Exception e) {
             // Cleanup uploaded files if any
             uploadedImages.values().forEach(url -> {
                 try {
-                    azureBlobStorageService.deleteFile(url);
+                    if (url instanceof String) {
+                        azureBlobStorageService.deleteFile((String) url);
+                    } else if (url instanceof String[]) {
+                        for (String singleUrl : (String[]) url) {
+                            azureBlobStorageService.deleteFile(singleUrl);
+                        }
+                    }
                 } catch (Exception cleanupError) {
                     // Log cleanup error but don't throw
                 }
