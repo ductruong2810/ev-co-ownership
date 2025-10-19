@@ -11,6 +11,7 @@ import java.util.Optional;
 
 @Repository
 public interface VehicleRepository extends JpaRepository<Vehicle, Long> {
+    boolean existsByOwnershipGroup_GroupId(Long groupId);
     boolean existsByLicensePlateIgnoreCase(String licensePlate);
     boolean existsByChassisNumberIgnoreCase(String chassisNumber);
     Page<Vehicle> findByOwnershipGroupGroupId(Long groupId, Pageable pageable);
