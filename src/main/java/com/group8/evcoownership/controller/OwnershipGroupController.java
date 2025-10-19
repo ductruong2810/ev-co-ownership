@@ -40,7 +40,7 @@ public class OwnershipGroupController {
     @PostMapping("/with-vehicle")
     @Operation(summary = "Create group with vehicle and multiple images")
     public GroupWithVehicleResponse createGroupWithVehicle(
-            @Valid CreateGroupWithVehicleRequest request,
+            CreateGroupWithVehicleRequest request,
             Authentication authentication) {
         
         String userEmail = authentication.getName();

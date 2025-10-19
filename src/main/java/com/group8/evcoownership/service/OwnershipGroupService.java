@@ -27,6 +27,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -42,6 +43,9 @@ public class OwnershipGroupService {
     private final UserRepository userRepository;
     private final UserDocumentRepository userDocumentRepository;
     private final VehicleService vehicleService;
+
+    @Value("${app.validation.enabled:true}")
+    private boolean validationEnabled;
 
     // ---- mapping ----
     private OwnershipGroupResponse toDto(OwnershipGroup e) {
@@ -126,8 +130,10 @@ public class OwnershipGroupService {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + userEmail));
         
-        // Kiểm tra giấy tờ cần thiết
-        validateRequiredDocuments(user.getUserId());
+        // Kiểm tra giấy tờ cần thiết (bỏ qua khi tắt validation)
+        if (validationEnabled) {
+            validateRequiredDocuments(user.getUserId());
+        }
         
         // Tạo group
         var entity = OwnershipGroup.builder()
@@ -160,44 +166,38 @@ public class OwnershipGroupService {
             String groupName, String description, Integer memberCapacity,
             java.math.BigDecimal vehicleValue, String licensePlate, String chassisNumber,
             MultipartFile[] vehicleImages, String[] imageTypes, String userEmail) {
-        
-        try {
-            // Step 1: Create ownership group với userEmail
-            OwnershipGroupCreateRequest groupRequest = new OwnershipGroupCreateRequest(
-                    groupName, description, memberCapacity);
-            OwnershipGroupResponse groupResponse = create(groupRequest, userEmail);
+        // Step 1: Create ownership group với userEmail
+        OwnershipGroupCreateRequest groupRequest = new OwnershipGroupCreateRequest(
+                groupName, description, memberCapacity);
+        OwnershipGroupResponse groupResponse = create(groupRequest, userEmail);
 
-            // Step 2: Create vehicle using VehicleService
-            VehicleCreateRequest vehicleRequest = new VehicleCreateRequest(
-                    "Unknown", "Unknown", licensePlate, chassisNumber, vehicleValue, groupResponse.groupId());
-            VehicleResponse vehicleResponse = vehicleService.create(vehicleRequest);
+        // Step 2: Create vehicle using VehicleService
+        VehicleCreateRequest vehicleRequest = new VehicleCreateRequest(
+                "Unknown", "Unknown", licensePlate, chassisNumber, vehicleValue, groupResponse.groupId());
+        VehicleResponse vehicleResponse = vehicleService.create(vehicleRequest);
 
-            // Step 3: Upload multiple vehicle images using VehicleService
-            Map<String, Object> uploadedImages = vehicleService.uploadMultipleVehicleImages(
-                    vehicleResponse.vehicleId(), vehicleImages, imageTypes);
+        // Step 3: Upload multiple vehicle images using VehicleService
+        Map<String, Object> uploadedImages = vehicleService.uploadMultipleVehicleImages(
+                vehicleResponse.vehicleId(), vehicleImages, imageTypes);
 
-            // Step 4: Return combined response
-            return new GroupWithVehicleResponse(
-                    groupResponse.groupId(),
-                    groupResponse.groupName(),
-                    groupResponse.description(),
-                    groupResponse.memberCapacity(),
-                    groupResponse.status(),
-                    groupResponse.createdAt(),
-                    groupResponse.updatedAt(),
-                    vehicleResponse.vehicleId(),
-                    vehicleResponse.brand(),
-                    vehicleResponse.model(),
-                    vehicleResponse.licensePlate(),
-                    vehicleResponse.chassisNumber(),
-                    vehicleResponse.qrCode(),
-                    vehicleValue,
-                    uploadedImages
-            );
-
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to create group with vehicle: " + e.getMessage(), e);
-        }
+        // Step 4: Return combined response
+        return new GroupWithVehicleResponse(
+                groupResponse.groupId(),
+                groupResponse.groupName(),
+                groupResponse.description(),
+                groupResponse.memberCapacity(),
+                groupResponse.status(),
+                groupResponse.createdAt(),
+                groupResponse.updatedAt(),
+                vehicleResponse.vehicleId(),
+                vehicleResponse.brand(),
+                vehicleResponse.model(),
+                vehicleResponse.licensePlate(),
+                vehicleResponse.chassisNumber(),
+                vehicleResponse.qrCode(),
+                vehicleValue,
+                uploadedImages
+        );
     }
 
     @Transactional
