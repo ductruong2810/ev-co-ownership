@@ -170,7 +170,7 @@ public class ContractService {
         info.put("terms", contract.getTerms());
         info.put("requiredDepositAmount", contract.getRequiredDepositAmount());
         info.put("isActive", contract.getIsActive());
-        info.put("templateId", contract.getTemplate() != null ? contract.getTemplate().getTemplateId() : null);
+        info.put("templateId", null); // Template sẽ được xử lý ở Frontend
         info.put("createdAt", contract.getCreatedAt());
         info.put("updatedAt", contract.getUpdatedAt());
 
@@ -178,7 +178,7 @@ public class ContractService {
     }
 
     /**
-     * Ký hợp đồng
+     * Ký hợp đồng (Admin Group ký thay tất cả Members)
      */
     @Transactional
     public Map<String, Object> signContract(Long groupId, Map<String, Object> signRequest) {
@@ -192,10 +192,21 @@ public class ContractService {
             return error;
         }
 
-        // Cập nhật thông tin ký
-        contract.setTerms(contract.getTerms() + "\n\n[ĐÃ KÝ] " +
-                LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) +
-                " - Admin Group");
+        // Kiểm tra contract đã được ký chưa (tránh ký nhiều lần)
+        if (contract.getTerms() != null && contract.getTerms().contains("[ĐÃ KÝ]")) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("message", "Contract has already been signed");
+            return error;
+        }
+
+        // Lấy thông tin Admin Group
+        String adminName = (String) signRequest.getOrDefault("adminName", "Admin Group");
+        String signatureType = (String) signRequest.getOrDefault("signatureType", "ADMIN_PROXY");
+
+        // Cập nhật thông tin ký với đại diện
+        String signatureInfo = buildSignatureInfo(adminName, signatureType, groupId);
+        contract.setTerms(contract.getTerms() + "\n\n" + signatureInfo);
         contract.setUpdatedAt(LocalDateTime.now());
 
         Contract savedContract = contractRepository.save(contract);
@@ -204,8 +215,37 @@ public class ContractService {
         result.put("success", true);
         result.put("contractId", savedContract.getId());
         result.put("signedAt", LocalDateTime.now());
-        result.put("message", "Contract signed successfully");
+        result.put("signedBy", adminName);
+        result.put("signatureType", signatureType);
+        result.put("message", "Contract signed successfully by Admin Group on behalf of all members");
 
         return result;
+    }
+
+    /**
+     * Xây dựng thông tin chữ ký
+     */
+    private String buildSignatureInfo(String adminName, String signatureType, Long groupId) {
+        LocalDateTime now = LocalDateTime.now();
+        String timestamp = now.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+
+        StringBuilder signature = new StringBuilder();
+        signature.append("[ĐÃ KÝ] ").append(timestamp);
+        signature.append(" - ").append(adminName);
+
+        if ("ADMIN_PROXY".equals(signatureType)) {
+            signature.append(" (Đại diện cho tất cả thành viên)");
+        }
+
+        // Thêm thông tin pháp lý
+        signature.append("\n\n[THÔNG TIN PHÁP LÝ]");
+        signature.append("\n- Admin Group có quyền ký thay tất cả thành viên theo quy định nội bộ");
+        signature.append("\n- Chữ ký này có giá trị pháp lý tương đương với chữ ký của từng thành viên");
+        signature.append("\n- Thời gian ký: ").append(timestamp);
+        signature.append("\n- Contract ID: ").append(contractRepository.findByGroupGroupId(groupId)
+                .map(Contract::getId)
+                .orElse(null));
+
+        return signature.toString();
     }
 }

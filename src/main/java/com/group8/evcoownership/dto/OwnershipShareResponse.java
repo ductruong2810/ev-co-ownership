@@ -14,4 +14,5 @@ public record OwnershipShareResponse(
         DepositStatus depositStatus,
         LocalDateTime joinDate,
         LocalDateTime updatedAt
-) {}
+) {
+}

@@ -1,7 +1,10 @@
 package com.group8.evcoownership.service;
 
 
-import com.group8.evcoownership.dto.*;
+import com.group8.evcoownership.dto.OwnershipShareCreateRequest;
+import com.group8.evcoownership.dto.OwnershipShareResponse;
+import com.group8.evcoownership.dto.OwnershipShareUpdateDepositStatusRequest;
+import com.group8.evcoownership.dto.OwnershipShareUpdatePercentageRequest;
 import com.group8.evcoownership.entity.OwnershipShare;
 import com.group8.evcoownership.entity.OwnershipShareId;
 import com.group8.evcoownership.enums.DepositStatus;
@@ -42,7 +45,9 @@ public class OwnershipShareService {
 
     // ================== BUSINESS/APIs ==================
 
-    /** Thêm thành viên + % sở hữu (FE kiểm quyền). Người đầu tiên = ADMIN, còn lại = MEMBER. */
+    /**
+     * Thêm thành viên + % sở hữu (FE kiểm quyền). Người đầu tiên = ADMIN, còn lại = MEMBER.
+     */
     @Transactional
     public OwnershipShareResponse addGroupShare(OwnershipShareCreateRequest req) {
         var user = userRepo.findById(req.userId())
@@ -82,7 +87,9 @@ public class OwnershipShareService {
         return toDto(saved);
     }
 
-    /** Cập nhật % sở hữu (chỉ khi group PENDING) */
+    /**
+     * Cập nhật % sở hữu (chỉ khi group PENDING)
+     */
     @Transactional
     public OwnershipShareResponse updatePercentage(Long groupId, Long userId,
                                                    OwnershipShareUpdatePercentageRequest req) {
@@ -103,7 +110,9 @@ public class OwnershipShareService {
         return toDto(saved);
     }
 
-    /** Cập nhật trạng thái đặt cọc (tuỳ nhu cầu, không phụ thuộc PENDING) */
+    /**
+     * Cập nhật trạng thái đặt cọc (tuỳ nhu cầu, không phụ thuộc PENDING)
+     */
     @Transactional
     public OwnershipShareResponse updateDepositStatus(Long groupId, Long userId,
                                                       OwnershipShareUpdateDepositStatusRequest req) {
@@ -120,7 +129,9 @@ public class OwnershipShareService {
         return toDto(saved);
     }
 
-    /** Xoá 1 thành viên (chỉ khi PENDING) */
+    /**
+     * Xoá 1 thành viên (chỉ khi PENDING)
+     */
     @Transactional
     public void removeMember(Long groupId, Long userId) {
         var id = new OwnershipShareId(userId, groupId);
@@ -154,7 +165,9 @@ public class OwnershipShareService {
 
     // ================== AUTO ACTIVATE ==================
 
-    /** Đủ điều kiện thì chuyển PENDING -> ACTIVE (không phụ thuộc role/cọc, trừ khi bạn muốn bật). */
+    /**
+     * Đủ điều kiện thì chuyển PENDING -> ACTIVE (không phụ thuộc role/cọc, trừ khi bạn muốn bật).
+     */
     @Transactional
     protected void tryActivate(Long groupId) {
         var group = groupRepo.findById(groupId)

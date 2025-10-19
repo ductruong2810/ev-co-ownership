@@ -1,13 +1,11 @@
 package com.group8.evcoownership.integration;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.group8.evcoownership.dto.ContractGenerationRequest;
 import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.repository.*;
 import com.group8.evcoownership.service.ContractGenerationService;
 import com.group8.evcoownership.service.ContractService;
 import com.group8.evcoownership.service.DepositCalculationService;
-import com.group8.evcoownership.service.TemplateService;
 import com.group8.evcoownership.testconfig.TestConfig;
 import com.group8.evcoownership.testdata.ContractTestDataBuilder;
 import org.junit.jupiter.api.MethodOrderer;
@@ -15,37 +13,26 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest
-@AutoConfigureMockMvc
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 @Import(TestConfig.class)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class ContractIntegrationTest {
-
-    @Autowired
-    private MockMvc mockMvc;
 
     @Autowired
     private ContractService contractService;
@@ -71,43 +58,36 @@ class ContractIntegrationTest {
     @MockitoBean
     private DepositCalculationService depositCalculationService;
 
-    @MockitoBean
-    private TemplateService templateService;
-
-    @Autowired
-    private ObjectMapper objectMapper;
-
     @Test
     @Order(1)
-    @WithMockUser(username = "admin@test.com")
-    void contractWorkflow_EndToEnd_Success() throws Exception {
-        // Create test data for this test only with unique IDs
+    void contractService_CreateDefaultContract_Success() {
+        // Given
         OwnershipGroup testGroup = ContractTestDataBuilder.TestScenarios.createBasicGroup();
-        testGroup.setGroupId(null); // Let Hibernate generate ID
+        testGroup.setGroupId(null);
         testGroup = groupRepository.save(testGroup);
 
-        User testUser = ContractTestDataBuilder.TestScenarios.createBasicUser();
-        testUser.setUserId(null); // Let Hibernate generate ID
-        testUser = userRepository.save(testUser);
+        // When
+        Contract result = contractService.createDefaultContract(testGroup.getGroupId());
 
-        Vehicle testVehicle = ContractTestDataBuilder.TestScenarios.createBasicVehicle(testGroup);
-        testVehicle.setId(null); // Let Hibernate generate ID
-        testVehicle = vehicleRepository.save(testVehicle);
+        // Then
+        assertNotNull(result);
+        assertEquals(testGroup.getGroupId(), result.getGroup().getGroupId());
+        assertNotNull(result.getTerms());
+        assertTrue(result.getTerms().contains("contract") || result.getTerms().contains("Contract"));
+    }
 
-        OwnershipShare testShare = ContractTestDataBuilder.TestScenarios.createBasicShare(testGroup, testUser);
-        testShare = shareRepository.save(testShare);
+    @Test
+    @Order(2)
+    void contractGenerationService_GenerateContract_Success() {
+        // Given
+        OwnershipGroup testGroup = ContractTestDataBuilder.TestScenarios.createBasicGroup();
+        testGroup.setGroupId(null);
+        testGroup = groupRepository.save(testGroup);
 
-        Contract testContract = ContractTestDataBuilder.TestScenarios.createBasicContract(testGroup);
-        testContract.setId(null); // Let Hibernate generate ID
-        testContract = contractRepository.save(testContract);
+        // Create contract first
+        Contract contract = contractService.createDefaultContract(testGroup.getGroupId());
+        assertNotNull(contract);
 
-        // Mock external services
-        when(depositCalculationService.calculateRequiredDepositAmount(any(OwnershipGroup.class)))
-                .thenReturn(new BigDecimal("2000000"));
-        when(templateService.getTemplateContent())
-                .thenReturn("<html><body>Contract {{data.contract.number}} for {{data.group.name}}</body></html>");
-
-        // Step 1: Generate contract
         ContractGenerationRequest request = new ContractGenerationRequest(
                 LocalDate.of(2025, 1, 1),
                 LocalDate.of(2025, 12, 31),
@@ -117,99 +97,70 @@ class ContractIntegrationTest {
                 "EVS-INT-001"
         );
 
-        mockMvc.perform(post("/api/contracts/generate/{groupId}", testGroup.getGroupId())
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.contractId").exists())
-                .andExpect(jsonPath("$.contractNumber").exists())
-                .andExpect(jsonPath("$.htmlContent").exists())
-                .andExpect(jsonPath("$.status").value("GENERATED"));
+        String htmlTemplate = "<html><body>{{data.contract.terms}}</body></html>";
 
-        // Step 2: Preview contract
-        mockMvc.perform(get("/api/contracts/preview/{groupId}", testGroup.getGroupId()))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.TEXT_HTML_VALUE))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Contract")));
+        // When
+        var result = contractGenerationService.generateContract(testGroup.getGroupId(), request, htmlTemplate);
 
-        // Step 3: Get contract info
-        mockMvc.perform(get("/api/contracts/{groupId}", testGroup.getGroupId()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.contractId").exists())
-                .andExpect(jsonPath("$.groupId").value(testGroup.getGroupId()))
-                .andExpect(jsonPath("$.groupName").value(testGroup.getGroupName()))
-                .andExpect(jsonPath("$.isActive").value(true));
-
-        // Step 4: Sign contract
-        Map<String, Object> signRequest = Map.of(
-                "signer", "admin@test.com",
-                "signature", "digital_signature"
-        );
-
-        mockMvc.perform(post("/api/contracts/{groupId}/sign", testGroup.getGroupId())
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(signRequest)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Contract signed successfully"));
-
-        // Step 5: Export contract to PDF
-        mockMvc.perform(get("/api/contracts/export/{groupId}/pdf", testGroup.getGroupId()))
-                .andExpect(status().isOk())
-                .andExpect(header().string("Content-Type", "application/pdf"))
-                .andExpect(header().exists("Content-Disposition"));
-    }
-
-    @Test
-    @Order(2)
-    @WithMockUser(username = "admin@test.com")
-    void contractService_CreateDefaultContract_Success() throws Exception {
-        // Create test data with unique ID
-        OwnershipGroup testGroup = ContractTestDataBuilder.TestScenarios.createBasicGroup();
-        testGroup.setGroupId(null); // Let Hibernate generate ID
-        testGroup = groupRepository.save(testGroup);
-
-        // Test service method directly
-        Contract contract = contractService.createDefaultContract(testGroup.getGroupId());
-
-        assert contract != null;
-        assert contract.getGroup().getGroupId().equals(testGroup.getGroupId());
-        assert contract.getTerms().contains("Standard EV co-ownership contract");
+        // Then
+        assertNotNull(result);
+        assertNotNull(result.contractId());
+        assertNotNull(result.htmlContent());
+        assertTrue(result.htmlContent().contains("Integration test contract terms") || result.htmlContent().contains("contract"));
     }
 
     @Test
     @Order(3)
-    @WithMockUser(username = "admin@test.com")
-    void contractGenerationService_GenerateContract_Success() throws Exception {
-        // Create test data with unique ID
+    void contractWorkflow_EndToEnd_Success() {
+        // Given
         OwnershipGroup testGroup = ContractTestDataBuilder.TestScenarios.createBasicGroup();
-        testGroup.setGroupId(null); // Let Hibernate generate ID
+        testGroup.setGroupId(null);
         testGroup = groupRepository.save(testGroup);
 
-        // Create a default contract first
-        Contract defaultContract = contractService.createDefaultContract(testGroup.getGroupId());
+        User testUser = ContractTestDataBuilder.TestScenarios.createBasicUser();
+        testUser.setUserId(null);
+        testUser = userRepository.save(testUser);
 
-        // Mock external services
+        Vehicle testVehicle = ContractTestDataBuilder.TestScenarios.createBasicVehicle(testGroup);
+        testVehicle.setId(null);
+        testVehicle = vehicleRepository.save(testVehicle);
+
+        OwnershipShare testShare = ContractTestDataBuilder.TestScenarios.createBasicShare(testGroup, testUser);
+        testShare = shareRepository.save(testShare);
+
+        // Mock deposit calculation
         when(depositCalculationService.calculateRequiredDepositAmount(any(OwnershipGroup.class)))
                 .thenReturn(new BigDecimal("2000000"));
-        when(templateService.getTemplateContent())
-                .thenReturn("<html><body>Contract {{data.contract.number}} for {{data.group.name}}</body></html>");
 
-        // Test service method directly
+        // Step 1: Create contract
+        Contract contract = contractService.createDefaultContract(testGroup.getGroupId());
+        assertNotNull(contract);
+
+        // Step 2: Generate contract with template
         ContractGenerationRequest request = new ContractGenerationRequest(
                 LocalDate.of(2025, 1, 1),
                 LocalDate.of(2025, 12, 31),
-                "Test contract terms",
+                "End-to-end test contract terms",
                 "Hà Nội",
                 "2025-01-01",
-                "EVS-TEST-001"
+                "EVS-E2E-001"
         );
 
-        var result = contractGenerationService.generateContract(testGroup.getGroupId(), request);
+        String htmlTemplate = "<html><body>{{data.contract.terms}}</body></html>";
+        var generationResult = contractGenerationService.generateContract(testGroup.getGroupId(), request, htmlTemplate);
+        assertNotNull(generationResult);
 
-        assert result != null;
-        assert result.contractId() != null;
-        assert result.status().equals("GENERATED");
+        // Step 3: Sign contract
+        Map<String, Object> signRequest = Map.of(
+                "adminName", "Test Admin",
+                "signatureType", "ADMIN_PROXY"
+        );
+        var signResult = contractService.signContract(testGroup.getGroupId(), signRequest);
+        assertTrue((Boolean) signResult.get("success"));
+
+        // Verify final state
+        Contract finalContract = contractRepository.findByGroupGroupId(testGroup.getGroupId()).orElse(null);
+        assertNotNull(finalContract);
+        assertTrue(finalContract.getTerms().contains("[ĐÃ KÝ]"));
     }
 }

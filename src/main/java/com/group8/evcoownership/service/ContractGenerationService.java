@@ -33,13 +33,14 @@ public class ContractGenerationService {
     private final OwnershipGroupRepository groupRepository;
     private final VehicleRepository vehicleRepository;
     private final OwnershipShareRepository shareRepository;
-    private final TemplateService templateService;
+    // Template sẽ được xử lý ở Frontend, không cần TemplateService
+    // private final TemplateService templateService;
 
     /**
-     * Generate contract cho group
+     * Generate contract cho group với template từ Frontend
      */
     @Transactional
-    public ContractGenerationResponse generateContract(Long groupId, ContractGenerationRequest request) {
+    public ContractGenerationResponse generateContract(Long groupId, ContractGenerationRequest request, String htmlTemplate) {
         // Kiểm tra group tồn tại
         groupRepository.findById(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
@@ -47,8 +48,8 @@ public class ContractGenerationService {
         // Tạo hoặc cập nhật contract
         Contract contract = createOrUpdateContract(groupId, request);
 
-        // Generate HTML content
-        String htmlContent = generateHtmlContent(groupId, contract);
+        // Generate HTML content từ template được truyền từ Frontend
+        String htmlContent = generateHtmlContent(groupId, contract, htmlTemplate);
 
         // Generate contract number nếu chưa có
         String contractNumber = contract.getId() != null ?
@@ -66,20 +67,20 @@ public class ContractGenerationService {
     }
 
     /**
-     * Generate HTML preview
+     * Generate HTML preview với template từ Frontend
      */
-    public String generateHtmlPreview(Long groupId) {
+    public String generateHtmlPreview(Long groupId, String htmlTemplate) {
         Contract contract = contractRepository.findByGroupGroupId(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Contract not found for group: " + groupId));
 
-        return generateHtmlContent(groupId, contract);
+        return generateHtmlContent(groupId, contract, htmlTemplate);
     }
 
     /**
-     * Export to PDF
+     * Export to PDF với template từ Frontend
      */
-    public byte[] exportToPdf(Long groupId) {
-        String htmlContent = generateHtmlPreview(groupId);
+    public byte[] exportToPdf(Long groupId, String htmlTemplate) {
+        String htmlContent = generateHtmlPreview(groupId, htmlTemplate);
 
         // TODO: Implement HTML to PDF conversion
         // Có thể dùng iText, Flying Saucer, hoặc external service
@@ -120,12 +121,9 @@ public class ContractGenerationService {
     }
 
     /**
-     * Generate HTML content từ template
+     * Generate HTML content từ template được truyền từ Frontend
      */
-    private String generateHtmlContent(Long groupId, Contract contract) {
-        // Lấy template HTML từ Azure Blob Storage
-        String htmlTemplate = templateService.getTemplateContent();
-
+    private String generateHtmlContent(Long groupId, Contract contract, String htmlTemplate) {
         // Chuẩn bị data
         Map<String, Object> data = prepareContractData(groupId, contract);
 

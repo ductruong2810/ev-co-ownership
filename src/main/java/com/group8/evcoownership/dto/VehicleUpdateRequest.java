@@ -13,4 +13,5 @@ public record VehicleUpdateRequest(
         @NotBlank String chassisNumber,
         @DecimalMin(value = "0.00") @NotNull BigDecimal vehicleValue
 
-        ) {}
+) {
+}
