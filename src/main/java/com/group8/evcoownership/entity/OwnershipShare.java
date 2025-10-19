@@ -46,9 +46,9 @@ public class OwnershipShare {
     @Column(name = "JoinDate", nullable = false)
     private LocalDateTime joinDate;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "DepositStatus", nullable = false, length = 20)
-    private DepositStatus depositStatus;
+//    @Enumerated(EnumType.STRING)
+//    @Column(name = "DepositStatus", nullable = false, length = 20)
+//    private DepositStatus depositStatus;
 
     @Column(name = "UpdatedAt", nullable = false)
     private LocalDateTime updatedAt;
@@ -57,7 +57,7 @@ public class OwnershipShare {
     public void onCreate() {
         final var now = LocalDateTime.now();
         if (groupRole == null) groupRole = GroupRole.MEMBER; // DB default too
-        if (depositStatus == null) depositStatus = DepositStatus.PENDING; // Default deposit status
+//        if (depositStatus == null) depositStatus = DepositStatus.PENDING; // Default deposit status
         if (joinDate == null) joinDate = now;
         updatedAt = now;
     }

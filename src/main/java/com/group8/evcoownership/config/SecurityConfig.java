@@ -48,7 +48,8 @@ public class SecurityConfig {
                                 "/api/disputes/**",
                                 "/api/expenses/**",
                                 "/api/user/profile/**",
-                                "/api/groups"
+                                "/api/groups/**",
+                                "/api/shares/**"
                         ).permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated()
