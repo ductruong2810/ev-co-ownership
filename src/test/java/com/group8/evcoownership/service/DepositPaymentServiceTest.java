@@ -4,6 +4,8 @@ import com.group8.evcoownership.dto.DepositPaymentRequest;
 import com.group8.evcoownership.dto.DepositPaymentResponse;
 import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.enums.*;
+import com.group8.evcoownership.exception.DepositPaymentException;
+import com.group8.evcoownership.exception.PaymentConflictException;
 import com.group8.evcoownership.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -161,7 +163,7 @@ class DepositPaymentServiceTest {
         when(contractRepository.findByGroupGroupId(1L)).thenReturn(Optional.of(testContract));
         when(fundRepository.findByGroup_GroupId(1L)).thenReturn(Optional.of(testFund));
         when(paymentRepository.save(any(Payment.class))).thenReturn(savedPayment);
-        when(vnPayPaymentService.createPaymentUrl(anyLong(), any(HttpServletRequest.class)))
+        when(vnPayPaymentService.createDepositPaymentUrl(anyLong(), any(HttpServletRequest.class)))
                 .thenReturn("https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?test=123");
         when(depositCalculationService.calculateRequiredDepositAmount(any(Integer.class)))
                 .thenReturn(new BigDecimal("38000000"));
@@ -180,7 +182,7 @@ class DepositPaymentServiceTest {
         assertTrue(response.vnpayUrl().contains("vnpayment.vn"));
 
         verify(paymentRepository).save(any(Payment.class));
-        verify(vnPayPaymentService).createPaymentUrl(anyLong(), any(HttpServletRequest.class));
+        verify(vnPayPaymentService).createDepositPaymentUrl(anyLong(), any(HttpServletRequest.class));
     }
 
     @Test
@@ -223,7 +225,7 @@ class DepositPaymentServiceTest {
         when(contractRepository.findByGroupGroupId(1L)).thenReturn(Optional.of(unsignedContract));
 
         // Act & Assert
-        assertThrows(IllegalStateException.class, () -> {
+        assertThrows(DepositPaymentException.class, () -> {
             depositPaymentService.createDepositPayment(request, httpRequest);
         });
 
@@ -251,7 +253,7 @@ class DepositPaymentServiceTest {
         when(contractRepository.findByGroupGroupId(1L)).thenReturn(Optional.of(testContract));
 
         // Act & Assert
-        assertThrows(IllegalStateException.class, () -> {
+        assertThrows(PaymentConflictException.class, () -> {
             depositPaymentService.createDepositPayment(request, httpRequest);
         });
 
@@ -275,7 +277,7 @@ class DepositPaymentServiceTest {
                 .thenReturn(new BigDecimal("38000000")); // Correct amount
 
         // Act & Assert
-        assertThrows(IllegalArgumentException.class, () -> {
+        assertThrows(DepositPaymentException.class, () -> {
             depositPaymentService.createDepositPayment(request, httpRequest);
         });
 
