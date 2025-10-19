@@ -11,9 +11,12 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface PasswordConfirmation {
     String message() default "Mật khẩu và xác nhận mật khẩu không khớp";
+
     Class<?>[] groups() default {};
+
     Class<? extends Payload>[] payload() default {};
 
     String passwordField() default "newPassword";
+
     String confirmPasswordField() default "confirmPassword";
 }

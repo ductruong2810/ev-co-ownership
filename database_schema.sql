@@ -7,10 +7,10 @@
 USE master;
 GO
 IF DB_ID(N'EVShare') IS NOT NULL
-BEGIN
-    ALTER DATABASE EVShare SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-    DROP DATABASE EVShare;
-END
+    BEGIN
+        ALTER DATABASE EVShare SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+        DROP DATABASE EVShare;
+    END
 GO
 CREATE DATABASE EVShare;
 GO
@@ -22,7 +22,7 @@ GO
 -- =============================================
 CREATE TABLE Roles
 (
-    RoleId   BIGINT IDENTITY(1,1) PRIMARY KEY,
+    RoleId   BIGINT IDENTITY (1,1) PRIMARY KEY,
     RoleName NVARCHAR(30) NOT NULL UNIQUE
 );
 GO
@@ -32,17 +32,17 @@ GO
 -- =============================================
 CREATE TABLE Users
 (
-    UserId       BIGINT IDENTITY(1,1) PRIMARY KEY,
+    UserId       BIGINT IDENTITY (1,1) PRIMARY KEY,
     FullName     NVARCHAR(100) NOT NULL,
     Email        NVARCHAR(100) NOT NULL UNIQUE,
     PasswordHash NVARCHAR(255) NOT NULL,
     PhoneNumber  NVARCHAR(20),
     AvatarUrl    NVARCHAR(500),
     RoleId       BIGINT,
-    Status       NVARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    Status       NVARCHAR(20)  NOT NULL DEFAULT 'ACTIVE',
     CreatedAt    DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
     UpdatedAt    DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
-    FOREIGN KEY (RoleId) REFERENCES Roles(RoleId)
+    FOREIGN KEY (RoleId) REFERENCES Roles (RoleId)
 );
 GO
 
@@ -51,13 +51,13 @@ GO
 -- =============================================
 CREATE TABLE OwnershipGroup
 (
-    GroupId                BIGINT IDENTITY(1,1) PRIMARY KEY,
-    GroupName              NVARCHAR(100) NOT NULL,
-    Status                 NVARCHAR(20)  NOT NULL DEFAULT 'PENDING',
-    Description            NVARCHAR(MAX),
-    MemberCapacity         INT           NULL,
-    CreatedAt              DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
-    UpdatedAt              DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
+    GroupId        BIGINT IDENTITY (1,1) PRIMARY KEY,
+    GroupName      NVARCHAR(100) NOT NULL,
+    Status         NVARCHAR(20)  NOT NULL DEFAULT 'PENDING',
+    Description    NVARCHAR(MAX),
+    MemberCapacity INT           NULL,
+    CreatedAt      DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
+    UpdatedAt      DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
     CONSTRAINT UQ_OwnershipGroup_GroupName UNIQUE (GroupName)
 );
 GO
@@ -70,14 +70,14 @@ CREATE TABLE OwnershipShare
     UserId              BIGINT        NOT NULL,
     GroupId             BIGINT        NOT NULL,
     GroupRole           NVARCHAR(50)  NOT NULL DEFAULT 'MEMBER',
-    OwnershipPercentage DECIMAL(5,2)  NOT NULL
+    OwnershipPercentage DECIMAL(5, 2) NOT NULL
         CHECK (OwnershipPercentage > 0 AND OwnershipPercentage <= 100),
     JoinDate            DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
     DepositStatus       NVARCHAR(20)  NOT NULL DEFAULT 'PENDING',
     UpdatedAt           DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
     CONSTRAINT PK_OwnershipShare PRIMARY KEY (UserId, GroupId),
-    FOREIGN KEY (UserId)  REFERENCES Users(UserId),
-    FOREIGN KEY (GroupId) REFERENCES OwnershipGroup(GroupId)
+    FOREIGN KEY (UserId) REFERENCES Users (UserId),
+    FOREIGN KEY (GroupId) REFERENCES OwnershipGroup (GroupId)
 );
 GO
 
@@ -86,17 +86,17 @@ GO
 -- =============================================
 CREATE TABLE Vehicle
 (
-    VehicleId     BIGINT IDENTITY(1,1) PRIMARY KEY,
+    VehicleId     BIGINT IDENTITY (1,1) PRIMARY KEY,
     Brand         NVARCHAR(100),
     Model         NVARCHAR(100),
     LicensePlate  NVARCHAR(20),
     ChassisNumber NVARCHAR(30),
     QrCode        NVARCHAR(255),
-    VehicleValue  DECIMAL(15,2) NULL,
+    VehicleValue  DECIMAL(15, 2) NULL,
     GroupId       BIGINT,
-    CreatedAt     DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
-    UpdatedAt     DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
-    FOREIGN KEY (GroupId) REFERENCES OwnershipGroup(GroupId)
+    CreatedAt     DATETIME2(7)   NOT NULL DEFAULT SYSUTCDATETIME(),
+    UpdatedAt     DATETIME2(7)   NOT NULL DEFAULT SYSUTCDATETIME(),
+    FOREIGN KEY (GroupId) REFERENCES OwnershipGroup (GroupId)
 );
 GO
 
@@ -105,12 +105,12 @@ GO
 -- =============================================
 CREATE TABLE VehicleImages
 (
-    ImageId    BIGINT IDENTITY(1,1) PRIMARY KEY,
+    ImageId    BIGINT IDENTITY (1,1) PRIMARY KEY,
     VehicleId  BIGINT        NOT NULL,
     ImageUrl   NVARCHAR(500) NOT NULL,
     ImageType  NVARCHAR(20)  NOT NULL,
     UploadedAt DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
-    FOREIGN KEY (VehicleId) REFERENCES Vehicle(VehicleId)
+    FOREIGN KEY (VehicleId) REFERENCES Vehicle (VehicleId)
 );
 GO
 
@@ -119,13 +119,13 @@ GO
 -- =============================================
 CREATE TABLE ContractTemplate
 (
-    TemplateId      BIGINT IDENTITY(1,1) PRIMARY KEY,
-    TemplateName    NVARCHAR(100) NOT NULL,
-    Description     NVARCHAR(MAX),
-    HtmlTemplate    NVARCHAR(MAX) NOT NULL,
-    IsActive        BIT NOT NULL DEFAULT 1,
-    CreatedAt       DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
-    UpdatedAt       DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME()
+    TemplateId   BIGINT IDENTITY (1,1) PRIMARY KEY,
+    TemplateName NVARCHAR(100) NOT NULL,
+    Description  NVARCHAR(MAX),
+    HtmlTemplate NVARCHAR(MAX) NOT NULL,
+    IsActive     BIT           NOT NULL DEFAULT 1,
+    CreatedAt    DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
+    UpdatedAt    DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME()
 );
 GO
 
@@ -134,18 +134,18 @@ GO
 -- =============================================
 CREATE TABLE Contract
 (
-    ContractId              BIGINT IDENTITY(1,1) PRIMARY KEY,
-    GroupId                 BIGINT        NOT NULL,
-    TemplateId              BIGINT,
-    StartDate               DATE,
-    EndDate                 DATE,
-    Terms                   NVARCHAR(MAX),
-    RequiredDepositAmount   DECIMAL(15,2),
-    IsActive                BIT           DEFAULT 1,
-    CreatedAt               DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
-    UpdatedAt               DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
-    FOREIGN KEY (GroupId) REFERENCES OwnershipGroup(GroupId),
-    FOREIGN KEY (TemplateId) REFERENCES ContractTemplate(TemplateId)
+    ContractId            BIGINT IDENTITY (1,1) PRIMARY KEY,
+    GroupId               BIGINT       NOT NULL,
+    TemplateId            BIGINT,
+    StartDate             DATE,
+    EndDate               DATE,
+    Terms                 NVARCHAR(MAX),
+    RequiredDepositAmount DECIMAL(15, 2),
+    IsActive              BIT                   DEFAULT 1,
+    CreatedAt             DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
+    UpdatedAt             DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
+    FOREIGN KEY (GroupId) REFERENCES OwnershipGroup (GroupId),
+    FOREIGN KEY (TemplateId) REFERENCES ContractTemplate (TemplateId)
 );
 GO
 
@@ -154,15 +154,15 @@ GO
 -- =============================================
 CREATE TABLE SharedFund
 (
-    FundId       BIGINT IDENTITY(1,1) PRIMARY KEY,
-    GroupId      BIGINT        NOT NULL,
-    Balance      DECIMAL(15,2) NOT NULL DEFAULT 0,
-    TargetAmount DECIMAL(15,2) NOT NULL DEFAULT 0,
-    CreatedAt    DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
-    UpdatedAt    DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
-    Version      BIGINT        NOT NULL DEFAULT 0,
+    FundId       BIGINT IDENTITY (1,1) PRIMARY KEY,
+    GroupId      BIGINT         NOT NULL,
+    Balance      DECIMAL(15, 2) NOT NULL DEFAULT 0,
+    TargetAmount DECIMAL(15, 2) NOT NULL DEFAULT 0,
+    CreatedAt    DATETIME2(7)   NOT NULL DEFAULT SYSUTCDATETIME(),
+    UpdatedAt    DATETIME2(7)   NOT NULL DEFAULT SYSUTCDATETIME(),
+    Version      BIGINT         NOT NULL DEFAULT 0,
     CONSTRAINT UQ_SharedFund_Group UNIQUE (GroupId),
-    FOREIGN KEY (GroupId) REFERENCES OwnershipGroup(GroupId)
+    FOREIGN KEY (GroupId) REFERENCES OwnershipGroup (GroupId)
 );
 GO
 
@@ -171,7 +171,7 @@ GO
 -- =============================================
 CREATE TABLE UsageBooking
 (
-    BookingId     BIGINT IDENTITY(1,1) PRIMARY KEY,
+    BookingId     BIGINT IDENTITY (1,1) PRIMARY KEY,
     UserId        BIGINT       NOT NULL,
     VehicleId     BIGINT       NOT NULL,
     StartDateTime DATETIME2(7) NOT NULL,
@@ -181,8 +181,8 @@ CREATE TABLE UsageBooking
     Priority      INT,
     CreatedAt     DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
     UpdatedAt     DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
-    FOREIGN KEY (UserId)    REFERENCES Users(UserId),
-    FOREIGN KEY (VehicleId) REFERENCES Vehicle(VehicleId)
+    FOREIGN KEY (UserId) REFERENCES Users (UserId),
+    FOREIGN KEY (VehicleId) REFERENCES Vehicle (VehicleId)
 );
 GO
 
@@ -191,7 +191,7 @@ GO
 -- =============================================
 CREATE TABLE Maintenance
 (
-    MaintenanceId     BIGINT IDENTITY(1,1) PRIMARY KEY,
+    MaintenanceId     BIGINT IDENTITY (1,1) PRIMARY KEY,
     VehicleId         BIGINT       NOT NULL,
     RequestedBy       BIGINT       NOT NULL,
     ApprovedBy        BIGINT       NULL,
@@ -199,12 +199,12 @@ CREATE TABLE Maintenance
     ApprovalDate      DATETIME2(7),
     NextDueDate       DATE,
     Description       NVARCHAR(MAX),
-    EstimatedCost     DECIMAL(12,2),
-    ActualCost        DECIMAL(12,2),
+    EstimatedCost     DECIMAL(12, 2),
+    ActualCost        DECIMAL(12, 2),
     MaintenanceStatus NVARCHAR(20) NOT NULL DEFAULT 'PENDING',
-    FOREIGN KEY (VehicleId)   REFERENCES Vehicle(VehicleId),
-    FOREIGN KEY (RequestedBy) REFERENCES Users(UserId),
-    FOREIGN KEY (ApprovedBy)  REFERENCES Users(UserId)
+    FOREIGN KEY (VehicleId) REFERENCES Vehicle (VehicleId),
+    FOREIGN KEY (RequestedBy) REFERENCES Users (UserId),
+    FOREIGN KEY (ApprovedBy) REFERENCES Users (UserId)
 );
 GO
 
@@ -213,7 +213,7 @@ GO
 -- =============================================
 CREATE TABLE Notification
 (
-    NotificationId   BIGINT IDENTITY(1,1) PRIMARY KEY,
+    NotificationId   BIGINT IDENTITY (1,1) PRIMARY KEY,
     UserId           BIGINT,
     Title            NVARCHAR(255),
     [Message]        NVARCHAR(MAX),
@@ -221,7 +221,7 @@ CREATE TABLE Notification
     IsRead           BIT          NOT NULL DEFAULT 0,
     IsDelivered      BIT          NOT NULL DEFAULT 0,
     CreatedAt        DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
-    FOREIGN KEY (UserId) REFERENCES Users(UserId)
+    FOREIGN KEY (UserId) REFERENCES Users (UserId)
 );
 GO
 
@@ -230,12 +230,12 @@ GO
 -- =============================================
 CREATE TABLE Incident
 (
-    IncidentId    BIGINT IDENTITY(1,1) PRIMARY KEY,
+    IncidentId    BIGINT IDENTITY (1,1) PRIMARY KEY,
     BookingId     BIGINT       NOT NULL,
     IncidentType  NVARCHAR(50),
     Description   NVARCHAR(MAX),
-    EstimatedCost DECIMAL(12,2),
-    ActualCost    DECIMAL(12,2),
+    EstimatedCost DECIMAL(12, 2),
+    ActualCost    DECIMAL(12, 2),
     Status        NVARCHAR(20) NOT NULL DEFAULT 'REPORTED',
     ImageUrls     NVARCHAR(MAX),
     IncidentDate  DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
@@ -243,8 +243,8 @@ CREATE TABLE Incident
     ResolvedBy    BIGINT,
     Notes         NVARCHAR(1000),
     CreatedAt     DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
-    FOREIGN KEY (BookingId) REFERENCES UsageBooking(BookingId),
-    FOREIGN KEY (ResolvedBy) REFERENCES Users(UserId)
+    FOREIGN KEY (BookingId) REFERENCES UsageBooking (BookingId),
+    FOREIGN KEY (ResolvedBy) REFERENCES Users (UserId)
 );
 GO
 
@@ -253,17 +253,17 @@ GO
 -- =============================================
 CREATE TABLE VehicleCheck
 (
-    Id           BIGINT IDENTITY(1,1) PRIMARY KEY,
+    Id           BIGINT IDENTITY (1,1) PRIMARY KEY,
     BookingId    BIGINT,
     CheckType    NVARCHAR(20),
     Odometer     INT,
-    BatteryLevel DECIMAL(5,2),
+    BatteryLevel DECIMAL(5, 2),
     Cleanliness  NVARCHAR(20),
     Notes        NVARCHAR(MAX),
     Issues       NVARCHAR(MAX),
     Status       NVARCHAR(20),
     CreatedAt    DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
-    FOREIGN KEY (BookingId) REFERENCES UsageBooking(BookingId)
+    FOREIGN KEY (BookingId) REFERENCES UsageBooking (BookingId)
 );
 GO
 
@@ -272,7 +272,7 @@ GO
 -- =============================================
 CREATE TABLE UserDocument
 (
-    DocumentId   BIGINT IDENTITY(1,1) PRIMARY KEY,
+    DocumentId   BIGINT IDENTITY (1,1) PRIMARY KEY,
     UserId       BIGINT        NOT NULL,
     DocumentType NVARCHAR(20),
     Side         NVARCHAR(10),
@@ -282,8 +282,8 @@ CREATE TABLE UserDocument
     ReviewedBy   BIGINT,
     CreatedAt    DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
     UpdatedAt    DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
-    FOREIGN KEY (UserId)    REFERENCES Users(UserId),
-    FOREIGN KEY (ReviewedBy) REFERENCES Users(UserId)
+    FOREIGN KEY (UserId) REFERENCES Users (UserId),
+    FOREIGN KEY (ReviewedBy) REFERENCES Users (UserId)
 );
 GO
 
@@ -292,7 +292,7 @@ GO
 -- =============================================
 CREATE TABLE Voting
 (
-    VotingId    BIGINT IDENTITY(1,1) PRIMARY KEY,
+    VotingId    BIGINT IDENTITY (1,1) PRIMARY KEY,
     GroupId     BIGINT,
     Title       NVARCHAR(255),
     Description NVARCHAR(MAX),
@@ -303,8 +303,8 @@ CREATE TABLE Voting
     Status      NVARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
     CreatedBy   BIGINT,
     CreatedAt   DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
-    FOREIGN KEY (GroupId) REFERENCES OwnershipGroup(GroupId),
-    FOREIGN KEY (CreatedBy) REFERENCES Users(UserId)
+    FOREIGN KEY (GroupId) REFERENCES OwnershipGroup (GroupId),
+    FOREIGN KEY (CreatedBy) REFERENCES Users (UserId)
 );
 GO
 
@@ -313,32 +313,32 @@ GO
 -- =============================================
 CREATE TABLE Dispute
 (
-    DisputeId         BIGINT IDENTITY(1,1) PRIMARY KEY,
-    FundId            BIGINT NOT NULL,
+    DisputeId         BIGINT IDENTITY (1,1) PRIMARY KEY,
+    FundId            BIGINT       NOT NULL,
     CreatedBy         BIGINT,
     DisputeType       NVARCHAR(50),
     RelatedEntityType NVARCHAR(50),
     RelatedEntityId   BIGINT,
     Description       NVARCHAR(MAX),
-    DisputedAmount    DECIMAL(12,2),
+    DisputedAmount    DECIMAL(12, 2),
     Notes             NVARCHAR(1000),
     Resolution        NVARCHAR(MAX),
-    ResolutionAmount  DECIMAL(12,2),
+    ResolutionAmount  DECIMAL(12, 2),
     Status            NVARCHAR(20) NOT NULL DEFAULT 'OPEN',
     ResolvedBy        BIGINT,
     CreatedAt         DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
     UpdatedAt         DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
     ResolvedAt        DATETIME2(7),
-    FOREIGN KEY (FundId)     REFERENCES SharedFund(FundId),
-    FOREIGN KEY (CreatedBy)  REFERENCES Users(UserId),
-    FOREIGN KEY (ResolvedBy) REFERENCES Users(UserId)
+    FOREIGN KEY (FundId) REFERENCES SharedFund (FundId),
+    FOREIGN KEY (CreatedBy) REFERENCES Users (UserId),
+    FOREIGN KEY (ResolvedBy) REFERENCES Users (UserId)
 );
 GO
 
 -- 16b) DISPUTE ADD-ONS
 CREATE TABLE DisputeTicket
 (
-    TicketId           BIGINT IDENTITY(1,1) PRIMARY KEY,
+    TicketId           BIGINT IDENTITY (1,1) PRIMARY KEY,
     DisputeId          BIGINT       NOT NULL,
     Priority           NVARCHAR(20) NOT NULL DEFAULT 'MEDIUM',
     AssignedTo         BIGINT,
@@ -346,14 +346,14 @@ CREATE TABLE DisputeTicket
     DueFirstResponseAt DATETIME2(7),
     DueResolutionAt    DATETIME2(7),
     ClosedAt           DATETIME2(7),
-    FOREIGN KEY (DisputeId) REFERENCES Dispute(DisputeId),
-    FOREIGN KEY (AssignedTo) REFERENCES Users(UserId)
+    FOREIGN KEY (DisputeId) REFERENCES Dispute (DisputeId),
+    FOREIGN KEY (AssignedTo) REFERENCES Users (UserId)
 );
 GO
 
 CREATE TABLE DisputeEvent
 (
-    EventId     BIGINT IDENTITY(1,1) PRIMARY KEY,
+    EventId     BIGINT IDENTITY (1,1) PRIMARY KEY,
     TicketId    BIGINT,
     ActorUserId BIGINT,
     ActorRole   NVARCHAR(20),
@@ -362,14 +362,14 @@ CREATE TABLE DisputeEvent
     NewValue    NVARCHAR(200),
     Note        NVARCHAR(MAX),
     CreatedAt   DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
-    FOREIGN KEY (TicketId) REFERENCES DisputeTicket(TicketId),
-    FOREIGN KEY (ActorUserId) REFERENCES Users(UserId)
+    FOREIGN KEY (TicketId) REFERENCES DisputeTicket (TicketId),
+    FOREIGN KEY (ActorUserId) REFERENCES Users (UserId)
 );
 GO
 
 CREATE TABLE DisputeAttachment
 (
-    AttachmentId BIGINT IDENTITY(1,1) PRIMARY KEY,
+    AttachmentId BIGINT IDENTITY (1,1) PRIMARY KEY,
     DisputeId    BIGINT         NOT NULL,
     FileName     NVARCHAR(255)  NOT NULL,
     MimeType     NVARCHAR(100)  NOT NULL,
@@ -383,45 +383,45 @@ CREATE TABLE DisputeAttachment
     Status       NVARCHAR(20)   NOT NULL DEFAULT 'ACTIVE',
     CreatedAt    DATETIME2(7)   NOT NULL DEFAULT SYSUTCDATETIME(),
     DeletedAt    DATETIME2(7),
-    FOREIGN KEY (DisputeId) REFERENCES Dispute(DisputeId),
-    FOREIGN KEY (UploadedBy) REFERENCES Users(UserId)
+    FOREIGN KEY (DisputeId) REFERENCES Dispute (DisputeId),
+    FOREIGN KEY (UploadedBy) REFERENCES Users (UserId)
 );
 GO
 
 CREATE TABLE Refund
 (
-    RefundId          BIGINT IDENTITY(1,1) PRIMARY KEY,
+    RefundId          BIGINT IDENTITY (1,1) PRIMARY KEY,
     DisputeId         BIGINT         NOT NULL,
-    Amount            DECIMAL(15,2)  NOT NULL,
+    Amount            DECIMAL(15, 2) NOT NULL,
     Method            NVARCHAR(30)   NOT NULL,
     TxnRef            NVARCHAR(100),
     Status            NVARCHAR(20)   NOT NULL DEFAULT 'PENDING',
     CreatedAt         DATETIME2(7)   NOT NULL DEFAULT SYSUTCDATETIME(),
     SettledAt         DATETIME2(7),
     Note              NVARCHAR(MAX),
-    Provider          NVARCHAR(20)           DEFAULT 'VNPAY',
+    Provider          NVARCHAR(20)            DEFAULT 'VNPAY',
     ProviderTxnRef    NVARCHAR(100),
     ProviderRefundRef NVARCHAR(100),
     ReasonCode        NVARCHAR(20),
     Channel           NVARCHAR(20),
     RawResponse       NVARCHAR(MAX),
-    FOREIGN KEY (DisputeId) REFERENCES Dispute(DisputeId)
+    FOREIGN KEY (DisputeId) REFERENCES Dispute (DisputeId)
 );
 GO
 
 CREATE TABLE JournalEntry
 (
-    EntryId     BIGINT IDENTITY(1,1) PRIMARY KEY,
+    EntryId     BIGINT IDENTITY (1,1) PRIMARY KEY,
     DisputeId   BIGINT         NOT NULL,
     FundId      BIGINT         NOT NULL,
     AccountCode NVARCHAR(50)   NOT NULL,
-    Debit       DECIMAL(15,2)  NOT NULL DEFAULT 0,
-    Credit      DECIMAL(15,2)  NOT NULL DEFAULT 0,
+    Debit       DECIMAL(15, 2) NOT NULL DEFAULT 0,
+    Credit      DECIMAL(15, 2) NOT NULL DEFAULT 0,
     Memo        NVARCHAR(255),
     PostedAt    DATETIME2(7),
     CreatedAt   DATETIME2(7)   NOT NULL DEFAULT SYSUTCDATETIME(),
-    FOREIGN KEY (DisputeId) REFERENCES Dispute(DisputeId),
-    FOREIGN KEY (FundId)    REFERENCES SharedFund(FundId)
+    FOREIGN KEY (DisputeId) REFERENCES Dispute (DisputeId),
+    FOREIGN KEY (FundId) REFERENCES SharedFund (FundId)
 );
 GO
 
@@ -430,14 +430,14 @@ GO
 -- =============================================
 CREATE TABLE Expense
 (
-    ExpenseId   BIGINT IDENTITY(1,1) PRIMARY KEY,
+    ExpenseId   BIGINT IDENTITY (1,1) PRIMARY KEY,
     FundId      BIGINT         NOT NULL,
     SourceType  NVARCHAR(50),
     SourceId    BIGINT,
     Description NVARCHAR(MAX),
-    Amount      DECIMAL(12,2)  NOT NULL,
+    Amount      DECIMAL(12, 2) NOT NULL,
     ExpenseDate DATETIME2(7)   NOT NULL DEFAULT SYSUTCDATETIME(),
-    FOREIGN KEY (FundId) REFERENCES SharedFund(FundId)
+    FOREIGN KEY (FundId) REFERENCES SharedFund (FundId)
 );
 GO
 
@@ -446,10 +446,10 @@ GO
 -- =============================================
 CREATE TABLE Payment
 (
-    PaymentId        BIGINT IDENTITY(1,1) PRIMARY KEY,
+    PaymentId        BIGINT IDENTITY (1,1) PRIMARY KEY,
     PayerUserId      BIGINT         NOT NULL,
     FundId           BIGINT         NOT NULL,
-    Amount           DECIMAL(12,2)  NOT NULL,
+    Amount           DECIMAL(12, 2) NOT NULL,
     PaymentDate      DATETIME2(7)   NOT NULL DEFAULT SYSUTCDATETIME(),
     PaymentMethod    NVARCHAR(50),
     Status           NVARCHAR(20)   NOT NULL DEFAULT 'PENDING',
@@ -461,15 +461,15 @@ CREATE TABLE Payment
     ChargedUserId    BIGINT,
     SourceDisputeId  BIGINT,
     PersonalReason   NVARCHAR(MAX),
-    FOREIGN KEY (PayerUserId)     REFERENCES Users(UserId),
-    FOREIGN KEY (ChargedUserId)   REFERENCES Users(UserId),
-    FOREIGN KEY (FundId)          REFERENCES SharedFund(FundId),
-    FOREIGN KEY (SourceDisputeId) REFERENCES Dispute(DisputeId)
+    FOREIGN KEY (PayerUserId) REFERENCES Users (UserId),
+    FOREIGN KEY (ChargedUserId) REFERENCES Users (UserId),
+    FOREIGN KEY (FundId) REFERENCES SharedFund (FundId),
+    FOREIGN KEY (SourceDisputeId) REFERENCES Dispute (DisputeId)
 );
 GO
 ALTER TABLE Payment
     ADD CONSTRAINT CK_Payment_Personal
-    CHECK (PaymentCategory <> 'PERSONAL' OR ChargedUserId IS NOT NULL);
+        CHECK (PaymentCategory <> 'PERSONAL' OR ChargedUserId IS NOT NULL);
 GO
 
 -- =============================================
@@ -477,17 +477,17 @@ GO
 -- =============================================
 CREATE TABLE FinancialReport
 (
-    ReportId     BIGINT IDENTITY(1,1) PRIMARY KEY,
-    FundId       BIGINT        NOT NULL,
+    ReportId     BIGINT IDENTITY (1,1) PRIMARY KEY,
+    FundId       BIGINT       NOT NULL,
     ReportMonth  INT,
     ReportYear   INT,
-    TotalIncome  DECIMAL(15,2),
-    TotalExpense DECIMAL(15,2),
-    GeneratedBy  BIGINT        NOT NULL,
-    CreatedAt    DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
-    UpdatedAt    DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
-    FOREIGN KEY (FundId)      REFERENCES SharedFund(FundId),
-    FOREIGN KEY (GeneratedBy) REFERENCES Users(UserId)
+    TotalIncome  DECIMAL(15, 2),
+    TotalExpense DECIMAL(15, 2),
+    GeneratedBy  BIGINT       NOT NULL,
+    CreatedAt    DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
+    UpdatedAt    DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
+    FOREIGN KEY (FundId) REFERENCES SharedFund (FundId),
+    FOREIGN KEY (GeneratedBy) REFERENCES Users (UserId)
 );
 GO
 
@@ -496,14 +496,14 @@ GO
 -- =============================================
 
 -- Users
-CREATE INDEX IX_Users_Email  ON Users (Email);
+CREATE INDEX IX_Users_Email ON Users (Email);
 CREATE INDEX IX_Users_RoleId ON Users (RoleId);
 
 -- OwnershipShare
 CREATE INDEX IX_OwnershipShare_GroupId ON OwnershipShare (GroupId);
 
 -- Vehicle
-CREATE INDEX IX_Vehicle_GroupId      ON Vehicle (GroupId);
+CREATE INDEX IX_Vehicle_GroupId ON Vehicle (GroupId);
 CREATE INDEX IX_Vehicle_LicensePlate ON Vehicle (LicensePlate);
 
 -- VehicleImages
@@ -511,28 +511,28 @@ CREATE INDEX IX_VehicleImages_VehicleId ON VehicleImages (VehicleId);
 CREATE INDEX IX_VehicleImages_ImageType ON VehicleImages (ImageType);
 
 -- UsageBooking
-CREATE INDEX IX_UsageBooking_UserId        ON UsageBooking (UserId);
-CREATE INDEX IX_UsageBooking_VehicleId     ON UsageBooking (VehicleId);
+CREATE INDEX IX_UsageBooking_UserId ON UsageBooking (UserId);
+CREATE INDEX IX_UsageBooking_VehicleId ON UsageBooking (VehicleId);
 CREATE INDEX IX_UsageBooking_StartDateTime ON UsageBooking (StartDateTime);
-CREATE INDEX IX_UsageBooking_Status        ON UsageBooking (Status);
+CREATE INDEX IX_UsageBooking_Status ON UsageBooking (Status);
 
 -- Maintenance
-CREATE INDEX IX_Maintenance_VehicleId   ON Maintenance (VehicleId);
+CREATE INDEX IX_Maintenance_VehicleId ON Maintenance (VehicleId);
 CREATE INDEX IX_Maintenance_RequestedBy ON Maintenance (RequestedBy);
-CREATE INDEX IX_Maintenance_Status      ON Maintenance (MaintenanceStatus);
+CREATE INDEX IX_Maintenance_Status ON Maintenance (MaintenanceStatus);
 
 -- Notification
 CREATE INDEX IX_Notification_UserId ON Notification (UserId);
 CREATE INDEX IX_Notification_IsRead ON Notification (IsRead);
 
 -- Incident
-CREATE INDEX IX_Incident_BookingId  ON Incident (BookingId);
+CREATE INDEX IX_Incident_BookingId ON Incident (BookingId);
 CREATE INDEX IX_Incident_ResolvedBy ON Incident (ResolvedBy);
-CREATE INDEX IX_Incident_Status     ON Incident (Status);
+CREATE INDEX IX_Incident_Status ON Incident (Status);
 
 -- VehicleCheck
 CREATE INDEX IX_VehicleCheck_BookingId ON VehicleCheck (BookingId);
-CREATE INDEX IX_VehicleCheck_Status    ON VehicleCheck (Status);
+CREATE INDEX IX_VehicleCheck_Status ON VehicleCheck (Status);
 
 -- UserDocument
 CREATE INDEX IX_UserDocument_UserId ON UserDocument (UserId);
@@ -540,7 +540,7 @@ CREATE INDEX IX_UserDocument_Status ON UserDocument (Status);
 
 -- Voting
 CREATE INDEX IX_Voting_GroupId ON Voting (GroupId);
-CREATE INDEX IX_Voting_Status  ON Voting (Status);
+CREATE INDEX IX_Voting_Status ON Voting (Status);
 
 -- Dispute
 CREATE INDEX IX_Dispute_FundId ON Dispute (FundId);
@@ -555,13 +555,13 @@ CREATE INDEX IX_DisputeEvent_EventType ON DisputeEvent (EventType);
 CREATE INDEX IX_DisputeAttachment_DisputeId ON DisputeAttachment (DisputeId);
 CREATE INDEX IX_DisputeAttachment_UploadedBy ON DisputeAttachment (UploadedBy);
 CREATE INDEX IX_Refund_DisputeId ON Refund (DisputeId);
-CREATE INDEX IX_Refund_Status    ON Refund (Status);
-CREATE INDEX IX_Journal_FundId   ON JournalEntry (FundId);
+CREATE INDEX IX_Refund_Status ON Refund (Status);
+CREATE INDEX IX_Journal_FundId ON JournalEntry (FundId);
 CREATE INDEX IX_Journal_DisputeId ON JournalEntry (DisputeId);
 
 -- FinancialReport
-CREATE INDEX IX_FinancialReport_FundId          ON FinancialReport (FundId);
-CREATE INDEX IX_FinancialReport_GeneratedBy     ON FinancialReport (GeneratedBy);
+CREATE INDEX IX_FinancialReport_FundId ON FinancialReport (FundId);
+CREATE INDEX IX_FinancialReport_GeneratedBy ON FinancialReport (GeneratedBy);
 CREATE INDEX IX_FinancialReport_ReportYearMonth ON FinancialReport (ReportYear, ReportMonth);
 GO
 
@@ -570,18 +570,22 @@ GO
 -- =============================================
 
 -- Roles
-INSERT INTO Roles(RoleName) VALUES
-('CO_OWNER'),
-('STAFF'),
-('ADMIN'),
-('TECHNICIAN');
+INSERT INTO Roles(RoleName)
+VALUES ('CO_OWNER'),
+       ('STAFF'),
+       ('ADMIN'),
+       ('TECHNICIAN');
 
 -- Users
-INSERT INTO Users(FullName, Email, PasswordHash, PhoneNumber, RoleId, Status) VALUES
-(N'Alice Co-owner',  'alice@example.com',  'hash1', '0900000001', 1, 'ACTIVE'),
-(N'Bob Staff',       'bob@example.com',    'hash2', '0900000002', 2, 'ACTIVE'),
-(N'Carol Admin',     'carol@example.com',  'hash3', '0900000003', 3, 'ACTIVE'),
-(N'Terry Technician','terry@example.com',  'hash4', '0900000004', 4, 'ACTIVE');
+INSERT INTO Users(FullName, Email, PasswordHash, PhoneNumber, RoleId, Status)
+VALUES (N'Alice Co-owner', 'alice@example.com', '$2a$12$0oCgkhJuoBdriN0dnc38wuA8Brpio3ixZXUHpnBtWwqT1tU4ikgzG',
+        '0900000001', 1, 'ACTIVE'),
+       (N'Bob Staff', 'bob@example.com', '$2a$12$3RHV1LDugSQS0IFAi1PF9OR7WWNg/fQ5R2GmIDJ5zaGtQjEh3g6ru', '0900000002',
+        2, 'ACTIVE'),
+       (N'Carol Admin', 'carol@example.com', '$2a$12$/UNH81MN3.ItR4MIkNIMd.Rh0j6nGPSH0p.wz/1pSBrG77tVRf7OW',
+        '0900000003', 3, 'ACTIVE'),
+       (N'Terry Technician', 'terry@example.com', '$2a$12$fK3gL5uSa5/XgWGoPf8VcusZp6KcddqjcmpLO0P8pXmj.0ErFJWXy',
+        '0900000004', 4, 'ACTIVE');
 
 -- Group (unique name)
 INSERT INTO OwnershipGroup(GroupName, Status, Description)
@@ -593,9 +597,11 @@ VALUES (N'EV Group B', 'PENDING', N'EV co-ownership group');
 INSERT INTO OwnershipShare(UserId, GroupId, GroupRole, OwnershipPercentage)
 VALUES (1, 1, 'ADMIN', 50.00);
 
-INSERT INTO Users(FullName, Email, PasswordHash, PhoneNumber, RoleId, Status) VALUES
-(N'David Co-owner', 'david@example.com', 'hash5', '0900000005', 1, 'ACTIVE'),
-(N'Emma Co-owner',  'emma@example.com',  'hash6', '0900000006', 1, 'ACTIVE');
+INSERT INTO Users(FullName, Email, PasswordHash, PhoneNumber, RoleId, Status)
+VALUES (N'David Co-owner', 'david@example.com', '$2a$12$mXvNgmVCwJBXvgB9J8SqzeL6Ls0wQLEKK1wjZ6xnwybIdq6xyoGay',
+        '0900000005', 1, 'ACTIVE'),
+       (N'Emma Co-owner', 'emma@example.com', '$2a$12$7KLojER8vQtzWqovOCbh3efIt55BOsfrL016SnmF9EnduKPGod86O',
+        '0900000006', 1, 'ACTIVE');
 
 INSERT INTO OwnershipShare(UserId, GroupId, GroupRole, OwnershipPercentage)
 VALUES (5, 1, 'MEMBER', 30.00),
@@ -606,9 +612,9 @@ INSERT INTO Vehicle(Brand, Model, LicensePlate, ChassisNumber, GroupId)
 VALUES ('VinFast', 'VF e34', '29A-123.45', 'RLHRE7EXXXXXXXX', 1);
 
 -- Images
-INSERT INTO VehicleImages(VehicleId, ImageUrl, ImageType) VALUES
-(1, 'https://example.com/vehicle.jpg', 'VEHICLE'),
-(1, 'https://example.com/scratch1.jpg', 'SCRATCH');
+INSERT INTO VehicleImages(VehicleId, ImageUrl, ImageType)
+VALUES (1, 'https://example.com/vehicle.jpg', 'VEHICLE'),
+       (1, 'https://example.com/scratch1.jpg', 'SCRATCH');
 
 -- Fund
 INSERT INTO SharedFund(GroupId, Balance, TargetAmount, Version)
@@ -620,10 +626,10 @@ VALUES (1, 1, DATEADD(HOUR, -1, SYSUTCDATETIME()), DATEADD(HOUR, 2, SYSUTCDATETI
 
 -- Payments demo
 INSERT INTO Payment(PayerUserId, FundId, Amount, PaymentMethod, Status, PaymentType, TransactionCode, PaymentCategory)
-VALUES (1, 1, 1000000, 'BANK_TRANSFER', 'PENDING',   'CONTRIBUTION',    'TXN-P-001', 'GROUP'),
-       (1, 1, 1500000, 'BANK_TRANSFER', 'COMPLETED', 'CONTRIBUTION',    'TXN-C-001', 'GROUP'),
-       (1, 1, 200000,  'BANK_TRANSFER', 'FAILED',    'MAINTENANCE_FEE', 'TXN-F-001', 'GROUP'),
-       (1, 1, 1500000, 'BANK_TRANSFER', 'REFUNDED',  'CONTRIBUTION',    'TXN-R-001', 'GROUP');
+VALUES (1, 1, 1000000, 'BANK_TRANSFER', 'PENDING', 'CONTRIBUTION', 'TXN-P-001', 'GROUP'),
+       (1, 1, 1500000, 'BANK_TRANSFER', 'COMPLETED', 'CONTRIBUTION', 'TXN-C-001', 'GROUP'),
+       (1, 1, 200000, 'BANK_TRANSFER', 'FAILED', 'MAINTENANCE_FEE', 'TXN-F-001', 'GROUP'),
+       (1, 1, 1500000, 'BANK_TRANSFER', 'REFUNDED', 'CONTRIBUTION', 'TXN-R-001', 'GROUP');
 
 -- Expense demo
 INSERT INTO Expense(FundId, SourceType, SourceId, Description, Amount)
@@ -648,12 +654,13 @@ VALUES (1, 12, 2024, 5000000, 300000, 3),
 
 -- Contract Templates (HTML templates)
 INSERT INTO ContractTemplate(TemplateName, Description, HtmlTemplate, IsActive)
-VALUES 
-(N'Standard EV Contract', N'Standard HTML template for EV co-ownership contracts', 
- N'<!DOCTYPE html><html><head><title>EV Contract</title></head><body><h1>Standard EV Contract</h1><p>Contract content...</p></body></html>', 1),
+VALUES (N'Standard EV Contract', N'Standard HTML template for EV co-ownership contracts',
+        N'<!DOCTYPE html><html><head><title>EV Contract</title></head><body><h1>Standard EV Contract</h1><p>Contract content...</p></body></html>',
+        1),
 
-(N'Premium EV Contract', N'Premium HTML template with enhanced styling', 
- N'<!DOCTYPE html><html><head><title>Premium EV Contract</title><style>body{background:#f8f9fa}</style></head><body><h1>Premium EV Contract</h1><p>Enhanced contract content...</p></body></html>', 1);
+       (N'Premium EV Contract', N'Premium HTML template with enhanced styling',
+        N'<!DOCTYPE html><html><head><title>Premium EV Contract</title><style>body{background:#f8f9fa}</style></head><body><h1>Premium EV Contract</h1><p>Enhanced contract content...</p></body></html>',
+        1);
 
 -- Contract sample (using template)
 INSERT INTO Contract(GroupId, TemplateId, StartDate, EndDate, Terms, RequiredDepositAmount, IsActive)

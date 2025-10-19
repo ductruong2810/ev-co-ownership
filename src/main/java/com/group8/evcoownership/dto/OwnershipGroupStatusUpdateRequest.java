@@ -5,4 +5,5 @@ import jakarta.validation.constraints.NotNull;
 
 public record OwnershipGroupStatusUpdateRequest(
         @NotNull GroupStatus status
-) {}
+) {
+}

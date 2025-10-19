@@ -20,6 +20,7 @@ public class UserDocumentController {
     @Autowired
     private UserDocumentService userDocumentService;
 
+    // ================= UPLOAD SINGLE DOCUMENT =================
     @PostMapping("/upload")
     public ResponseEntity<?> uploadDocument(
             @RequestParam("documentType") String documentType,
@@ -38,6 +39,35 @@ public class UserDocumentController {
         ));
     }
 
+    // ================= UPLOAD MULTIPLE DOCUMENTS (2 SIDES AT ONCE) =================
+    @PostMapping("/upload-batch")
+    public ResponseEntity<?> uploadBatchDocuments(
+            @RequestParam("documentType") String documentType,
+            @RequestParam("frontFile") MultipartFile frontFile,
+            @RequestParam("backFile") MultipartFile backFile,
+            Authentication authentication) {
+
+        String email = authentication.getName();
+        Map<String, UserDocument> documents = userDocumentService.uploadBatchDocuments(
+                email, documentType, frontFile, backFile
+        );
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Upload cả 2 mặt thành công",
+                "front", Map.of(
+                        "documentId", documents.get("FRONT").getDocumentId(),
+                        "imageUrl", documents.get("FRONT").getImageUrl(),
+                        "status", documents.get("FRONT").getStatus()
+                ),
+                "back", Map.of(
+                        "documentId", documents.get("BACK").getDocumentId(),
+                        "imageUrl", documents.get("BACK").getImageUrl(),
+                        "status", documents.get("BACK").getStatus()
+                )
+        ));
+    }
+
+    // ================= GET ALL MY DOCUMENTS =================
     @GetMapping
     public ResponseEntity<?> getMyDocuments(Authentication authentication) {
         String email = authentication.getName();
@@ -45,7 +75,7 @@ public class UserDocumentController {
         return ResponseEntity.ok(documents);
     }
 
-    // SỬA: Thêm /type/ prefix để tránh conflict với DELETE /{documentId}
+    // ================= GET DOCUMENTS BY TYPE =================
     @GetMapping("/type/{documentType}")
     public ResponseEntity<?> getDocumentsByType(
             @PathVariable String documentType,
@@ -56,7 +86,7 @@ public class UserDocumentController {
         return ResponseEntity.ok(documents);
     }
 
-    // SỬA: PathVariable từ Long → String, thêm parse manual
+    // ================= DELETE DOCUMENT =================
     @DeleteMapping("/{documentId}")
     public ResponseEntity<?> deleteDocument(
             @PathVariable String documentId,

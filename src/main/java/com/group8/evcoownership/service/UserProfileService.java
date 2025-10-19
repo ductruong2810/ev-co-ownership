@@ -56,14 +56,11 @@ public class UserProfileService {
         // Lấy tất cả documents của user
         List<UserDocument> allDocuments = userDocumentRepository.findByUserId(user.getUserId());
 
-        // Phân loại documents theo type
-        List<UserDocument> citizenIdDocs = allDocuments.stream()
-                .filter(doc -> "CITIZEN_ID".equals(doc.getDocumentType()))
-                .collect(Collectors.toList());
+        // Build CCCD
+        UserProfileResponseDTO.DocumentTypeDTO citizenId = buildDocumentType(allDocuments, "CITIZEN_ID");
 
-        List<UserDocument> driverLicenseDocs = allDocuments.stream()
-                .filter(doc -> "DRIVER_LICENSE".equals(doc.getDocumentType()))
-                .collect(Collectors.toList());
+        // Build GPLX
+        UserProfileResponseDTO.DocumentTypeDTO driverLicense = buildDocumentType(allDocuments, "DRIVER_LICENSE");
 
         // Build response
         return UserProfileResponseDTO.builder()
@@ -75,9 +72,9 @@ public class UserProfileService {
                 .roleName(user.getRole().getRoleName().name())
                 .status(user.getStatus().name())
                 .createdAt(user.getCreatedAt())
-                .documents(UserProfileResponseDTO.DocumentImages.builder()
-                        .citizenIdImages(mapToDocumentDTOs(citizenIdDocs))
-                        .driverLicenseImages(mapToDocumentDTOs(driverLicenseDocs))
+                .documents(UserProfileResponseDTO.DocumentsDTO.builder()
+                        .citizenIdImages(citizenId)
+                        .driverLicenseImages(driverLicense)
                         .build())
                 .statistics(UserProfileResponseDTO.StatisticsDTO.builder()
                         .groupsJoined(getGroupsCount(user.getUserId()))
@@ -88,11 +85,24 @@ public class UserProfileService {
     }
 
     /**
-     * Map UserDocument entity sang DTO
+     * Build DocumentTypeDTO (FRONT + BACK + Details)
      */
-    private List<UserProfileResponseDTO.DocumentDTO> mapToDocumentDTOs(List<UserDocument> documents) {
-        return documents.stream()
-                .map(doc -> UserProfileResponseDTO.DocumentDTO.builder()
+    private UserProfileResponseDTO.DocumentTypeDTO buildDocumentType(
+            List<UserDocument> allDocuments,
+            String documentType) {
+
+        // Filter documents by type
+        List<UserDocument> typeDocs = allDocuments.stream()
+                .filter(doc -> documentType.equals(doc.getDocumentType()))
+                .collect(Collectors.toList());
+
+        // Quick access URLs
+        String frontUrl = "";
+        String backUrl = "";
+
+        // Build detailed info
+        List<UserProfileResponseDTO.DocumentDetailDTO> details = typeDocs.stream()
+                .map(doc -> UserProfileResponseDTO.DocumentDetailDTO.builder()
                         .documentId(doc.getDocumentId())
                         .side(doc.getSide())
                         .imageUrl(doc.getImageUrl())
@@ -101,6 +111,21 @@ public class UserProfileService {
                         .uploadedAt(doc.getCreatedAt())
                         .build())
                 .collect(Collectors.toList());
+
+        // Extract URLs from details for quick access
+        for (UserProfileResponseDTO.DocumentDetailDTO detail : details) {
+            if ("FRONT".equals(detail.getSide())) {
+                frontUrl = detail.getImageUrl() != null ? detail.getImageUrl() : "";
+            } else if ("BACK".equals(detail.getSide())) {
+                backUrl = detail.getImageUrl() != null ? detail.getImageUrl() : "";
+            }
+        }
+
+        return UserProfileResponseDTO.DocumentTypeDTO.builder()
+                .front(frontUrl)
+                .back(backUrl)
+                .details(details)
+                .build();
     }
 
     /**

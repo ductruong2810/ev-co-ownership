@@ -13,4 +13,5 @@ public record OwnershipGroupResponse(
         GroupStatus status,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
-) {}
+) {
+}
