@@ -226,10 +226,11 @@
 <body>
 <!-- Top toolbar (won't print) -->
 <div class="toolbar">
-    <button class="btn" onclick="window.print()">🖨️ In / Lưu PDF</button>
     <button class="btn" onclick="fillDemo()">✨ Đổ dữ liệu mẫu</button>
-    <button class="btn primary" onclick="clearAll()">♻️ Xóa dữ liệu</button>
-    <span class="muted">Mẹo: sau khi xem hợp đồng, bấm In → Lưu dưới dạng PDF để gửi ký.</span>
+    <button class="btn" onclick="loadContractData(1)">📄 Load từ Server</button>
+    <button class="btn primary" onclick="signContract()">✅ Xác nhận & Ký hợp đồng</button>
+    <button class="btn" onclick="clearAll()">♻️ Xóa dữ liệu</button>
+    <span class="muted">Mẹo: Xem hợp đồng và bấm "Xác nhận & Ký hợp đồng" để hoàn tất.</span>
 </div>
 
 <!-- A4-like page -->
@@ -313,6 +314,8 @@
         </div>
         <p class="muted">Các khoản chi bảo dưỡng, sạc, vệ sinh… được thanh toán từ Quỹ chung; khoản cá nhân (nếu có) do
             cá nhân chi trả theo bút toán bù trừ.</p>
+        <p class="muted"><strong>Lưu ý:</strong> Tiền cọc phải được đóng đầy đủ trước khi hợp đồng được kích hoạt và có
+            hiệu lực.</p>
     </div>
 
     <!-- Usage & rules -->
@@ -339,6 +342,12 @@
         <h2>6. Điều khoản chung</h2>
         <ul>
             <li>Hợp đồng có hiệu lực khi tất cả Bên đồng sở hữu đồng ý và ký.</li>
+            <li><strong>Kích hoạt hợp đồng:</strong> Sau khi ký, hợp đồng chỉ được kích hoạt khi tất cả thành viên đã
+                đóng đủ tiền cọc theo quy định.
+            </li>
+            <li><strong>Duyệt hợp đồng:</strong> Hệ thống sẽ duyệt lại hợp đồng sau khi nhận đủ tiền cọc từ tất cả thành
+                viên.
+            </li>
             <li>Các phụ lục (nếu có) là bộ phận không tách rời của Hợp đồng.</li>
             <li>Hệ thống lưu vết phiên bản, thời điểm ký và danh tính người ký.</li>
         </ul>
@@ -433,13 +442,101 @@
         if (admin) {
             const box = document.createElement('div');
             box.className = 'sig-box';
+
+            // Kiểm tra trạng thái đã ký
+            const isSigned = data.contract.status === 'SIGNED';
+            const signatureText = isSigned ? '✅ Đã ký' : 'Chữ ký';
+            const signatureStyle = isSigned ? 'color: #166534; font-weight: bold;' : '';
+
             box.innerHTML = `
           <div><strong>${admin.name}</strong></div>
           <div class="muted">Đại diện Nhóm (Admin)</div>
-          <div class="sig-line">Chữ ký</div>
+          <div class="sig-line" style="${signatureStyle}">${signatureText}</div>
           <div class="muted" style="font-size:12px">Tỷ lệ: ${admin.share ?? 0}%</div>`;
             grid.appendChild(box);
         }
+    }
+
+    // Function để load data từ server
+    function loadContractData(groupId) {
+        fetch(`/api/contracts/${groupId}`)
+            .then(response => response.json())
+            .then(data => {
+                // Convert server data to template format
+                const templateData = convertServerDataToTemplate(data);
+                render(templateData);
+            })
+            .catch(error => {
+                console.error('Error loading contract data:', error);
+                // Fallback to demo data
+                fillDemo();
+            });
+    }
+
+    // Convert server data to template format
+    function convertServerDataToTemplate(serverData) {
+        return {
+            contract: {
+                number: serverData.contractNumber || 'EVS-001',
+                effectiveDate: serverData.startDate || '2025-01-01',
+                endDate: serverData.endDate || '2026-01-01',
+                termLabel: '12 tháng',
+                location: 'Hà Nội',
+                signDate: new Date().toISOString().split('T')[0],
+                status: serverData.isActive ? 'ACTIVE' : 'DRAFT'
+            },
+            group: {
+                name: serverData.groupName || 'EVShare Group'
+            },
+            vehicle: {
+                model: 'VinFast VF 8 Plus',
+                plate: '30A-123.45',
+                vin: 'RLVZZZ1EZBW000001'
+            },
+            finance: {
+                vehiclePrice: 950000000,
+                depositAmount: serverData.requiredDepositAmount || 2000000,
+                targetAmount: 50000000,
+                fundAccount: 'MB Bank 0123456789',
+                contributionRule: 'Theo tỷ lệ sở hữu'
+            },
+            usage: {
+                rule: 'Điểm tín dụng lịch sử & phiên bốc thăm tuần'
+            },
+            maintenance: {
+                approval: 'Biểu quyết > 50% theo tỷ lệ sở hữu cho chi > 5 triệu',
+                insurance: 'PVI – Gói vật chất toàn diện'
+            },
+            dispute: {
+                voting: 'Đa số theo tỷ lệ sở hữu; nếu hoà 50/50, ưu tiên lịch sử đóng góp'
+            },
+            owners: [
+                {
+                    name: 'Nguyễn Văn A',
+                    phone: '0901 234 567',
+                    email: 'a@evshare.vn',
+                    idType: 'CCCD',
+                    idNo: '012345678901',
+                    share: 40
+                },
+                {
+                    name: 'Trần Thị B',
+                    phone: '0902 234 567',
+                    email: 'b@evshare.vn',
+                    idType: 'CCCD',
+                    idNo: '012345678902',
+                    share: 35
+                },
+                {
+                    name: 'Lê Văn C',
+                    phone: '0903 234 567',
+                    email: 'c@evshare.vn',
+                    idType: 'CCCD',
+                    idNo: '012345678903',
+                    share: 25
+                }
+            ]
+        };
     }
 
     // --- Demo & helpers ------------------------------------------------------
@@ -450,20 +547,20 @@
                 effectiveDate: '2025-10-20',
                 endDate: '2026-10-19',
                 termLabel: '12 tháng',
-                
+
                 status: 'Draft',
                 location: 'Hà Nội',
                 signDate: '2025-10-20'
             },
             group: {name: 'EVShare – Nhóm A'},
             vehicle: {model: 'VinFast VF 8 Plus', plate: '30A-123.45', vin: 'RLVZZZ1EZBW000001'},
-              finance: {
-                  vehiclePrice: 950_000_000,
-                  depositAmount: 30_000_000,
-                  targetAmount: 50_000_000,
-                  fundAccount: 'MB Bank 0123456789 – EVShare Group A',
-                  contributionRule: 'Theo tỷ lệ sở hữu'
-              },
+            finance: {
+                vehiclePrice: 950_000_000,
+                depositAmount: 30_000_000,
+                targetAmount: 50_000_000,
+                fundAccount: 'MB Bank 0123456789 – EVShare Group A',
+                contributionRule: 'Theo tỷ lệ sở hữu'
+            },
             usage: {rule: 'Điểm tín dụng lịch sử & phiên bốc thăm tuần'},
             maintenance: {
                 approval: 'Biểu quyết > 50% theo tỷ lệ sở hữu cho chi > 5 triệu',
@@ -500,8 +597,57 @@
         render(demo);
     }
 
-    function clearAll() {
-        location.reload();
+    // Function để ký hợp đồng
+    function signContract() {
+        if (confirm('Bạn có chắc chắn muốn ký hợp đồng này? Hành động này không thể hoàn tác.')) {
+            // Lấy groupId từ URL hoặc từ data hiện tại
+            const groupId = getCurrentGroupId();
+
+            // Gọi API để ký hợp đồng
+            fetch(`/api/contracts/${groupId}/sign`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    signedAt: new Date().toISOString(),
+                    signature: 'Digital signature by admin'
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('✅ Hợp đồng đã được ký thành công!');
+                        // Cập nhật UI để hiển thị trạng thái đã ký
+                        updateContractStatus('SIGNED');
+                        // Reload data để cập nhật trạng thái
+                        loadContractData(groupId);
+                    } else {
+                        alert('❌ Có lỗi xảy ra khi ký hợp đồng: ' + (data.message || 'Unknown error'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error signing contract:', error);
+                    alert('❌ Có lỗi xảy ra khi ký hợp đồng. Vui lòng thử lại.');
+                });
+        }
+    }
+
+    // Function để lấy groupId hiện tại
+    function getCurrentGroupId() {
+        // Có thể lấy từ URL parameter hoặc từ data hiện tại
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('groupId') || 1; // Default to 1 for demo
+    }
+
+    // Function để cập nhật trạng thái contract trên UI
+    function updateContractStatus(status) {
+        const badge = document.getElementById('contract-status');
+        if (badge) {
+            badge.textContent = status.toUpperCase();
+            badge.style.background = status === 'SIGNED' ? '#dcfce7' : '#eef2ff';
+            badge.style.color = status === 'SIGNED' ? '#166534' : '#3730a3';
+        }
     }
 
     // Auto demo on first load for preview

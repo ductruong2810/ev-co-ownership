@@ -12,8 +12,11 @@ public interface OwnershipGroupRepository extends JpaRepository<OwnershipGroup, 
 
     // đã có
     boolean existsByGroupNameIgnoreCase(String groupName);
+
     Page<OwnershipGroup> findByGroupNameContainingIgnoreCase(String keyword, Pageable pageable);
+
     Page<OwnershipGroup> findByStatus(GroupStatus status, Pageable pageable);
+
     Page<OwnershipGroup> findByGroupNameContainingIgnoreCaseAndStatus(String keyword, GroupStatus status, Pageable pageable);
 
     // ====== Theo thời gian ======
