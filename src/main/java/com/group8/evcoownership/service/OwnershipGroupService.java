@@ -6,8 +6,11 @@ import com.group8.evcoownership.dto.OwnershipGroupResponse;
 import com.group8.evcoownership.dto.OwnershipGroupStatusUpdateRequest;
 import com.group8.evcoownership.dto.OwnershipGroupUpdateRequest;
 import com.group8.evcoownership.entity.OwnershipGroup;
+import com.group8.evcoownership.enums.GroupRole;
 import com.group8.evcoownership.enums.GroupStatus;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
+import com.group8.evcoownership.repository.OwnershipShareRepository;
+import com.group8.evcoownership.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +27,8 @@ import java.time.LocalDateTime;
 public class OwnershipGroupService {
 
     private final OwnershipGroupRepository repo;
+    private final OwnershipShareRepository ownershipShareRepository;
+    private final UserRepository userRepository;
 
     // ---- mapping ----
     private OwnershipGroupResponse toDto(OwnershipGroup e) {
@@ -37,6 +42,7 @@ public class OwnershipGroupService {
                 e.getUpdatedAt()
         );
     }
+
     private void applyMutableFields(OwnershipGroup e, String name, String desc, Integer capacity) {
         e.setGroupName(name);
         e.setDescription(desc);
@@ -111,12 +117,12 @@ public class OwnershipGroupService {
                                              Pageable pageable) {
 
         boolean hasKeyword = keyword != null && !keyword.isBlank();
-        boolean hasStatus  = status != null;
-        boolean hasDate    = (fromDate != null || toDate != null);
+        boolean hasStatus = status != null;
+        boolean hasDate = (fromDate != null || toDate != null);
 
         // Chuẩn hóa mốc thời gian (bao phủ trọn ngày)
         LocalDateTime start = (fromDate != null) ? fromDate.atStartOfDay() : LocalDateTime.MIN;
-        LocalDateTime end   = (toDate != null)
+        LocalDateTime end = (toDate != null)
                 ? toDate.plusDays(1).atStartOfDay().minusNanos(1) // inclusive style
                 : LocalDateTime.MAX;
 
@@ -154,5 +160,41 @@ public class OwnershipGroupService {
             throw new IllegalStateException("Cannot delete ACTIVE group");
         }
         repo.delete(e);
+    }
+
+    // ---- Authorization methods ----
+
+    /**
+     * Kiểm tra user có phải là admin của group không
+     */
+    public boolean isGroupAdmin(String userEmail, Long groupId) {
+        try {
+            var user = userRepository.findByEmail(userEmail)
+                    .orElseThrow(() -> new EntityNotFoundException("User not found: " + userEmail));
+
+            var ownershipShare = ownershipShareRepository.findById_UserIdAndGroup_GroupId(user.getUserId(), groupId)
+                    .orElse(null);
+
+            return ownershipShare != null && ownershipShare.getGroupRole() == GroupRole.ADMIN;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Kiểm tra user có phải là member của group không
+     */
+    public boolean isGroupMember(String userEmail, Long groupId) {
+        try {
+            var user = userRepository.findByEmail(userEmail)
+                    .orElseThrow(() -> new EntityNotFoundException("User not found: " + userEmail));
+
+            var ownershipShare = ownershipShareRepository.findById_UserIdAndGroup_GroupId(user.getUserId(), groupId)
+                    .orElse(null);
+
+            return ownershipShare != null;
+        } catch (Exception e) {
+            return false;
+        }
     }
 }

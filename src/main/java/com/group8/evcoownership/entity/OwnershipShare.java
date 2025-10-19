@@ -1,7 +1,7 @@
 package com.group8.evcoownership.entity;
 
-import com.group8.evcoownership.enums.GroupRole;
 import com.group8.evcoownership.enums.DepositStatus;
+import com.group8.evcoownership.enums.GroupRole;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
@@ -13,7 +13,8 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "OwnershipShare")
-@Getter @Setter
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -39,7 +40,8 @@ public class OwnershipShare {
     private GroupRole groupRole; // default MEMBER
 
     @NotNull
-    @DecimalMin(value = "0.01") @DecimalMax(value = "100.00")
+    @DecimalMin(value = "0.01")
+    @DecimalMax(value = "100.00")
     @Column(name = "OwnershipPercentage", nullable = false, precision = 5, scale = 2)
     private BigDecimal ownershipPercentage;
 
