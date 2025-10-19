@@ -6,7 +6,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Data
 @Builder
@@ -46,12 +45,9 @@ public class UserProfileResponseDTO {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class DocumentTypeDTO {
-        // Quick access URLs
-        private String front;   // URL hoặc "" nếu chưa upload
-        private String back;    // URL hoặc "" nếu chưa upload
-
-        // Detailed info (giữ nguyên như cũ)
-        private List<DocumentDetailDTO> details;
+        // Front/Back là OBJECT (không phải string)
+        private DocumentDetailDTO front;  // Object hoặc null
+        private DocumentDetailDTO back;   // Object hoặc null
     }
 
     @Data
@@ -60,7 +56,6 @@ public class UserProfileResponseDTO {
     @AllArgsConstructor
     public static class DocumentDetailDTO {
         private Long documentId;
-        private String side;           // FRONT, BACK
         private String imageUrl;
         private String status;         // PENDING, APPROVED, REJECTED
         private String reviewNote;
