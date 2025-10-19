@@ -25,7 +25,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -77,10 +77,10 @@ class ContractIntegrationTest {
     @Autowired
     private OwnershipShareRepository shareRepository;
 
-    @MockBean
+    @MockitoBean
     private DepositCalculationService depositCalculationService;
 
-    @MockBean
+    @MockitoBean
     private TemplateService templateService;
 
     @Autowired
@@ -88,24 +88,26 @@ class ContractIntegrationTest {
 
     @Test
     @Order(1)
-    @Transactional
-    @Rollback
     @WithMockUser(username = "admin@test.com")
     void contractWorkflow_EndToEnd_Success() throws Exception {
-        // Create test data for this test only
+        // Create test data for this test only with unique IDs
         OwnershipGroup testGroup = ContractTestDataBuilder.TestScenarios.createBasicGroup();
+        testGroup.setGroupId(null); // Let Hibernate generate ID
         testGroup = groupRepository.save(testGroup);
 
         User testUser = ContractTestDataBuilder.TestScenarios.createBasicUser();
+        testUser.setUserId(null); // Let Hibernate generate ID
         testUser = userRepository.save(testUser);
 
         Vehicle testVehicle = ContractTestDataBuilder.TestScenarios.createBasicVehicle(testGroup);
+        testVehicle.setId(null); // Let Hibernate generate ID
         testVehicle = vehicleRepository.save(testVehicle);
 
         OwnershipShare testShare = ContractTestDataBuilder.TestScenarios.createBasicShare(testGroup, testUser);
         testShare = shareRepository.save(testShare);
 
         Contract testContract = ContractTestDataBuilder.TestScenarios.createBasicContract(testGroup);
+        testContract.setId(null); // Let Hibernate generate ID
         testContract = contractRepository.save(testContract);
 
         // Mock external services
@@ -154,7 +156,7 @@ class ContractIntegrationTest {
                 "signature", "digital_signature"
         );
 
-        mockMvc.perform(post("/api/contracts/sign/{groupId}", testGroup.getGroupId())
+        mockMvc.perform(post("/api/contracts/{groupId}/sign", testGroup.getGroupId())
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(signRequest)))
@@ -162,7 +164,7 @@ class ContractIntegrationTest {
                 .andExpect(jsonPath("$.message").value("Contract signed successfully"));
 
         // Step 5: Export contract to PDF
-        mockMvc.perform(get("/api/contracts/export/{groupId}", testGroup.getGroupId()))
+        mockMvc.perform(get("/api/contracts/export/{groupId}/pdf", testGroup.getGroupId()))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Type", "application/pdf"))
                 .andExpect(header().exists("Content-Disposition"));
@@ -170,12 +172,11 @@ class ContractIntegrationTest {
 
     @Test
     @Order(2)
-    @Transactional
-    @Rollback
     @WithMockUser(username = "admin@test.com")
     void contractService_CreateDefaultContract_Success() throws Exception {
-        // Create test data
+        // Create test data with unique ID
         OwnershipGroup testGroup = ContractTestDataBuilder.TestScenarios.createBasicGroup();
+        testGroup.setGroupId(null); // Let Hibernate generate ID
         testGroup = groupRepository.save(testGroup);
 
         // Test service method directly
@@ -188,13 +189,15 @@ class ContractIntegrationTest {
 
     @Test
     @Order(3)
-    @Transactional
-    @Rollback
     @WithMockUser(username = "admin@test.com")
     void contractGenerationService_GenerateContract_Success() throws Exception {
-        // Create test data
+        // Create test data with unique ID
         OwnershipGroup testGroup = ContractTestDataBuilder.TestScenarios.createBasicGroup();
+        testGroup.setGroupId(null); // Let Hibernate generate ID
         testGroup = groupRepository.save(testGroup);
+
+        // Create a default contract first
+        Contract defaultContract = contractService.createDefaultContract(testGroup.getGroupId());
 
         // Mock external services
         when(depositCalculationService.calculateRequiredDepositAmount(any(OwnershipGroup.class)))
