@@ -14,7 +14,7 @@ import java.util.List;
 @AllArgsConstructor
 public class UserProfileResponseDTO {
 
-    // Basic Info
+    // User Basic Info
     private Long userId;
     private String fullName;
     private String email;
@@ -24,30 +24,45 @@ public class UserProfileResponseDTO {
     private String status;
     private LocalDateTime createdAt;
 
-    // Documents Images (Chỉ có ảnh thoi nha:3)
-    private DocumentImages documents;
+    // Documents
+    private DocumentsDTO documents;
 
     // Statistics
     private StatisticsDTO statistics;
+
+    // ================= NESTED CLASSES =================
 
     @Data
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class DocumentImages {
-        private List<DocumentDTO> citizenIdImages; // CCCD front + back
-        private List<DocumentDTO> driverLicenseImages; // GPLX front + back
+    public static class DocumentsDTO {
+        private DocumentTypeDTO citizenIdImages;      // CCCD
+        private DocumentTypeDTO driverLicenseImages;  // GPLX
     }
 
     @Data
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class DocumentDTO {
+    public static class DocumentTypeDTO {
+        // Quick access URLs
+        private String front;   // URL hoặc "" nếu chưa upload
+        private String back;    // URL hoặc "" nếu chưa upload
+
+        // Detailed info (giữ nguyên như cũ)
+        private List<DocumentDetailDTO> details;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class DocumentDetailDTO {
         private Long documentId;
-        private String side; // FRONT, BACK
+        private String side;           // FRONT, BACK
         private String imageUrl;
-        private String status; // PENDING, APPROVED, REJECTED
+        private String status;         // PENDING, APPROVED, REJECTED
         private String reviewNote;
         private LocalDateTime uploadedAt;
     }
@@ -57,8 +72,8 @@ public class UserProfileResponseDTO {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class StatisticsDTO {
-        private int groupsJoined; // Số nhóm đã tham gia
-        private String accountStatus; // Active/Inactive
-        private LocalDateTime memberSince; // Active member since
+        private int groupsJoined;
+        private String accountStatus;
+        private LocalDateTime memberSince;
     }
 }
