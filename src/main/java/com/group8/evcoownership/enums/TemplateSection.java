@@ -1,5 +1,8 @@
 package com.group8.evcoownership.enums;
 
+import lombok.Getter;
+
+@Getter
 public enum TemplateSection {
     HEADER("Header", "Contract header and title section"),
     VEHICLE_INFO("Vehicle Info", "Vehicle information section"),
@@ -21,11 +24,4 @@ public enum TemplateSection {
         this.description = description;
     }
 
-    public String getDisplayName() {
-        return displayName;
-    }
-
-    public String getDescription() {
-        return description;
-    }
 }
