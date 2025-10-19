@@ -4,10 +4,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 public record VehicleUpdateRequest(
-        @NotNull Long id,
         @NotBlank String brand,
         @NotBlank String model,
         @NotBlank String licensePlate,
-        @NotBlank String chassisNumber,
-        @NotNull Long groupId
+        @NotBlank String chassisNumber
 ) {}

@@ -17,7 +17,7 @@ public class Vehicle {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "VehicleId", nullable = false)
-    private Long vehicleId;
+    private Long Id;
 
     @Nationalized
     @Column(name = "Brand", length = 100)
