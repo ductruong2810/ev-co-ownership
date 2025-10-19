@@ -35,7 +35,7 @@ public class VehicleService {
         return new VehicleResponse(
                 v.getId(), v.getBrand(), v.getModel(),
                 v.getLicensePlate(), v.getChassisNumber(), v.getQrCode(),
-                v.getOwnershipGroup().getGroupId(), v.getCreatedAt(), v.getUpdatedAt()
+                v.getOwnershipGroup().getGroupId(), v.getVehicleValue(), v.getCreatedAt(), v.getUpdatedAt()
         );
     }
 
@@ -43,6 +43,8 @@ public class VehicleService {
     public VehicleResponse create(VehicleCreateRequest req) {
         OwnershipGroup group = groupRepo.findById(req.groupId())
                 .orElseThrow(() -> new EntityNotFoundException("Group not found"));
+        if(vehicleRepo.existsByOwnershipGroup_GroupId(req.groupId()))
+            throw new IllegalStateException("Group already has a vehicle");
         if (vehicleRepo.existsByLicensePlateIgnoreCase(req.licensePlate()))
             throw new IllegalStateException("License plate already exists");
         if (vehicleRepo.existsByChassisNumberIgnoreCase(req.chassisNumber()))
@@ -94,6 +96,7 @@ public class VehicleService {
         v.setModel(req.model());
         v.setLicensePlate(req.licensePlate());
         v.setChassisNumber(req.chassisNumber());
+        v.setVehicleValue(req.vehicleValue());
 
         // KHÔNG thay đổi QR ở update
         return toDto(vehicleRepo.save(v));

@@ -48,9 +48,9 @@ public class OwnershipShare {
     @Column(name = "JoinDate", nullable = false)
     private LocalDateTime joinDate;
 
-//    @Enumerated(EnumType.STRING)
-//    @Column(name = "DepositStatus", nullable = false, length = 20)
-//    private DepositStatus depositStatus;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "DepositStatus", nullable = false, length = 20)
+    private DepositStatus depositStatus;
 
     @Column(name = "UpdatedAt", nullable = false)
     private LocalDateTime updatedAt;

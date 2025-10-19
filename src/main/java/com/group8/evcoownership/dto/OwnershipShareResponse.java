@@ -1,5 +1,6 @@
 package com.group8.evcoownership.dto;
 
+import com.group8.evcoownership.enums.DepositStatus;
 import com.group8.evcoownership.enums.GroupRole;
 
 import java.math.BigDecimal;
@@ -10,6 +11,7 @@ public record OwnershipShareResponse(
         Long groupId,
         GroupRole groupRole,
         BigDecimal ownershipPercentage,
+        DepositStatus depositStatus,
         LocalDateTime joinDate,
         LocalDateTime updatedAt
 ) {}

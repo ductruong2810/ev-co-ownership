@@ -1,12 +1,10 @@
 package com.group8.evcoownership.service;
 
 
-import com.group8.evcoownership.dto.OwnershipShareCreateRequest;
-import com.group8.evcoownership.dto.OwnershipShareResponse;
-import com.group8.evcoownership.dto.OwnershipShareUpdatePercentageRequest;
-import com.group8.evcoownership.entity.OwnershipGroup;
+import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.entity.OwnershipShare;
 import com.group8.evcoownership.entity.OwnershipShareId;
+import com.group8.evcoownership.enums.DepositStatus;
 import com.group8.evcoownership.enums.GroupRole;
 import com.group8.evcoownership.enums.GroupStatus;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
@@ -29,13 +27,14 @@ public class OwnershipShareService {
     private final OwnershipGroupRepository groupRepo;
     private final UserRepository userRepo;
 
-    // -------- mapping --------
+    // ------- mapping -------
     private OwnershipShareResponse toDto(OwnershipShare s) {
         return new OwnershipShareResponse(
                 s.getUser().getUserId(),
                 s.getGroup().getGroupId(),
                 s.getGroupRole(),
                 s.getOwnershipPercentage(),
+                s.getDepositStatus(),
                 s.getJoinDate(),
                 s.getUpdatedAt()
         );
@@ -43,7 +42,7 @@ public class OwnershipShareService {
 
     // ================== BUSINESS/APIs ==================
 
-    /** Thêm thành viên + % sở hữu vào group (FE đã kiểm quyền). */
+    /** Thêm thành viên + % sở hữu (FE kiểm quyền). Người đầu tiên = ADMIN, còn lại = MEMBER. */
     @Transactional
     public OwnershipShareResponse addGroupShare(OwnershipShareCreateRequest req) {
         var user = userRepo.findById(req.userId())
@@ -51,27 +50,22 @@ public class OwnershipShareService {
         var group = groupRepo.findById(req.groupId())
                 .orElseThrow(() -> new EntityNotFoundException("Group not found"));
 
-        // chỉ cho phép khi Pending
         if (group.getStatus() != GroupStatus.PENDING) {
             throw new IllegalStateException("Group is not PENDING");
         }
 
-        // không trùng membership
         if (shareRepo.existsByGroup_GroupIdAndUser_UserId(group.getGroupId(), user.getUserId())) {
             throw new IllegalStateException("Membership already exists");
         }
 
-        // đếm thành viên hiện có
         long currentMembers = shareRepo.countByGroup_GroupId(group.getGroupId());
         long capacity = group.getMemberCapacity() == null ? Long.MAX_VALUE : group.getMemberCapacity();
-        if (currentMembers + 1 > capacity) throw new IllegalStateException("MemberCapacity exceeded");
+        if (currentMembers + 1 > capacity) {
+            throw new IllegalStateException("MemberCapacity exceeded");
+        }
 
-// role tự động: người đầu tiên = ADMIN, còn lại = MEMBER
-        var roleToSet = (currentMembers == 0)
-                ? GroupRole.ADMIN   // hoặc OWNER nếu bạn muốn duy nhất chủ nhóm
-                : GroupRole.MEMBER;
+        var roleToSet = (currentMembers == 0) ? GroupRole.ADMIN : GroupRole.MEMBER;
 
-// tạo share
         var id = new OwnershipShareId(user.getUserId(), group.getGroupId());
         var share = OwnershipShare.builder()
                 .id(id)
@@ -79,20 +73,19 @@ public class OwnershipShareService {
                 .group(group)
                 .groupRole(roleToSet)
                 .ownershipPercentage(req.ownershipPercentage())
+                .depositStatus(DepositStatus.PENDING)
                 .joinDate(LocalDateTime.now())
                 .build();
 
         var saved = shareRepo.save(share);
         tryActivate(group.getGroupId());
         return toDto(saved);
-
     }
 
-    /** Cập nhật % sở hữu của 1 thành viên trong group (chỉ khi group Pending). */
+    /** Cập nhật % sở hữu (chỉ khi group PENDING) */
     @Transactional
     public OwnershipShareResponse updatePercentage(Long groupId, Long userId,
                                                    OwnershipShareUpdatePercentageRequest req) {
-
         var group = groupRepo.findById(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Group not found"));
         if (group.getStatus() != GroupStatus.PENDING) {
@@ -110,7 +103,24 @@ public class OwnershipShareService {
         return toDto(saved);
     }
 
-    /** Xoá 1 thành viên khỏi group (chỉ khi Pending). */
+    /** Cập nhật trạng thái đặt cọc (tuỳ nhu cầu, không phụ thuộc PENDING) */
+    @Transactional
+    public OwnershipShareResponse updateDepositStatus(Long groupId, Long userId,
+                                                      OwnershipShareUpdateDepositStatusRequest req) {
+        var id = new OwnershipShareId(userId, groupId);
+        var share = shareRepo.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Membership not found"));
+
+        share.setDepositStatus(req.newStatus());
+        var saved = shareRepo.save(share);
+
+        // Nếu bạn muốn yêu cầu tất cả PAID mới Active, hãy bật điều kiện trong tryActivate và gọi ở đây:
+        // tryActivate(groupId);
+
+        return toDto(saved);
+    }
+
+    /** Xoá 1 thành viên (chỉ khi PENDING) */
     @Transactional
     public void removeMember(Long groupId, Long userId) {
         var id = new OwnershipShareId(userId, groupId);
@@ -123,7 +133,7 @@ public class OwnershipShareService {
         }
 
         shareRepo.delete(share);
-        tryActivate(groupId); // vẫn gọi để giữ logic thống nhất
+        tryActivate(groupId);
     }
 
     public OwnershipShareResponse getOne(Long groupId, Long userId) {
@@ -144,7 +154,7 @@ public class OwnershipShareService {
 
     // ================== AUTO ACTIVATE ==================
 
-    /** Nếu đủ điều kiện thì chuyển PENDING -> ACTIVE, ngược lại giữ nguyên. */
+    /** Đủ điều kiện thì chuyển PENDING -> ACTIVE (không phụ thuộc role/cọc, trừ khi bạn muốn bật). */
     @Transactional
     protected void tryActivate(Long groupId) {
         var group = groupRepo.findById(groupId)
@@ -152,14 +162,17 @@ public class OwnershipShareService {
 
         if (group.getStatus() != GroupStatus.PENDING) return;
 
-        BigDecimal total = shareRepo.sumPercentageByGroupId(groupId); // có thể null -> đã coalesce 0 trong query
+        BigDecimal total = shareRepo.sumPercentageByGroupId(groupId);
         long members = shareRepo.countByGroup_GroupId(groupId);
 
         boolean pctOk = total != null && total.compareTo(new BigDecimal("100.00")) == 0;
         boolean membersOk = members >= 1;
         boolean capacityOk = group.getMemberCapacity() == null || members <= group.getMemberCapacity();
 
-        if (pctOk && membersOk && capacityOk) {
+        // (Tuỳ chọn bật rule "tất cả PAID mới Active"):
+        // boolean depositsOk = shareRepo.countByGroup_GroupIdAndDepositStatusNot(groupId, DepositStatus.PAID) == 0;
+
+        if (pctOk && membersOk && capacityOk /* && depositsOk */) {
             group.setStatus(GroupStatus.ACTIVE);
             groupRepo.save(group);
         }
