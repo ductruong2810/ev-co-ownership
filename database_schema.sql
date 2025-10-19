@@ -51,13 +51,13 @@ GO
 -- =============================================
 CREATE TABLE OwnershipGroup
 (
-    GroupId        BIGINT IDENTITY(1,1) PRIMARY KEY,
-    GroupName      NVARCHAR(100) NOT NULL,
-    Status         NVARCHAR(20)  NOT NULL DEFAULT 'PENDING',
-    Description    NVARCHAR(MAX),
-    MemberCapacity INT           NULL,
-    CreatedAt      DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
-    UpdatedAt      DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
+    GroupId                BIGINT IDENTITY(1,1) PRIMARY KEY,
+    GroupName              NVARCHAR(100) NOT NULL,
+    Status                 NVARCHAR(20)  NOT NULL DEFAULT 'PENDING',
+    Description            NVARCHAR(MAX),
+    MemberCapacity         INT           NULL,
+    CreatedAt              DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
+    UpdatedAt              DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
     CONSTRAINT UQ_OwnershipGroup_GroupName UNIQUE (GroupName)
 );
 GO
@@ -73,6 +73,7 @@ CREATE TABLE OwnershipShare
     OwnershipPercentage DECIMAL(5,2)  NOT NULL
         CHECK (OwnershipPercentage > 0 AND OwnershipPercentage <= 100),
     JoinDate            DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
+    DepositStatus       NVARCHAR(20)  NOT NULL DEFAULT 'PENDING',
     UpdatedAt           DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
     CONSTRAINT PK_OwnershipShare PRIMARY KEY (UserId, GroupId),
     FOREIGN KEY (UserId)  REFERENCES Users(UserId),
@@ -91,6 +92,7 @@ CREATE TABLE Vehicle
     LicensePlate  NVARCHAR(20),
     ChassisNumber NVARCHAR(30),
     QrCode        NVARCHAR(255),
+    VehicleValue  DECIMAL(15,2) NULL,
     GroupId       BIGINT,
     CreatedAt     DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
     UpdatedAt     DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
@@ -113,16 +115,37 @@ CREATE TABLE VehicleImages
 GO
 
 -- =============================================
--- 7) CONTRACT
+-- 7) CONTRACT TEMPLATE
+-- =============================================
+CREATE TABLE ContractTemplate
+(
+    TemplateId      BIGINT IDENTITY(1,1) PRIMARY KEY,
+    TemplateName    NVARCHAR(100) NOT NULL,
+    Description     NVARCHAR(MAX),
+    HtmlTemplate    NVARCHAR(MAX) NOT NULL,
+    IsActive        BIT NOT NULL DEFAULT 1,
+    CreatedAt       DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
+    UpdatedAt       DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME()
+);
+GO
+
+-- =============================================
+-- 8) CONTRACT
 -- =============================================
 CREATE TABLE Contract
 (
-    ContractId      BIGINT IDENTITY(1,1) PRIMARY KEY,
-    GroupId         BIGINT        NOT NULL,
-    ContractContent NVARCHAR(MAX),
-    ContractUrl     NVARCHAR(500),
-    SignedAt        DATETIME2(7),
-    FOREIGN KEY (GroupId) REFERENCES OwnershipGroup(GroupId)
+    ContractId              BIGINT IDENTITY(1,1) PRIMARY KEY,
+    GroupId                 BIGINT        NOT NULL,
+    TemplateId              BIGINT,
+    StartDate               DATE,
+    EndDate                 DATE,
+    Terms                   NVARCHAR(MAX),
+    RequiredDepositAmount   DECIMAL(15,2),
+    IsActive                BIT           DEFAULT 1,
+    CreatedAt               DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
+    UpdatedAt               DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
+    FOREIGN KEY (GroupId) REFERENCES OwnershipGroup(GroupId),
+    FOREIGN KEY (TemplateId) REFERENCES ContractTemplate(TemplateId)
 );
 GO
 
@@ -622,6 +645,19 @@ VALUES (1, 'POST_USE', 12000, 85.0, 'CLEAN', 'PASSED');
 INSERT INTO FinancialReport(FundId, ReportMonth, ReportYear, TotalIncome, TotalExpense, GeneratedBy)
 VALUES (1, 12, 2024, 5000000, 300000, 3),
        (1, 11, 2024, 4500000, 250000, 3);
+
+-- Contract Templates (HTML templates)
+INSERT INTO ContractTemplate(TemplateName, Description, HtmlTemplate, IsActive)
+VALUES 
+(N'Standard EV Contract', N'Standard HTML template for EV co-ownership contracts', 
+ N'<!DOCTYPE html><html><head><title>EV Contract</title></head><body><h1>Standard EV Contract</h1><p>Contract content...</p></body></html>', 1),
+
+(N'Premium EV Contract', N'Premium HTML template with enhanced styling', 
+ N'<!DOCTYPE html><html><head><title>Premium EV Contract</title><style>body{background:#f8f9fa}</style></head><body><h1>Premium EV Contract</h1><p>Enhanced contract content...</p></body></html>', 1);
+
+-- Contract sample (using template)
+INSERT INTO Contract(GroupId, TemplateId, StartDate, EndDate, Terms, RequiredDepositAmount, IsActive)
+VALUES (1, 1, '2024-01-01', '2025-01-01', N'Standard EV co-ownership contract terms...', 2000000, 1);
 
 -- =============================================
 -- END
