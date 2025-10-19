@@ -7,7 +7,8 @@ import lombok.*;
 import java.io.Serializable;
 
 @Embeddable
-@Getter @Setter
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode

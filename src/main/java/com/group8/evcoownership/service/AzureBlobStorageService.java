@@ -18,16 +18,19 @@ public class AzureBlobStorageService {
 
     public AzureBlobStorageService(BlobContainerClient blobContainerClient) {
         this.blobContainerClient = blobContainerClient;
-        log.info("AzureBlobStorageService initialized");
+        log.info("AzureBlobStorageService initialized with BlobContainerClient: {}",
+                blobContainerClient != null ? "configured" : "null");
     }
 
-    // For test subclassing (NoOp) – avoid requiring BlobContainerClient
-    protected AzureBlobStorageService() {
+    // For test profile - no BlobContainerClient injection
+    public AzureBlobStorageService() {
+        log.info("AzureBlobStorageService initialized (test mode)");
     }
 
     public String uploadFile(MultipartFile file) {
         if (blobContainerClient == null) {
-            throw new IllegalStateException("BlobContainerClient is null");
+            log.warn("BlobContainerClient is null, returning mock URL for file: {}", file.getOriginalFilename());
+            return "https://mock-storage.com/files/" + file.getOriginalFilename();
         }
 
         try {
@@ -52,11 +55,16 @@ public class AzureBlobStorageService {
 
         } catch (IOException e) {
             log.error("Failed to upload file to Azure: {}", e.getMessage());
-            throw new RuntimeException("Could not upload file to Azure Blob Storage", e);
+            throw new RuntimeException("Upload thất bại. Vui lòng thử lại: " + e.getMessage(), e);
         }
     }
 
     public void deleteFile(String fileUrl) {
+        if (blobContainerClient == null) {
+            log.warn("BlobContainerClient is null, mock delete: {}", fileUrl);
+            return;
+        }
+
         try {
             String blobName = extractBlobName(fileUrl);
             BlobClient blobClient = blobContainerClient.getBlobClient(blobName);

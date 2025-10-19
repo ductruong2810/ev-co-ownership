@@ -38,6 +38,23 @@ public class UserDocumentController {
         ));
     }
 
+    @PostMapping("/upload-batch")
+    public ResponseEntity<?> uploadBatchDocuments(
+            @RequestParam("files") List<MultipartFile> files,
+            @RequestParam("documentTypes") List<String> documentTypes,
+            @RequestParam("sides") List<String> sides,
+            Authentication authentication) {
+
+        String email = authentication.getName();
+        List<UserDocument> documents = userDocumentService.uploadBatchDocuments(email, files, documentTypes, sides);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Upload batch thành công",
+                "uploadedCount", documents.size(),
+                "documents", documents
+        ));
+    }
+
     @GetMapping
     public ResponseEntity<?> getMyDocuments(Authentication authentication) {
         String email = authentication.getName();

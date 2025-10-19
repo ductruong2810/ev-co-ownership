@@ -66,6 +66,62 @@ public class UserDocumentService {
     }
 
     /**
+     * Upload multiple documents in batch
+     */
+    public List<UserDocument> uploadBatchDocuments(String email, List<MultipartFile> files, List<String> documentTypes, List<String> sides) {
+        if (files.size() != documentTypes.size() || files.size() != sides.size()) {
+            throw new IllegalArgumentException("Số lượng files, documentTypes và sides phải bằng nhau");
+        }
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("User không tồn tại"));
+
+        List<UserDocument> uploadedDocuments = new java.util.ArrayList<>();
+
+        for (int i = 0; i < files.size(); i++) {
+            try {
+                MultipartFile file = files.get(i);
+                String documentType = documentTypes.get(i);
+                String side = sides.get(i);
+
+                validateDocumentType(documentType);
+                validateSide(side);
+                validateImage(file);
+
+                // Delete existing document if any
+                userDocumentRepository
+                        .findByUserIdAndDocumentTypeAndSide(user.getUserId(), documentType, side)
+                        .ifPresent(existingDoc -> {
+                            azureBlobStorageService.deleteFile(existingDoc.getImageUrl());
+                            userDocumentRepository.delete(existingDoc);
+                        });
+
+                // Upload file to Azure
+                String fileUrl = azureBlobStorageService.uploadFile(file);
+
+                // Create new document
+                UserDocument document = UserDocument.builder()
+                        .userId(user.getUserId())
+                        .documentType(documentType)
+                        .side(side)
+                        .imageUrl(fileUrl)
+                        .status("PENDING")
+                        .build();
+
+                UserDocument saved = userDocumentRepository.save(document);
+                uploadedDocuments.add(saved);
+                log.info("Document uploaded in batch: userId={}, type={}, side={}", user.getUserId(), documentType, side);
+
+            } catch (Exception e) {
+                log.error("Failed to upload document in batch: {}", e.getMessage(), e);
+                throw new RuntimeException("Upload thất bại. Vui lòng thử lại: " + e.getMessage(), e);
+            }
+        }
+
+        return uploadedDocuments;
+    }
+
+    /**
      * Lấy tất cả document của user hiện tại
      */
     public List<UserDocument> getMyDocuments(String email) {
