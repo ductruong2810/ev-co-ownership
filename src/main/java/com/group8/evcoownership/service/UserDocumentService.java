@@ -10,9 +10,12 @@ import com.group8.evcoownership.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @Slf4j
@@ -27,9 +30,7 @@ public class UserDocumentService {
     @Autowired
     private AzureBlobStorageService azureBlobStorageService;
 
-    /**
-     * Upload document lên Azure Blob Storage
-     */
+    // ================= UPLOAD SINGLE DOCUMENT =================
     public UserDocument uploadDocument(String email, String documentType, String side, MultipartFile file) {
 
         validateDocumentType(documentType);
@@ -39,7 +40,7 @@ public class UserDocumentService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("User không tồn tại"));
 
-
+        // Xóa document cũ nếu đã tồn tại (cùng type và side)
         userDocumentRepository
                 .findByUserIdAndDocumentTypeAndSide(user.getUserId(), documentType, side)
                 .ifPresent(existingDoc -> {
@@ -65,65 +66,80 @@ public class UserDocumentService {
         return saved;
     }
 
-    /**
-     * Upload multiple documents in batch
-     */
-    public List<UserDocument> uploadBatchDocuments(String email, List<MultipartFile> files, List<String> documentTypes, List<String> sides) {
-        if (files.size() != documentTypes.size() || files.size() != sides.size()) {
-            throw new IllegalArgumentException("Số lượng files, documentTypes và sides phải bằng nhau");
-        }
+    // ================= UPLOAD BATCH DOCUMENTS (FRONT + BACK) =================
+    @Transactional
+    public Map<String, UserDocument> uploadBatchDocuments(
+            String email,
+            String documentType,
+            MultipartFile frontFile,
+            MultipartFile backFile) {
+
+        validateDocumentType(documentType);
+        validateImage(frontFile);
+        validateImage(backFile);
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("User không tồn tại"));
 
-        List<UserDocument> uploadedDocuments = new java.util.ArrayList<>();
+        Map<String, UserDocument> results = new HashMap<>();
 
-        for (int i = 0; i < files.size(); i++) {
-            try {
-                MultipartFile file = files.get(i);
-                String documentType = documentTypes.get(i);
-                String side = sides.get(i);
+        try {
+            // Upload FRONT
+            UserDocument frontDoc = uploadSingleSide(user, documentType, "FRONT", frontFile);
+            results.put("FRONT", frontDoc);
 
-                validateDocumentType(documentType);
-                validateSide(side);
-                validateImage(file);
+            // Upload BACK
+            UserDocument backDoc = uploadSingleSide(user, documentType, "BACK", backFile);
+            results.put("BACK", backDoc);
 
-                // Delete existing document if any
-                userDocumentRepository
-                        .findByUserIdAndDocumentTypeAndSide(user.getUserId(), documentType, side)
-                        .ifPresent(existingDoc -> {
-                            azureBlobStorageService.deleteFile(existingDoc.getImageUrl());
-                            userDocumentRepository.delete(existingDoc);
-                        });
+            log.info("Batch upload completed: userId={}, type={}", user.getUserId(), documentType);
 
-                // Upload file to Azure
-                String fileUrl = azureBlobStorageService.uploadFile(file);
+        } catch (Exception e) {
+            log.error("Batch upload failed: {}", e.getMessage(), e);
 
-                // Create new document
-                UserDocument document = UserDocument.builder()
-                        .userId(user.getUserId())
-                        .documentType(documentType)
-                        .side(side)
-                        .imageUrl(fileUrl)
-                        .status("PENDING")
-                        .build();
+            // Rollback: Delete uploaded files from Azure if any
+            results.values().forEach(doc -> {
+                try {
+                    azureBlobStorageService.deleteFile(doc.getImageUrl());
+                    userDocumentRepository.delete(doc);
+                } catch (Exception cleanupError) {
+                    log.error("Failed to cleanup after failed upload: {}", cleanupError.getMessage());
+                }
+            });
 
-                UserDocument saved = userDocumentRepository.save(document);
-                uploadedDocuments.add(saved);
-                log.info("Document uploaded in batch: userId={}, type={}, side={}", user.getUserId(), documentType, side);
-
-            } catch (Exception e) {
-                log.error("Failed to upload document in batch: {}", e.getMessage(), e);
-                throw new RuntimeException("Upload thất bại. Vui lòng thử lại: " + e.getMessage(), e);
-            }
+            throw new RuntimeException("Upload thất bại. Vui lòng thử lại: " + e.getMessage());
         }
 
-        return uploadedDocuments;
+        return results;
     }
 
-    /**
-     * Lấy tất cả document của user hiện tại
-     */
+    // ================= HELPER: UPLOAD SINGLE SIDE =================
+    private UserDocument uploadSingleSide(User user, String documentType, String side, MultipartFile file) {
+
+        // Xóa document cũ nếu đã tồn tại
+        userDocumentRepository
+                .findByUserIdAndDocumentTypeAndSide(user.getUserId(), documentType, side)
+                .ifPresent(existingDoc -> {
+                    azureBlobStorageService.deleteFile(existingDoc.getImageUrl());
+                    userDocumentRepository.delete(existingDoc);
+                });
+
+        // Upload file lên Azure
+        String fileUrl = azureBlobStorageService.uploadFile(file);
+
+        // Tạo document mới
+        UserDocument document = UserDocument.builder()
+                .userId(user.getUserId())
+                .documentType(documentType)
+                .side(side)
+                .imageUrl(fileUrl)
+                .status("PENDING")
+                .build();
+
+        return userDocumentRepository.save(document);
+    }
+
+    // ================= GET ALL MY DOCUMENTS =================
     public List<UserDocument> getMyDocuments(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("User không tồn tại"));
@@ -131,9 +147,7 @@ public class UserDocumentService {
         return userDocumentRepository.findByUserId(user.getUserId());
     }
 
-    /**
-     * Lấy document theo type (CCCD hoặc GPLX)
-     */
+    // ================= GET DOCUMENTS BY TYPE =================
     public List<UserDocument> getDocumentsByType(String email, String documentType) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("User không tồn tại"));
@@ -141,9 +155,7 @@ public class UserDocumentService {
         return userDocumentRepository.findByUserIdAndDocumentType(user.getUserId(), documentType);
     }
 
-    /**
-     * Xóa document
-     */
+    // ================= DELETE DOCUMENT =================
     public void deleteDocument(String email, Long documentId) {
         // Validate ID
         if (documentId == null || documentId <= 0) {
@@ -183,7 +195,7 @@ public class UserDocumentService {
         }
     }
 
-
+    // ================= VALIDATION HELPERS =================
     private void validateDocumentType(String documentType) {
         if (!documentType.equals("CITIZEN_ID") && !documentType.equals("DRIVER_LICENSE")) {
             throw new IllegalArgumentException("DocumentType phải là CITIZEN_ID hoặc DRIVER_LICENSE");
