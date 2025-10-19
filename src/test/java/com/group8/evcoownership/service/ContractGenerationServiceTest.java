@@ -2,12 +2,7 @@ package com.group8.evcoownership.service;
 
 import com.group8.evcoownership.dto.ContractGenerationRequest;
 import com.group8.evcoownership.dto.ContractGenerationResponse;
-import com.group8.evcoownership.entity.Contract;
-import com.group8.evcoownership.entity.OwnershipGroup;
-import com.group8.evcoownership.entity.OwnershipShare;
-import com.group8.evcoownership.entity.OwnershipShareId;
-import com.group8.evcoownership.entity.User;
-import com.group8.evcoownership.entity.Vehicle;
+import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.repository.ContractRepository;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
 import com.group8.evcoownership.repository.OwnershipShareRepository;
@@ -191,9 +186,9 @@ class ContractGenerationServiceTest {
         when(groupRepository.findById(TEST_GROUP_ID)).thenReturn(Optional.empty());
 
         // When & Then
-        assertThrows(EntityNotFoundException.class, () -> 
-            contractGenerationService.generateContract(TEST_GROUP_ID, testRequest));
-        
+        assertThrows(EntityNotFoundException.class, () ->
+                contractGenerationService.generateContract(TEST_GROUP_ID, testRequest));
+
         verify(groupRepository).findById(TEST_GROUP_ID);
     }
 
@@ -222,9 +217,9 @@ class ContractGenerationServiceTest {
         when(contractRepository.findByGroupGroupId(TEST_GROUP_ID)).thenReturn(Optional.empty());
 
         // When & Then
-        assertThrows(EntityNotFoundException.class, () -> 
-            contractGenerationService.generateHtmlPreview(TEST_GROUP_ID));
-        
+        assertThrows(EntityNotFoundException.class, () ->
+                contractGenerationService.generateHtmlPreview(TEST_GROUP_ID));
+
         verify(contractRepository).findByGroupGroupId(TEST_GROUP_ID);
     }
 

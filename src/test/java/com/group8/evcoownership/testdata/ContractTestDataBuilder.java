@@ -1,10 +1,6 @@
 package com.group8.evcoownership.testdata;
 
-import com.group8.evcoownership.entity.Contract;
-import com.group8.evcoownership.entity.OwnershipGroup;
-import com.group8.evcoownership.entity.OwnershipShare;
-import com.group8.evcoownership.entity.User;
-import com.group8.evcoownership.entity.Vehicle;
+import com.group8.evcoownership.entity.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -294,7 +290,7 @@ public class ContractTestDataBuilder {
 
     // Predefined test scenarios
     public static class TestScenarios {
-        
+
         public static OwnershipGroup createBasicGroup() {
             return ownershipGroup().build();
         }

@@ -21,7 +21,6 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -78,7 +77,7 @@ class ContractServiceTest {
                 .description("New test group for EV co-ownership")
                 .memberCapacity(5)
                 .build();
-        
+
         Contract newContract = Contract.builder()
                 .id(TEST_CONTRACT_ID + 1)
                 .group(newGroup)
@@ -90,7 +89,7 @@ class ContractServiceTest {
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
-        
+
         when(groupRepository.findById(newGroupId)).thenReturn(Optional.of(newGroup));
         when(contractRepository.findByGroup(newGroup)).thenReturn(Optional.empty());
         when(depositCalculationService.calculateRequiredDepositAmount(newGroup))
@@ -121,9 +120,9 @@ class ContractServiceTest {
         when(groupRepository.findById(TEST_GROUP_ID)).thenReturn(Optional.empty());
 
         // When & Then
-        assertThrows(EntityNotFoundException.class, () -> 
-            contractService.createDefaultContract(TEST_GROUP_ID));
-        
+        assertThrows(EntityNotFoundException.class, () ->
+                contractService.createDefaultContract(TEST_GROUP_ID));
+
         verify(groupRepository).findById(TEST_GROUP_ID);
         verify(contractRepository, never()).save(any(Contract.class));
     }
@@ -135,9 +134,9 @@ class ContractServiceTest {
         when(contractRepository.findByGroup(testGroup)).thenReturn(Optional.of(testContract));
 
         // When & Then
-        assertThrows(IllegalStateException.class, () -> 
-            contractService.createDefaultContract(TEST_GROUP_ID));
-        
+        assertThrows(IllegalStateException.class, () ->
+                contractService.createDefaultContract(TEST_GROUP_ID));
+
         verify(groupRepository).findById(TEST_GROUP_ID);
         verify(contractRepository).findByGroup(testGroup);
         verify(contractRepository, never()).save(any(Contract.class));
@@ -196,10 +195,10 @@ class ContractServiceTest {
                 .thenReturn(Optional.empty());
 
         // When & Then
-        assertThrows(EntityNotFoundException.class, () -> 
-            contractService.updateContract(TEST_GROUP_ID, LocalDate.now(), 
-                LocalDate.now().plusYears(1), "terms", new BigDecimal("1000000"), true));
-        
+        assertThrows(EntityNotFoundException.class, () ->
+                contractService.updateContract(TEST_GROUP_ID, LocalDate.now(),
+                        LocalDate.now().plusYears(1), "terms", new BigDecimal("1000000"), true));
+
         verify(contractRepository).findByGroupGroupId(TEST_GROUP_ID);
         verify(contractRepository, never()).save(any(Contract.class));
     }
@@ -303,7 +302,7 @@ class ContractServiceTest {
         // Given
         Map<String, Object> signRequest = new HashMap<>();
         signRequest.put("signer", "admin@test.com");
-        
+
         when(contractRepository.findByGroupGroupId(TEST_GROUP_ID))
                 .thenReturn(Optional.of(testContract));
         when(contractRepository.save(any(Contract.class))).thenReturn(testContract);
@@ -328,7 +327,7 @@ class ContractServiceTest {
         testContract.setIsActive(false);
         Map<String, Object> signRequest = new HashMap<>();
         signRequest.put("signer", "admin@test.com");
-        
+
         when(contractRepository.findByGroupGroupId(TEST_GROUP_ID))
                 .thenReturn(Optional.of(testContract));
 

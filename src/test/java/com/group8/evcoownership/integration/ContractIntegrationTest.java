@@ -1,23 +1,15 @@
 package com.group8.evcoownership.integration;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.group8.evcoownership.dto.ContractGenerationRequest;
-import com.group8.evcoownership.entity.Contract;
-import com.group8.evcoownership.entity.OwnershipGroup;
-import com.group8.evcoownership.entity.OwnershipShare;
-import com.group8.evcoownership.entity.User;
-import com.group8.evcoownership.entity.Vehicle;
-import com.group8.evcoownership.repository.ContractRepository;
-import com.group8.evcoownership.repository.OwnershipGroupRepository;
-import com.group8.evcoownership.repository.OwnershipShareRepository;
-import com.group8.evcoownership.repository.UserRepository;
-import com.group8.evcoownership.repository.VehicleRepository;
+import com.group8.evcoownership.entity.*;
+import com.group8.evcoownership.repository.*;
 import com.group8.evcoownership.service.ContractGenerationService;
 import com.group8.evcoownership.service.ContractService;
 import com.group8.evcoownership.service.DepositCalculationService;
 import com.group8.evcoownership.service.TemplateService;
-import com.group8.evcoownership.testdata.ContractTestDataBuilder;
 import com.group8.evcoownership.testconfig.TestConfig;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.group8.evcoownership.testdata.ContractTestDataBuilder;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -25,15 +17,13 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.annotation.Rollback;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -42,7 +32,8 @@ import java.util.Map;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
@@ -181,7 +172,7 @@ class ContractIntegrationTest {
 
         // Test service method directly
         Contract contract = contractService.createDefaultContract(testGroup.getGroupId());
-        
+
         assert contract != null;
         assert contract.getGroup().getGroupId().equals(testGroup.getGroupId());
         assert contract.getTerms().contains("Standard EV co-ownership contract");
@@ -216,7 +207,7 @@ class ContractIntegrationTest {
         );
 
         var result = contractGenerationService.generateContract(testGroup.getGroupId(), request);
-        
+
         assert result != null;
         assert result.contractId() != null;
         assert result.status().equals("GENERATED");
