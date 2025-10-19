@@ -16,11 +16,11 @@ public class VerifyOtpResponseDTO {
     private String message;
     private OtpType type;
 
-    // For REGISTRATION
+    // For Registration (type = REGISTRATION)
     private String accessToken;
     private String refreshToken;
-    private RegisterResponseDTO.UserInfoDTO user;
+    private UserProfileResponseDTO user;  // ← THAY ĐỔI: từ UserInfoDTO → UserProfileResponseDTO
 
-    // For PASSWORD_RESET
+    // For Password Reset (type = PASSWORD_RESET)
     private String resetToken;
 }

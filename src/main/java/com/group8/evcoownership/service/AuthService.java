@@ -129,6 +129,10 @@ public class AuthService {
     }
 
     // ================= VERIFY REGISTRATION OTP (PRIVATE) =================
+    @Autowired
+    private UserProfileService userProfileService;  // ← THÊM
+
+    // ================= VERIFY REGISTRATION OTP (PRIVATE) =================
     private VerifyOtpResponseDTO verifyRegistrationOtp(String otp) {
         log.info("Verifying registration OTP");
 
@@ -165,6 +169,9 @@ public class AuthService {
         String accessToken = jwtUtil.generateToken(user);
         String refreshToken = jwtUtil.generateRefreshToken(user, false);
 
+        // ← THAY ĐỔI: Dùng UserProfileService để build profile đầy đủ
+        UserProfileResponseDTO userProfile = userProfileService.getUserProfile(user.getEmail());
+
         log.info("User registered successfully: {}", email);
 
         return VerifyOtpResponseDTO.builder()
@@ -173,16 +180,7 @@ public class AuthService {
                 .type(OtpType.REGISTRATION)
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
-                .user(RegisterResponseDTO.UserInfoDTO.builder()
-                        .userId(user.getUserId())
-                        .fullName(user.getFullName())
-                        .email(user.getEmail())
-                        .phoneNumber(user.getPhoneNumber())
-                        .avatarUrl(user.getAvatarUrl())
-                        .roleName(user.getRole().getRoleName().name())
-                        .status(user.getStatus().name())
-                        .createdAt(user.getCreatedAt())
-                        .build())
+                .user(userProfile)  // ← THAY ĐỔI
                 .build();
     }
 
