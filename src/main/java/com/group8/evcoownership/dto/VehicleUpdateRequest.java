@@ -1,8 +1,10 @@
 package com.group8.evcoownership.dto;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
-public record VehicleCreateRequest(
+public record VehicleUpdateRequest(
+        @NotNull Long id,
         @NotBlank String brand,
         @NotBlank String model,
         @NotBlank String licensePlate,
