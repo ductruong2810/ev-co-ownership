@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.Nationalized;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -36,9 +37,12 @@ public class Vehicle {
     @Column(name = "QrCode", length = 255)
     private String qrCode;
 
-    // FK -> OwnershipGroup(GroupId) (DDL không bắt buộc NOT NULL)
-    @Column(name = "GroupId")
-    private Long groupId;
+    @Column(name = "VehicleValue", precision = 15, scale = 2)
+    private BigDecimal vehicleValue;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "GroupId")
+    private OwnershipGroup ownershipGroup;
 
     @Column(name = "CreatedAt", nullable = false, updatable = false)
     private LocalDateTime createdAt;
