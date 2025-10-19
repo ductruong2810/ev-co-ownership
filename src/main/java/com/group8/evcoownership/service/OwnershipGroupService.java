@@ -14,6 +14,7 @@ import com.group8.evcoownership.entity.OwnershipShareId;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.enums.GroupRole;
 import com.group8.evcoownership.enums.GroupStatus;
+import com.group8.evcoownership.enums.DepositStatus;
 import com.group8.evcoownership.exception.InsufficientDocumentsException;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
 import com.group8.evcoownership.repository.OwnershipShareRepository;
@@ -144,6 +145,7 @@ public class OwnershipGroupService {
                 .user(user)
                 .group(savedGroup)
                 .groupRole(GroupRole.ADMIN)
+                .depositStatus(DepositStatus.PENDING)
                 .ownershipPercentage(java.math.BigDecimal.valueOf(100.00))
                 .joinDate(LocalDateTime.now())
                 .build();
