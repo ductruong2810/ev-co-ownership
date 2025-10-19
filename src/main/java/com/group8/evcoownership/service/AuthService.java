@@ -67,6 +67,8 @@ public class AuthService {
         return LoginResponseDTO.builder()
                 .accessToken(jwtUtil.generateToken(user))
                 .refreshToken(jwtUtil.generateRefreshToken(user, rememberMe))
+                //bo sung role
+                .role(user.getRole().getRoleName().name())
                 .build();
     }
 
