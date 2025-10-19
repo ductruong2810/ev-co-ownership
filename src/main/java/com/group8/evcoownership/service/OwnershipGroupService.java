@@ -1,10 +1,13 @@
 package com.group8.evcoownership.service;
 
 
+import com.group8.evcoownership.dto.GroupWithVehicleResponse;
 import com.group8.evcoownership.dto.OwnershipGroupCreateRequest;
 import com.group8.evcoownership.dto.OwnershipGroupResponse;
 import com.group8.evcoownership.dto.OwnershipGroupStatusUpdateRequest;
 import com.group8.evcoownership.dto.OwnershipGroupUpdateRequest;
+import com.group8.evcoownership.dto.VehicleCreateRequest;
+import com.group8.evcoownership.dto.VehicleResponse;
 import com.group8.evcoownership.entity.OwnershipGroup;
 import com.group8.evcoownership.enums.GroupRole;
 import com.group8.evcoownership.enums.GroupStatus;
@@ -21,6 +24,9 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +35,7 @@ public class OwnershipGroupService {
     private final OwnershipGroupRepository repo;
     private final OwnershipShareRepository ownershipShareRepository;
     private final UserRepository userRepository;
+    private final VehicleService vehicleService;
 
     // ---- mapping ----
     private OwnershipGroupResponse toDto(OwnershipGroup e) {
@@ -61,6 +68,51 @@ public class OwnershipGroupService {
                 .memberCapacity(req.memberCapacity())
                 .build(); // status = PENDING at @PrePersist
         return toDto(repo.save(entity));
+    }
+
+    @Transactional
+    public GroupWithVehicleResponse createGroupWithVehicle(
+            String groupName, String description, Integer memberCapacity,
+            java.math.BigDecimal vehicleValue, String licensePlate, String chassisNumber,
+            MultipartFile[] vehicleImages, String[] imageTypes) {
+        
+        try {
+            // Step 1: Create ownership group
+            OwnershipGroupCreateRequest groupRequest = new OwnershipGroupCreateRequest(
+                    groupName, description, memberCapacity);
+            OwnershipGroupResponse groupResponse = create(groupRequest);
+
+            // Step 2: Create vehicle using VehicleService
+            VehicleCreateRequest vehicleRequest = new VehicleCreateRequest(
+                    "Unknown", "Unknown", licensePlate, chassisNumber, groupResponse.groupId());
+            VehicleResponse vehicleResponse = vehicleService.create(vehicleRequest);
+
+            // Step 3: Upload multiple vehicle images using VehicleService
+            Map<String, String> uploadedImages = vehicleService.uploadMultipleVehicleImages(
+                    vehicleResponse.vehicleId(), vehicleImages, imageTypes);
+
+            // Step 4: Return combined response
+            return new GroupWithVehicleResponse(
+                    groupResponse.groupId(),
+                    groupResponse.groupName(),
+                    groupResponse.description(),
+                    groupResponse.memberCapacity(),
+                    groupResponse.status(),
+                    groupResponse.createdAt(),
+                    groupResponse.updatedAt(),
+                    vehicleResponse.vehicleId(),
+                    vehicleResponse.brand(),
+                    vehicleResponse.model(),
+                    vehicleResponse.licensePlate(),
+                    vehicleResponse.chassisNumber(),
+                    vehicleResponse.qrCode(),
+                    vehicleValue,
+                    uploadedImages
+            );
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create group with vehicle: " + e.getMessage(), e);
+        }
     }
 
     @Transactional

@@ -8,7 +8,7 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 @Profile("test")
 public class NoOpAzureBlobStorageService extends AzureBlobStorageService {
-    
+
     public NoOpAzureBlobStorageService(BlobContainerClient blobContainerClient) {
         super(blobContainerClient);
     }
