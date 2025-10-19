@@ -1,7 +1,6 @@
 package com.group8.evcoownership.service;
 
 
-
 import com.group8.evcoownership.dto.VehicleCreateRequest;
 import com.group8.evcoownership.dto.VehicleResponse;
 import com.group8.evcoownership.dto.VehicleUpdateRequest;
@@ -19,11 +18,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -46,7 +41,7 @@ public class VehicleService {
     public VehicleResponse create(VehicleCreateRequest req) {
         OwnershipGroup group = groupRepo.findById(req.groupId())
                 .orElseThrow(() -> new EntityNotFoundException("Group not found"));
-        if(vehicleRepo.existsByOwnershipGroup_GroupId(req.groupId()))
+        if (vehicleRepo.existsByOwnershipGroup_GroupId(req.groupId()))
             throw new IllegalStateException("Group already has a vehicle");
         if (vehicleRepo.existsByLicensePlateIgnoreCase(req.licensePlate()))
             throw new IllegalStateException("License plate already exists");
@@ -106,8 +101,6 @@ public class VehicleService {
     }
 
 
-
-
     // ======== Get ==============
     public VehicleResponse getById(Long vehicleId) {
         return vehicleRepo.findById(vehicleId)
@@ -133,7 +126,7 @@ public class VehicleService {
     @Transactional
     public Map<String, String> uploadVehicleImages(Long vehicleId, MultipartFile vehicleImage, MultipartFile registrationImage) {
         Map<String, String> uploadedImages = new HashMap<>();
-        
+
         try {
             // Upload vehicle image
             String vehicleImageUrl = azureBlobStorageService.uploadFile(vehicleImage);
@@ -168,7 +161,7 @@ public class VehicleService {
             });
             throw new RuntimeException("Failed to upload vehicle images: " + e.getMessage(), e);
         }
-        
+
         return uploadedImages;
     }
 
@@ -176,17 +169,17 @@ public class VehicleService {
     @Transactional
     public Map<String, Object> uploadMultipleVehicleImages(Long vehicleId, MultipartFile[] images, String[] imageTypes) {
         Map<String, Object> uploadedImages = new HashMap<>();
-        
+
         // Validation: Số lượng images
         if (images.length != imageTypes.length) {
             throw new IllegalArgumentException("Number of images must match number of image types");
         }
-        
+
         // Validation: Giới hạn số lượng images
         if (images.length > 10) {
             throw new IllegalArgumentException("Maximum 10 images allowed per vehicle");
         }
-        
+
         // Validation: Image types hợp lệ
         String[] validImageTypes = {"VEHICLE", "FRONT", "BACK", "LEFT", "RIGHT", "INTERIOR", "ENGINE", "LICENSE", "REGISTRATION"};
         for (String imageType : imageTypes) {
@@ -194,7 +187,7 @@ public class VehicleService {
                 throw new IllegalArgumentException("Invalid image type: " + imageType + ". Valid types: " + Arrays.toString(validImageTypes));
             }
         }
-        
+
         // Validation: Kích thước file
         long maxFileSize = 10 * 1024 * 1024; // 10MB
         for (MultipartFile image : images) {
@@ -205,34 +198,34 @@ public class VehicleService {
                 throw new IllegalArgumentException("Empty file not allowed: " + image.getOriginalFilename());
             }
         }
-        
+
         try {
             Vehicle vehicle = new Vehicle();
             vehicle.setId(vehicleId);
-            
+
             // Map để nhóm images theo type
             Map<String, List<String>> typeImages = new HashMap<>();
-            
+
             for (int i = 0; i < images.length; i++) {
                 String imageUrl = azureBlobStorageService.uploadFile(images[i]);
                 String imageType = imageTypes[i];
-                
+
                 VehicleImage vehicleImg = VehicleImage.builder()
                         .imageUrl(imageUrl)
                         .imageType(imageType)
                         .build();
                 vehicleImg.setVehicle(vehicle);
                 vehicleImageRepository.save(vehicleImg);
-                
+
                 // Nhóm images theo type
                 typeImages.computeIfAbsent(imageType, k -> new ArrayList<>()).add(imageUrl);
             }
-            
+
             // Convert sang format response
             for (Map.Entry<String, List<String>> entry : typeImages.entrySet()) {
                 String imageType = entry.getKey();
                 List<String> urls = entry.getValue();
-                
+
                 // Nếu chỉ có 1 image, trả về string
                 // Nếu có nhiều images, trả về array
                 if (urls.size() == 1) {
@@ -241,7 +234,7 @@ public class VehicleService {
                     uploadedImages.put(imageType, urls.toArray(new String[0]));
                 }
             }
-            
+
         } catch (Exception e) {
             // Cleanup uploaded files if any
             uploadedImages.values().forEach(url -> {
@@ -259,7 +252,7 @@ public class VehicleService {
             });
             throw new RuntimeException("Failed to upload multiple vehicle images: " + e.getMessage(), e);
         }
-        
+
         return uploadedImages;
     }
 }

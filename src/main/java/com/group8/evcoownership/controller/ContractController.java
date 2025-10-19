@@ -2,6 +2,7 @@ package com.group8.evcoownership.controller;
 
 import com.group8.evcoownership.dto.ContractGenerationRequest;
 import com.group8.evcoownership.dto.ContractGenerationResponse;
+import com.group8.evcoownership.dto.ContractGenerationWithTemplateRequest;
 import com.group8.evcoownership.service.ContractGenerationService;
 import com.group8.evcoownership.service.ContractService;
 import jakarta.validation.Valid;
@@ -23,25 +24,44 @@ public class ContractController {
     private final ContractGenerationService contractGenerationService;
 
     /**
-     * Tạo hợp đồng cho group (chỉ admin group)
+     * Tạo hợp đồng cho group với template từ Frontend (chỉ admin group)
      */
-    @PostMapping("/generate/{groupId}")
+    @PostMapping("/generate/{groupId}/with-template")
     @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
-    public ResponseEntity<ContractGenerationResponse> generateContract(
+    public ResponseEntity<ContractGenerationResponse> generateContractWithTemplate(
             @PathVariable Long groupId,
-            @Valid @RequestBody ContractGenerationRequest request) {
+            @Valid @RequestBody ContractGenerationWithTemplateRequest request) {
 
-        ContractGenerationResponse response = contractGenerationService.generateContract(groupId, request);
+        ContractGenerationResponse response = contractGenerationService.generateContract(
+                groupId,
+                new ContractGenerationRequest(
+                        request.startDate(),
+                        request.endDate(),
+                        request.terms(),
+                        "HCM", // Default location
+                        java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")), // Default sign date
+                        null // Contract number sẽ được generate tự động
+                ),
+                request.htmlTemplate()
+        );
         return ResponseEntity.ok(response);
     }
 
     /**
-     * Xem trước hợp đồng HTML
+     * Xem trước hợp đồng HTML với template từ Frontend
      */
-    @GetMapping("/preview/{groupId}")
+    @PostMapping("/preview/{groupId}")
     @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
-    public ResponseEntity<String> previewContract(@PathVariable Long groupId) {
-        String htmlContent = contractGenerationService.generateHtmlPreview(groupId);
+    public ResponseEntity<String> previewContract(
+            @PathVariable Long groupId,
+            @RequestBody Map<String, String> request) {
+
+        String htmlTemplate = request.get("htmlTemplate");
+        if (htmlTemplate == null || htmlTemplate.trim().isEmpty()) {
+            throw new IllegalArgumentException("HTML template is required");
+        }
+
+        String htmlContent = contractGenerationService.generateHtmlPreview(groupId, htmlTemplate);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.TEXT_HTML);
@@ -52,12 +72,20 @@ public class ContractController {
     }
 
     /**
-     * Export hợp đồng thành PDF
+     * Export hợp đồng thành PDF với template từ Frontend
      */
-    @GetMapping("/export/{groupId}/pdf")
+    @PostMapping("/export/{groupId}/pdf")
     @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
-    public ResponseEntity<byte[]> exportContractPdf(@PathVariable Long groupId) {
-        byte[] pdfBytes = contractGenerationService.exportToPdf(groupId);
+    public ResponseEntity<byte[]> exportContractPdf(
+            @PathVariable Long groupId,
+            @RequestBody Map<String, String> request) {
+
+        String htmlTemplate = request.get("htmlTemplate");
+        if (htmlTemplate == null || htmlTemplate.trim().isEmpty()) {
+            throw new IllegalArgumentException("HTML template is required");
+        }
+
+        byte[] pdfBytes = contractGenerationService.exportToPdf(groupId, htmlTemplate);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);

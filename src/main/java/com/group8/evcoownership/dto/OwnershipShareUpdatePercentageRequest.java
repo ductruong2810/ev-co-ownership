@@ -8,4 +8,5 @@ import java.math.BigDecimal;
 
 public record OwnershipShareUpdatePercentageRequest(
         @NotNull @DecimalMin("0.01") @DecimalMax("100.00") BigDecimal ownershipPercentage
-) {}
+) {
+}

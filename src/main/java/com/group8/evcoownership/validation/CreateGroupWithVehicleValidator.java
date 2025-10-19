@@ -10,8 +10,8 @@ import java.util.Arrays;
 public class CreateGroupWithVehicleValidator implements ConstraintValidator<ValidCreateGroupWithVehicle, CreateGroupWithVehicleRequest> {
 
     private static final String[] VALID_IMAGE_TYPES = {
-        "VEHICLE", "FRONT", "BACK", "LEFT", "RIGHT", 
-        "INTERIOR", "ENGINE", "LICENSE", "REGISTRATION"
+            "VEHICLE", "FRONT", "BACK", "LEFT", "RIGHT",
+            "INTERIOR", "ENGINE", "LICENSE", "REGISTRATION"
     };
 
     @Override
@@ -36,7 +36,7 @@ public class CreateGroupWithVehicleValidator implements ConstraintValidator<Vali
             if (!Arrays.asList(VALID_IMAGE_TYPES).contains(imageType)) {
                 context.disableDefaultConstraintViolation();
                 context.buildConstraintViolationWithTemplate(
-                        "Invalid image type: " + imageType + ". Valid types: " + Arrays.toString(VALID_IMAGE_TYPES))
+                                "Invalid image type: " + imageType + ". Valid types: " + Arrays.toString(VALID_IMAGE_TYPES))
                         .addConstraintViolation();
                 isValid = false;
                 break;
@@ -49,7 +49,7 @@ public class CreateGroupWithVehicleValidator implements ConstraintValidator<Vali
             if (image.getSize() > maxFileSize) {
                 context.disableDefaultConstraintViolation();
                 context.buildConstraintViolationWithTemplate(
-                        "File size exceeds 10MB limit: " + image.getOriginalFilename())
+                                "File size exceeds 10MB limit: " + image.getOriginalFilename())
                         .addConstraintViolation();
                 isValid = false;
                 break;
@@ -57,7 +57,7 @@ public class CreateGroupWithVehicleValidator implements ConstraintValidator<Vali
             if (image.isEmpty()) {
                 context.disableDefaultConstraintViolation();
                 context.buildConstraintViolationWithTemplate(
-                        "Empty file not allowed: " + image.getOriginalFilename())
+                                "Empty file not allowed: " + image.getOriginalFilename())
                         .addConstraintViolation();
                 isValid = false;
                 break;

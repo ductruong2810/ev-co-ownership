@@ -314,10 +314,10 @@ class ContractServiceTest {
         assertNotNull(result);
         assertTrue((Boolean) result.get("success"));
         assertEquals(TEST_CONTRACT_ID, result.get("contractId"));
-        assertEquals("Contract signed successfully", result.get("message"));
+        assertEquals("Contract signed successfully by Admin Group on behalf of all members", result.get("message"));
         assertNotNull(result.get("signedAt"));
 
-        verify(contractRepository).findByGroupGroupId(TEST_GROUP_ID);
+        verify(contractRepository, times(2)).findByGroupGroupId(TEST_GROUP_ID);
         verify(contractRepository).save(any(Contract.class));
     }
 

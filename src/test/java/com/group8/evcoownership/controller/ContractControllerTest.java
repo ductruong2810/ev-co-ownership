@@ -25,8 +25,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -57,6 +56,7 @@ class ContractControllerTest {
     private final Long TEST_GROUP_ID = 1L;
     private ContractGenerationRequest testRequest;
     private ContractGenerationResponse testResponse;
+    private Map<String, Object> testTemplateRequest;
 
     @BeforeEach
     void setUp() {
@@ -67,6 +67,13 @@ class ContractControllerTest {
                 "Hà Nội",
                 "2025-01-01",
                 "EVS-001"
+        );
+
+        testTemplateRequest = Map.of(
+                "startDate", "2025-01-01",
+                "endDate", "2025-12-31",
+                "terms", "Test contract terms",
+                "htmlTemplate", "<html><body>Test Template</body></html>"
         );
 
         testResponse = new ContractGenerationResponse(
@@ -84,14 +91,14 @@ class ContractControllerTest {
     void generateContract_Success() throws Exception {
         // Given
         when(ownershipGroupService.isGroupAdmin("admin@test.com", TEST_GROUP_ID)).thenReturn(true);
-        when(contractGenerationService.generateContract(anyLong(), any(ContractGenerationRequest.class)))
+        when(contractGenerationService.generateContract(anyLong(), any(ContractGenerationRequest.class), anyString()))
                 .thenReturn(testResponse);
 
         // When & Then
-        mockMvc.perform(post("/api/contracts/generate/{groupId}", TEST_GROUP_ID)
+        mockMvc.perform(post("/api/contracts/generate/{groupId}/with-template", TEST_GROUP_ID)
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(testRequest)))
+                        .content(objectMapper.writeValueAsString(testTemplateRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.contractId").value(1L))
                 .andExpect(jsonPath("$.contractNumber").value("EVS-001"))
@@ -107,10 +114,10 @@ class ContractControllerTest {
         when(ownershipGroupService.isGroupAdmin("user@test.com", TEST_GROUP_ID)).thenReturn(false);
 
         // When & Then
-        mockMvc.perform(post("/api/contracts/generate/{groupId}", TEST_GROUP_ID)
+        mockMvc.perform(post("/api/contracts/generate/{groupId}/with-template", TEST_GROUP_ID)
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(testRequest)))
+                        .content(objectMapper.writeValueAsString(testTemplateRequest)))
                 .andExpect(status().isOk()); // Security is disabled in test profile
     }
 
@@ -130,7 +137,7 @@ class ContractControllerTest {
         when(ownershipGroupService.isGroupAdmin("admin@test.com", TEST_GROUP_ID)).thenReturn(true);
 
         // When & Then
-        mockMvc.perform(post("/api/contracts/generate/{groupId}", TEST_GROUP_ID)
+        mockMvc.perform(post("/api/contracts/generate/{groupId}/with-template", TEST_GROUP_ID)
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(invalidRequest)))
@@ -143,10 +150,13 @@ class ContractControllerTest {
         // Given
         String htmlContent = "<html><body>Contract Preview</body></html>";
         when(ownershipGroupService.isGroupAdmin("admin@test.com", TEST_GROUP_ID)).thenReturn(true);
-        when(contractGenerationService.generateHtmlPreview(TEST_GROUP_ID)).thenReturn(htmlContent);
+        when(contractGenerationService.generateHtmlPreview(eq(TEST_GROUP_ID), anyString())).thenReturn(htmlContent);
 
         // When & Then
-        mockMvc.perform(get("/api/contracts/preview/{groupId}", TEST_GROUP_ID))
+        mockMvc.perform(post("/api/contracts/preview/{groupId}", TEST_GROUP_ID)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"htmlTemplate\": \"<html><body>Test Template</body></html>\"}"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.TEXT_HTML_VALUE))
                 .andExpect(content().string(htmlContent));
@@ -159,7 +169,10 @@ class ContractControllerTest {
         when(ownershipGroupService.isGroupAdmin("user@test.com", TEST_GROUP_ID)).thenReturn(false);
 
         // When & Then
-        mockMvc.perform(get("/api/contracts/preview/{groupId}", TEST_GROUP_ID))
+        mockMvc.perform(post("/api/contracts/preview/{groupId}", TEST_GROUP_ID)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(testTemplateRequest)))
                 .andExpect(status().isOk()); // Security is disabled in test profile
     }
 
@@ -169,10 +182,13 @@ class ContractControllerTest {
         // Given
         byte[] pdfBytes = "PDF content".getBytes();
         when(ownershipGroupService.isGroupAdmin("admin@test.com", TEST_GROUP_ID)).thenReturn(true);
-        when(contractGenerationService.exportToPdf(TEST_GROUP_ID)).thenReturn(pdfBytes);
+        when(contractGenerationService.exportToPdf(eq(TEST_GROUP_ID), anyString())).thenReturn(pdfBytes);
 
         // When & Then
-        mockMvc.perform(get("/api/contracts/export/{groupId}/pdf", TEST_GROUP_ID))
+        mockMvc.perform(post("/api/contracts/export/{groupId}/pdf", TEST_GROUP_ID)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"htmlTemplate\": \"<html><body>Test Template</body></html>\"}"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_PDF_VALUE))
                 .andExpect(header().string("Content-Disposition", "form-data; name=\"attachment\"; filename=\"contract-1.pdf\""))
@@ -186,7 +202,10 @@ class ContractControllerTest {
         when(ownershipGroupService.isGroupAdmin("user@test.com", TEST_GROUP_ID)).thenReturn(false);
 
         // When & Then
-        mockMvc.perform(get("/api/contracts/export/{groupId}/pdf", TEST_GROUP_ID))
+        mockMvc.perform(post("/api/contracts/export/{groupId}/pdf", TEST_GROUP_ID)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(testTemplateRequest)))
                 .andExpect(status().isOk()); // Security is disabled in test profile
     }
 
