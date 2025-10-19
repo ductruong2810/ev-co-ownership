@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -29,8 +30,10 @@ public class OwnershipGroupController {
     private final OwnershipGroupService service;
 
     @PostMapping
-    public OwnershipGroupResponse create(@RequestBody @Valid OwnershipGroupCreateRequest req) {
-        return service.create(req);
+    public OwnershipGroupResponse create(@RequestBody @Valid OwnershipGroupCreateRequest req, 
+                                        Authentication authentication) {
+        String userEmail = authentication.getName();
+        return service.create(req, userEmail);
     }
 
     @PostMapping("/with-vehicle")
@@ -59,11 +62,14 @@ public class OwnershipGroupController {
             @RequestParam("vehicleImages") MultipartFile[] vehicleImages,
             
             @Parameter(description = "Image types corresponding to each image", required = true)
-            @RequestParam("imageTypes") String[] imageTypes) {
+            @RequestParam("imageTypes") String[] imageTypes,
+            
+            Authentication authentication) {
         
+        String userEmail = authentication.getName();
         return service.createGroupWithVehicle(
                 groupName, description, memberCapacity, vehicleValue,
-                licensePlate, chassisNumber, vehicleImages, imageTypes);
+                licensePlate, chassisNumber, vehicleImages, imageTypes, userEmail);
     }
 
     @PutMapping("/{groupId}")
