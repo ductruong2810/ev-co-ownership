@@ -167,11 +167,11 @@ public class OwnershipGroupService {
 
             // Step 2: Create vehicle using VehicleService
             VehicleCreateRequest vehicleRequest = new VehicleCreateRequest(
-                    "Unknown", "Unknown", licensePlate, chassisNumber, null, groupResponse.groupId());
+                    "Unknown", "Unknown", licensePlate, chassisNumber, vehicleValue, groupResponse.groupId());
             VehicleResponse vehicleResponse = vehicleService.create(vehicleRequest);
 
             // Step 3: Upload multiple vehicle images using VehicleService
-            Map<String, String> uploadedImages = vehicleService.uploadMultipleVehicleImages(
+            Map<String, Object> uploadedImages = vehicleService.uploadMultipleVehicleImages(
                     vehicleResponse.vehicleId(), vehicleImages, imageTypes);
 
             // Step 4: Return combined response
