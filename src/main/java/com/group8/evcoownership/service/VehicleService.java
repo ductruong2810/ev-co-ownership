@@ -7,7 +7,9 @@ import com.group8.evcoownership.dto.VehicleResponse;
 import com.group8.evcoownership.dto.VehicleUpdateRequest;
 import com.group8.evcoownership.entity.OwnershipGroup;
 import com.group8.evcoownership.entity.Vehicle;
+import com.group8.evcoownership.entity.VehicleImage;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
+import com.group8.evcoownership.repository.VehicleImageRepository;
 import com.group8.evcoownership.repository.VehicleRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
@@ -15,6 +17,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +28,8 @@ public class VehicleService {
 
     private final VehicleRepository vehicleRepo;
     private final OwnershipGroupRepository groupRepo;
+    private final VehicleImageRepository vehicleImageRepository;
+    private final AzureBlobStorageService azureBlobStorageService;
 
     private VehicleResponse toDto(Vehicle v) {
         return new VehicleResponse(
@@ -61,7 +69,12 @@ public class VehicleService {
     }
 
     private String buildQrPayload(Long vehicleId, String licensePlate) {
-        return "EVCO:V" + vehicleId + ":" + licensePlate; // tuỳ bạn định dạng
+        // QR chứa Group ID để checkin đơn giản (1 group = 1 xe)
+        Vehicle vehicle = vehicleRepo.findById(vehicleId).orElse(null);
+        if (vehicle != null && vehicle.getOwnershipGroup() != null) {
+            return "GROUP:" + vehicle.getOwnershipGroup().getGroupId();
+        }
+        return "VEHICLE:" + vehicleId; // fallback nếu không có group
     }
 
     // ======= Updte ============
@@ -108,6 +121,91 @@ public class VehicleService {
                 .orElseThrow(() -> new EntityNotFoundException("Vehicle not found"));
         // (tuỳ rule) có thể chặn xoá nếu group ACTIVE/đã có booking/incident...
         vehicleRepo.delete(v);
+    }
+
+    // ======== Upload Vehicle Images ==============
+    @Transactional
+    public Map<String, String> uploadVehicleImages(Long vehicleId, MultipartFile vehicleImage, MultipartFile registrationImage) {
+        Map<String, String> uploadedImages = new HashMap<>();
+        
+        try {
+            // Upload vehicle image
+            String vehicleImageUrl = azureBlobStorageService.uploadFile(vehicleImage);
+            VehicleImage vehicleImg = VehicleImage.builder()
+                    .imageUrl(vehicleImageUrl)
+                    .imageType("VEHICLE")
+                    .build();
+            Vehicle vehicle = new Vehicle();
+            vehicle.setId(vehicleId);
+            vehicleImg.setVehicle(vehicle);
+            vehicleImageRepository.save(vehicleImg);
+            uploadedImages.put("vehicleImage", vehicleImageUrl);
+
+            // Upload registration image
+            String registrationImageUrl = azureBlobStorageService.uploadFile(registrationImage);
+            VehicleImage registrationImg = VehicleImage.builder()
+                    .imageUrl(registrationImageUrl)
+                    .imageType("LICENSE")
+                    .build();
+            registrationImg.setVehicle(vehicle);
+            vehicleImageRepository.save(registrationImg);
+            uploadedImages.put("registrationImage", registrationImageUrl);
+
+        } catch (Exception e) {
+            // Cleanup uploaded files if any
+            uploadedImages.values().forEach(url -> {
+                try {
+                    azureBlobStorageService.deleteFile(url);
+                } catch (Exception cleanupError) {
+                    // Log cleanup error but don't throw
+                }
+            });
+            throw new RuntimeException("Failed to upload vehicle images: " + e.getMessage(), e);
+        }
+        
+        return uploadedImages;
+    }
+
+    // ======== Upload Multiple Vehicle Images ==============
+    @Transactional
+    public Map<String, String> uploadMultipleVehicleImages(Long vehicleId, MultipartFile[] images, String[] imageTypes) {
+        Map<String, String> uploadedImages = new HashMap<>();
+        
+        if (images.length != imageTypes.length) {
+            throw new IllegalArgumentException("Number of images must match number of image types");
+        }
+        
+        try {
+            Vehicle vehicle = new Vehicle();
+            vehicle.setId(vehicleId);
+            
+            for (int i = 0; i < images.length; i++) {
+                String imageUrl = azureBlobStorageService.uploadFile(images[i]);
+                String imageType = imageTypes[i];
+                
+                VehicleImage vehicleImg = VehicleImage.builder()
+                        .imageUrl(imageUrl)
+                        .imageType(imageType)
+                        .build();
+                vehicleImg.setVehicle(vehicle);
+                vehicleImageRepository.save(vehicleImg);
+                
+                uploadedImages.put(imageType + "_" + i, imageUrl);
+            }
+            
+        } catch (Exception e) {
+            // Cleanup uploaded files if any
+            uploadedImages.values().forEach(url -> {
+                try {
+                    azureBlobStorageService.deleteFile(url);
+                } catch (Exception cleanupError) {
+                    // Log cleanup error but don't throw
+                }
+            });
+            throw new RuntimeException("Failed to upload multiple vehicle images: " + e.getMessage(), e);
+        }
+        
+        return uploadedImages;
     }
 }
 
