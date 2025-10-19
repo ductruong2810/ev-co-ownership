@@ -35,6 +35,7 @@ Table OwnershipShare {
   GroupRole varchar(50) [default: 'Member']
   OwnershipPercentage decimal(5,2) [not null, note: 'Must be > 0 and <= 100']
   JoinDate datetime [default: `now()`]
+  DepositStatus varchar(20) [default: 'PENDING', note: 'PENDING, PAID, REFUNDED']
   UpdatedAt datetime [default: `now()`]
 
   indexes {
@@ -50,6 +51,7 @@ Table Vehicle {
   LicensePlate varchar(20)
   ChassisNumber varchar(30)
   QrCode varchar(255)
+  VehicleValue decimal(15,2) [note: 'Value of the vehicle (VND)']
   GroupId bigint [ref: - OwnershipGroup.GroupId]
   CreatedAt datetime [default: `now()`]
   UpdatedAt datetime [default: `now()`]
@@ -63,12 +65,27 @@ Table VehicleImages {
   UploadedAt datetime [default: `now()`]
 }
 
+Table ContractTemplate {
+  TemplateId bigint [pk, increment]
+  TemplateName varchar(100) [not null]
+  Description text
+  HtmlTemplate text [not null, note: 'HTML template for contract generation']
+  IsActive boolean [default: true]
+  CreatedAt datetime [default: `now()`]
+  UpdatedAt datetime [default: `now()`]
+}
+
 Table Contract {
   ContractId bigint [pk, increment]
   GroupId bigint [ref: - OwnershipGroup.GroupId, not null]
-  ContractContent text
-  ContractUrl varchar(500)
-  SignedAt datetime
+  TemplateId bigint [ref: > ContractTemplate.TemplateId, note: 'Template used for this contract']
+  StartDate date
+  EndDate date
+  Terms text
+  RequiredDepositAmount decimal(15,2) [note: 'Required deposit amount for joining the group']
+  IsActive boolean [default: true]
+  CreatedAt datetime [default: `now()`]
+  UpdatedAt datetime [default: `now()`]
 }
 
 Table SharedFund {
@@ -218,7 +235,7 @@ Table Payment {
   Status varchar(20) [default: 'Pending']
   TransactionCode varchar(100)
   ProviderResponse text
-  PaymentType varchar(20) [not null, note: 'CONTRIBUTION, PENALTY, MAINTENANCE_FEE']
+  PaymentType varchar(20) [not null, note: 'CONTRIBUTION, PENALTY, MAINTENANCE_FEE, DEPOSIT']
   Version bigint [default: 0]
 
   // Personal payment support (money still goes to fund but tagged as personal)
