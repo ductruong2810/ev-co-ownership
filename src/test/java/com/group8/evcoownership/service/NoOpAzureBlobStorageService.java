@@ -8,15 +8,14 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 @Profile("test")
 public class NoOpAzureBlobStorageService extends AzureBlobStorageService {
+    
     public NoOpAzureBlobStorageService(BlobContainerClient blobContainerClient) {
         super(blobContainerClient);
     }
 
-    // No constructor needed; avoid requiring BlobContainerClient in tests
-
     @Override
     public String uploadFile(MultipartFile file) {
-        return "https://example.com/mock-blob";
+        return "https://mock-storage.com/files/" + file.getOriginalFilename();
     }
 
     @Override
