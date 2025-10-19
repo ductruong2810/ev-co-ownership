@@ -15,7 +15,7 @@ public record GroupWithVehicleResponse(
         GroupStatus status,
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
-        
+
         // Vehicle information
         Long vehicleId,
         String brand,
@@ -24,7 +24,7 @@ public record GroupWithVehicleResponse(
         String chassisNumber,
         String qrCode,
         BigDecimal vehicleValue,
-        
+
         // Vehicle images - có thể là String hoặc String[]
         Map<String, Object> vehicleImages
 ) {

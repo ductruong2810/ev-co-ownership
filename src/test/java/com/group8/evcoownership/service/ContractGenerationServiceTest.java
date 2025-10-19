@@ -45,8 +45,8 @@ class ContractGenerationServiceTest {
     @Mock
     private OwnershipShareRepository shareRepository;
 
-    @Mock
-    private TemplateService templateService;
+    // TemplateService đã được xóa, template sẽ được xử lý ở Frontend
+    // private TemplateService templateService;
 
     @InjectMocks
     private ContractGenerationService contractGenerationService;
@@ -130,12 +130,14 @@ class ContractGenerationServiceTest {
         when(contractRepository.findByGroupGroupId(TEST_GROUP_ID)).thenReturn(Optional.empty());
         when(contractService.getRequiredDepositAmount(TEST_GROUP_ID)).thenReturn(new BigDecimal("2000000"));
         when(contractRepository.save(any(Contract.class))).thenReturn(testContract);
-        when(templateService.getTemplateContent()).thenReturn("<html>{{data.contract.number}}</html>");
+        // Template sẽ được truyền từ Frontend
         when(vehicleRepository.findByOwnershipGroup(testGroup)).thenReturn(Optional.of(testVehicle));
         when(shareRepository.findByGroupGroupId(TEST_GROUP_ID)).thenReturn(List.of(testShare));
 
+        String htmlTemplate = "<html>{{data.contract.number}}</html>";
+
         // When
-        ContractGenerationResponse result = contractGenerationService.generateContract(TEST_GROUP_ID, testRequest);
+        ContractGenerationResponse result = contractGenerationService.generateContract(TEST_GROUP_ID, testRequest, htmlTemplate);
 
         // Then
         assertNotNull(result);
@@ -151,7 +153,7 @@ class ContractGenerationServiceTest {
         verify(contractRepository).findByGroupGroupId(TEST_GROUP_ID);
         verify(contractService).getRequiredDepositAmount(TEST_GROUP_ID);
         verify(contractRepository).save(any(Contract.class));
-        verify(templateService).getTemplateContent();
+        // TemplateService đã được xóa
     }
 
     @Test
@@ -160,12 +162,14 @@ class ContractGenerationServiceTest {
         when(groupRepository.findById(TEST_GROUP_ID)).thenReturn(Optional.of(testGroup));
         when(contractRepository.findByGroupGroupId(TEST_GROUP_ID)).thenReturn(Optional.of(testContract));
         when(contractRepository.save(any(Contract.class))).thenReturn(testContract);
-        when(templateService.getTemplateContent()).thenReturn("<html>{{data.contract.number}}</html>");
+        // Template sẽ được truyền từ Frontend
         when(vehicleRepository.findByOwnershipGroup(testGroup)).thenReturn(Optional.of(testVehicle));
         when(shareRepository.findByGroupGroupId(TEST_GROUP_ID)).thenReturn(List.of(testShare));
 
+        String htmlTemplate = "<html>{{data.contract.number}}</html>";
+
         // When
-        ContractGenerationResponse result = contractGenerationService.generateContract(TEST_GROUP_ID, testRequest);
+        ContractGenerationResponse result = contractGenerationService.generateContract(TEST_GROUP_ID, testRequest, htmlTemplate);
 
         // Then
         assertNotNull(result);
@@ -184,10 +188,11 @@ class ContractGenerationServiceTest {
     void generateContract_GroupNotFound() {
         // Given
         when(groupRepository.findById(TEST_GROUP_ID)).thenReturn(Optional.empty());
+        String htmlTemplate = "<html>{{data.contract.number}}</html>";
 
         // When & Then
         assertThrows(EntityNotFoundException.class, () ->
-                contractGenerationService.generateContract(TEST_GROUP_ID, testRequest));
+                contractGenerationService.generateContract(TEST_GROUP_ID, testRequest, htmlTemplate));
 
         verify(groupRepository).findById(TEST_GROUP_ID);
     }
@@ -196,29 +201,32 @@ class ContractGenerationServiceTest {
     void generateHtmlPreview_Success() {
         // Given
         when(contractRepository.findByGroupGroupId(TEST_GROUP_ID)).thenReturn(Optional.of(testContract));
-        when(templateService.getTemplateContent()).thenReturn("<html>{{data.contract.number}}</html>");
+        // Template sẽ được truyền từ Frontend
         when(vehicleRepository.findByOwnershipGroup(testGroup)).thenReturn(Optional.of(testVehicle));
         when(shareRepository.findByGroupGroupId(TEST_GROUP_ID)).thenReturn(List.of(testShare));
 
+        String htmlTemplate = "<html>{{data.contract.number}}</html>";
+
         // When
-        String result = contractGenerationService.generateHtmlPreview(TEST_GROUP_ID);
+        String result = contractGenerationService.generateHtmlPreview(TEST_GROUP_ID, htmlTemplate);
 
         // Then
         assertNotNull(result);
         assertTrue(result.contains("EVS-"));
 
         verify(contractRepository).findByGroupGroupId(TEST_GROUP_ID);
-        verify(templateService).getTemplateContent();
+        // TemplateService đã được xóa
     }
 
     @Test
     void generateHtmlPreview_ContractNotFound() {
         // Given
         when(contractRepository.findByGroupGroupId(TEST_GROUP_ID)).thenReturn(Optional.empty());
+        String htmlTemplate = "<html>{{data.contract.number}}</html>";
 
         // When & Then
         assertThrows(EntityNotFoundException.class, () ->
-                contractGenerationService.generateHtmlPreview(TEST_GROUP_ID));
+                contractGenerationService.generateHtmlPreview(TEST_GROUP_ID, htmlTemplate));
 
         verify(contractRepository).findByGroupGroupId(TEST_GROUP_ID);
     }
@@ -228,19 +236,21 @@ class ContractGenerationServiceTest {
         // Given
         String htmlContent = "<html>Test Contract</html>";
         when(contractRepository.findByGroupGroupId(TEST_GROUP_ID)).thenReturn(Optional.of(testContract));
-        when(templateService.getTemplateContent()).thenReturn(htmlContent);
+        // Template sẽ được truyền từ Frontend
         when(vehicleRepository.findByOwnershipGroup(testGroup)).thenReturn(Optional.of(testVehicle));
         when(shareRepository.findByGroupGroupId(TEST_GROUP_ID)).thenReturn(List.of(testShare));
 
+        String htmlTemplate = htmlContent;
+
         // When
-        byte[] result = contractGenerationService.exportToPdf(TEST_GROUP_ID);
+        byte[] result = contractGenerationService.exportToPdf(TEST_GROUP_ID, htmlTemplate);
 
         // Then
         assertNotNull(result);
         assertEquals(htmlContent, new String(result));
 
         verify(contractRepository).findByGroupGroupId(TEST_GROUP_ID);
-        verify(templateService).getTemplateContent();
+        // TemplateService đã được xóa
     }
 
     @Test

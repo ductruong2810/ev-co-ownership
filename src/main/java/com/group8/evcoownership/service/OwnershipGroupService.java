@@ -1,20 +1,14 @@
 package com.group8.evcoownership.service;
 
 
-import com.group8.evcoownership.dto.GroupWithVehicleResponse;
-import com.group8.evcoownership.dto.OwnershipGroupCreateRequest;
-import com.group8.evcoownership.dto.OwnershipGroupResponse;
-import com.group8.evcoownership.dto.OwnershipGroupStatusUpdateRequest;
-import com.group8.evcoownership.dto.OwnershipGroupUpdateRequest;
-import com.group8.evcoownership.dto.VehicleCreateRequest;
-import com.group8.evcoownership.dto.VehicleResponse;
+import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.entity.OwnershipGroup;
 import com.group8.evcoownership.entity.OwnershipShare;
 import com.group8.evcoownership.entity.OwnershipShareId;
 import com.group8.evcoownership.entity.User;
+import com.group8.evcoownership.enums.DepositStatus;
 import com.group8.evcoownership.enums.GroupRole;
 import com.group8.evcoownership.enums.GroupStatus;
-import com.group8.evcoownership.enums.DepositStatus;
 import com.group8.evcoownership.exception.InsufficientDocumentsException;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
 import com.group8.evcoownership.repository.OwnershipShareRepository;
@@ -23,16 +17,16 @@ import com.group8.evcoownership.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Map;
-import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
@@ -67,7 +61,7 @@ public class OwnershipGroupService {
     }
 
     // ---- validation methods ----
-    
+
     /**
      * Kiểm tra user có đầy đủ giấy tờ cần thiết để tạo group không
      * Cần có: CCCD (cả mặt trước và sau) và GPLX (cả mặt trước và sau) với status APPROVED
@@ -78,31 +72,31 @@ public class OwnershipGroupService {
                 userId, "CITIZEN_ID", "FRONT");
         boolean hasCitizenIdBack = userDocumentRepository.existsByUserIdAndDocumentTypeAndSide(
                 userId, "CITIZEN_ID", "BACK");
-        
+
         // Kiểm tra GPLX - cả mặt trước và sau  
         boolean hasDriverLicenseFront = userDocumentRepository.existsByUserIdAndDocumentTypeAndSide(
                 userId, "DRIVER_LICENSE", "FRONT");
         boolean hasDriverLicenseBack = userDocumentRepository.existsByUserIdAndDocumentTypeAndSide(
                 userId, "DRIVER_LICENSE", "BACK");
-        
+
         // Kiểm tra status APPROVED cho tất cả documents
         boolean citizenIdApproved = checkDocumentStatus(userId, "CITIZEN_ID");
         boolean driverLicenseApproved = checkDocumentStatus(userId, "DRIVER_LICENSE");
-        
+
         StringBuilder missingDocs = new StringBuilder();
-        
+
         if (!hasCitizenIdFront || !hasCitizenIdBack) {
             missingDocs.append("CCCD (cả mặt trước và sau), ");
         } else if (!citizenIdApproved) {
             missingDocs.append("CCCD chưa được duyệt, ");
         }
-        
+
         if (!hasDriverLicenseFront || !hasDriverLicenseBack) {
             missingDocs.append("GPLX (cả mặt trước và sau), ");
         } else if (!driverLicenseApproved) {
             missingDocs.append("GPLX chưa được duyệt, ");
         }
-        
+
         if (!missingDocs.isEmpty()) {
             // Xóa dấu phẩy cuối
             String missing = missingDocs.toString().replaceAll(", $", "");
@@ -110,7 +104,7 @@ public class OwnershipGroupService {
                     "Không thể tạo group. Bạn cần upload và được duyệt: " + missing);
         }
     }
-    
+
     /**
      * Kiểm tra tất cả documents của một loại có status APPROVED không
      */
@@ -125,25 +119,25 @@ public class OwnershipGroupService {
         if (repo.existsByGroupNameIgnoreCase(req.groupName())) {
             throw new IllegalStateException("GroupName already exists");
         }
-        
+
         // Tìm user từ email
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + userEmail));
-        
+
         // Kiểm tra giấy tờ cần thiết (bỏ qua khi tắt validation)
         if (validationEnabled) {
             validateRequiredDocuments(user.getUserId());
         }
-        
+
         // Tạo group
         var entity = OwnershipGroup.builder()
                 .groupName(req.groupName())
                 .description(req.description())
                 .memberCapacity(req.memberCapacity())
                 .build(); // status = PENDING at @PrePersist
-        
+
         var savedGroup = repo.save(entity);
-        
+
         // Tự động thêm người tạo group làm ADMIN với 100% ownership
         var shareId = new OwnershipShareId(user.getUserId(), savedGroup.getGroupId());
         var ownershipShare = OwnershipShare.builder()
@@ -155,9 +149,9 @@ public class OwnershipGroupService {
                 .ownershipPercentage(java.math.BigDecimal.valueOf(100.00))
                 .joinDate(LocalDateTime.now())
                 .build();
-        
+
         ownershipShareRepository.save(ownershipShare);
-        
+
         return toDto(savedGroup);
     }
 

@@ -1,0 +1,24 @@
+package com.group8.evcoownership.dto;
+
+import com.group8.evcoownership.enums.PaymentStatus;
+import lombok.Builder;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Builder
+public record DepositPaymentResponse(
+        Long paymentId,
+        Long userId,
+        Long groupId,
+        BigDecimal amount,
+        BigDecimal requiredAmount,
+        String paymentMethod,
+        PaymentStatus status,
+        String transactionCode,
+        LocalDateTime createdAt,
+        LocalDateTime paidAt,
+        String vnpayUrl,
+        String message
+) {
+}

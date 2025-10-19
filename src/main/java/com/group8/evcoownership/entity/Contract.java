@@ -30,9 +30,10 @@ public class Contract {
     @JoinColumn(name = "GroupId", nullable = false)
     private OwnershipGroup group;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "TemplateId")
-    private ContractTemplate template;
+    // Template sẽ được xử lý ở Frontend, không cần lưu trong database
+    // @ManyToOne(fetch = FetchType.LAZY)
+    // @JoinColumn(name = "TemplateId")
+    // private ContractTemplate template;
 
     @Column(name = "StartDate")
     private LocalDate startDate;

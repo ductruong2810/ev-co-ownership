@@ -14,4 +14,5 @@ public record VehicleResponse(
         BigDecimal vehicleValue,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
-) {}
+) {
+}

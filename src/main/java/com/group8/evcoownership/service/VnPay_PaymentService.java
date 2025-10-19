@@ -21,6 +21,8 @@ public class VnPay_PaymentService {
     private String vnp_PayUrl;
     @Value("${payment.vnPay.returnUrl}")
     private String vnp_ReturnUrl;
+    @Value("${payment.vnPay.depositReturnUrl}")
+    private String vnp_DepositReturnUrl;
     @Value("${payment.vnPay.tmnCode}")
     private String vnp_TmnCode;
     @Value("${payment.vnPay.secretKey}")
@@ -33,10 +35,23 @@ public class VnPay_PaymentService {
     private String orderType;
 
     public String createPaymentUrl(long fee, HttpServletRequest request) {
+        return createPaymentUrl(fee, request, false);
+    }
+
+    /**
+     * Tạo payment URL cho deposit payment
+     */
+    public String createDepositPaymentUrl(long fee, HttpServletRequest request) {
+        return createPaymentUrl(fee, request, true);
+    }
+
+    private String createPaymentUrl(long fee, HttpServletRequest request, boolean isDeposit) {
         long amount = fee * 100L;
         Map<String, String> vnpParamsMap = getVNPayConfig();
 
-        vnpParamsMap.put("vnp_ReturnUrl", this.vnp_ReturnUrl);
+        // Sử dụng callback URL khác nhau cho deposit và payment thông thường
+        String returnUrl = isDeposit ? this.vnp_DepositReturnUrl : this.vnp_ReturnUrl;
+        vnpParamsMap.put("vnp_ReturnUrl", returnUrl);
         vnpParamsMap.put("vnp_Amount", String.valueOf(amount));
         vnpParamsMap.put("vnp_IpAddr", getIpAddress(request));
 
