@@ -94,7 +94,7 @@ public class UserProfileService {
         // Filter documents by type
         List<UserDocument> typeDocs = allDocuments.stream()
                 .filter(doc -> documentType.equals(doc.getDocumentType()))
-                .collect(Collectors.toList());
+                .toList();
 
         // Find FRONT and BACK
         UserProfileResponseDTO.DocumentDetailDTO frontDetail = null;
