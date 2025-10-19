@@ -7,47 +7,50 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
-import org.springframework.context.annotation.Profile;
 
 @Configuration
-@Profile("!test")
 @Slf4j
 public class AzureBlobConfig {
 
-    @Value("${azure.storage.connection-string:}")
-    private String connectionString;
-
-    @Value("${azure.storage.container-name:}")
+    @Value("${azure.storage.container-name}")
     private String containerName;
 
+    @Value("${azure.storage.connection-string}")
+    private String connectionString;
+
     @Bean
-    @Primary
     public BlobServiceClient blobServiceClient() {
+
+
         if (connectionString == null || connectionString.trim().isEmpty()) {
-            log.warn("Azure Storage connection string is not configured. Using mock configuration.");
-            return new BlobServiceClientBuilder()
-                    .connectionString("DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test;EndpointSuffix=core.windows.net")
-                    .buildClient();
+            throw new IllegalStateException("Azure connection string is not configured!");
         }
 
-        log.info("Initializing Azure Blob Service Client with configured connection string");
-        return new BlobServiceClientBuilder()
+        BlobServiceClient client = new BlobServiceClientBuilder()
                 .connectionString(connectionString)
                 .buildClient();
+
+        log.info("BlobServiceClient created successfully!");
+        return client;
     }
 
     @Bean
-    @Primary
     public BlobContainerClient blobContainerClient(BlobServiceClient blobServiceClient) {
-        String container;
+
         if (containerName == null || containerName.trim().isEmpty()) {
-            // Default fallback for development
-            container = "test-container";
-        } else {
-            container = containerName;
+            throw new IllegalStateException("Azure container name is not configured!");
         }
-        log.info("Initializing Azure Blob Container Client with container: {}", container);
-        return blobServiceClient.getBlobContainerClient(container);
+
+        BlobContainerClient containerClient = blobServiceClient.getBlobContainerClient(containerName);
+
+        if (!containerClient.exists()) {
+            log.info("Container does NOT exist, creating: {}", containerName);
+            containerClient.create();
+            log.info("Container created successfully");
+        } else {
+            log.info("Container already exists: {}", containerName);
+        }
+
+        return containerClient;
     }
 }
