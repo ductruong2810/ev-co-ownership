@@ -85,7 +85,7 @@ public class UserProfileService {
     }
 
     /**
-     * Build DocumentTypeDTO (FRONT + BACK + Details)
+     * Build DocumentTypeDTO (FRONT + BACK objects)
      */
     private UserProfileResponseDTO.DocumentTypeDTO buildDocumentType(
             List<UserDocument> allDocuments,
@@ -96,41 +96,34 @@ public class UserProfileService {
                 .filter(doc -> documentType.equals(doc.getDocumentType()))
                 .collect(Collectors.toList());
 
-        // Quick access URLs
-        String frontUrl = "";
-        String backUrl = "";
+        // Find FRONT and BACK
+        UserProfileResponseDTO.DocumentDetailDTO frontDetail = null;
+        UserProfileResponseDTO.DocumentDetailDTO backDetail = null;
 
-        // Build detailed info
-        List<UserProfileResponseDTO.DocumentDetailDTO> details = typeDocs.stream()
-                .map(doc -> UserProfileResponseDTO.DocumentDetailDTO.builder()
-                        .documentId(doc.getDocumentId())
-                        .side(doc.getSide())
-                        .imageUrl(doc.getImageUrl())
-                        .status(doc.getStatus())
-                        .reviewNote(doc.getReviewNote())
-                        .uploadedAt(doc.getCreatedAt())
-                        .build())
-                .collect(Collectors.toList());
+        for (UserDocument doc : typeDocs) {
+            UserProfileResponseDTO.DocumentDetailDTO detail = UserProfileResponseDTO.DocumentDetailDTO.builder()
+                    .documentId(doc.getDocumentId())
+                    .imageUrl(doc.getImageUrl())
+                    .status(doc.getStatus())
+                    .reviewNote(doc.getReviewNote())
+                    .uploadedAt(doc.getCreatedAt())
+                    .build();
 
-        // Extract URLs from details for quick access
-        for (UserProfileResponseDTO.DocumentDetailDTO detail : details) {
-            if ("FRONT".equals(detail.getSide())) {
-                frontUrl = detail.getImageUrl() != null ? detail.getImageUrl() : "";
-            } else if ("BACK".equals(detail.getSide())) {
-                backUrl = detail.getImageUrl() != null ? detail.getImageUrl() : "";
+            if ("FRONT".equals(doc.getSide())) {
+                frontDetail = detail;
+            } else if ("BACK".equals(doc.getSide())) {
+                backDetail = detail;
             }
         }
 
         return UserProfileResponseDTO.DocumentTypeDTO.builder()
-                .front(frontUrl)
-                .back(backUrl)
-                .details(details)
+                .front(frontDetail)  // null nếu chưa có
+                .back(backDetail)    // null nếu chưa có
                 .build();
     }
 
     /**
      * Đếm số nhóm user đã tham gia
-     * TODO: Implement khi có bảng GroupMembers
      */
     private int getGroupsCount(Long userId) {
         return 0;
