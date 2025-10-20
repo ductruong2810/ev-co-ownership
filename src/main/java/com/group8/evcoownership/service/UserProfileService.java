@@ -22,9 +22,6 @@ public class UserProfileService {
     @Autowired
     private UserDocumentRepository userDocumentRepository;
 
-    /**
-     * Lấy profile của user đang login (dùng email từ token)
-     */
     public UserProfileResponseDTO getUserProfile(String email) {
         log.info("Fetching profile for user: {}", email);
 
@@ -34,9 +31,6 @@ public class UserProfileService {
         return buildProfileResponse(user);
     }
 
-    /**
-     * Lấy profile theo userId (public - không cần token)
-     */
     public UserProfileResponseDTO getUserProfileById(Long userId) {
         log.info("Fetching public profile for userId: {}", userId);
 
@@ -48,20 +42,12 @@ public class UserProfileService {
         return buildProfileResponse(user);
     }
 
-    /**
-     * Build response từ User entity (dùng chung cho cả 2 method)
-     */
     private UserProfileResponseDTO buildProfileResponse(User user) {
-        // Lấy tất cả documents của user
         List<UserDocument> allDocuments = userDocumentRepository.findByUserId(user.getUserId());
 
-        // Build CCCD
         UserProfileResponseDTO.DocumentTypeDTO citizenId = buildDocumentType(allDocuments, "CITIZEN_ID");
-
-        // Build GPLX
         UserProfileResponseDTO.DocumentTypeDTO driverLicense = buildDocumentType(allDocuments, "DRIVER_LICENSE");
 
-        // Build response
         return UserProfileResponseDTO.builder()
                 .userId(user.getUserId())
                 .fullName(user.getFullName())
@@ -83,19 +69,14 @@ public class UserProfileService {
                 .build();
     }
 
-    /**
-     * Build DocumentTypeDTO (FRONT + BACK objects)
-     */
     private UserProfileResponseDTO.DocumentTypeDTO buildDocumentType(
             List<UserDocument> allDocuments,
             String documentType) {
 
-        // Filter documents by type
         List<UserDocument> typeDocs = allDocuments.stream()
                 .filter(doc -> documentType.equals(doc.getDocumentType()))
                 .toList();
 
-        // Find FRONT and BACK
         UserProfileResponseDTO.DocumentDetailDTO frontDetail = null;
         UserProfileResponseDTO.DocumentDetailDTO backDetail = null;
 
@@ -104,7 +85,7 @@ public class UserProfileService {
                     .documentId(doc.getDocumentId())
                     .imageUrl(doc.getImageUrl())
                     .status(doc.getStatus())
-                    .reviewNote(doc.getReviewNote())
+                    // ← KHÔNG map reviewNote
                     .uploadedAt(doc.getCreatedAt())
                     .build();
 
@@ -116,14 +97,11 @@ public class UserProfileService {
         }
 
         return UserProfileResponseDTO.DocumentTypeDTO.builder()
-                .front(frontDetail)  // null nếu chưa có
-                .back(backDetail)    // null nếu chưa có
+                .front(frontDetail)
+                .back(backDetail)
                 .build();
     }
 
-    /**
-     * Đếm số nhóm user đã tham gia
-     */
     private int getGroupsCount(Long userId) {
         return 0;
     }

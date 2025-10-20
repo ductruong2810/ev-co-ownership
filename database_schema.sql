@@ -105,12 +105,17 @@ GO
 -- =============================================
 CREATE TABLE VehicleImages
 (
-    ImageId    BIGINT IDENTITY (1,1) PRIMARY KEY,
-    VehicleId  BIGINT        NOT NULL,
-    ImageUrl   NVARCHAR(500) NOT NULL,
-    ImageType  NVARCHAR(20)  NOT NULL,
-    UploadedAt DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
-    FOREIGN KEY (VehicleId) REFERENCES Vehicle (VehicleId)
+    ImageId         BIGINT IDENTITY (1,1) PRIMARY KEY,
+    VehicleId       BIGINT        NOT NULL,
+    ImageUrl        NVARCHAR(500) NOT NULL,
+    ImageType       NVARCHAR(20)  NOT NULL,
+    ApprovalStatus  NVARCHAR(20)  NOT NULL DEFAULT 'PENDING',
+    ApprovedBy      BIGINT        NULL,
+    ApprovedAt      DATETIME2(7)  NULL,
+    RejectionReason NVARCHAR(500) NULL,
+    UploadedAt      DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
+    FOREIGN KEY (VehicleId) REFERENCES Vehicle (VehicleId),
+    FOREIGN KEY (ApprovedBy) REFERENCES Users (UserId)
 );
 GO
 

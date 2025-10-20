@@ -58,7 +58,6 @@ public class UserProfileResponseDTO {
         private Long documentId;
         private String imageUrl;
         private String status;         // PENDING, APPROVED, REJECTED
-        private String reviewNote;
         private LocalDateTime uploadedAt;
     }
 
