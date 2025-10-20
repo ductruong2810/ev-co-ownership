@@ -1,5 +1,6 @@
 package com.group8.evcoownership.entity;
 
+import com.group8.evcoownership.enums.ContractApprovalStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -58,6 +59,22 @@ public class Contract {
 
     @Column(name = "UpdatedAt")
     private LocalDateTime updatedAt;
+
+    // Contract Approval Fields
+    @Enumerated(EnumType.STRING)
+    @Column(name = "ApprovalStatus", nullable = false)
+    private ContractApprovalStatus approvalStatus = ContractApprovalStatus.PENDING;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ApprovedBy")
+    private User approvedBy;
+
+    @Column(name = "ApprovedAt")
+    private LocalDateTime approvedAt;
+
+    @Nationalized
+    @Column(name = "RejectionReason", length = 500)
+    private String rejectionReason;
 
     @PrePersist
     public void onCreate() {

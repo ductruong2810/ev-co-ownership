@@ -4,19 +4,15 @@
 -- =============================================
 
 -- Recreate Database (run from master)
-USE
-master;
+USE master;
 GO
 IF DB_ID(N'EVShare') IS NOT NULL
-BEGIN
-        ALTER
-DATABASE EVShare SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-        DROP
-DATABASE EVShare;
-END
+    BEGIN
+        ALTER DATABASE EVShare SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+        DROP DATABASE EVShare;
+    END
 GO
-CREATE
-DATABASE EVShare;
+CREATE DATABASE EVShare;
 GO
 USE EVShare;
 GO
@@ -59,7 +55,7 @@ CREATE TABLE OwnershipGroup
     GroupName      NVARCHAR(100) NOT NULL,
     Status         NVARCHAR(20)  NOT NULL DEFAULT 'PENDING',
     Description    NVARCHAR(MAX),
-    MemberCapacity INT NULL,
+    MemberCapacity INT           NULL,
     CreatedAt      DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
     UpdatedAt      DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
     CONSTRAINT UQ_OwnershipGroup_GroupName UNIQUE (GroupName)
@@ -110,11 +106,11 @@ GO
 CREATE TABLE VehicleImages
 (
     ImageId         BIGINT IDENTITY (1,1) PRIMARY KEY,
-    VehicleId       BIGINT NOT NULL,
+    VehicleId       BIGINT        NOT NULL,
     ImageUrl        NVARCHAR(500) NOT NULL,
     ImageType       NVARCHAR(20)  NOT NULL,
     ApprovalStatus  NVARCHAR(20)  NOT NULL DEFAULT 'PENDING',
-    ApprovedBy      BIGINT NULL,
+    ApprovedBy      BIGINT        NULL,
     ApprovedAt      DATETIME2(7)  NULL,
     RejectionReason NVARCHAR(500) NULL,
     UploadedAt      DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
@@ -132,7 +128,7 @@ CREATE TABLE ContractTemplate
     TemplateName NVARCHAR(100) NOT NULL,
     Description  NVARCHAR(MAX),
     HtmlTemplate NVARCHAR(MAX) NOT NULL,
-    IsActive     BIT NOT NULL DEFAULT 1,
+    IsActive     BIT           NOT NULL DEFAULT 1,
     CreatedAt    DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
     UpdatedAt    DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME()
 );
@@ -144,17 +140,25 @@ GO
 CREATE TABLE Contract
 (
     ContractId            BIGINT IDENTITY (1,1) PRIMARY KEY,
-    GroupId               BIGINT NOT NULL,
+    GroupId               BIGINT        NOT NULL,
     TemplateId            BIGINT,
     StartDate             DATE,
     EndDate               DATE,
     Terms                 NVARCHAR(MAX),
     RequiredDepositAmount DECIMAL(15, 2),
-    IsActive              BIT DEFAULT 1,
-    CreatedAt             DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
-    UpdatedAt             DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
+    IsActive              BIT                    DEFAULT 1,
+    CreatedAt             DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
+    UpdatedAt             DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
+
+    -- Contract Approval Fields (added after approval workflow implementation)
+    ApprovalStatus        NVARCHAR(20)  NOT NULL DEFAULT 'PENDING', -- PENDING, APPROVED, REJECTED
+    ApprovedBy            BIGINT        NULL,                       -- Staff/Admin who approved the contract
+    ApprovedAt            DATETIME2(7)  NULL,                       -- When the contract was approved/rejected
+    RejectionReason       NVARCHAR(500) NULL,                       -- Reason for rejection if status is REJECTED
+
     FOREIGN KEY (GroupId) REFERENCES OwnershipGroup (GroupId),
-    FOREIGN KEY (TemplateId) REFERENCES ContractTemplate (TemplateId)
+    FOREIGN KEY (TemplateId) REFERENCES ContractTemplate (TemplateId),
+    FOREIGN KEY (ApprovedBy) REFERENCES Users (UserId)
 );
 GO
 
@@ -181,8 +185,8 @@ GO
 CREATE TABLE UsageBooking
 (
     BookingId     BIGINT IDENTITY (1,1) PRIMARY KEY,
-    UserId        BIGINT NOT NULL,
-    VehicleId     BIGINT NOT NULL,
+    UserId        BIGINT       NOT NULL,
+    VehicleId     BIGINT       NOT NULL,
     StartDateTime DATETIME2(7) NOT NULL,
     EndDateTime   DATETIME2(7) NOT NULL,
     Status        NVARCHAR(20) NOT NULL DEFAULT 'PENDING',
@@ -201,9 +205,9 @@ GO
 CREATE TABLE Maintenance
 (
     MaintenanceId     BIGINT IDENTITY (1,1) PRIMARY KEY,
-    VehicleId         BIGINT NOT NULL,
-    RequestedBy       BIGINT NOT NULL,
-    ApprovedBy        BIGINT NULL,
+    VehicleId         BIGINT       NOT NULL,
+    RequestedBy       BIGINT       NOT NULL,
+    ApprovedBy        BIGINT       NULL,
     RequestDate       DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
     ApprovalDate      DATETIME2(7),
     NextDueDate       DATE,
@@ -222,20 +226,16 @@ GO
 -- =============================================
 CREATE TABLE Notification
 (
-    NotificationId BIGINT IDENTITY (1,1) PRIMARY KEY,
-    UserId         BIGINT,
-    Title          NVARCHAR(255), [
-    Message]
-    NVARCHAR
-(
-    MAX
-),
+    NotificationId   BIGINT IDENTITY (1,1) PRIMARY KEY,
+    UserId           BIGINT,
+    Title            NVARCHAR(255),
+    [Message]        NVARCHAR(MAX),
     NotificationType NVARCHAR(50),
-    IsRead BIT NOT NULL DEFAULT 0,
-    IsDelivered BIT NOT NULL DEFAULT 0,
-    CreatedAt DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
+    IsRead           BIT          NOT NULL DEFAULT 0,
+    IsDelivered      BIT          NOT NULL DEFAULT 0,
+    CreatedAt        DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
     FOREIGN KEY (UserId) REFERENCES Users (UserId)
-    );
+);
 GO
 
 -- =============================================
@@ -244,7 +244,7 @@ GO
 CREATE TABLE Incident
 (
     IncidentId    BIGINT IDENTITY (1,1) PRIMARY KEY,
-    BookingId     BIGINT NOT NULL,
+    BookingId     BIGINT       NOT NULL,
     IncidentType  NVARCHAR(50),
     Description   NVARCHAR(MAX),
     EstimatedCost DECIMAL(12, 2),
@@ -286,7 +286,7 @@ GO
 CREATE TABLE UserDocument
 (
     DocumentId   BIGINT IDENTITY (1,1) PRIMARY KEY,
-    UserId       BIGINT NOT NULL,
+    UserId       BIGINT        NOT NULL,
     DocumentType NVARCHAR(20),
     Side         NVARCHAR(10),
     ImageUrl     NVARCHAR(500) NOT NULL,
@@ -327,7 +327,7 @@ GO
 CREATE TABLE Dispute
 (
     DisputeId         BIGINT IDENTITY (1,1) PRIMARY KEY,
-    FundId            BIGINT NOT NULL,
+    FundId            BIGINT       NOT NULL,
     CreatedBy         BIGINT,
     DisputeType       NVARCHAR(50),
     RelatedEntityType NVARCHAR(50),
@@ -352,7 +352,7 @@ GO
 CREATE TABLE DisputeTicket
 (
     TicketId           BIGINT IDENTITY (1,1) PRIMARY KEY,
-    DisputeId          BIGINT NOT NULL,
+    DisputeId          BIGINT       NOT NULL,
     Priority           NVARCHAR(20) NOT NULL DEFAULT 'MEDIUM',
     AssignedTo         BIGINT,
     OpenedAt           DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
@@ -383,15 +383,15 @@ GO
 CREATE TABLE DisputeAttachment
 (
     AttachmentId BIGINT IDENTITY (1,1) PRIMARY KEY,
-    DisputeId    BIGINT NOT NULL,
+    DisputeId    BIGINT         NOT NULL,
     FileName     NVARCHAR(255)  NOT NULL,
     MimeType     NVARCHAR(100)  NOT NULL,
-    SizeBytes    BIGINT NOT NULL,
+    SizeBytes    BIGINT         NOT NULL,
     StorageUrl   NVARCHAR(1000) NOT NULL,
     Sha256       NVARCHAR(64),
     ThumbnailUrl NVARCHAR(1000),
     MetaJson     NVARCHAR(MAX),
-    UploadedBy   BIGINT NOT NULL,
+    UploadedBy   BIGINT         NOT NULL,
     Visibility   NVARCHAR(20)   NOT NULL DEFAULT 'USER',
     Status       NVARCHAR(20)   NOT NULL DEFAULT 'ACTIVE',
     CreatedAt    DATETIME2(7)   NOT NULL DEFAULT SYSUTCDATETIME(),
@@ -491,12 +491,12 @@ GO
 CREATE TABLE FinancialReport
 (
     ReportId     BIGINT IDENTITY (1,1) PRIMARY KEY,
-    FundId       BIGINT NOT NULL,
+    FundId       BIGINT       NOT NULL,
     ReportMonth  INT,
     ReportYear   INT,
     TotalIncome  DECIMAL(15, 2),
     TotalExpense DECIMAL(15, 2),
-    GeneratedBy  BIGINT NOT NULL,
+    GeneratedBy  BIGINT       NOT NULL,
     CreatedAt    DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
     UpdatedAt    DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
     FOREIGN KEY (FundId) REFERENCES SharedFund (FundId),
@@ -522,6 +522,10 @@ CREATE INDEX IX_Vehicle_LicensePlate ON Vehicle (LicensePlate);
 -- VehicleImages
 CREATE INDEX IX_VehicleImages_VehicleId ON VehicleImages (VehicleId);
 CREATE INDEX IX_VehicleImages_ImageType ON VehicleImages (ImageType);
+
+-- Contract
+CREATE INDEX IX_Contract_ApprovalStatus ON Contract (ApprovalStatus);
+CREATE INDEX IX_Contract_ApprovedBy ON Contract (ApprovedBy);
 
 -- UsageBooking
 CREATE INDEX IX_UsageBooking_UserId ON UsageBooking (UserId);
@@ -676,9 +680,113 @@ VALUES (N'Standard EV Contract', N'Standard HTML template for EV co-ownership co
         1);
 
 -- Contract sample (using template)
-INSERT INTO Contract(GroupId, TemplateId, StartDate, EndDate, Terms, RequiredDepositAmount, IsActive)
-VALUES (1, 1, '2024-01-01', '2025-01-01', N'Standard EV co-ownership contract terms...', 2000000, 1);
+INSERT INTO Contract(GroupId, TemplateId, StartDate, EndDate, Terms, RequiredDepositAmount, IsActive, ApprovalStatus,
+                     ApprovedBy, ApprovedAt)
+VALUES (1, 1, '2024-01-01', '2025-01-01', N'Standard EV co-ownership contract terms...', 2000000, 1, 'APPROVED', 2,
+        SYSUTCDATETIME());
 
 -- =============================================
 -- END
+
+
 -- =============================================
+-- 20) INVITATION (invite bằng link + OTP, không revoke)
+-- =============================================
+CREATE TABLE Invitation
+(
+    InvitationId        BIGINT IDENTITY (1,1) PRIMARY KEY,
+
+    GroupId             BIGINT        NOT NULL,           -- FK -> OwnershipGroup
+    InviterUserId       BIGINT        NOT NULL,           -- FK -> Users (người mời)
+    InviteeEmail        NVARCHAR(100) NOT NULL,           -- email người được mời
+    EmailNormalized     AS LOWER(InviteeEmail) PERSISTED, -- phục vụ unique filtered index
+
+    Token               VARCHAR(128)  NOT NULL,           -- opaque token trong link
+    OtpCode             VARCHAR(6)    NOT NULL,           -- OTP 6 số (nếu lưu hash: tăng size & bỏ CHECK)
+
+    Status              NVARCHAR(20)  NOT NULL,           -- PENDING / ACCEPTED / EXPIRED
+    SuggestedPercentage DECIMAL(5, 2) NULL,               -- gợi ý %, tuỳ chọn
+
+    ExpiresAt           DATETIME2(7)  NOT NULL,           -- hạn dùng token/OTP
+    ResendCount         INT           NOT NULL
+        CONSTRAINT DF_Invitation_ResendCount DEFAULT (0),
+    LastSentAt          DATETIME2(7)  NULL,
+
+    CreatedAt           DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
+    AcceptedAt          DATETIME2(7)  NULL,
+    AcceptedBy          BIGINT        NULL                -- FK -> Users (user đã accept)
+);
+GO
+
+ALTER TABLE Invitation
+    ADD CONSTRAINT FK_Invitation_Group
+        FOREIGN KEY (GroupId) REFERENCES OwnershipGroup (GroupId)
+            ON DELETE CASCADE; -- xoá group xoá luôn lời mời
+GO
+
+ALTER TABLE Invitation
+    ADD CONSTRAINT FK_Invitation_Inviter
+        FOREIGN KEY (InviterUserId) REFERENCES Users (UserId);
+GO
+
+ALTER TABLE Invitation
+    ADD CONSTRAINT FK_Invitation_AcceptedBy
+        FOREIGN KEY (AcceptedBy) REFERENCES Users (UserId)
+            ON DELETE SET NULL; -- giữ audit nếu user bị xoá
+GO
+
+-- Trạng thái hợp lệ
+ALTER TABLE Invitation
+    ADD CONSTRAINT CK_Invitation_Status
+        CHECK (Status IN (N'PENDING', N'ACCEPTED', N'EXPIRED'));
+GO
+
+-- OTP 6 chữ số (bỏ nếu bạn lưu hash)
+ALTER TABLE Invitation
+    ADD CONSTRAINT CK_Invitation_Otp
+        CHECK (OtpCode NOT LIKE '%[^0-9]%' AND LEN(OtpCode) = 6);
+GO
+
+-- SuggestedPercentage trong [0..100]
+ALTER TABLE Invitation
+    ADD CONSTRAINT CK_Invitation_SuggestedPct
+        CHECK (SuggestedPercentage IS NULL OR (SuggestedPercentage >= 0.00 AND SuggestedPercentage <= 100.00));
+GO
+
+-- Token duy nhất
+CREATE UNIQUE INDEX UQ_Invitation_Token ON Invitation (Token);
+GO
+
+-- Không cho trùng email đang PENDING trong cùng group (case-insensitive)
+CREATE UNIQUE INDEX UQ_Invitation_Group_Email_Pending
+    ON Invitation (GroupId, EmailNormalized)
+    WHERE Status = N'PENDING';
+GO
+
+-- Hỗ trợ dọn dẹp & tra cứu
+CREATE INDEX IX_Invitation_ExpiresAt ON Invitation (ExpiresAt);
+CREATE INDEX IX_Invitation_Group_ExpiresAt ON Invitation (GroupId, ExpiresAt);
+GO
+
+-- Mỗi group chỉ có 1 vehicle (áp dụng khi GroupId NOT NULL)
+CREATE UNIQUE INDEX UQ_Vehicle_GroupId ON Vehicle (GroupId) WHERE GroupId IS NOT NULL;
+GO
+
+-- =============================================
+ALTER TABLE Contract
+    ADD ApprovalStatus NVARCHAR(20) NOT NULL DEFAULT 'PENDING';
+ALTER TABLE Contract
+    ADD ApprovedBy BIGINT NULL;
+ALTER TABLE Contract
+    ADD ApprovedAt DATETIME2(7) NULL;
+ALTER TABLE Contract
+    ADD RejectionReason NVARCHAR(500) NULL;
+
+-- Add foreign key constraint
+ALTER TABLE Contract
+    ADD CONSTRAINT FK_Contract_ApprovedBy
+        FOREIGN KEY (ApprovedBy) REFERENCES Users (UserId);
+
+-- Add indexes for performance
+CREATE INDEX IX_Contract_ApprovalStatus ON Contract (ApprovalStatus);
+CREATE INDEX IX_Contract_ApprovedBy ON Contract (ApprovedBy);
