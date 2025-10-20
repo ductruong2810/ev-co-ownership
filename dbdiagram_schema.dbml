@@ -90,6 +90,17 @@ Table Contract {
   IsActive boolean [default: true]
   CreatedAt datetime [default: `now()`]
   UpdatedAt datetime [default: `now()`]
+  
+  // Contract Approval Fields (added after approval workflow implementation)
+  ApprovalStatus varchar(20) [default: 'PENDING', note: 'PENDING, APPROVED, REJECTED']
+  ApprovedBy bigint [ref: > Users.UserId, note: 'Staff/Admin who approved the contract']
+  ApprovedAt datetime [note: 'When the contract was approved/rejected']
+  RejectionReason varchar(500) [note: 'Reason for rejection if status is REJECTED']
+
+  indexes {
+    ApprovalStatus [name: 'IX_Contract_ApprovalStatus']
+    ApprovedBy [name: 'IX_Contract_ApprovedBy']
+  }
 }
 
 Table SharedFund {

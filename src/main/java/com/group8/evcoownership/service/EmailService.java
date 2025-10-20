@@ -1,38 +1,91 @@
 package com.group8.evcoownership.service;
 
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
-import org.springframework.mail.SimpleMailMessage;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
+import org.thymeleaf.TemplateEngine;
+import org.thymeleaf.context.Context;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class EmailService {
 
     private final JavaMailSender mailSender;
+    private final TemplateEngine templateEngine;
 
-    public void sendOtpEmail(String to, String otp) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(to);
-        message.setSubject("Xác minh đăng ký tài khoản EV Co-ownership");
-        message.setText("Mã OTP của bạn là: " + otp + "\nOTP sẽ hết hạn sau 3 phút.");
-        mailSender.send(message);
+    // ← THÊM DÒNG NÀY
+    @Value("${app.frontend.url:http://localhost:3000}")
+    private String frontendUrl;
+
+    /**
+     * Gửi OTP email cho đăng ký tài khoản
+     */
+    public void sendOtpEmail(String to, String fullName, String otp) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            // URL redirect đến trang verify của frontend
+            String verifyUrl = String.format("%s/verify-otp?email=%s&type=REGISTRATION",
+                    frontendUrl, to);
+
+            Context context = new Context();
+            context.setVariable("fullName", fullName);
+            context.setVariable("otp", otp);
+            context.setVariable("expiryMinutes", 3);
+            context.setVariable("verifyUrl", verifyUrl);
+
+            String htmlContent = templateEngine.process("otp-registration-email", context);
+
+            helper.setTo(to);
+            helper.setSubject("Xác minh đăng ký tài khoản EV Co-ownership");
+            helper.setText(htmlContent, true);
+
+            mailSender.send(message);
+            log.info("OTP registration email sent to: {}", to);
+
+        } catch (MessagingException e) {
+            log.error("Failed to send OTP email to: {}", to, e);
+            throw new RuntimeException("Không thể gửi email. Vui lòng thử lại sau.");
+        }
     }
 
-    // ========== THÊM METHOD NÀY ==========
+    /**
+     * Gửi OTP email cho đặt lại mật khẩu
+     */
     public void sendPasswordResetOtpEmail(String to, String otp) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(to);
-        message.setSubject("Đặt lại mật khẩu - Mã OTP");
-        message.setText(
-                "Bạn đã yêu cầu đặt lại mật khẩu cho tài khoản EV Co-ownership.\n\n" +
-                        "Mã OTP của bạn là: " + otp + "\n\n" +
-                        "⚠️ Lưu ý: Mã OTP này có hiệu lực trong 5 phút.\n\n" +
-                        "Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.\n\n" +
-                        "---\n" +
-                        "Email này được gửi tự động. Vui lòng không trả lời."
-        );
-        mailSender.send(message);
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            // URL redirect đến trang verify của frontend
+            String verifyUrl = String.format("%s/verify-otp?email=%s&type=PASSWORD_RESET",
+                    frontendUrl, to);
+
+            Context context = new Context();
+            context.setVariable("email", to);
+            context.setVariable("otp", otp);
+            context.setVariable("expiryMinutes", 5);
+            context.setVariable("verifyUrl", verifyUrl);
+
+            String htmlContent = templateEngine.process("otp-password-reset-email", context);
+
+            helper.setTo(to);
+            helper.setSubject("Đặt lại mật khẩu - Mã OTP");
+            helper.setText(htmlContent, true);
+
+            mailSender.send(message);
+            log.info("OTP password reset email sent to: {}", to);
+
+        } catch (MessagingException e) {
+            log.error("Failed to send password reset email to: {}", to, e);
+            throw new RuntimeException("Không thể gửi email. Vui lòng thử lại sau.");
+        }
     }
-    // ========== KẾT THÚC ==========
 }

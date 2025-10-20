@@ -1,5 +1,6 @@
 package com.group8.evcoownership.repository;
 
+import com.group8.evcoownership.entity.OwnershipGroup;
 import com.group8.evcoownership.entity.OwnershipShare;
 import com.group8.evcoownership.entity.OwnershipShareId;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -38,4 +39,12 @@ public interface OwnershipShareRepository extends JpaRepository<OwnershipShare, 
      */
     @Query("SELECT os FROM OwnershipShare os WHERE os.group.groupId = :groupId")
     List<OwnershipShare> findByGroupGroupId(@Param("groupId") Long groupId);
+
+    /**
+     * Lấy tất cả groups mà user đã tham gia (bao gồm cả ADMIN và MEMBER)
+     */
+    @Query("SELECT os.group FROM OwnershipShare os " +
+            "WHERE os.user.userId = :userId " +
+            "ORDER BY os.group.createdAt DESC")
+    List<OwnershipGroup> findGroupsByUserId(@Param("userId") Long userId);
 }

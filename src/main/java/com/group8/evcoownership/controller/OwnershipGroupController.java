@@ -10,11 +10,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/groups")
@@ -60,8 +62,12 @@ public class OwnershipGroupController {
         return service.getById(groupId);
     }
 
-    @GetMapping
-    public Page<OwnershipGroupResponse> list(
+    /**
+     * Lấy danh sách tất cả groups trong hệ thống (chỉ dành cho Staff và Admin)
+     */
+    @GetMapping("/staff/all")
+    @PreAuthorize("hasRole('STAFF') or hasRole('ADMIN')")
+    public Page<OwnershipGroupResponse> listAllGroups(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) GroupStatus status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
@@ -70,6 +76,15 @@ public class OwnershipGroupController {
             @RequestParam(defaultValue = "20") int size
     ) {
         return service.list(keyword, status, fromDate, toDate, PageRequest.of(page, size));
+    }
+
+    /**
+     * Lấy tất cả groups mà user hiện tại đã tạo và tham gia
+     */
+    @GetMapping("/my-groups")
+    public List<OwnershipGroupResponse> getMyGroups(Authentication authentication) {
+        String userEmail = authentication.getName();
+        return service.getGroupsByUser(userEmail);
     }
 
     @DeleteMapping("/{groupId}")
