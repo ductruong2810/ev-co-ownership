@@ -16,7 +16,6 @@ public class ContractTestDataBuilder {
         private String groupName = "Test EV Group";
         private String description = "Test group for EV co-ownership";
         private Integer memberCapacity = 5;
-        private Boolean isActive = true;
 
         public OwnershipGroupBuilder withGroupId(Long groupId) {
             this.groupId = groupId;
@@ -38,11 +37,6 @@ public class ContractTestDataBuilder {
             return this;
         }
 
-        public OwnershipGroupBuilder withIsActive(Boolean isActive) {
-            this.isActive = isActive;
-            return this;
-        }
-
         public OwnershipGroup build() {
             return OwnershipGroup.builder()
                     .groupId(groupId)
@@ -58,8 +52,7 @@ public class ContractTestDataBuilder {
         private String fullName = "Test User";
         private String email = "test@example.com";
         private String phoneNumber = "0123456789";
-        private String password = "TestPassword123!";
-        private Boolean isActive = true;
+        private String rawPassword = "TestPassword123!";
 
         public UserBuilder withUserId(Long userId) {
             this.userId = userId;
@@ -82,12 +75,7 @@ public class ContractTestDataBuilder {
         }
 
         public UserBuilder withPassword(String password) {
-            this.password = password;
-            return this;
-        }
-
-        public UserBuilder withIsActive(Boolean isActive) {
-            this.isActive = isActive;
+            this.rawPassword = password;
             return this;
         }
 
@@ -97,7 +85,7 @@ public class ContractTestDataBuilder {
                     .fullName(fullName)
                     .email(email)
                     .phoneNumber(phoneNumber)
-                    .passwordHash(password)
+                    .passwordHash(rawPassword)
                     .status(com.group8.evcoownership.enums.UserStatus.ACTIVE)
                     .build();
         }
@@ -161,15 +149,9 @@ public class ContractTestDataBuilder {
     }
 
     public static class OwnershipShareBuilder {
-        private Long shareId = 1L;
         private OwnershipGroup group;
         private User user;
         private BigDecimal ownershipPercentage = new BigDecimal("20.00");
-
-        public OwnershipShareBuilder withShareId(Long shareId) {
-            this.shareId = shareId;
-            return this;
-        }
 
         public OwnershipShareBuilder withGroup(OwnershipGroup group) {
             this.group = group;

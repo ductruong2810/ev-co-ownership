@@ -3,9 +3,6 @@ package com.group8.evcoownership.dto;
 import com.group8.evcoownership.enums.InvitationStatus;
 import lombok.Builder;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-
 @Builder
 public record InvitationResponse(
         Long invitationId,
@@ -19,5 +16,6 @@ public record InvitationResponse(
 //        java.time.LocalDateTime updatedAt,
         java.time.LocalDateTime acceptedAt,
         Long acceptedByUserId
-) {}
+) {
+}
 
