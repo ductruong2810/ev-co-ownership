@@ -27,7 +27,6 @@ import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -45,7 +44,10 @@ public class InvitationService {
     private final OwnershipShareService shareService; // dùng để add share + tryActivate
 
     // ===================== CREATE =====================
-    /** Tạo invitation cho groupId (từ path). inviter lấy từ token. */
+
+    /**
+     * Tạo invitation cho groupId (từ path). inviter lấy từ token.
+     */
     @Transactional
     public InvitationResponse create(Long groupId,
                                      InvitationCreateRequest req,
@@ -106,7 +108,10 @@ public class InvitationService {
     }
 
     // ===================== LIST/VIEW =====================
-    /** Chỉ member group (hoặc staff/admin) được xem danh sách lời mời của group. */
+
+    /**
+     * Chỉ member group (hoặc staff/admin) được xem danh sách lời mời của group.
+     */
     public Page<InvitationResponse> listByGroupSecured(Long groupId, Pageable pageable, Authentication auth) {
         User viewer = userRepo.findByEmail(auth.getName())
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
@@ -122,7 +127,9 @@ public class InvitationService {
         return invitationRepo.findByGroup_GroupId(groupId, pageable).map(this::toDto);
     }
 
-    /** Kiểm tra token còn hợp lệ để FE preload form accept. */
+    /**
+     * Kiểm tra token còn hợp lệ để FE preload form accept.
+     */
     public InvitationResponse validateToken(String token) {
         Invitation inv = invitationRepo.findByToken(token)
                 .orElseThrow(() -> new EntityNotFoundException("Invitation not found"));
@@ -134,9 +141,12 @@ public class InvitationService {
     }
 
     // ===================== RESEND / EXPIRE =====================
-    /** Resend OTP/email cho invitation (giới hạn quyền: inviter hoặc admin group). */
+
+    /**
+     * Resend OTP/email cho invitation (giới hạn quyền: inviter hoặc admin group).
+     */
     @Transactional
-    public InvitationResponse resend(Long invitationId, Authentication auth) {
+    public void resend(Long invitationId, Authentication auth) {
         Invitation inv = invitationRepo.findById(invitationId)
                 .orElseThrow(() -> new EntityNotFoundException("Invitation not found"));
 
@@ -145,21 +155,8 @@ public class InvitationService {
         }
         if (isExpired(inv)) throw new IllegalStateException("Invitation expired");
 
-        User actor = userRepo.findByEmail(auth.getName())
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
-
-        boolean isInviter = inv.getInviter() != null
-                && inv.getInviter().getUserId().equals(actor.getUserId());
-        boolean isGroupAdmin = shareRepo
-                .existsByGroup_GroupIdAndUser_UserIdAndGroupRole(
-                        inv.getGroup().getGroupId(),
-                        actor.getUserId(),
-                        GroupRole.ADMIN // hoặc OwnershipShareRole.ADMIN
-                );        boolean isStaffAdmin = isStaffOrAdmin(actor);
-
-        if (!(isInviter || isGroupAdmin || isStaffAdmin)) {
-            throw new AccessDeniedException("Forbidden");
-        }
+        // Kiểm tra quyền: inviter, admin group, hoặc staff/admin
+        validateResendPermission(inv, auth);
 
         // phát sinh OTP mới, cập nhật thời điểm gửi + tăng resendCount (token giữ nguyên)
         String newOtp = genOtp();
@@ -167,7 +164,7 @@ public class InvitationService {
         inv.setLastSentAt(LocalDateTime.now());
         inv.setResendCount(inv.getResendCount() == null ? 1 : inv.getResendCount() + 1);
 
-        Invitation saved = invitationRepo.save(inv);
+        invitationRepo.save(inv);
 
         String acceptUrl = buildAcceptUrl(inv.getToken());
         emailService.sendInvitationEmail(
@@ -181,32 +178,18 @@ public class InvitationService {
                 acceptUrl
         );
 
-        return toDto(saved);
+        // No return needed; controller responds 200 OK
     }
 
-    /** Hết hạn ngay (inviter, admin group, hoặc staff/admin). */
+    /**
+     * Hết hạn ngay (inviter, admin group, hoặc staff/admin).
+     */
     @Transactional
     public void expireNow(Long invitationId, Authentication auth) {
         Invitation inv = invitationRepo.findById(invitationId)
                 .orElseThrow(() -> new EntityNotFoundException("Invitation not found"));
 
-        User actor = userRepo.findByEmail(auth.getName())
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
-
-        boolean isInviter = inv.getInviter() != null
-                && inv.getInviter().getUserId().equals(actor.getUserId());
-//        boolean isGroupAdmin = shareRepo.existsAdminByGroupIdAndUserId(inv.getGroup().getGroupId(), actor.getUserId());
-
-        boolean isGroupAdmin = shareRepo.existsByGroup_GroupIdAndUser_UserIdAndGroupRole(
-                inv.getGroup().getGroupId(),
-                actor.getUserId(),
-                GroupRole.ADMIN // hoặc OwnershipShareRole.ADMIN
-        );
-        boolean isStaffAdmin = isStaffOrAdmin(actor);
-
-        if (!(isInviter || isGroupAdmin || isStaffAdmin)) {
-            throw new AccessDeniedException("Forbidden");
-        }
+        validateExpirePermission(inv, auth);
 
         if (inv.getStatus() != InvitationStatus.PENDING) {
             throw new IllegalStateException("Only PENDING invitation can be expired");
@@ -218,7 +201,10 @@ public class InvitationService {
     }
 
     // ===================== ACCEPT =====================
-    /** Accept lời mời bằng token + OTP + acceptUserId (+ percentage). */
+
+    /**
+     * Accept lời mời bằng token + OTP + acceptUserId (+ percentage).
+     */
     @Transactional
     public InvitationResponse accept(InvitationAcceptRequest req) {
         Invitation inv = invitationRepo.findByToken(req.token())
@@ -332,13 +318,7 @@ public class InvitationService {
 
     @Transactional
     public Page<InvitationResponse> listByGroup(Long groupId, int page, int size, Authentication auth) {
-        var actor = userRepo.findByEmail(auth.getName())
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
-
-        boolean isGroupAdmin = shareRepo.existsByGroup_GroupIdAndUser_UserIdAndGroupRole(
-                groupId, actor.getUserId(), GroupRole.ADMIN);
-        boolean isStaffAdmin = isStaffOrAdmin(actor);
-        if (!(isGroupAdmin || isStaffAdmin)) throw new AccessDeniedException("Forbidden");
+        validateListPermission(groupId, auth);
 
         var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         return invitationRepo.findByGroup_GroupId(groupId, pageable)
@@ -349,22 +329,63 @@ public class InvitationService {
         var inv = invitationRepo.findById(invitationId)
                 .orElseThrow(() -> new EntityNotFoundException("Invitation not found"));
 
-        var actor = userRepo.findByEmail(auth.getName())
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
-
-        boolean isInviter = inv.getInviter() != null
-                && inv.getInviter().getUserId().equals(actor.getUserId());
-
-        boolean isGroupAdmin = shareRepo.existsByGroup_GroupIdAndUser_UserIdAndGroupRole(
-                inv.getGroup().getGroupId(), actor.getUserId(), GroupRole.ADMIN);
-
-        boolean isStaffAdmin = isStaffOrAdmin(actor);
-
-        if (!(isInviter || isGroupAdmin || isStaffAdmin)) {
-            throw new AccessDeniedException("Forbidden");
-        }
+        validateViewPermission(inv, auth);
 
         return toDto(inv);
+    }
+
+    // ===================== HELPER METHODS FOR AUTHORIZATION =====================
+    private void validateResendPermission(Invitation inv, Authentication auth) {
+        validateInvitationPermission(inv, auth);
+    }
+
+    private void validateExpirePermission(Invitation inv, Authentication auth) {
+        validateInvitationPermission(inv, auth);
+    }
+
+    private void validateViewPermission(Invitation inv, Authentication auth) {
+        validateInvitationPermission(inv, auth);
+    }
+
+    private void validateListPermission(Long groupId, Authentication auth) {
+        User actor = getCurrentUser(auth);
+
+        boolean isGroupAdmin = shareRepo.existsByGroup_GroupIdAndUser_UserIdAndGroupRole(
+                groupId, actor.getUserId(), GroupRole.ADMIN);
+        boolean isStaffAdmin = isStaffOrAdmin(actor);
+
+        if (!(isGroupAdmin || isStaffAdmin)) {
+            throw new AccessDeniedException("Forbidden");
+        }
+    }
+
+    private void validateInvitationPermission(Invitation inv, Authentication auth) {
+        User actor = getCurrentUser(auth);
+        boolean hasPermission = isInviterForInvitation(inv, actor)
+                || isGroupAdminForInvitation(inv, actor)
+                || isStaffOrAdmin(actor);
+
+        if (!hasPermission) {
+            throw new AccessDeniedException("Forbidden");
+        }
+    }
+
+    private User getCurrentUser(Authentication auth) {
+        return userRepo.findByEmail(auth.getName())
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    }
+
+    private boolean isInviterForInvitation(Invitation inv, User actor) {
+        return inv.getInviter() != null
+                && inv.getInviter().getUserId().equals(actor.getUserId());
+    }
+
+    private boolean isGroupAdminForInvitation(Invitation inv, User actor) {
+        return shareRepo.existsByGroup_GroupIdAndUser_UserIdAndGroupRole(
+                inv.getGroup().getGroupId(),
+                actor.getUserId(),
+                GroupRole.ADMIN
+        );
     }
 
 }

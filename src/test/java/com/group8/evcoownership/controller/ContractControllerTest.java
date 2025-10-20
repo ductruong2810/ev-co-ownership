@@ -54,21 +54,11 @@ class ContractControllerTest {
     private ObjectMapper objectMapper;
 
     private final Long TEST_GROUP_ID = 1L;
-    private ContractGenerationRequest testRequest;
     private ContractGenerationResponse testResponse;
     private Map<String, Object> testTemplateRequest;
 
     @BeforeEach
     void setUp() {
-        testRequest = new ContractGenerationRequest(
-                LocalDate.of(2025, 1, 1),
-                LocalDate.of(2025, 12, 31),
-                "Test contract terms",
-                "Hà Nội",
-                "2025-01-01",
-                "EVS-001"
-        );
-
         testTemplateRequest = Map.of(
                 "startDate", "2025-01-01",
                 "endDate", "2025-12-31",

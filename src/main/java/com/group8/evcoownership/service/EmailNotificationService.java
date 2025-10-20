@@ -142,6 +142,14 @@ public class EmailNotificationService {
                 content.append("Your contract is expiring soon. Please renew to continue using the service.\n\n");
                 content.append("Contract Details:\n");
             }
+            case DEPOSIT_REQUIRED -> {
+                content.append("You need to pay the deposit to complete your group membership.\n\n");
+                content.append("Contract Details:\n");
+            }
+            default -> {
+                content.append("Contract notification.\n\n");
+                content.append("Contract Details:\n");
+            }
         }
 
         content.append("- Group: ").append(contractData.getOrDefault("groupName", "N/A")).append("\n");
@@ -167,6 +175,8 @@ public class EmailNotificationService {
             case DEPOSIT_REQUIRED ->
                     content.append("You need to pay the deposit to complete your group membership.\n\n");
             case DEPOSIT_OVERDUE -> content.append("Your deposit payment is overdue. Please pay immediately.\n\n");
+            case BOOKING_CANCELLED -> content.append("Your booking has been cancelled.\n\n");
+            default -> content.append("Payment notification.\n\n");
         }
 
         content.append("Transaction Details:\n");
@@ -211,6 +221,8 @@ public class EmailNotificationService {
             case MAINTENANCE_APPROVED -> content.append("Your maintenance request has been approved.\n\n");
             case MAINTENANCE_COMPLETED -> content.append("The maintenance work has been completed.\n\n");
             case MAINTENANCE_OVERDUE -> content.append("The maintenance is overdue. Please schedule immediately.\n\n");
+            case DEPOSIT_OVERDUE -> content.append("Your deposit payment is overdue. Please pay immediately.\n\n");
+            default -> content.append("Maintenance notification.\n\n");
         }
 
         content.append("Maintenance Details:\n");

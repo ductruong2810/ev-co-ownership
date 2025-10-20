@@ -76,10 +76,10 @@ public class EmailService {
         message.setSubject("Lời mời tham gia nhóm EV: " + groupName);
         message.setText("""
                 Bạn được %s mời tham gia nhóm: %s
-
+                
                 Link chấp nhận: %s
                 Mã OTP: %s
-
+                
                 %sHạn lời mời: %s (UTC)
                 
                 Nếu bạn không thực hiện, vui lòng bỏ qua email này.
@@ -94,6 +94,7 @@ public class EmailService {
     }
 
     // ========== THÊM METHOD NÀY ==========
+
     /**
      * Gửi OTP email cho đặt lại mật khẩu
      */
