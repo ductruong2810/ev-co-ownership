@@ -56,6 +56,7 @@ public class SecurityConfig {
                                 "/api/vehicles/**"
                         ).permitAll()
                         .requestMatchers("/api/groups/**").authenticated()
+                        .requestMatchers("/api/staff/**", "/api/admin/**").hasAnyRole("STAFF", "ADMIN")
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated()
                 )

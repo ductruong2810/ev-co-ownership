@@ -7,6 +7,7 @@ import com.group8.evcoownership.dto.VehicleUpdateRequest;
 import com.group8.evcoownership.entity.OwnershipGroup;
 import com.group8.evcoownership.entity.Vehicle;
 import com.group8.evcoownership.entity.VehicleImage;
+import com.group8.evcoownership.enums.ImageApprovalStatus;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
 import com.group8.evcoownership.repository.VehicleImageRepository;
 import com.group8.evcoownership.repository.VehicleRepository;
@@ -133,6 +134,7 @@ public class VehicleService {
             VehicleImage vehicleImg = VehicleImage.builder()
                     .imageUrl(vehicleImageUrl)
                     .imageType("VEHICLE")
+                    .approvalStatus(ImageApprovalStatus.PENDING)
                     .build();
             Vehicle vehicle = new Vehicle();
             vehicle.setId(vehicleId);
@@ -145,6 +147,7 @@ public class VehicleService {
             VehicleImage registrationImg = VehicleImage.builder()
                     .imageUrl(registrationImageUrl)
                     .imageType("LICENSE")
+                    .approvalStatus(ImageApprovalStatus.PENDING)
                     .build();
             registrationImg.setVehicle(vehicle);
             vehicleImageRepository.save(registrationImg);
@@ -213,6 +216,7 @@ public class VehicleService {
                 VehicleImage vehicleImg = VehicleImage.builder()
                         .imageUrl(imageUrl)
                         .imageType(imageType)
+                        .approvalStatus(ImageApprovalStatus.PENDING)
                         .build();
                 vehicleImg.setVehicle(vehicle);
                 vehicleImageRepository.save(vehicleImg);

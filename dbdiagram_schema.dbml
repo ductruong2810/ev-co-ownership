@@ -62,6 +62,10 @@ Table VehicleImages {
   VehicleId bigint [ref: > Vehicle.VehicleId, not null]
   ImageUrl varchar(500) [not null]
   ImageType varchar(20) [not null, note: 'VEHICLE or LICENSE']
+  ApprovalStatus varchar(20) [default: 'PENDING', note: 'PENDING, APPROVED, REJECTED']
+  ApprovedBy bigint [ref: > Users.UserId]
+  ApprovedAt datetime
+  RejectionReason varchar(500)
   UploadedAt datetime [default: `now()`]
 }
 

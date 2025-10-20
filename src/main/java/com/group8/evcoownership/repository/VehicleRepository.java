@@ -20,4 +20,6 @@ public interface VehicleRepository extends JpaRepository<Vehicle, Long> {
     Page<Vehicle> findByOwnershipGroupGroupId(Long groupId, Pageable pageable);
 
     Optional<Vehicle> findByOwnershipGroup(OwnershipGroup ownershipGroup);
+
+    Optional<Vehicle> findByOwnershipGroup_GroupId(Long groupId);
 }
