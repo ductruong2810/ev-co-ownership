@@ -99,19 +99,17 @@ public class EmailNotificationService {
      * Build booking email content
      */
     private String buildBookingEmailContent(String userName, Map<String, Object> bookingData) {
-        StringBuilder content = new StringBuilder();
-        content.append("Dear ").append(userName).append(",\n\n");
-        content.append("Your vehicle booking has been confirmed successfully.\n\n");
-        content.append("Booking Details:\n");
-        content.append("- Vehicle: ").append(bookingData.getOrDefault("vehicleName", "N/A")).append("\n");
-        content.append("- License Plate: ").append(bookingData.getOrDefault("licensePlate", "N/A")).append("\n");
-        content.append("- Start Time: ").append(bookingData.getOrDefault("startDateTime", "N/A")).append("\n");
-        content.append("- End Time: ").append(bookingData.getOrDefault("endDateTime", "N/A")).append("\n");
-        content.append("- Duration: ").append(bookingData.getOrDefault("totalDuration", "N/A")).append(" hours\n");
-        content.append("- Status: ").append(bookingData.getOrDefault("status", "Confirmed")).append("\n\n");
-        content.append("Please arrive on time to pick up the vehicle.\n\n");
-        content.append("Best regards,\nEV Co-ownership Team");
-        return content.toString();
+        return "Dear " + userName + ",\n\n" +
+                "Your vehicle booking has been confirmed successfully.\n\n" +
+                "Booking Details:\n" +
+                "- Vehicle: " + bookingData.getOrDefault("vehicleName", "N/A") + "\n" +
+                "- License Plate: " + bookingData.getOrDefault("licensePlate", "N/A") + "\n" +
+                "- Start Time: " + bookingData.getOrDefault("startDateTime", "N/A") + "\n" +
+                "- End Time: " + bookingData.getOrDefault("endDateTime", "N/A") + "\n" +
+                "- Duration: " + bookingData.getOrDefault("totalDuration", "N/A") + " hours\n" +
+                "- Status: " + bookingData.getOrDefault("status", "Confirmed") + "\n\n" +
+                "Please arrive on time to pick up the vehicle.\n\n" +
+                "Best regards,\nEV Co-ownership Team";
     }
 
     /**
@@ -194,18 +192,16 @@ public class EmailNotificationService {
      * Build group invitation email content
      */
     private String buildGroupInvitationEmailContent(String userName, Map<String, Object> groupData) {
-        StringBuilder content = new StringBuilder();
-        content.append("Dear ").append(userName).append(",\n\n");
-        content.append("You have been invited to join a co-ownership group!\n\n");
-        content.append("Group Details:\n");
-        content.append("- Group Name: ").append(groupData.getOrDefault("groupName", "N/A")).append("\n");
-        content.append("- Description: ").append(groupData.getOrDefault("description", "N/A")).append("\n");
-        content.append("- Current Members: ").append(groupData.getOrDefault("currentMembers", "N/A")).append("\n");
-        content.append("- Deposit Amount: ").append(groupData.getOrDefault("depositAmount", "N/A")).append("\n");
-        content.append("- Status: ").append(groupData.getOrDefault("status", "Active")).append("\n\n");
-        content.append("Please respond to this invitation within 7 days.\n\n");
-        content.append("Best regards,\nEV Co-ownership Team");
-        return content.toString();
+        return "Dear " + userName + ",\n\n" +
+                "You have been invited to join a co-ownership group!\n\n" +
+                "Group Details:\n" +
+                "- Group Name: " + groupData.getOrDefault("groupName", "N/A") + "\n" +
+                "- Description: " + groupData.getOrDefault("description", "N/A") + "\n" +
+                "- Current Members: " + groupData.getOrDefault("currentMembers", "N/A") + "\n" +
+                "- Deposit Amount: " + groupData.getOrDefault("depositAmount", "N/A") + "\n" +
+                "- Status: " + groupData.getOrDefault("status", "Active") + "\n\n" +
+                "Please respond to this invitation within 7 days.\n\n" +
+                "Best regards,\nEV Co-ownership Team";
     }
 
     /**
@@ -238,16 +234,14 @@ public class EmailNotificationService {
      * Build monthly report email content
      */
     private String buildMonthlyReportEmailContent(String userName, Map<String, Object> reportData) {
-        StringBuilder content = new StringBuilder();
-        content.append("Dear ").append(userName).append(",\n\n");
-        content.append("Your monthly usage and payment report is ready.\n\n");
-        content.append("Report Summary:\n");
-        content.append("- Total Usage Hours: ").append(reportData.getOrDefault("totalHours", "N/A")).append("\n");
-        content.append("- Total Payments: ").append(reportData.getOrDefault("totalPayments", "N/A")).append("\n");
-        content.append("- Maintenance Costs: ").append(reportData.getOrDefault("maintenanceCosts", "N/A")).append("\n");
-        content.append("- Report Period: ").append(reportData.getOrDefault("period", "N/A")).append("\n\n");
-        content.append("Best regards,\nEV Co-ownership Team");
-        return content.toString();
+        return "Dear " + userName + ",\n\n" +
+                "Your monthly usage and payment report is ready.\n\n" +
+                "Report Summary:\n" +
+                "- Total Usage Hours: " + reportData.getOrDefault("totalHours", "N/A") + "\n" +
+                "- Total Payments: " + reportData.getOrDefault("totalPayments", "N/A") + "\n" +
+                "- Maintenance Costs: " + reportData.getOrDefault("maintenanceCosts", "N/A") + "\n" +
+                "- Report Period: " + reportData.getOrDefault("period", "N/A") + "\n\n" +
+                "Best regards,\nEV Co-ownership Team";
     }
 
     /**
