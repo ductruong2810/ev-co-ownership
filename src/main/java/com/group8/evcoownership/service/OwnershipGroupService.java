@@ -9,6 +9,7 @@ import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.enums.DepositStatus;
 import com.group8.evcoownership.enums.GroupRole;
 import com.group8.evcoownership.enums.GroupStatus;
+import com.group8.evcoownership.enums.NotificationType;
 import com.group8.evcoownership.exception.InsufficientDocumentsException;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
 import com.group8.evcoownership.repository.OwnershipShareRepository;
@@ -38,6 +39,7 @@ public class OwnershipGroupService {
     private final UserRepository userRepository;
     private final UserDocumentRepository userDocumentRepository;
     private final VehicleService vehicleService;
+    private final NotificationOrchestrator notificationOrchestrator;
 
     @Value("${app.validation.enabled:true}")
     private boolean validationEnabled;
@@ -152,6 +154,15 @@ public class OwnershipGroupService {
                 .build();
 
         ownershipShareRepository.save(ownershipShare);
+
+        // Send notification to group creator
+        notificationOrchestrator.sendComprehensiveNotification(
+                user.getUserId(),
+                NotificationType.GROUP_CREATED,
+                "Group Created",
+                String.format("You have successfully created co-ownership group: %s", savedGroup.getGroupName()),
+                Map.of("groupId", savedGroup.getGroupId(), "groupName", savedGroup.getGroupName())
+        );
 
         return toDto(savedGroup);
     }

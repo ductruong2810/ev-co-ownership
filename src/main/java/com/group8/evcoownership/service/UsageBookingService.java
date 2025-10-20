@@ -4,6 +4,7 @@ import com.group8.evcoownership.dto.CancelBookingRequestDTO;
 import com.group8.evcoownership.dto.MaintenanceBookingRequestDTO;
 import com.group8.evcoownership.entity.UsageBooking;
 import com.group8.evcoownership.enums.BookingStatus;
+import com.group8.evcoownership.enums.NotificationType;
 import com.group8.evcoownership.repository.UsageBookingRepository;
 import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.repository.VehicleRepository;
@@ -27,6 +28,7 @@ public class UsageBookingService {
     private final VehicleRepository vehicleRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final NotificationOrchestrator notificationOrchestrator;
 
     //Tạo booking mới — kiểm tra quota, trùng giờ, buffer.
     public UsageBooking createBooking(Long userId, Long vehicleId, LocalDateTime start, LocalDateTime end) {
@@ -72,7 +74,19 @@ public class UsageBookingService {
         booking.setEndDateTime(end);
         booking.setStatus(BookingStatus.PENDING);
 
-        return usageBookingRepository.save(booking);
+        UsageBooking savedBooking = usageBookingRepository.save(booking);
+
+        // Send notification
+        notificationOrchestrator.sendBookingNotification(
+                userId,
+                NotificationType.BOOKING_CREATED,
+                "Booking Created",
+                String.format("You have successfully booked %s %s from %s to %s",
+                        vehicle.getBrand(), vehicle.getModel(), start, end),
+                savedBooking.getId()
+        );
+
+        return savedBooking;
     }
 
     //Lấy danh sách slot đã đặt trong ngày với thông tin user (để tạo lịch trống)
@@ -136,7 +150,19 @@ public class UsageBookingService {
         }
 
         booking.setStatus(BookingStatus.CONFIRMED);
-        return usageBookingRepository.save(booking);
+        UsageBooking savedBooking = usageBookingRepository.save(booking);
+
+        // Send booking status notification
+        notificationOrchestrator.sendBookingNotification(
+                booking.getUser().getUserId(),
+                NotificationType.BOOKING_CREATED,
+                "Booking Confirmed",
+                String.format("Your booking for %s %s has been confirmed",
+                        booking.getVehicle().getBrand(), booking.getVehicle().getModel()),
+                savedBooking.getId()
+        );
+
+        return savedBooking;
     }
 
     //Hủy booking (bất kỳ status nào → Cancelled)
@@ -162,7 +188,19 @@ public class UsageBookingService {
         }
 
         booking.setStatus(BookingStatus.COMPLETED);
-        return usageBookingRepository.save(booking);
+        UsageBooking savedBooking = usageBookingRepository.save(booking);
+
+        // Send booking completed notification
+        notificationOrchestrator.sendBookingNotification(
+                booking.getUser().getUserId(),
+                NotificationType.BOOKING_CANCELLED,
+                "Booking Completed",
+                String.format("Your booking for %s %s has been completed",
+                        booking.getVehicle().getBrand(), booking.getVehicle().getModel()),
+                savedBooking.getId()
+        );
+
+        return savedBooking;
     }
 
     //Tự động tạo buffer booking sau khi booking hoàn thành (để kỹ thuật viên kiểm tra và sạc pin)

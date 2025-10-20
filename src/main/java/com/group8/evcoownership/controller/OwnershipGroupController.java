@@ -11,7 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -27,8 +27,7 @@ public class OwnershipGroupController {
 
     @PostMapping
     public OwnershipGroupResponse create(@RequestBody @Valid OwnershipGroupCreateRequest req,
-                                         Authentication authentication) {
-        String userEmail = authentication.getName();
+                                         @AuthenticationPrincipal String userEmail) {
         return service.create(req, userEmail);
     }
 
@@ -36,9 +35,8 @@ public class OwnershipGroupController {
     @Operation(summary = "Create group with vehicle and multiple images")
     public GroupWithVehicleResponse createGroupWithVehicle(
             CreateGroupWithVehicleRequest request,
-            Authentication authentication) {
+            @AuthenticationPrincipal String userEmail) {
 
-        String userEmail = authentication.getName();
         return service.createGroupWithVehicle(
                 request.groupName(), request.description(), request.memberCapacity(),
                 request.vehicleValue(), request.licensePlate(), request.chassisNumber(),
@@ -82,8 +80,7 @@ public class OwnershipGroupController {
      * Lấy tất cả groups mà user hiện tại đã tạo và tham gia
      */
     @GetMapping("/my-groups")
-    public List<OwnershipGroupResponse> getMyGroups(Authentication authentication) {
-        String userEmail = authentication.getName();
+    public List<OwnershipGroupResponse> getMyGroups(@AuthenticationPrincipal String userEmail) {
         return service.getGroupsByUser(userEmail);
     }
 
