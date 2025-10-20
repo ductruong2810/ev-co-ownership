@@ -43,6 +43,9 @@ public class AuthService {
     @Autowired
     private EmailService emailService;
 
+    @Autowired
+    private UserProfileService userProfileService;
+
     private final Map<String, String> registerOtpToEmailMap = new ConcurrentHashMap<>();
     private final Map<String, RegisterRequestDTO> pendingUsers = new ConcurrentHashMap<>();
     private final Map<String, String> pendingPasswordResets = new ConcurrentHashMap<>();
@@ -67,7 +70,6 @@ public class AuthService {
         return LoginResponseDTO.builder()
                 .accessToken(jwtUtil.generateToken(user))
                 .refreshToken(jwtUtil.generateRefreshToken(user, rememberMe))
-                //bo sung role
                 .role(user.getRole().getRoleName().name())
                 .build();
     }
@@ -85,7 +87,9 @@ public class AuthService {
         String otp = otpUtil.generateOtp(request.getEmail());
         pendingUsers.put(request.getEmail(), request);
         registerOtpToEmailMap.put(otp, request.getEmail());
-        emailService.sendOtpEmail(request.getEmail(), otp);
+
+        // ← FIX: Thêm fullName
+        emailService.sendOtpEmail(request.getEmail(), request.getFullName(), otp);
 
         log.info("Registration OTP sent to email: {}", request.getEmail());
 
@@ -97,7 +101,7 @@ public class AuthService {
                 .build();
     }
 
-    // ================= VERIFY OTP - AUTO DETECT (TRẢ VỀ TYPE) =================
+    // ================= VERIFY OTP =================
     public VerifyOtpResponseDTO verifyOtp(String otp, OtpType type) {
         log.info("Verifying OTP with type: {}", type);
 
@@ -126,11 +130,6 @@ public class AuthService {
             throw new RuntimeException("Đã xảy ra lỗi trong quá trình xác thực. Vui lòng thử lại.");
         }
     }
-
-
-    // ================= VERIFY REGISTRATION OTP (PRIVATE) =================
-    @Autowired
-    private UserProfileService userProfileService;  // ← THÊM
 
     // ================= VERIFY REGISTRATION OTP (PRIVATE) =================
     private VerifyOtpResponseDTO verifyRegistrationOtp(String otp) {
@@ -169,7 +168,6 @@ public class AuthService {
         String accessToken = jwtUtil.generateToken(user);
         String refreshToken = jwtUtil.generateRefreshToken(user, false);
 
-        // ← THAY ĐỔI: Dùng UserProfileService để build profile đầy đủ
         UserProfileResponseDTO userProfile = userProfileService.getUserProfile(user.getEmail());
 
         log.info("User registered successfully: {}", email);
@@ -180,7 +178,7 @@ public class AuthService {
                 .type(OtpType.REGISTRATION)
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
-                .user(userProfile)  // ← THAY ĐỔI
+                .user(userProfile)
                 .build();
     }
 
@@ -250,7 +248,7 @@ public class AuthService {
         return userRepository.save(user);
     }
 
-    // ================= RESEND OTP (UNIFIED - REGISTRATION & PASSWORD_RESET) =================
+    // ================= RESEND OTP =================
     public OtpResponseDTO resendOtp(String email, OtpType type) {
         log.info("Resending {} OTP for email: {}", type, email);
 
@@ -276,7 +274,9 @@ public class AuthService {
         try {
             String newOtp = otpUtil.generateOtp(email);
             registerOtpToEmailMap.put(newOtp, email);
-            emailService.sendOtpEmail(email, newOtp);
+
+            // ← FIX: Thêm fullName
+            emailService.sendOtpEmail(email, request.getFullName(), newOtp);
 
             log.info("Registration OTP resent successfully to email: {}", email);
 
@@ -336,7 +336,7 @@ public class AuthService {
         }
     }
 
-    // ================= FORGOT PASSWORD - GỬI OTP =================
+    // ================= FORGOT PASSWORD =================
     public OtpResponseDTO forgotPassword(String email) {
         log.info("Processing forgot password request for email: {}", email);
 
@@ -375,7 +375,7 @@ public class AuthService {
         }
     }
 
-    // ================= RESET PASSWORD WITH TOKEN (AUTO LOGIN) =================
+    // ================= RESET PASSWORD WITH TOKEN =================
     public ResetPasswordResponseDTO resetPasswordWithToken(ResetPasswordRequestDTO request) {
         String resetToken = request.getResetToken();
         log.info("Processing password reset with token");
@@ -397,14 +397,11 @@ public class AuthService {
             User user = userRepository.findByEmail(email)
                     .orElseThrow(() -> new IllegalStateException("Không tìm thấy tài khoản"));
 
-            // Update password
             user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
             userRepository.save(user);
 
-            // Clean up
             resetTokens.remove(resetToken);
 
-            // Generate token for auto login
             String accessToken = jwtUtil.generateToken(user);
 
             log.info("Password reset successfully for email: {} - Auto login enabled", email);

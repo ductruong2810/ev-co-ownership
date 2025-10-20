@@ -31,40 +31,40 @@ public class UserDocumentService {
     private AzureBlobStorageService azureBlobStorageService;
 
     // ================= UPLOAD SINGLE DOCUMENT =================
-    public UserDocument uploadDocument(String email, String documentType, String side, MultipartFile file) {
-
-        validateDocumentType(documentType);
-        validateSide(side);
-        validateImage(file);
-
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("User không tồn tại"));
-
-        // Xóa document cũ nếu đã tồn tại (cùng type và side)
-        userDocumentRepository
-                .findByUserIdAndDocumentTypeAndSide(user.getUserId(), documentType, side)
-                .ifPresent(existingDoc -> {
-                    azureBlobStorageService.deleteFile(existingDoc.getImageUrl());
-                    userDocumentRepository.delete(existingDoc);
-                });
-
-        // Upload file lên Azure
-        String fileUrl = azureBlobStorageService.uploadFile(file);
-
-        // Tạo document mới
-        UserDocument document = UserDocument.builder()
-                .userId(user.getUserId())
-                .documentType(documentType)
-                .side(side)
-                .imageUrl(fileUrl)
-                .status("PENDING")
-                .build();
-
-        UserDocument saved = userDocumentRepository.save(document);
-        log.info("Document uploaded: userId={}, type={}, side={}", user.getUserId(), documentType, side);
-
-        return saved;
-    }
+//    public UserDocument uploadDocument(String email, String documentType, String side, MultipartFile file) {
+//
+//        validateDocumentType(documentType);
+//        validateSide(side);
+//        validateImage(file);
+//
+//        User user = userRepository.findByEmail(email)
+//                .orElseThrow(() -> new IllegalArgumentException("User không tồn tại"));
+//
+//        // Xóa document cũ nếu đã tồn tại (cùng type và side)
+//        userDocumentRepository
+//                .findByUserIdAndDocumentTypeAndSide(user.getUserId(), documentType, side)
+//                .ifPresent(existingDoc -> {
+//                    azureBlobStorageService.deleteFile(existingDoc.getImageUrl());
+//                    userDocumentRepository.delete(existingDoc);
+//                });
+//
+//        // Upload file lên Azure
+//        String fileUrl = azureBlobStorageService.uploadFile(file);
+//
+//        // Tạo document mới
+//        UserDocument document = UserDocument.builder()
+//                .userId(user.getUserId())
+//                .documentType(documentType)
+//                .side(side)
+//                .imageUrl(fileUrl)
+//                .status("PENDING")
+//                .build();
+//
+//        UserDocument saved = userDocumentRepository.save(document);
+//        log.info("Document uploaded: userId={}, type={}, side={}", user.getUserId(), documentType, side);
+//
+//        return saved;
+//    }
 
     // ================= UPLOAD BATCH DOCUMENTS (FRONT + BACK) =================
     @Transactional

@@ -1,5 +1,6 @@
 package com.group8.evcoownership.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.group8.evcoownership.enums.UserStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
@@ -18,6 +19,8 @@ import java.time.LocalDateTime;
 @Builder
 @Entity
 @Table(name = "Users")
+//them cai nay de tranh lap lai role -> users
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
