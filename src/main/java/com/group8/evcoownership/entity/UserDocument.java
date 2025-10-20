@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import net.minidev.json.annotate.JsonIgnore;
 
 import java.time.LocalDateTime;
 
@@ -34,6 +35,7 @@ public class UserDocument {
     @Column(name = "Status", length = 20)
     private String status; // PENDING, APPROVED, REJECTED
 
+    @JsonIgnore
     @Column(name = "ReviewNote")
     private String reviewNote;
 
