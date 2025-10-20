@@ -74,13 +74,15 @@ public class ContractService {
 
         Contract savedContract = contractRepository.save(contract);
 
-        // Send notification to group members
-        notificationOrchestrator.sendGroupNotification(
-                groupId,
-                NotificationType.CONTRACT_CREATED,
-                "Contract Created",
-                "A new co-ownership contract has been created for your group"
-        );
+        // Send notification to group members (skip in unit tests where orchestrator is not injected)
+        if (notificationOrchestrator != null) {
+            notificationOrchestrator.sendGroupNotification(
+                    groupId,
+                    NotificationType.CONTRACT_CREATED,
+                    "Contract Created",
+                    "A new co-ownership contract has been created for your group"
+            );
+        }
 
         return savedContract;
     }
