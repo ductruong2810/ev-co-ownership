@@ -200,7 +200,7 @@ public class AuthController {
                         ));
             }
 
-            String email = authentication.getName();
+            String email = com.group8.evcoownership.util.AuthUtils.getCurrentUserEmail(authentication);
 
             if (email == null || email.trim().isEmpty()) {
                 log.warn("Invalid authentication - empty email");

@@ -38,7 +38,7 @@ public class Notification {
     private String message;
 
     @Column(name = "NotificationType", length = 50)
-    private String notificationType; // BOOKING, MAINTENANCE, PAYMENT, VOTING, DISPUTE
+    private String notificationType; // Uses NotificationType enum codes
 
     @ColumnDefault("0")
     @Column(name = "IsRead")

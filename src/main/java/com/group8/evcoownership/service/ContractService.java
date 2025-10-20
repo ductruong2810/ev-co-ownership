@@ -5,6 +5,7 @@ import com.group8.evcoownership.entity.Contract;
 import com.group8.evcoownership.entity.OwnershipGroup;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.enums.ContractApprovalStatus;
+import com.group8.evcoownership.enums.NotificationType;
 import com.group8.evcoownership.enums.RoleName;
 import com.group8.evcoownership.repository.ContractRepository;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
@@ -32,6 +33,7 @@ public class ContractService {
     private final OwnershipGroupRepository groupRepository;
     private final DepositCalculationService depositCalculationService;
     private final UserRepository userRepository;
+    private final NotificationOrchestrator notificationOrchestrator;
 
     /**
      * Lấy contract của group
@@ -70,7 +72,17 @@ public class ContractService {
                 .approvalStatus(ContractApprovalStatus.PENDING)
                 .build();
 
-        return contractRepository.save(contract);
+        Contract savedContract = contractRepository.save(contract);
+
+        // Send notification to group members
+        notificationOrchestrator.sendGroupNotification(
+                groupId,
+                NotificationType.CONTRACT_CREATED,
+                "Contract Created",
+                "A new co-ownership contract has been created for your group"
+        );
+
+        return savedContract;
     }
 
     /**
@@ -290,6 +302,26 @@ public class ContractService {
         }
 
         Contract savedContract = contractRepository.save(contract);
+
+        // Send notification to group members
+        NotificationType notificationType = request.status() == ContractApprovalStatus.APPROVED
+                ? NotificationType.CONTRACT_APPROVED
+                : NotificationType.CONTRACT_REJECTED;
+
+        String title = request.status() == ContractApprovalStatus.APPROVED
+                ? "Contract Approved"
+                : "Contract Rejected";
+
+        String message = request.status() == ContractApprovalStatus.APPROVED
+                ? "Your co-ownership contract has been approved"
+                : "Your contract has been rejected: " + request.rejectionReason();
+
+        notificationOrchestrator.sendGroupNotification(
+                savedContract.getGroup().getGroupId(),
+                notificationType,
+                title,
+                message
+        );
 
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);

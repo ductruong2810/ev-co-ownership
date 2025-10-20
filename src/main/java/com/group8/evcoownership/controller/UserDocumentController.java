@@ -6,7 +6,7 @@ import com.group8.evcoownership.service.UserDocumentService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -28,9 +28,7 @@ public class UserDocumentController {
             @RequestParam("documentType") String documentType,
             @RequestParam("frontFile") MultipartFile frontFile,
             @RequestParam("backFile") MultipartFile backFile,
-            Authentication authentication) {
-
-        String email = authentication.getName();
+            @AuthenticationPrincipal String email) {
         log.info("User {} uploading batch documents: {}", email, documentType);
 
         Map<String, UserDocument> documents = userDocumentService.uploadBatchDocuments(
@@ -54,8 +52,7 @@ public class UserDocumentController {
 
     // ================= GET ALL MY DOCUMENTS (TRẢ VỀ DTO) =================
     @GetMapping
-    public ResponseEntity<List<UserDocumentDTO>> getMyDocuments(Authentication authentication) {
-        String email = authentication.getName();
+    public ResponseEntity<List<UserDocumentDTO>> getMyDocuments(@AuthenticationPrincipal String email) {
         log.info("User {} fetching all documents", email);
 
         List<UserDocument> documents = userDocumentService.getMyDocuments(email);
@@ -72,9 +69,7 @@ public class UserDocumentController {
     @GetMapping("/type/{documentType}")
     public ResponseEntity<List<UserDocumentDTO>> getDocumentsByType(
             @PathVariable String documentType,
-            Authentication authentication) {
-
-        String email = authentication.getName();
+            @AuthenticationPrincipal String email) {
         log.info("User {} fetching documents by type: {}", email, documentType);
 
         List<UserDocument> documents = userDocumentService.getDocumentsByType(email, documentType);
@@ -91,11 +86,10 @@ public class UserDocumentController {
     @DeleteMapping("/{documentId}")
     public ResponseEntity<?> deleteDocument(
             @PathVariable String documentId,
-            Authentication authentication) {
+            @AuthenticationPrincipal String email) {
 
         try {
             Long id = Long.parseLong(documentId);
-            String email = authentication.getName();
 
             log.info("User {} deleting document: {}", email, id);
             userDocumentService.deleteDocument(email, id);
