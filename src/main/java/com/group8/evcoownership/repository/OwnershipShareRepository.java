@@ -44,13 +44,13 @@ public interface OwnershipShareRepository extends JpaRepository<OwnershipShare, 
     // === check quyền ADMIN trong group ===
     boolean existsByGroup_GroupIdAndUser_UserIdAndGroupRole(
             Long groupId, Long userId, GroupRole groupRole
-    );}
+    );
 
-    /**
-     * Lấy tất cả groups mà user đã tham gia (bao gồm cả ADMIN và MEMBER)
-     */
-    @Query("SELECT os.group FROM OwnershipShare os " +
-            "WHERE os.user.userId = :userId " +
-            "ORDER BY os.group.createdAt DESC")
-    List<OwnershipGroup> findGroupsByUserId(@Param("userId") Long userId);
+/**
+ * Lấy tất cả groups mà user đã tham gia (bao gồm cả ADMIN và MEMBER)
+ */
+@Query("SELECT os.group FROM OwnershipShare os " +
+        "WHERE os.user.userId = :userId " +
+        "ORDER BY os.group.createdAt DESC")
+List<OwnershipGroup> findGroupsByUserId(@Param("userId") Long userId);
 }

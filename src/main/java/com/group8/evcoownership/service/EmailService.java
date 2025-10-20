@@ -5,6 +5,7 @@ import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -68,26 +69,26 @@ public class EmailService {
             String acceptUrl // URL FE: ví dụ https://app.xyz/invitations/accept?token=...
     ) {
         var percentLine = (suggestedPercentage != null)
-                ? "Suggested ownership: %s%%\n".formatted(suggestedPercentage.stripTrailingZeros().toPlainString())
+                ? "Tỷ lệ sở hữu gợi ý: %s%%\n".formatted(suggestedPercentage.stripTrailingZeros().toPlainString())
                 : "";
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(to);
-        message.setSubject("EV Co-ownership — Invitation to Join: " + groupName);
+        message.setSubject("Lời mời tham gia nhóm EV: " + groupName);
         message.setText("""
-            You’ve been invited by %s to join the group: %s
+                Bạn được %s mời tham gia nhóm: %s
 
-            Accept link: %s
-            One-time password (OTP): %s
+                Link chấp nhận: %s
+                Mã OTP: %s
 
-            %sInvitation expires: %s (UTC)
-
-            If you didn’t initiate this, please ignore this email.
-            """.formatted(
+                %sHạn lời mời: %s (UTC)
+                
+                Nếu bạn không thực hiện, vui lòng bỏ qua email này.
+                """.formatted(
                 inviterName, groupName,
                 acceptUrl,
                 otp,
                 percentLine,
-                expiresAt // ISO-8601 or format as needed
+                expiresAt // hiển thị ISO-8601, hoặc format lại nếu muốn
         ));
         mailSender.send(message);
     }
