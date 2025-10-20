@@ -2,6 +2,7 @@ package com.group8.evcoownership.repository;
 
 import com.group8.evcoownership.entity.OwnershipShare;
 import com.group8.evcoownership.entity.OwnershipShareId;
+import com.group8.evcoownership.enums.GroupRole;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -38,4 +39,8 @@ public interface OwnershipShareRepository extends JpaRepository<OwnershipShare, 
      */
     @Query("SELECT os FROM OwnershipShare os WHERE os.group.groupId = :groupId")
     List<OwnershipShare> findByGroupGroupId(@Param("groupId") Long groupId);
-}
+
+    // === check quyền ADMIN trong group ===
+    boolean existsByGroup_GroupIdAndUser_UserIdAndGroupRole(
+            Long groupId, Long userId, GroupRole groupRole
+    );}

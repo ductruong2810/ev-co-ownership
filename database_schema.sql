@@ -4,15 +4,19 @@
 -- =============================================
 
 -- Recreate Database (run from master)
-USE master;
+USE
+master;
 GO
 IF DB_ID(N'EVShare') IS NOT NULL
-    BEGIN
-        ALTER DATABASE EVShare SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-        DROP DATABASE EVShare;
-    END
+BEGIN
+        ALTER
+DATABASE EVShare SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+        DROP
+DATABASE EVShare;
+END
 GO
-CREATE DATABASE EVShare;
+CREATE
+DATABASE EVShare;
 GO
 USE EVShare;
 GO
@@ -55,7 +59,7 @@ CREATE TABLE OwnershipGroup
     GroupName      NVARCHAR(100) NOT NULL,
     Status         NVARCHAR(20)  NOT NULL DEFAULT 'PENDING',
     Description    NVARCHAR(MAX),
-    MemberCapacity INT           NULL,
+    MemberCapacity INT NULL,
     CreatedAt      DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
     UpdatedAt      DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
     CONSTRAINT UQ_OwnershipGroup_GroupName UNIQUE (GroupName)
@@ -106,11 +110,11 @@ GO
 CREATE TABLE VehicleImages
 (
     ImageId         BIGINT IDENTITY (1,1) PRIMARY KEY,
-    VehicleId       BIGINT        NOT NULL,
+    VehicleId       BIGINT NOT NULL,
     ImageUrl        NVARCHAR(500) NOT NULL,
     ImageType       NVARCHAR(20)  NOT NULL,
     ApprovalStatus  NVARCHAR(20)  NOT NULL DEFAULT 'PENDING',
-    ApprovedBy      BIGINT        NULL,
+    ApprovedBy      BIGINT NULL,
     ApprovedAt      DATETIME2(7)  NULL,
     RejectionReason NVARCHAR(500) NULL,
     UploadedAt      DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
@@ -128,7 +132,7 @@ CREATE TABLE ContractTemplate
     TemplateName NVARCHAR(100) NOT NULL,
     Description  NVARCHAR(MAX),
     HtmlTemplate NVARCHAR(MAX) NOT NULL,
-    IsActive     BIT           NOT NULL DEFAULT 1,
+    IsActive     BIT NOT NULL DEFAULT 1,
     CreatedAt    DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
     UpdatedAt    DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME()
 );
@@ -140,13 +144,13 @@ GO
 CREATE TABLE Contract
 (
     ContractId            BIGINT IDENTITY (1,1) PRIMARY KEY,
-    GroupId               BIGINT       NOT NULL,
+    GroupId               BIGINT NOT NULL,
     TemplateId            BIGINT,
     StartDate             DATE,
     EndDate               DATE,
     Terms                 NVARCHAR(MAX),
     RequiredDepositAmount DECIMAL(15, 2),
-    IsActive              BIT                   DEFAULT 1,
+    IsActive              BIT DEFAULT 1,
     CreatedAt             DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
     UpdatedAt             DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
     FOREIGN KEY (GroupId) REFERENCES OwnershipGroup (GroupId),
@@ -177,8 +181,8 @@ GO
 CREATE TABLE UsageBooking
 (
     BookingId     BIGINT IDENTITY (1,1) PRIMARY KEY,
-    UserId        BIGINT       NOT NULL,
-    VehicleId     BIGINT       NOT NULL,
+    UserId        BIGINT NOT NULL,
+    VehicleId     BIGINT NOT NULL,
     StartDateTime DATETIME2(7) NOT NULL,
     EndDateTime   DATETIME2(7) NOT NULL,
     Status        NVARCHAR(20) NOT NULL DEFAULT 'PENDING',
@@ -197,9 +201,9 @@ GO
 CREATE TABLE Maintenance
 (
     MaintenanceId     BIGINT IDENTITY (1,1) PRIMARY KEY,
-    VehicleId         BIGINT       NOT NULL,
-    RequestedBy       BIGINT       NOT NULL,
-    ApprovedBy        BIGINT       NULL,
+    VehicleId         BIGINT NOT NULL,
+    RequestedBy       BIGINT NOT NULL,
+    ApprovedBy        BIGINT NULL,
     RequestDate       DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
     ApprovalDate      DATETIME2(7),
     NextDueDate       DATE,
@@ -218,16 +222,20 @@ GO
 -- =============================================
 CREATE TABLE Notification
 (
-    NotificationId   BIGINT IDENTITY (1,1) PRIMARY KEY,
-    UserId           BIGINT,
-    Title            NVARCHAR(255),
-    [Message]        NVARCHAR(MAX),
+    NotificationId BIGINT IDENTITY (1,1) PRIMARY KEY,
+    UserId         BIGINT,
+    Title          NVARCHAR(255), [
+    Message]
+    NVARCHAR
+(
+    MAX
+),
     NotificationType NVARCHAR(50),
-    IsRead           BIT          NOT NULL DEFAULT 0,
-    IsDelivered      BIT          NOT NULL DEFAULT 0,
-    CreatedAt        DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
+    IsRead BIT NOT NULL DEFAULT 0,
+    IsDelivered BIT NOT NULL DEFAULT 0,
+    CreatedAt DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
     FOREIGN KEY (UserId) REFERENCES Users (UserId)
-);
+    );
 GO
 
 -- =============================================
@@ -236,7 +244,7 @@ GO
 CREATE TABLE Incident
 (
     IncidentId    BIGINT IDENTITY (1,1) PRIMARY KEY,
-    BookingId     BIGINT       NOT NULL,
+    BookingId     BIGINT NOT NULL,
     IncidentType  NVARCHAR(50),
     Description   NVARCHAR(MAX),
     EstimatedCost DECIMAL(12, 2),
@@ -278,7 +286,7 @@ GO
 CREATE TABLE UserDocument
 (
     DocumentId   BIGINT IDENTITY (1,1) PRIMARY KEY,
-    UserId       BIGINT        NOT NULL,
+    UserId       BIGINT NOT NULL,
     DocumentType NVARCHAR(20),
     Side         NVARCHAR(10),
     ImageUrl     NVARCHAR(500) NOT NULL,
@@ -319,7 +327,7 @@ GO
 CREATE TABLE Dispute
 (
     DisputeId         BIGINT IDENTITY (1,1) PRIMARY KEY,
-    FundId            BIGINT       NOT NULL,
+    FundId            BIGINT NOT NULL,
     CreatedBy         BIGINT,
     DisputeType       NVARCHAR(50),
     RelatedEntityType NVARCHAR(50),
@@ -344,7 +352,7 @@ GO
 CREATE TABLE DisputeTicket
 (
     TicketId           BIGINT IDENTITY (1,1) PRIMARY KEY,
-    DisputeId          BIGINT       NOT NULL,
+    DisputeId          BIGINT NOT NULL,
     Priority           NVARCHAR(20) NOT NULL DEFAULT 'MEDIUM',
     AssignedTo         BIGINT,
     OpenedAt           DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
@@ -375,15 +383,15 @@ GO
 CREATE TABLE DisputeAttachment
 (
     AttachmentId BIGINT IDENTITY (1,1) PRIMARY KEY,
-    DisputeId    BIGINT         NOT NULL,
+    DisputeId    BIGINT NOT NULL,
     FileName     NVARCHAR(255)  NOT NULL,
     MimeType     NVARCHAR(100)  NOT NULL,
-    SizeBytes    BIGINT         NOT NULL,
+    SizeBytes    BIGINT NOT NULL,
     StorageUrl   NVARCHAR(1000) NOT NULL,
     Sha256       NVARCHAR(64),
     ThumbnailUrl NVARCHAR(1000),
     MetaJson     NVARCHAR(MAX),
-    UploadedBy   BIGINT         NOT NULL,
+    UploadedBy   BIGINT NOT NULL,
     Visibility   NVARCHAR(20)   NOT NULL DEFAULT 'USER',
     Status       NVARCHAR(20)   NOT NULL DEFAULT 'ACTIVE',
     CreatedAt    DATETIME2(7)   NOT NULL DEFAULT SYSUTCDATETIME(),
@@ -483,12 +491,12 @@ GO
 CREATE TABLE FinancialReport
 (
     ReportId     BIGINT IDENTITY (1,1) PRIMARY KEY,
-    FundId       BIGINT       NOT NULL,
+    FundId       BIGINT NOT NULL,
     ReportMonth  INT,
     ReportYear   INT,
     TotalIncome  DECIMAL(15, 2),
     TotalExpense DECIMAL(15, 2),
-    GeneratedBy  BIGINT       NOT NULL,
+    GeneratedBy  BIGINT NOT NULL,
     CreatedAt    DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
     UpdatedAt    DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
     FOREIGN KEY (FundId) REFERENCES SharedFund (FundId),
