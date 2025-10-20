@@ -8,7 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -49,9 +49,7 @@ public class VehicleImageApprovalController {
     public ResponseEntity<GroupApprovalResult> approveGroupImages(
             @PathVariable Long groupId,
             @RequestBody @Valid VehicleImageApprovalRequest request,
-            Authentication authentication) {
-
-        String staffEmail = authentication.getName();
+            @AuthenticationPrincipal String staffEmail) {
         return ResponseEntity.ok(approvalService.approveGroupImages(groupId, request, staffEmail));
     }
 
@@ -59,9 +57,7 @@ public class VehicleImageApprovalController {
     public ResponseEntity<VehicleImageResponse> approveImage(
             @PathVariable Long imageId,
             @RequestBody @Valid VehicleImageApprovalRequest request,
-            Authentication authentication) {
-
-        String staffEmail = authentication.getName();
+            @AuthenticationPrincipal String staffEmail) {
         return ResponseEntity.ok(approvalService.approveImage(imageId, request, staffEmail));
     }
 

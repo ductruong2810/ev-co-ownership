@@ -10,6 +10,7 @@ import com.group8.evcoownership.entity.OwnershipShareId;
 import com.group8.evcoownership.enums.DepositStatus;
 import com.group8.evcoownership.enums.GroupRole;
 import com.group8.evcoownership.enums.GroupStatus;
+import com.group8.evcoownership.enums.NotificationType;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
 import com.group8.evcoownership.repository.OwnershipShareRepository;
 import com.group8.evcoownership.repository.UserRepository;
@@ -28,6 +29,7 @@ public class OwnershipShareService {
     private final OwnershipShareRepository shareRepo;
     private final OwnershipGroupRepository groupRepo;
     private final UserRepository userRepo;
+    private final NotificationOrchestrator notificationOrchestrator;
 
     // ------- mapping -------
     private OwnershipShareResponse toDto(OwnershipShare s) {
@@ -82,6 +84,15 @@ public class OwnershipShareService {
                 .build();
 
         var saved = shareRepo.save(share);
+        // Send notification to group members about new member
+        notificationOrchestrator.sendGroupNotification(
+                group.getGroupId(),
+                NotificationType.GROUP_MEMBER_JOINED,
+                "New Member Joined",
+                String.format("%s has joined the group with %.2f%% ownership",
+                        user.getFullName(), req.ownershipPercentage())
+        );
+
 //        tryActivate(group.getGroupId());
         return toDto(saved);
     }
