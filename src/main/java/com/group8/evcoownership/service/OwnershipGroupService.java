@@ -302,7 +302,7 @@ public class OwnershipGroupService {
     public List<OwnershipGroupResponse> getGroupsByUser(String userEmail) {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + userEmail));
-        
+
         List<OwnershipGroup> groups = ownershipShareRepository.findGroupsByUserId(user.getUserId());
         return groups.stream().map(this::toDto).toList();
     }

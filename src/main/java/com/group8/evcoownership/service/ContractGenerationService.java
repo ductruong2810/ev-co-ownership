@@ -2,8 +2,8 @@ package com.group8.evcoownership.service;
 
 import com.group8.evcoownership.dto.ContractGenerationRequest;
 import com.group8.evcoownership.dto.ContractGenerationResponse;
-import com.group8.evcoownership.entity.Contract;
 import com.group8.evcoownership.dto.ContractTemplateRequest;
+import com.group8.evcoownership.entity.Contract;
 import com.group8.evcoownership.entity.OwnershipGroup;
 import com.group8.evcoownership.entity.OwnershipShare;
 import com.group8.evcoownership.entity.Vehicle;
@@ -107,7 +107,7 @@ public class ContractGenerationService {
         result.put("templateName", request.templateName());
         result.put("description", request.description());
         result.put("templateProps", request.templateProps());
-        
+
         // Xử lý React TSX template
         if ("REACT_TSX".equals(templateType)) {
             result.put("reactComponent", request.template());
@@ -115,7 +115,7 @@ public class ContractGenerationService {
         } else {
             result.put("message", "Template accepted. Rendering pipeline can be implemented per type.");
         }
-        
+
         return result;
     }
 

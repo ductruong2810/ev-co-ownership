@@ -8,7 +8,7 @@ import lombok.Builder;
 public record ContractApprovalRequest(
         @NotNull
         ContractApprovalStatus status,
-        
+
         String rejectionReason
 ) {
 }

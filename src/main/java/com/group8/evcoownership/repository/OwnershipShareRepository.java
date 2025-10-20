@@ -44,7 +44,7 @@ public interface OwnershipShareRepository extends JpaRepository<OwnershipShare, 
      * Lấy tất cả groups mà user đã tham gia (bao gồm cả ADMIN và MEMBER)
      */
     @Query("SELECT os.group FROM OwnershipShare os " +
-           "WHERE os.user.userId = :userId " +
-           "ORDER BY os.group.createdAt DESC")
+            "WHERE os.user.userId = :userId " +
+            "ORDER BY os.group.createdAt DESC")
     List<OwnershipGroup> findGroupsByUserId(@Param("userId") Long userId);
 }

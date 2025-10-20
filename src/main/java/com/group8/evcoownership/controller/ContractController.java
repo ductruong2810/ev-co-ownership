@@ -1,10 +1,6 @@
 package com.group8.evcoownership.controller;
 
-import com.group8.evcoownership.dto.ContractGenerationRequest;
-import com.group8.evcoownership.dto.ContractGenerationResponse;
-import com.group8.evcoownership.dto.ContractGenerationWithTemplateRequest;
-import com.group8.evcoownership.dto.ContractApprovalRequest;
-import com.group8.evcoownership.dto.ContractTemplateRequest;
+import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.service.ContractGenerationService;
 import com.group8.evcoownership.service.ContractService;
 import jakarta.validation.Valid;
