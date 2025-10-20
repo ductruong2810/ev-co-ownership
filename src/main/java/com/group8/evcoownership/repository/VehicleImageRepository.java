@@ -24,10 +24,10 @@ public interface VehicleImageRepository extends JpaRepository<VehicleImage, Long
 
     List<VehicleImage> findByVehicleIdAndApprovalStatus(Long vehicleId, ImageApprovalStatus status);
 
-    @Query("SELECT COUNT(vi) FROM VehicleImage vi WHERE vi.vehicle.id = :vehicleId")
+    @Query("SELECT COUNT(vi) FROM VehicleImage vi WHERE vi.vehicle.Id = :vehicleId")
     long countByVehicleId(@Param("vehicleId") Long vehicleId);
 
-    @Query("SELECT COUNT(vi) FROM VehicleImage vi WHERE vi.vehicle.id = :vehicleId AND vi.approvalStatus = :status")
+    @Query("SELECT COUNT(vi) FROM VehicleImage vi WHERE vi.vehicle.Id = :vehicleId AND vi.approvalStatus = :status")
     long countByVehicleIdAndApprovalStatus(@Param("vehicleId") Long vehicleId, @Param("status") ImageApprovalStatus status);
 
     List<VehicleImage> findByVehicle_OwnershipGroup_GroupId(Long groupId);
@@ -37,6 +37,6 @@ public interface VehicleImageRepository extends JpaRepository<VehicleImage, Long
 
     void deleteByVehicleId(Long vehicleId);
 
-    @Query("SELECT vi FROM VehicleImage vi WHERE vi.vehicle.id = :vehicleId ORDER BY vi.uploadedAt DESC")
+    @Query("SELECT vi FROM VehicleImage vi WHERE vi.vehicle.Id = :vehicleId ORDER BY vi.uploadedAt DESC")
     List<VehicleImage> findByVehicleIdOrderByUploadedAtDesc(@Param("vehicleId") Long vehicleId);
 }
