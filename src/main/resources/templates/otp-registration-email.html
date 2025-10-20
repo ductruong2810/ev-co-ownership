@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xác minh tài khoản EV Co-ownership</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f4f7fa;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 40px auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #008080 0%, #005f5f 100%);
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .logo {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 20px;
+            background-color: #ffffff;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+        }
+        .logo img {
+            width: 90px;
+            height: 90px;
+            object-fit: contain;
+        }
+        .header h1 {
+            color: #ffffff;
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .greeting {
+            font-size: 18px;
+            color: #2d3748;
+            margin-bottom: 20px;
+        }
+        .message {
+            font-size: 15px;
+            color: #4a5568;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        .otp-container {
+            background: linear-gradient(135deg, #008080 0%, #005f5f 100%);
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            margin: 30px 0;
+        }
+        .otp-label {
+            color: #ffffff;
+            font-size: 14px;
+            margin-bottom: 10px;
+            opacity: 0.9;
+        }
+        .otp-code {
+            font-size: 42px;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: 8px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+        }
+        .verify-button {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 14px 40px;
+            background-color: #ffffff;
+            color: #008080;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .verify-button:hover {
+            background-color: #f0f0f0;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .expiry-notice {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .expiry-notice p {
+            margin: 0;
+            color: #856404;
+            font-size: 14px;
+        }
+        .security-notice {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .security-notice p {
+            margin: 0;
+            font-size: 13px;
+            color: #6c757d;
+            line-height: 1.5;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 25px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+        }
+        .footer p {
+            margin: 5px 0;
+            font-size: 13px;
+            color: #718096;
+        }
+        .company-name {
+            color: #008080;
+            font-weight: 600;
+        }
+        .or-divider {
+            text-align: center;
+            margin: 20px 0;
+            color: #6c757d;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+<div class="email-container">
+    <div class="header">
+        <div class="logo">
+            <img src="https://evsharestorage.blob.core.windows.net/images/ab5cf924-227d-49a0-b62b-afc470f50f2f_1760941182894.jpg" alt="EV Co-ownership Logo">
+        </div>
+        <h1>Xác minh đăng ký tài khoản</h1>
+    </div>
+
+    <div class="content">
+        <div class="greeting">
+            Xin chào <strong th:text="${fullName}">User</strong>,
+        </div>
+
+        <div class="message">
+            <p>Bạn đã yêu cầu đăng ký tài khoản tại <strong class="company-name">EV Co-ownership</strong>.</p>
+            <p>Vui lòng sử dụng mã OTP dưới đây hoặc nhấn nút bên dưới để hoàn tất quá trình đăng ký:</p>
+        </div>
+
+        <div class="otp-container">
+            <div class="otp-label">MÃ XÁC THỰC CỦA BẠN</div>
+            <div class="otp-code" th:text="${otp}">123456</div>
+            <a th:href="${verifyUrl}" class="verify-button">Xác thực ngay</a>
+        </div>
+
+        <div class="or-divider">
+            Hoặc copy link sau vào trình duyệt:<br>
+            <a th:href="${verifyUrl}" th:text="${verifyUrl}" style="color: #008080; word-break: break-all;">https://yourapp.com/verify?otp=123456&type=REGISTRATION</a>
+        </div>
+
+        <div class="expiry-notice">
+            <p><strong>Lưu ý:</strong> Mã OTP này có hiệu lực trong <strong th:text="${expiryMinutes}">3</strong> phút.</p>
+        </div>
+
+        <div class="security-notice">
+            <p><strong>Bảo mật:</strong> Nếu bạn không yêu cầu đăng ký tài khoản, vui lòng bỏ qua email này. Không chia sẻ mã OTP với bất kỳ ai.</p>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p><strong class="company-name">EV Co-ownership</strong></p>
+        <p>Email này được gửi tự động. Vui lòng không trả lời.</p>
+        <p>&copy; 2025 EV Co-ownership. All rights reserved.</p>
+    </div>
+</div>
+</body>
+</html>
