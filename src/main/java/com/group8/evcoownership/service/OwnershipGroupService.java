@@ -1,26 +1,32 @@
 package com.group8.evcoownership.service;
 
 
-import com.group8.evcoownership.dto.OwnershipGroupCreateRequest;
-import com.group8.evcoownership.dto.OwnershipGroupResponse;
-import com.group8.evcoownership.dto.OwnershipGroupStatusUpdateRequest;
-import com.group8.evcoownership.dto.OwnershipGroupUpdateRequest;
+import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.entity.OwnershipGroup;
+import com.group8.evcoownership.entity.OwnershipShare;
+import com.group8.evcoownership.entity.OwnershipShareId;
+import com.group8.evcoownership.entity.User;
+import com.group8.evcoownership.enums.DepositStatus;
 import com.group8.evcoownership.enums.GroupRole;
 import com.group8.evcoownership.enums.GroupStatus;
+import com.group8.evcoownership.exception.InsufficientDocumentsException;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
 import com.group8.evcoownership.repository.OwnershipShareRepository;
+import com.group8.evcoownership.repository.UserDocumentRepository;
 import com.group8.evcoownership.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +35,11 @@ public class OwnershipGroupService {
     private final OwnershipGroupRepository repo;
     private final OwnershipShareRepository ownershipShareRepository;
     private final UserRepository userRepository;
+    private final UserDocumentRepository userDocumentRepository;
+    private final VehicleService vehicleService;
+
+    @Value("${app.validation.enabled:true}")
+    private boolean validationEnabled;
 
     // ---- mapping ----
     private OwnershipGroupResponse toDto(OwnershipGroup e) {
@@ -49,18 +60,138 @@ public class OwnershipGroupService {
         e.setMemberCapacity(capacity);
     }
 
+    // ---- validation methods ----
+
+    /**
+     * Kiểm tra user có đầy đủ giấy tờ cần thiết để tạo group không
+     * Cần có: CCCD (cả mặt trước và sau) và GPLX (cả mặt trước và sau) với status APPROVED
+     */
+    private void validateRequiredDocuments(Long userId) {
+        // Kiểm tra CCCD - cả mặt trước và sau
+        boolean hasCitizenIdFront = userDocumentRepository.existsByUserIdAndDocumentTypeAndSide(
+                userId, "CITIZEN_ID", "FRONT");
+        boolean hasCitizenIdBack = userDocumentRepository.existsByUserIdAndDocumentTypeAndSide(
+                userId, "CITIZEN_ID", "BACK");
+
+        // Kiểm tra GPLX - cả mặt trước và sau  
+        boolean hasDriverLicenseFront = userDocumentRepository.existsByUserIdAndDocumentTypeAndSide(
+                userId, "DRIVER_LICENSE", "FRONT");
+        boolean hasDriverLicenseBack = userDocumentRepository.existsByUserIdAndDocumentTypeAndSide(
+                userId, "DRIVER_LICENSE", "BACK");
+
+        // Kiểm tra status APPROVED cho tất cả documents
+        boolean citizenIdApproved = checkDocumentStatus(userId, "CITIZEN_ID");
+        boolean driverLicenseApproved = checkDocumentStatus(userId, "DRIVER_LICENSE");
+
+        StringBuilder missingDocs = new StringBuilder();
+
+        if (!hasCitizenIdFront || !hasCitizenIdBack) {
+            missingDocs.append("CCCD (cả mặt trước và sau), ");
+        } else if (!citizenIdApproved) {
+            missingDocs.append("CCCD chưa được duyệt, ");
+        }
+
+        if (!hasDriverLicenseFront || !hasDriverLicenseBack) {
+            missingDocs.append("GPLX (cả mặt trước và sau), ");
+        } else if (!driverLicenseApproved) {
+            missingDocs.append("GPLX chưa được duyệt, ");
+        }
+
+        if (!missingDocs.isEmpty()) {
+            // Xóa dấu phẩy cuối
+            String missing = missingDocs.toString().replaceAll(", $", "");
+            throw new InsufficientDocumentsException(
+                    "Không thể tạo group. Bạn cần upload và được duyệt: " + missing);
+        }
+    }
+
+    /**
+     * Kiểm tra tất cả documents của một loại có status APPROVED không
+     */
+    private boolean checkDocumentStatus(Long userId, String documentType) {
+        var documents = userDocumentRepository.findByUserIdAndDocumentType(userId, documentType);
+        return documents.stream().allMatch(doc -> "APPROVED".equals(doc.getStatus()));
+    }
+
     // ---- CRUD ----
     @Transactional
-    public OwnershipGroupResponse create(OwnershipGroupCreateRequest req) {
+    public OwnershipGroupResponse create(OwnershipGroupCreateRequest req, String userEmail) {
         if (repo.existsByGroupNameIgnoreCase(req.groupName())) {
             throw new IllegalStateException("GroupName already exists");
         }
+
+        // Tìm user từ email
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new EntityNotFoundException("User not found: " + userEmail));
+
+        // Kiểm tra giấy tờ cần thiết (bỏ qua khi tắt validation)
+        if (validationEnabled) {
+            validateRequiredDocuments(user.getUserId());
+        }
+
+        // Tạo group
         var entity = OwnershipGroup.builder()
                 .groupName(req.groupName())
                 .description(req.description())
                 .memberCapacity(req.memberCapacity())
                 .build(); // status = PENDING at @PrePersist
-        return toDto(repo.save(entity));
+
+        var savedGroup = repo.save(entity);
+
+        // Tự động thêm người tạo group làm ADMIN với 100% ownership
+        var shareId = new OwnershipShareId(user.getUserId(), savedGroup.getGroupId());
+        var ownershipShare = OwnershipShare.builder()
+                .id(shareId)
+                .user(user)
+                .group(savedGroup)
+                .groupRole(GroupRole.ADMIN)
+                .depositStatus(DepositStatus.PENDING)
+                .ownershipPercentage(java.math.BigDecimal.valueOf(100.00))
+                .joinDate(LocalDateTime.now())
+                .build();
+
+        ownershipShareRepository.save(ownershipShare);
+
+        return toDto(savedGroup);
+    }
+
+    @Transactional
+    public GroupWithVehicleResponse createGroupWithVehicle(
+            String groupName, String description, Integer memberCapacity,
+            java.math.BigDecimal vehicleValue, String licensePlate, String chassisNumber,
+            MultipartFile[] vehicleImages, String[] imageTypes, String userEmail) {
+        // Step 1: Create ownership group với userEmail
+        OwnershipGroupCreateRequest groupRequest = new OwnershipGroupCreateRequest(
+                groupName, description, memberCapacity);
+        OwnershipGroupResponse groupResponse = create(groupRequest, userEmail);
+
+        // Step 2: Create vehicle using VehicleService
+        VehicleCreateRequest vehicleRequest = new VehicleCreateRequest(
+                "Unknown", "Unknown", licensePlate, chassisNumber, vehicleValue, groupResponse.groupId());
+        VehicleResponse vehicleResponse = vehicleService.create(vehicleRequest);
+
+        // Step 3: Upload multiple vehicle images using VehicleService
+        Map<String, Object> uploadedImages = vehicleService.uploadMultipleVehicleImages(
+                vehicleResponse.vehicleId(), vehicleImages, imageTypes);
+
+        // Step 4: Return combined response
+        return new GroupWithVehicleResponse(
+                groupResponse.groupId(),
+                groupResponse.groupName(),
+                groupResponse.description(),
+                groupResponse.memberCapacity(),
+                groupResponse.status(),
+                groupResponse.createdAt(),
+                groupResponse.updatedAt(),
+                vehicleResponse.vehicleId(),
+                vehicleResponse.brand(),
+                vehicleResponse.model(),
+                vehicleResponse.licensePlate(),
+                vehicleResponse.chassisNumber(),
+                vehicleResponse.qrCode(),
+                vehicleValue,
+                uploadedImages
+        );
     }
 
     @Transactional

@@ -71,7 +71,36 @@ public class DepositCalculationService {
     }
 
     /**
-     * Tính toán required deposit amount dựa trên giá trị xe và member capacity
+     * Tính toán required deposit amount dựa trên giá trị xe và tỷ lệ sở hữu
+     * <p>
+     * Công thức: vehicleValue * 10% * ownershipPercentage / 100
+     * <p>
+     * Ví dụ với vehicleValue = 1,000,000,000 VND (1 tỷ):
+     * - Thành viên sở hữu 40%: 1,000,000,000 * 0.1 * 0.4 = 40,000,000 VND
+     * - Thành viên sở hữu 35%: 1,000,000,000 * 0.1 * 0.35 = 35,000,000 VND
+     * - Thành viên sở hữu 25%: 1,000,000,000 * 0.1 * 0.25 = 25,000,000 VND
+     */
+    public BigDecimal calculateRequiredDepositAmount(BigDecimal vehicleValue, BigDecimal ownershipPercentage) {
+        if (vehicleValue == null || vehicleValue.compareTo(BigDecimal.ZERO) <= 0) {
+            return BASE_DEPOSIT_AMOUNT;
+        }
+
+        if (ownershipPercentage == null || ownershipPercentage.compareTo(BigDecimal.ZERO) <= 0) {
+            return BASE_DEPOSIT_AMOUNT;
+        }
+
+        // Tính deposit theo tỷ lệ sở hữu: vehicleValue * 10% * ownershipPercentage / 100
+        BigDecimal depositAmount = vehicleValue
+                .multiply(new BigDecimal("0.1")) // 10% giá trị xe
+                .multiply(ownershipPercentage)   // Nhân với tỷ lệ sở hữu (%)
+                .divide(new BigDecimal("100"), 2, RoundingMode.UP); // Chia 100 để chuyển % thành số thập phân
+
+        // Đảm bảo deposit tối thiểu là BASE_DEPOSIT_AMOUNT
+        return depositAmount.max(BASE_DEPOSIT_AMOUNT);
+    }
+
+    /**
+     * Tính toán required deposit amount dựa trên giá trị xe và member capacity (legacy method)
      * <p>
      * Công thức: (vehicleValue * 10%) / memberCapacity
      * <p>

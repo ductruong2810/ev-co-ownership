@@ -315,13 +315,31 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponseDTO> handleIllegalState(
             IllegalStateException ex, WebRequest request) {
 
+        logger.warn("Illegal state: {}", ex.getMessage());
+
+        // Xác định loại lỗi dựa trên message
+        String errorType = "Conflict";
+        HttpStatus status = HttpStatus.CONFLICT;
+
+        String message = ex.getMessage();
+        if (message != null) {
+            if (message.contains("Contract must be signed")) {
+                errorType = "Contract Not Signed";
+                status = HttpStatus.BAD_REQUEST;
+            } else if (message.contains("already paid")) {
+                errorType = "Payment Already Completed";
+            } else if (message.contains("not in PENDING status")) {
+                errorType = "Invalid Payment Status";
+            }
+        }
+
         ErrorResponseDTO errorResponse = new ErrorResponseDTO(
-                HttpStatus.CONFLICT.value(),
-                "Conflict",
+                status.value(),
+                errorType,
                 ex.getMessage(),
                 request.getDescription(false).replace("uri=", "")
         );
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
+        return ResponseEntity.status(status).body(errorResponse);
     }
 
     // ========== 400 - BAD REQUEST ==========
@@ -329,13 +347,30 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponseDTO> handleIllegalArgument(
             IllegalArgumentException ex, WebRequest request) {
 
+        logger.warn("Illegal argument: {}", ex.getMessage());
+
+        // Xác định loại lỗi dựa trên message
+        String errorType = "Bad Request";
+        HttpStatus status = HttpStatus.BAD_REQUEST;
+
+        String message = ex.getMessage();
+        if (message != null) {
+            if (message.contains("Deposit amount must be exactly")) {
+                errorType = "Invalid Deposit Amount";
+            } else if (message.contains("Amount must be > 0")) {
+                errorType = "Invalid Amount";
+            } else if (message.contains("transactionCode is required")) {
+                errorType = "Missing Transaction Code";
+            }
+        }
+
         ErrorResponseDTO response = new ErrorResponseDTO(
-                HttpStatus.BAD_REQUEST.value(),
-                "Bad Request",
+                status.value(),
+                errorType,
                 ex.getMessage(),
                 request.getDescription(false).replace("uri=", "")
         );
-        return ResponseEntity.badRequest().body(response);
+        return ResponseEntity.status(status).body(response);
     }
 
     // ========== 400 - IMAGE VALIDATION ==========
@@ -353,6 +388,57 @@ public class GlobalExceptionHandler {
         );
 
         return ResponseEntity.badRequest().body(response);
+    }
+
+    // ========== 400 - INSUFFICIENT DOCUMENTS ==========
+    @ExceptionHandler(InsufficientDocumentsException.class)
+    public ResponseEntity<ErrorResponseDTO> handleInsufficientDocuments(
+            InsufficientDocumentsException ex, WebRequest request) {
+
+        logger.warn("Insufficient documents: {}", ex.getMessage());
+
+        ErrorResponseDTO response = new ErrorResponseDTO(
+                HttpStatus.BAD_REQUEST.value(),
+                "Bad Request",
+                ex.getMessage(),
+                request.getDescription(false).replace("uri=", "")
+        );
+
+        return ResponseEntity.badRequest().body(response);
+    }
+
+    // ========== 400 - DEPOSIT PAYMENT ERRORS ==========
+    @ExceptionHandler(com.group8.evcoownership.exception.DepositPaymentException.class)
+    public ResponseEntity<ErrorResponseDTO> handleDepositPaymentException(
+            com.group8.evcoownership.exception.DepositPaymentException ex, WebRequest request) {
+
+        logger.warn("Deposit payment error: {}", ex.getMessage());
+
+        ErrorResponseDTO response = new ErrorResponseDTO(
+                HttpStatus.BAD_REQUEST.value(),
+                "Deposit Payment Error",
+                ex.getMessage(),
+                request.getDescription(false).replace("uri=", "")
+        );
+
+        return ResponseEntity.badRequest().body(response);
+    }
+
+    // ========== 409 - PAYMENT CONFLICT ==========
+    @ExceptionHandler(com.group8.evcoownership.exception.PaymentConflictException.class)
+    public ResponseEntity<ErrorResponseDTO> handlePaymentConflictException(
+            com.group8.evcoownership.exception.PaymentConflictException ex, WebRequest request) {
+
+        logger.warn("Payment conflict: {}", ex.getMessage());
+
+        ErrorResponseDTO response = new ErrorResponseDTO(
+                HttpStatus.CONFLICT.value(),
+                "Payment Conflict",
+                ex.getMessage(),
+                request.getDescription(false).replace("uri=", "")
+        );
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 
     // ========== 500 - INTERNAL SERVER ERROR (FALLBACK) ==========
