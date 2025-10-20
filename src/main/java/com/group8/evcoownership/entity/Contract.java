@@ -62,8 +62,7 @@ public class Contract {
 
     // Contract Approval Fields
     @Enumerated(EnumType.STRING)
-    @Column(name = "ApprovalStatus")
-    @ColumnDefault("'PENDING'")
+    @Column(name = "ApprovalStatus", nullable = false)
     private ContractApprovalStatus approvalStatus = ContractApprovalStatus.PENDING;
 
     @ManyToOne(fetch = FetchType.LAZY)

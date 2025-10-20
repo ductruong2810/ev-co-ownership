@@ -67,6 +67,7 @@ public class ContractService {
                 .terms("Standard EV co-ownership contract for 1 year")
                 .requiredDepositAmount(calculatedDepositAmount)
                 .isActive(true)
+                .approvalStatus(ContractApprovalStatus.PENDING)
                 .build();
 
         return contractRepository.save(contract);
@@ -93,6 +94,7 @@ public class ContractService {
                 .terms(terms)
                 .requiredDepositAmount(requiredDepositAmount)
                 .isActive(true)
+                .approvalStatus(ContractApprovalStatus.PENDING)
                 .build();
 
         return contractRepository.save(contract);
