@@ -26,6 +26,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -294,6 +295,17 @@ public class OwnershipGroupService {
     }
 
     // ---- Authorization methods ----
+
+    /**
+     * Lấy tất cả groups mà user đã tạo và tham gia (bao gồm cả ADMIN và MEMBER)
+     */
+    public List<OwnershipGroupResponse> getGroupsByUser(String userEmail) {
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new EntityNotFoundException("User not found: " + userEmail));
+        
+        List<OwnershipGroup> groups = ownershipShareRepository.findGroupsByUserId(user.getUserId());
+        return groups.stream().map(this::toDto).toList();
+    }
 
     /**
      * Kiểm tra user có phải là admin của group không

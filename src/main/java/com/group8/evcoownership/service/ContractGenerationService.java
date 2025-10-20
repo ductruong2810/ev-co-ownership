@@ -3,6 +3,7 @@ package com.group8.evcoownership.service;
 import com.group8.evcoownership.dto.ContractGenerationRequest;
 import com.group8.evcoownership.dto.ContractGenerationResponse;
 import com.group8.evcoownership.entity.Contract;
+import com.group8.evcoownership.dto.ContractTemplateRequest;
 import com.group8.evcoownership.entity.OwnershipGroup;
 import com.group8.evcoownership.entity.OwnershipShare;
 import com.group8.evcoownership.entity.Vehicle;
@@ -85,6 +86,37 @@ public class ContractGenerationService {
         // TODO: Implement HTML to PDF conversion
         // Có thể dùng iText, Flying Saucer, hoặc external service
         return htmlContent.getBytes(); // Placeholder
+    }
+
+    /**
+     * Generate contract with flexible template types (JSON, MARKDOWN, DOCX, PDF)
+     * Minimal implementation to satisfy controller call; extend rendering per type later.
+     */
+    public Map<String, Object> generateContractFlexible(Long groupId, ContractTemplateRequest request) {
+        Map<String, Object> result = new HashMap<>();
+
+        String templateType = request.templateType() == null ? "" : request.templateType().toUpperCase();
+        if (!(templateType.equals("REACT_TSX") || templateType.equals("JSON") || templateType.equals("MARKDOWN")
+                || templateType.equals("DOCX") || templateType.equals("PDF"))) {
+            throw new IllegalArgumentException("Unsupported templateType: " + request.templateType());
+        }
+
+        result.put("success", true);
+        result.put("groupId", groupId);
+        result.put("templateType", templateType);
+        result.put("templateName", request.templateName());
+        result.put("description", request.description());
+        result.put("templateProps", request.templateProps());
+        
+        // Xử lý React TSX template
+        if ("REACT_TSX".equals(templateType)) {
+            result.put("reactComponent", request.template());
+            result.put("message", "React TSX template received. Frontend can render with provided props.");
+        } else {
+            result.put("message", "Template accepted. Rendering pipeline can be implemented per type.");
+        }
+        
+        return result;
     }
 
     /**
