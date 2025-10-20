@@ -102,11 +102,9 @@ public class AuthController {
     // ================= VERIFY OTP CHUNG (UNIFIED) =================
     @PostMapping("/verify-otp")
     public ResponseEntity<?> verifyOtp(@Valid @RequestBody VerifyOtpRequestDTO request) {
-
         try {
-            VerifyOtpResponseDTO response = authService.verifyOtp(request.getOtp());
+            VerifyOtpResponseDTO response = authService.verifyOtp(request.getOtp(), request.getType());
             return ResponseEntity.ok(response);
-
         } catch (IllegalArgumentException e) {
             log.error("Validation error: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -117,7 +115,6 @@ public class AuthController {
                             "message", e.getMessage(),
                             "path", "/api/auth/verify-otp"
                     ));
-
         } catch (IllegalStateException e) {
             log.error("State error: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -128,7 +125,6 @@ public class AuthController {
                             "message", e.getMessage(),
                             "path", "/api/auth/verify-otp"
                     ));
-
         } catch (Exception e) {
             log.error("Unexpected error: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
