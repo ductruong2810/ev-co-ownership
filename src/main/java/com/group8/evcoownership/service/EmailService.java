@@ -5,6 +5,7 @@ import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -56,6 +57,43 @@ public class EmailService {
         }
     }
 
+    // Dùng cho lời mời tham gia nhóm
+    public void sendInvitationEmail(
+            String to,
+            String groupName,
+            String inviterName,
+            String token,
+            String otp,
+            java.time.LocalDateTime expiresAt,
+            java.math.BigDecimal suggestedPercentage, // có thể null
+            String acceptUrl // URL FE: ví dụ https://app.xyz/invitations/accept?token=...
+    ) {
+        var percentLine = (suggestedPercentage != null)
+                ? "Tỷ lệ sở hữu gợi ý: %s%%\n".formatted(suggestedPercentage.stripTrailingZeros().toPlainString())
+                : "";
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(to);
+        message.setSubject("Lời mời tham gia nhóm EV: " + groupName);
+        message.setText("""
+                Bạn được %s mời tham gia nhóm: %s
+
+                Link chấp nhận: %s
+                Mã OTP: %s
+
+                %sHạn lời mời: %s (UTC)
+                
+                Nếu bạn không thực hiện, vui lòng bỏ qua email này.
+                """.formatted(
+                inviterName, groupName,
+                acceptUrl,
+                otp,
+                percentLine,
+                expiresAt // hiển thị ISO-8601, hoặc format lại nếu muốn
+        ));
+        mailSender.send(message);
+    }
+
+    // ========== THÊM METHOD NÀY ==========
     /**
      * Gửi OTP email cho đặt lại mật khẩu
      */

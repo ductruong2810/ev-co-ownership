@@ -18,7 +18,6 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -83,7 +82,7 @@ public class OwnershipShareService {
                 .build();
 
         var saved = shareRepo.save(share);
-        tryActivate(group.getGroupId());
+//        tryActivate(group.getGroupId());
         return toDto(saved);
     }
 
@@ -106,7 +105,7 @@ public class OwnershipShareService {
         share.setOwnershipPercentage(req.ownershipPercentage());
         var saved = shareRepo.save(share);
 
-        tryActivate(groupId);
+//        tryActivate(groupId);
         return toDto(saved);
     }
 
@@ -144,7 +143,7 @@ public class OwnershipShareService {
         }
 
         shareRepo.delete(share);
-        tryActivate(groupId);
+//        tryActivate(groupId);
     }
 
     public OwnershipShareResponse getOne(Long groupId, Long userId) {
@@ -166,28 +165,28 @@ public class OwnershipShareService {
     // ================== AUTO ACTIVATE ==================
 
     /**
-     * Đủ điều kiện thì chuyển PENDING -> ACTIVE (không phụ thuộc role/cọc, trừ khi bạn muốn bật).
+     * Đủ điều kiện thì chuyển ACTIVE -> VERIFIED (không phụ thuộc role/cọc, trừ khi bạn muốn bật).
      */
-    @Transactional
-    protected void tryActivate(Long groupId) {
-        var group = groupRepo.findById(groupId)
-                .orElseThrow(() -> new EntityNotFoundException("Group not found"));
-
-        if (group.getStatus() != GroupStatus.PENDING) return;
-
-        BigDecimal total = shareRepo.sumPercentageByGroupId(groupId);
-        long members = shareRepo.countByGroup_GroupId(groupId);
-
-        boolean pctOk = total != null && total.compareTo(new BigDecimal("100.00")) == 0;
-        boolean membersOk = members >= 1;
-        boolean capacityOk = group.getMemberCapacity() == null || members <= group.getMemberCapacity();
-
-        // (Tuỳ chọn bật rule "tất cả PAID mới Active"):
-        // boolean depositsOk = shareRepo.countByGroup_GroupIdAndDepositStatusNot(groupId, DepositStatus.PAID) == 0;
-
-        if (pctOk && membersOk && capacityOk /* && depositsOk */) {
-            group.setStatus(GroupStatus.ACTIVE);
-            groupRepo.save(group);
-        }
-    }
+//    @Transactional
+//    protected void tryActivate(Long groupId) {
+//        var group = groupRepo.findById(groupId)
+//                .orElseThrow(() -> new EntityNotFoundException("Group not found"));
+//
+//        if (group.getStatus() != GroupStatus.ACTIVE) return;
+//
+//        BigDecimal total = shareRepo.sumPercentageByGroupId(groupId);
+//        long members = shareRepo.countByGroup_GroupId(groupId);
+//
+//        boolean pctOk = total != null && total.compareTo(new BigDecimal("100.00")) == 0;
+//        boolean membersOk = members >= 1;
+//        boolean capacityOk = group.getMemberCapacity() == null || members <= group.getMemberCapacity();
+//
+//
+//        // boolean depositsOk = shareRepo.countByGroup_GroupIdAndDepositStatusNot(groupId, DepositStatus.PAID) == 0;
+//
+//        if (pctOk && membersOk && capacityOk /* && depositsOk */) {
+//            group.setStatus(GroupStatus.VERIFIED);// ready
+//            groupRepo.save(group);
+//        }
+//    }
 }
