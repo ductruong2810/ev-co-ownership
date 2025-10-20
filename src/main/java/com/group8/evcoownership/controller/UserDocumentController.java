@@ -1,5 +1,6 @@
 package com.group8.evcoownership.controller;
 
+import com.group8.evcoownership.dto.UserDocumentDTO;
 import com.group8.evcoownership.entity.UserDocument;
 import com.group8.evcoownership.service.UserDocumentService;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/user/documents")
@@ -19,25 +21,6 @@ public class UserDocumentController {
 
     @Autowired
     private UserDocumentService userDocumentService;
-
-    // ================= UPLOAD SINGLE DOCUMENT =================
-    @PostMapping("/upload")
-    public ResponseEntity<?> uploadDocument(
-            @RequestParam("documentType") String documentType,
-            @RequestParam("side") String side,
-            @RequestParam("file") MultipartFile file,
-            Authentication authentication) {
-
-        String email = authentication.getName();
-        UserDocument document = userDocumentService.uploadDocument(email, documentType, side, file);
-
-        return ResponseEntity.ok(Map.of(
-                "message", "Upload thành công",
-                "documentId", document.getDocumentId(),
-                "imageUrl", document.getImageUrl(),
-                "status", document.getStatus()
-        ));
-    }
 
     // ================= UPLOAD MULTIPLE DOCUMENTS (2 SIDES AT ONCE) =================
     @PostMapping("/upload-batch")
@@ -48,6 +31,8 @@ public class UserDocumentController {
             Authentication authentication) {
 
         String email = authentication.getName();
+        log.info("User {} uploading batch documents: {}", email, documentType);
+
         Map<String, UserDocument> documents = userDocumentService.uploadBatchDocuments(
                 email, documentType, frontFile, backFile
         );
@@ -67,23 +52,39 @@ public class UserDocumentController {
         ));
     }
 
-    // ================= GET ALL MY DOCUMENTS =================
+    // ================= GET ALL MY DOCUMENTS (TRẢ VỀ DTO) =================
     @GetMapping
-    public ResponseEntity<?> getMyDocuments(Authentication authentication) {
+    public ResponseEntity<List<UserDocumentDTO>> getMyDocuments(Authentication authentication) {
         String email = authentication.getName();
+        log.info("User {} fetching all documents", email);
+
         List<UserDocument> documents = userDocumentService.getMyDocuments(email);
-        return ResponseEntity.ok(documents);
+
+        // ← MAP SANG DTO ĐỂ TRÁNH CIRCULAR REFERENCE
+        List<UserDocumentDTO> dtos = documents.stream()
+                .map(UserDocumentDTO::fromEntity)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(dtos);
     }
 
-    // ================= GET DOCUMENTS BY TYPE =================
+    // ================= GET DOCUMENTS BY TYPE (TRẢ VỀ DTO) =================
     @GetMapping("/type/{documentType}")
-    public ResponseEntity<?> getDocumentsByType(
+    public ResponseEntity<List<UserDocumentDTO>> getDocumentsByType(
             @PathVariable String documentType,
             Authentication authentication) {
 
         String email = authentication.getName();
+        log.info("User {} fetching documents by type: {}", email, documentType);
+
         List<UserDocument> documents = userDocumentService.getDocumentsByType(email, documentType);
-        return ResponseEntity.ok(documents);
+
+        // ← MAP SANG DTO
+        List<UserDocumentDTO> dtos = documents.stream()
+                .map(UserDocumentDTO::fromEntity)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(dtos);
     }
 
     // ================= DELETE DOCUMENT =================
@@ -95,11 +96,14 @@ public class UserDocumentController {
         try {
             Long id = Long.parseLong(documentId);
             String email = authentication.getName();
+
+            log.info("User {} deleting document: {}", email, id);
             userDocumentService.deleteDocument(email, id);
 
             return ResponseEntity.ok(Map.of("message", "Xóa tài liệu thành công"));
 
         } catch (NumberFormatException e) {
+            log.error("Invalid document ID format: {}", documentId);
             throw new IllegalArgumentException(
                     String.format("ID tài liệu '%s' không hợp lệ. Vui lòng nhập số nguyên dương", documentId)
             );
