@@ -98,30 +98,27 @@ public class AuthService {
     }
 
     // ================= VERIFY OTP - AUTO DETECT (TRẢ VỀ TYPE) =================
-    public VerifyOtpResponseDTO verifyOtp(String otp) {
-        log.info("Auto-detecting OTP type");
+    public VerifyOtpResponseDTO verifyOtp(String otp, OtpType type) {
+        log.info("Verifying OTP with type: {}", type);
 
         if (otp == null || otp.trim().isEmpty()) {
             throw new IllegalArgumentException("OTP không được để trống");
         }
 
-        try {
-            // Check registration OTP
-            if (registerOtpToEmailMap.containsKey(otp)) {
-                log.info("Detected REGISTRATION OTP");
-                return verifyRegistrationOtp(otp);
-            }
-            // Check password reset OTP
-            else if (otpToEmailMap.containsKey(otp)) {
-                log.info("Detected PASSWORD_RESET OTP");
-                return verifyPasswordResetOtp(otp);
-            }
-            // Not found
-            else {
-                log.error("OTP not found: {}", otp);
-                throw new IllegalArgumentException("OTP không hợp lệ hoặc đã hết hạn");
-            }
+        if (type == null) {
+            throw new IllegalArgumentException("OTP type is required");
+        }
 
+        try {
+            if (type == OtpType.REGISTRATION) {
+                log.info("Verifying REGISTRATION OTP");
+                return verifyRegistrationOtp(otp);
+            } else if (type == OtpType.PASSWORD_RESET) {
+                log.info("Verifying PASSWORD_RESET OTP");
+                return verifyPasswordResetOtp(otp);
+            } else {
+                throw new IllegalArgumentException("Invalid OTP type");
+            }
         } catch (IllegalArgumentException | IllegalStateException e) {
             throw e;
         } catch (Exception e) {
@@ -129,6 +126,7 @@ public class AuthService {
             throw new RuntimeException("Đã xảy ra lỗi trong quá trình xác thực. Vui lòng thử lại.");
         }
     }
+
 
     // ================= VERIFY REGISTRATION OTP (PRIVATE) =================
     @Autowired
