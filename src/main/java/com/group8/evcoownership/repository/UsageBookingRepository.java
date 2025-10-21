@@ -126,5 +126,19 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
                                             @Param("startDateTime") LocalDateTime startDateTime,
                                             @Param("endDateTime") LocalDateTime endDateTime);
 
+    // Tìm booking active của user cho vehicle (để QR check-in)
+    @Query("""
+                SELECT ub
+                FROM UsageBooking ub
+                WHERE ub.user.userId = :userId
+                  AND ub.vehicle.id = :vehicleId
+                  AND ub.status = 'Confirmed'
+                  AND ub.startDateTime <= CURRENT_TIMESTAMP
+                  AND ub.endDateTime >= CURRENT_TIMESTAMP
+                ORDER BY ub.startDateTime DESC
+            """)
+    List<UsageBooking> findActiveBookingsByUserAndVehicle(@Param("userId") Long userId,
+                                                          @Param("vehicleId") Long vehicleId);
+
 }
 

@@ -4,9 +4,11 @@ import com.group8.evcoownership.dto.GroupOwnershipSummaryResponse;
 import com.group8.evcoownership.dto.OwnershipPercentageRequest;
 import com.group8.evcoownership.dto.OwnershipPercentageResponse;
 import com.group8.evcoownership.service.OwnershipShareService;
+import com.group8.evcoownership.service.UserProfileService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -18,15 +20,19 @@ import java.util.List;
 public class OwnershipPercentageController {
 
     private final OwnershipShareService ownershipShareService;
+    private final UserProfileService userProfileService;
 
     /**
      * API TỔNG HỢP - Lấy tất cả dữ liệu cho trang nhập tỷ lệ sở hữu
-     * GET /api/ownership-percentage/page-data/{userId}/{groupId}
+     * GET /api/ownership-percentage/page-data/{groupId}
      */
-    @GetMapping("/page-data/{userId}/{groupId}")
+    @GetMapping("/page-data/{groupId}")
     public ResponseEntity<OwnershipPageDataResponse> getOwnershipPageData(
-            @PathVariable Long userId,
-            @PathVariable Long groupId) {
+            @PathVariable Long groupId,
+            @AuthenticationPrincipal String userEmail) {
+        
+        // Lấy userId từ email
+        Long userId = userProfileService.getUserProfile(userEmail).getUserId();
         
         // Lấy thông tin user ownership
         OwnershipPercentageResponse userOwnership = ownershipShareService.getOwnershipPercentage(userId, groupId);
@@ -48,12 +54,15 @@ public class OwnershipPercentageController {
 
     /**
      * Lấy thông tin tỷ lệ sở hữu của user trong group
-     * GET /api/ownership-percentage/{userId}/{groupId}
+     * GET /api/ownership-percentage/{groupId}
      */
-    @GetMapping("/{userId}/{groupId}")
+    @GetMapping("/{groupId}")
     public ResponseEntity<OwnershipPercentageResponse> getOwnershipPercentage(
-            @PathVariable Long userId,
-            @PathVariable Long groupId) {
+            @PathVariable Long groupId,
+            @AuthenticationPrincipal String userEmail) {
+        
+        // Lấy userId từ email
+        Long userId = userProfileService.getUserProfile(userEmail).getUserId();
         
         OwnershipPercentageResponse response = ownershipShareService.getOwnershipPercentage(userId, groupId);
         return ResponseEntity.ok(response);
@@ -61,13 +70,16 @@ public class OwnershipPercentageController {
 
     /**
      * Cập nhật tỷ lệ sở hữu của user
-     * PUT /api/ownership-percentage/{userId}/{groupId}
+     * PUT /api/ownership-percentage/{groupId}
      */
-    @PutMapping("/{userId}/{groupId}")
+    @PutMapping("/{groupId}")
     public ResponseEntity<OwnershipPercentageResponse> updateOwnershipPercentage(
-            @PathVariable Long userId,
             @PathVariable Long groupId,
+            @AuthenticationPrincipal String userEmail,
             @Valid @RequestBody OwnershipPercentageRequest request) {
+        
+        // Lấy userId từ email
+        Long userId = userProfileService.getUserProfile(userEmail).getUserId();
         
         OwnershipPercentageResponse response = ownershipShareService.updateOwnershipPercentage(
                 userId, groupId, request);
@@ -76,26 +88,32 @@ public class OwnershipPercentageController {
 
     /**
      * Lấy tổng quan tỷ lệ sở hữu của group
-     * GET /api/ownership-percentage/group/{groupId}/summary?currentUserId={currentUserId}
+     * GET /api/ownership-percentage/group/{groupId}/summary
      */
     @GetMapping("/group/{groupId}/summary")
     public ResponseEntity<GroupOwnershipSummaryResponse> getGroupOwnershipSummary(
             @PathVariable Long groupId,
-            @RequestParam Long currentUserId) {
+            @AuthenticationPrincipal String userEmail) {
+        
+        // Lấy userId từ email
+        Long userId = userProfileService.getUserProfile(userEmail).getUserId();
         
         GroupOwnershipSummaryResponse response = ownershipShareService.getGroupOwnershipSummary(
-                groupId, currentUserId);
+                groupId, userId);
         return ResponseEntity.ok(response);
     }
 
     /**
      * Reset tỷ lệ sở hữu của user về 0%
-     * POST /api/ownership-percentage/{userId}/{groupId}/reset
+     * POST /api/ownership-percentage/{groupId}/reset
      */
-    @PostMapping("/{userId}/{groupId}/reset")
+    @PostMapping("/{groupId}/reset")
     public ResponseEntity<OwnershipPercentageResponse> resetOwnershipPercentage(
-            @PathVariable Long userId,
-            @PathVariable Long groupId) {
+            @PathVariable Long groupId,
+            @AuthenticationPrincipal String userEmail) {
+        
+        // Lấy userId từ email
+        Long userId = userProfileService.getUserProfile(userEmail).getUserId();
         
         OwnershipPercentageResponse response = ownershipShareService.resetOwnershipPercentage(userId, groupId);
         return ResponseEntity.ok(response);
@@ -103,13 +121,16 @@ public class OwnershipPercentageController {
 
     /**
      * Validate tỷ lệ sở hữu trước khi lưu
-     * POST /api/ownership-percentage/{userId}/{groupId}/validate
+     * POST /api/ownership-percentage/{groupId}/validate
      */
-    @PostMapping("/{userId}/{groupId}/validate")
+    @PostMapping("/{groupId}/validate")
     public ResponseEntity<ValidationResponse> validateOwnershipPercentage(
-            @PathVariable Long userId,
             @PathVariable Long groupId,
+            @AuthenticationPrincipal String userEmail,
             @Valid @RequestBody OwnershipPercentageRequest request) {
+        
+        // Lấy userId từ email
+        Long userId = userProfileService.getUserProfile(userEmail).getUserId();
         
         try {
             // Gọi service để validate
