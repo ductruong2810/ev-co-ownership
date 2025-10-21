@@ -45,16 +45,16 @@ public class VehicleImageApprovalController {
         return ResponseEntity.ok(approvalService.getVehicleWithImagesByGroupId(groupId));
     }
 
-    @PatchMapping("/groups/{groupId}/approve")
-    public ResponseEntity<GroupApprovalResult> approveGroupImages(
+    @PatchMapping("/groups/{groupId}/review")
+    public ResponseEntity<GroupApprovalResult> reviewGroupImages(
             @PathVariable Long groupId,
             @RequestBody @Valid VehicleImageApprovalRequest request,
             @AuthenticationPrincipal String staffEmail) {
         return ResponseEntity.ok(approvalService.approveGroupImages(groupId, request, staffEmail));
     }
 
-    @PatchMapping("/{imageId}/approve")
-    public ResponseEntity<VehicleImageResponse> approveImage(
+    @PatchMapping("/{imageId}/review")
+    public ResponseEntity<VehicleImageResponse> reviewImage(
             @PathVariable Long imageId,
             @RequestBody @Valid VehicleImageApprovalRequest request,
             @AuthenticationPrincipal String staffEmail) {
