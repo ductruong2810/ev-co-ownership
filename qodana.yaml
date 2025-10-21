@@ -13,20 +13,34 @@ version: "1.0"
 profile:
   name: qodana.starter
 
-#Enable inspections
-#include:
-#  - name: <SomeEnabledInspectionId>
+#Enable inspections - chỉ focus vào những inspection quan trọng nhất
+include:
+  - name: "Java"
+  - name: "Spring"
+  - name: "Security"
 
-#Disable inspections
-#exclude:
-#  - name: <SomeDisabledInspectionId>
-#    paths:
-#      - <path/where/not/run/inspection>
+#Disable inspections - loại bỏ những check không cần thiết để tăng tốc
+exclude:
+  - name: "UnusedCode"
+    paths:
+      - "src/test/**"
+  - name: "SpellCheckingInspection"
+  - name: "Typo"
+  - name: "JavaDoc"
+    paths:
+      - "src/main/java/com/group8/evcoownership/dto/**"
 
 projectJDK: "17" #(Applied in CI/CD pipeline)
 
 #Execute shell command before Qodana execution (Applied in CI/CD pipeline)
 #bootstrap: sh ./prepare-qodana.sh
+
+# Tối ưu performance
+memory: "2g"
+maxHeapSize: "1536m"
+
+# Chỉ phân tích những thay đổi quan trọng
+incrementalAnalysis: true
 
 #Install IDE plugins before Qodana execution (Applied in CI/CD pipeline)
 #plugins:
