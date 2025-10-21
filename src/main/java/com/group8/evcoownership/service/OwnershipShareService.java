@@ -17,6 +17,7 @@ import com.group8.evcoownership.enums.NotificationType;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
 import com.group8.evcoownership.repository.OwnershipShareRepository;
 import com.group8.evcoownership.repository.UserRepository;
+import com.group8.evcoownership.repository.UserDocumentRepository;
 import com.group8.evcoownership.repository.VehicleRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
@@ -35,6 +36,7 @@ public class OwnershipShareService {
     private final OwnershipShareRepository shareRepo;
     private final OwnershipGroupRepository groupRepo;
     private final UserRepository userRepo;
+    private final UserDocumentRepository userDocumentRepository;
     private final VehicleRepository vehicleRepository;
     private final NotificationOrchestrator notificationOrchestrator;
 
@@ -63,13 +65,16 @@ public class OwnershipShareService {
         var group = groupRepo.findById(req.groupId())
                 .orElseThrow(() -> new EntityNotFoundException("Group not found"));
 
-        if (group.getStatus() != GroupStatus.PENDING) {
-            throw new IllegalStateException("Group is not PENDING");
+        if (group.getStatus() != GroupStatus.ACTIVE) {
+            throw new IllegalStateException("Group is not ACTIVE");
         }
 
         if (shareRepo.existsByGroup_GroupIdAndUser_UserId(group.getGroupId(), user.getUserId())) {
             throw new IllegalStateException("Membership already exists");
         }
+
+        // Kiểm tra user có đầy đủ giấy tờ đã được duyệt không
+        validateUserDocuments(user.getUserId());
 
         long currentMembers = shareRepo.countByGroup_GroupId(group.getGroupId());
         long capacity = group.getMemberCapacity() == null ? Long.MAX_VALUE : group.getMemberCapacity();
@@ -105,15 +110,15 @@ public class OwnershipShareService {
     }
 
     /**
-     * Cập nhật % sở hữu (chỉ khi group PENDING)
+     * Cập nhật % sở hữu (chỉ khi group ACTIVE)
      */
     @Transactional
     public OwnershipShareResponse updatePercentage(Long groupId, Long userId,
                                                    OwnershipShareUpdatePercentageRequest req) {
         var group = groupRepo.findById(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Group not found"));
-        if (group.getStatus() != GroupStatus.PENDING) {
-            throw new IllegalStateException("Group is not PENDING");
+        if (group.getStatus() != GroupStatus.ACTIVE) {
+            throw new IllegalStateException("Group is not ACTIVE");
         }
 
         var id = new OwnershipShareId(userId, groupId);
@@ -147,7 +152,7 @@ public class OwnershipShareService {
     }
 
     /**
-     * Xoá 1 thành viên (chỉ khi PENDING)
+     * Xoá 1 thành viên (chỉ khi ACTIVE)
      */
     @Transactional
     public void removeMember(Long groupId, Long userId) {
@@ -156,8 +161,8 @@ public class OwnershipShareService {
                 .orElseThrow(() -> new EntityNotFoundException("Membership not found"));
 
         var group = share.getGroup();
-        if (group.getStatus() != GroupStatus.PENDING) {
-            throw new IllegalStateException("Cannot remove member when group is not PENDING");
+        if (group.getStatus() != GroupStatus.ACTIVE) {
+            throw new IllegalStateException("Cannot remove member when group is not ACTIVE");
         }
 
         shareRepo.delete(share);
@@ -230,12 +235,22 @@ public class OwnershipShareService {
         // Tính tổng tỷ lệ đã phân bổ
         BigDecimal totalAllocated = calculateTotalAllocatedPercentage(groupId);
         
-        // Kiểm tra có thể edit không (chỉ khi group PENDING và user chưa confirm)
-        boolean canEdit = group.getStatus() == GroupStatus.PENDING && 
+        // Kiểm tra có thể edit không (chỉ khi group ACTIVE và user chưa confirm)
+        boolean canEdit = group.getStatus() == GroupStatus.ACTIVE && 
                          share.getOwnershipPercentage().compareTo(BigDecimal.ZERO) == 0;
         
         // Tính số tiền đầu tư
         BigDecimal investmentAmount = calculateInvestmentAmount(vehicle.getVehicleValue(), share.getOwnershipPercentage());
+        
+        // Xác định trạng thái ownership percentage của user
+        String ownershipStatus;
+        if (share.getOwnershipPercentage().compareTo(BigDecimal.ZERO) == 0) {
+            ownershipStatus = "PENDING"; // Chưa nhập tỷ lệ
+        } else if (group.getStatus() == GroupStatus.ACTIVE && canEdit) {
+            ownershipStatus = "CONFIRMED"; // Đã nhập tỷ lệ, có thể chỉnh sửa
+        } else {
+            ownershipStatus = "LOCKED"; // Đã khóa, không thể chỉnh sửa
+        }
         
         return OwnershipPercentageResponse.builder()
                 .userId(userId)
@@ -246,7 +261,7 @@ public class OwnershipShareService {
                 .vehicleValue(vehicle.getVehicleValue())
                 .totalAllocatedPercentage(totalAllocated)
                 .canEdit(canEdit)
-                .status(group.getStatus().name())
+                .status(ownershipStatus)
                 .updatedAt(share.getUpdatedAt())
                 .message(canEdit ? "Bạn có thể nhập tỷ lệ sở hữu" : "Tỷ lệ sở hữu đã được xác nhận")
                 .build();
@@ -264,9 +279,9 @@ public class OwnershipShareService {
         var group = groupRepo.findById(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
         
-        // Kiểm tra group có ở trạng thái PENDING không
-        if (group.getStatus() != GroupStatus.PENDING) {
-            throw new IllegalStateException("Cannot update ownership percentage when group is not PENDING");
+        // Kiểm tra group có ở trạng thái ACTIVE không
+        if (group.getStatus() != GroupStatus.ACTIVE) {
+            throw new IllegalStateException("Cannot update ownership percentage when group is not ACTIVE");
         }
         
         var share = shareRepo.findById(new OwnershipShareId(userId, groupId))
@@ -288,6 +303,17 @@ public class OwnershipShareService {
         
         BigDecimal investmentAmount = calculateInvestmentAmount(vehicle.getVehicleValue(), share.getOwnershipPercentage());
         
+        // Xác định trạng thái ownership percentage sau khi cập nhật
+        String ownershipStatus;
+        boolean canEditAfterUpdate = totalAllocated.compareTo(new BigDecimal("100")) < 0;
+        if (share.getOwnershipPercentage().compareTo(BigDecimal.ZERO) == 0) {
+            ownershipStatus = "PENDING"; // Chưa nhập tỷ lệ
+        } else if (group.getStatus() == GroupStatus.ACTIVE && canEditAfterUpdate) {
+            ownershipStatus = "CONFIRMED"; // Đã nhập tỷ lệ, có thể chỉnh sửa
+        } else {
+            ownershipStatus = "LOCKED"; // Đã khóa, không thể chỉnh sửa
+        }
+        
         return OwnershipPercentageResponse.builder()
                 .userId(userId)
                 .groupId(groupId)
@@ -296,8 +322,8 @@ public class OwnershipShareService {
                 .investmentAmount(investmentAmount)
                 .vehicleValue(vehicle.getVehicleValue())
                 .totalAllocatedPercentage(totalAllocated)
-                .canEdit(totalAllocated.compareTo(new BigDecimal("100")) < 0)
-                .status(group.getStatus().name())
+                .canEdit(canEditAfterUpdate)
+                .status(ownershipStatus)
                 .updatedAt(share.getUpdatedAt())
                 .message("Tỷ lệ sở hữu đã được cập nhật thành công")
                 .build();
@@ -325,13 +351,23 @@ public class OwnershipShareService {
                     BigDecimal investmentAmount = calculateInvestmentAmount(vehicle.getVehicleValue(), share.getOwnershipPercentage());
                     boolean isCurrentUser = share.getUser().getUserId().equals(currentUserId);
                     
+                    // Xác định trạng thái ownership percentage của từng member
+                    String memberStatus;
+                    if (share.getOwnershipPercentage().compareTo(BigDecimal.ZERO) == 0) {
+                        memberStatus = "PENDING"; // Chưa nhập tỷ lệ
+                    } else if (group.getStatus() == GroupStatus.ACTIVE && !isFullyAllocated) {
+                        memberStatus = "CONFIRMED"; // Đã nhập tỷ lệ, có thể chỉnh sửa
+                    } else {
+                        memberStatus = "LOCKED"; // Đã khóa, không thể chỉnh sửa
+                    }
+                    
                     return GroupOwnershipSummaryResponse.MemberOwnershipInfo.builder()
                             .userId(share.getUser().getUserId())
                             .userName(share.getUser().getFullName())
                             .userEmail(share.getUser().getEmail())
                             .ownershipPercentage(share.getOwnershipPercentage())
                             .investmentAmount(investmentAmount)
-                            .status(group.getStatus().name())
+                            .status(memberStatus)
                             .isCurrentUser(isCurrentUser)
                             .build();
                 })
@@ -357,8 +393,8 @@ public class OwnershipShareService {
         var group = groupRepo.findById(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
         
-        if (group.getStatus() != GroupStatus.PENDING) {
-            throw new IllegalStateException("Cannot reset ownership percentage when group is not PENDING");
+        if (group.getStatus() != GroupStatus.ACTIVE) {
+            throw new IllegalStateException("Cannot reset ownership percentage when group is not ACTIVE");
         }
         
         var share = shareRepo.findById(new OwnershipShareId(userId, groupId))
@@ -373,6 +409,9 @@ public class OwnershipShareService {
         var vehicle = vehicleRepository.findByOwnershipGroup(group)
                 .orElseThrow(() -> new EntityNotFoundException("Vehicle not found"));
         
+        // Sau khi reset về 0%, status sẽ là PENDING
+        String ownershipStatus = "PENDING"; // Đã reset về 0%, chưa nhập tỷ lệ
+        
         return OwnershipPercentageResponse.builder()
                 .userId(userId)
                 .groupId(groupId)
@@ -382,7 +421,7 @@ public class OwnershipShareService {
                 .vehicleValue(vehicle.getVehicleValue())
                 .totalAllocatedPercentage(totalAllocated)
                 .canEdit(true)
-                .status(group.getStatus().name())
+                .status(ownershipStatus)
                 .updatedAt(share.getUpdatedAt())
                 .message("Tỷ lệ sở hữu đã được đặt lại về 0%")
                 .build();
@@ -451,6 +490,29 @@ public class OwnershipShareService {
         if (newTotal.compareTo(new BigDecimal("100")) > 0) {
             throw new IllegalArgumentException("Total ownership percentage cannot exceed 100%. Current total: " + 
                     currentTotal + "%, New percentage: " + newPercentage + "%");
+        }
+    }
+
+    /**
+     * Kiểm tra user có đầy đủ giấy tờ đã được duyệt không
+     */
+    private void validateUserDocuments(Long userId) {
+        // Lấy tất cả documents của user
+        var documents = userDocumentRepository.findByUserId(userId);
+        
+        // Kiểm tra có đủ 2 loại giấy tờ: CITIZEN_ID và DRIVER_LICENSE
+        boolean hasCitizenId = documents.stream()
+                .anyMatch(doc -> "CITIZEN_ID".equals(doc.getDocumentType()) && "APPROVED".equals(doc.getStatus()));
+        
+        boolean hasDriverLicense = documents.stream()
+                .anyMatch(doc -> "DRIVER_LICENSE".equals(doc.getDocumentType()) && "APPROVED".equals(doc.getStatus()));
+        
+        if (!hasCitizenId) {
+            throw new IllegalStateException("User must have approved Citizen ID document to join group");
+        }
+        
+        if (!hasDriverLicense) {
+            throw new IllegalStateException("User must have approved Driver License document to join group");
         }
     }
 }
