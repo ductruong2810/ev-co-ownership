@@ -378,6 +378,7 @@ public class OwnershipShareService {
                 .groupName(group.getGroupName())
                 .vehicleValue(vehicle.getVehicleValue())
                 .totalMembers(shares.size())
+                .memberCapacity(group.getMemberCapacity())
                 .totalAllocatedPercentage(totalAllocated)
                 .isFullyAllocated(isFullyAllocated)
                 .remainingPercentage(remainingPercentage)
