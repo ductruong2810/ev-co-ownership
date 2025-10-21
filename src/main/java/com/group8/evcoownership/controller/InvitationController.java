@@ -83,13 +83,14 @@ public class InvitationController {
     }
 
     /**
-     * Người được mời accept bằng token + otp (không cần auth)
+     * Người được mời accept bằng OTP (cần đã login)
      */
     @PostMapping("/invitations/accept")
     public ResponseEntity<InvitationResponse> accept(
-            @RequestBody @Valid InvitationAcceptRequest req
+            @RequestBody @Valid InvitationAcceptRequest req,
+            Authentication auth
     ) {
-        return ResponseEntity.ok(invitationService.accept(req));
+        return ResponseEntity.ok(invitationService.accept(req, auth));
     }
 }
 

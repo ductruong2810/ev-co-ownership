@@ -5,7 +5,6 @@ import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -68,29 +67,30 @@ public class EmailService {
             java.math.BigDecimal suggestedPercentage, // có thể null
             String acceptUrl // URL FE: ví dụ https://app.xyz/invitations/accept?token=...
     ) {
-        var percentLine = (suggestedPercentage != null)
-                ? "Tỷ lệ sở hữu gợi ý: %s%%\n".formatted(suggestedPercentage.stripTrailingZeros().toPlainString())
-                : "";
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(to);
-        message.setSubject("Lời mời tham gia nhóm EV: " + groupName);
-        message.setText("""
-                Bạn được %s mời tham gia nhóm: %s
-                
-                Link chấp nhận: %s
-                Mã OTP: %s
-                
-                %sHạn lời mời: %s (UTC)
-                
-                Nếu bạn không thực hiện, vui lòng bỏ qua email này.
-                """.formatted(
-                inviterName, groupName,
-                acceptUrl,
-                otp,
-                percentLine,
-                expiresAt // hiển thị ISO-8601, hoặc format lại nếu muốn
-        ));
-        mailSender.send(message);
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            Context context = new Context();
+            context.setVariable("inviterName", inviterName);
+            context.setVariable("groupName", groupName);
+            context.setVariable("otp", otp);
+            context.setVariable("expiresAt", expiresAt);
+            context.setVariable("suggestedPercentage", suggestedPercentage);
+            context.setVariable("websiteUrl", frontendUrl);
+
+            String htmlContent = templateEngine.process("invitation-email", context);
+
+            helper.setTo(to);
+            helper.setSubject("Lời mời tham gia nhóm EV: " + groupName);
+            helper.setText(htmlContent, true);
+
+            mailSender.send(message);
+            log.info("Invitation email sent successfully to: {}", to);
+        } catch (MessagingException e) {
+            log.error("Failed to send invitation email to: {}", to, e);
+            throw new RuntimeException("Không thể gửi email. Vui lòng thử lại sau.");
+        }
     }
 
     // ========== THÊM METHOD NÀY ==========

@@ -15,6 +15,8 @@ public interface InvitationRepository extends JpaRepository<Invitation, Long> {
 
     Optional<Invitation> findByToken(String token);
 
+    Optional<Invitation> findByOtpCodeAndStatus(String otpCode, InvitationStatus status);
+
     boolean existsByGroup_GroupIdAndInviteeEmailIgnoreCaseAndStatus(
             Long groupId, String email, InvitationStatus status
     );

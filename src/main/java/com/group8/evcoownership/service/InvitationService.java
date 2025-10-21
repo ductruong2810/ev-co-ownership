@@ -18,7 +18,6 @@ import com.group8.evcoownership.repository.UserDocumentRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -29,7 +28,6 @@ import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
-import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -95,7 +93,6 @@ public class InvitationService {
         Invitation saved = invitationRepo.save(inv);
 
         // Gửi email mời
-        String acceptUrl = buildAcceptUrl(token); // ví dụ đọc từ config FE base URL
         emailService.sendInvitationEmail(
                 req.inviteeEmail(),
                 group.getGroupName(),
@@ -104,7 +101,7 @@ public class InvitationService {
                 otp,
                 expiresAt,
                 req.suggestedPercentage(),
-                acceptUrl
+                null // Không cần acceptUrl nữa
         );
 
         return toDto(saved);
@@ -169,7 +166,6 @@ public class InvitationService {
 
         invitationRepo.save(inv);
 
-        String acceptUrl = buildAcceptUrl(inv.getToken());
         emailService.sendInvitationEmail(
                 inv.getInviteeEmail(),
                 inv.getGroup().getGroupName(),
@@ -178,7 +174,7 @@ public class InvitationService {
                 newOtp,
                 inv.getExpiresAt(),
                 inv.getSuggestedPercentage(),
-                acceptUrl
+                null // Không cần acceptUrl nữa
         );
 
         // No return needed; controller responds 200 OK
@@ -206,37 +202,33 @@ public class InvitationService {
     // ===================== ACCEPT =====================
 
     /**
-     * Accept lời mời bằng token + OTP + acceptUserId (+ percentage).
+     * Accept lời mời bằng OTP - user đã login và được xác thực.
      */
     @Transactional
-    public InvitationResponse accept(InvitationAcceptRequest req) {
-        Invitation inv = invitationRepo.findByToken(req.token())
-                .orElseThrow(() -> new EntityNotFoundException("Invitation not found"));
+    public InvitationResponse accept(InvitationAcceptRequest req, Authentication auth) {
+        Invitation inv = invitationRepo.findByOtpCodeAndStatus(
+                req.otp(), InvitationStatus.PENDING
+        ).orElseThrow(() -> new EntityNotFoundException("Invitation not found"));
 
-        if (inv.getStatus() != InvitationStatus.PENDING) {
-            throw new IllegalStateException("Invitation is not PENDING");
-        }
         if (isExpired(inv)) throw new IllegalStateException("Invitation expired");
-        if (!inv.getOtpCode().equals(req.otp())) {
-            throw new IllegalArgumentException("Invalid OTP");
-        }
 
         OwnershipGroup group = inv.getGroup();
         ensureGroupActive(group);
 
-        // user accept phải tồn tại và khớp email mời (chống giả mạo)
-        User user = userRepo.findById(req.acceptUserId())
+        // Lấy user từ authentication (đã login)
+        User user = userRepo.findByEmail(auth.getName())
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
-        String invited = inv.getInviteeEmail() == null ? "" : inv.getInviteeEmail().trim().toLowerCase(Locale.ROOT);
-        String actual = user.getEmail() == null ? "" : user.getEmail().trim().toLowerCase(Locale.ROOT);
+        // Kiểm tra email user khớp với email invitation (chống giả mạo)
+        String invited = inv.getInviteeEmail() == null ? "" : inv.getInviteeEmail().trim().toLowerCase();
+        String actual = user.getEmail() == null ? "" : user.getEmail().trim().toLowerCase();
         if (!invited.equals(actual)) {
-            throw new AccessDeniedException("This invitation is not for the provided user");
+            throw new AccessDeniedException("This invitation is not for your email address");
         }
 
         // không cho trùng membership
         if (shareRepo.existsByGroup_GroupIdAndUser_UserId(group.getGroupId(), user.getUserId())) {
-            throw new IllegalStateException("User is already a member of this group");
+            throw new IllegalStateException("You are already a member of this group");
         }
 
         // capacity
@@ -245,11 +237,9 @@ public class InvitationService {
             throw new IllegalStateException("Member capacity exceeded");
         }
 
-        // % sở hữu
-        var percent = req.ownershipPercentage();
-        if (percent == null || percent.compareTo(java.math.BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Ownership percentage must be > 0");
-        }
+        // % sở hữu - để user tự nhập sau khi vào group
+        // Sử dụng tỷ lệ tạm thời 0% để user vào group trước
+        var percent = java.math.BigDecimal.ZERO;
 
         // Kiểm tra user có đầy đủ giấy tờ đã được duyệt không
         validateUserDocuments(user.getUserId());
@@ -300,13 +290,6 @@ public class InvitationService {
                 && u.getRole().getRoleName() != null
                 && (u.getRole().getRoleName().name().equalsIgnoreCase("STAFF")
                 || u.getRole().getRoleName().name().equalsIgnoreCase("ADMIN"));
-    }
-
-    @Value("${app.frontend.url:http://localhost:3000}")
-    private String frontendUrl;
-
-    private String buildAcceptUrl(String token) {
-        return frontendUrl + "/invitations/accept?token=" + token;
     }
 
     private InvitationResponse toDto(Invitation i) {
