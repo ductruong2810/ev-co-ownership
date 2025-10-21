@@ -3,6 +3,8 @@ package com.group8.evcoownership.controller;
 import com.group8.evcoownership.dto.GroupOwnershipSummaryResponse;
 import com.group8.evcoownership.dto.OwnershipPercentageRequest;
 import com.group8.evcoownership.dto.OwnershipPercentageResponse;
+import com.group8.evcoownership.dto.OwnershipPageDataResponse;
+import com.group8.evcoownership.dto.ValidationResponse;
 import com.group8.evcoownership.service.OwnershipShareService;
 import com.group8.evcoownership.service.UserProfileService;
 import jakarta.validation.Valid;
@@ -158,19 +160,4 @@ public class OwnershipPercentageController {
         return ResponseEntity.ok(suggestions);
     }
 
-    // Inner classes for response
-    @lombok.Data
-    @lombok.Builder
-    public static class ValidationResponse {
-        private boolean valid;
-        private String message;
-    }
-
-    @lombok.Data
-    @lombok.Builder
-    public static class OwnershipPageDataResponse {
-        private OwnershipPercentageResponse userOwnership;
-        private GroupOwnershipSummaryResponse groupSummary;
-        private List<BigDecimal> suggestions;
-    }
 }
