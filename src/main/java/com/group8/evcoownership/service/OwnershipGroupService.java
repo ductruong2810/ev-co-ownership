@@ -40,6 +40,7 @@ public class OwnershipGroupService {
     private final UserDocumentRepository userDocumentRepository;
     private final VehicleService vehicleService;
     private final NotificationOrchestrator notificationOrchestrator;
+    private final FundService fundService;
 
     @Value("${app.validation.enabled:true}")
     private boolean validationEnabled;
@@ -155,6 +156,9 @@ public class OwnershipGroupService {
 
         ownershipShareRepository.save(ownershipShare);
 
+        // Tự động tạo quỹ cho nhóm mới
+        fundService.createOrGroup(savedGroup.getGroupId());
+
         // Send notification to group creator
         notificationOrchestrator.sendComprehensiveNotification(
                 user.getUserId(),
@@ -172,7 +176,7 @@ public class OwnershipGroupService {
             String groupName, String description, Integer memberCapacity,
             java.math.BigDecimal vehicleValue, String licensePlate, String chassisNumber,
             MultipartFile[] vehicleImages, String[] imageTypes, String userEmail) {
-        // Step 1: Create ownership group với userEmail
+        // Step 1: Create ownership group với userEmail (quỹ sẽ được tạo tự động)
         OwnershipGroupCreateRequest groupRequest = new OwnershipGroupCreateRequest(
                 groupName, description, memberCapacity);
         OwnershipGroupResponse groupResponse = create(groupRequest, userEmail);
@@ -201,7 +205,7 @@ public class OwnershipGroupService {
                 vehicleResponse.licensePlate(),
                 vehicleResponse.chassisNumber(),
                 vehicleResponse.qrCode(),
-                vehicleValue,
+                vehicleResponse.vehicleValue(),
                 uploadedImages
         );
     }

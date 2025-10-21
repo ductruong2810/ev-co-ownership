@@ -37,6 +37,7 @@ public class FundService {
         SharedFund fund = SharedFund.builder()
                 .group(group)
                 .balance(BigDecimal.ZERO)
+                .targetAmount(BigDecimal.ZERO)
                 .build();
         return fundRepo.save(fund);
 
@@ -45,7 +46,18 @@ public class FundService {
     @Transactional
     // Tao  SharedFund qua body DTO
     public SharedFund create(SharedFundCreateRequest req) {
-        return createOrGroup(req.getGroupId());
+        if (fundRepo.existsByGroup_GroupId(req.getGroupId())) {
+            throw new IllegalStateException("SharedFund already exists for group");
+        }
+        OwnershipGroup group = groupRepo.findById(req.getGroupId())
+                .orElseThrow(() -> new EntityNotFoundException("Group not found: " + req.getGroupId()));
+
+        SharedFund fund = SharedFund.builder()
+                .group(group)
+                .balance(BigDecimal.ZERO)
+                .targetAmount(req.getTargetAmount() != null ? req.getTargetAmount() : BigDecimal.ZERO)
+                .build();
+        return fundRepo.save(fund);
     }
 
     // -------Read--------
@@ -54,7 +66,7 @@ public class FundService {
     public FundBalanceResponse getBalanceByGroupId(Long groupId) {
         SharedFund fund = fundRepo.findByGroup_GroupId(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("SharedFund not found"));
-        return new FundBalanceResponse(fund.getFundId(), fund.getGroup().getGroupId(), fund.getBalance());
+        return new FundBalanceResponse(fund.getFundId(), fund.getGroup().getGroupId(), fund.getBalance(), fund.getTargetAmount());
     }
 
     // Lay SharedFund theo fundId
@@ -65,7 +77,8 @@ public class FundService {
         return new FundBalanceResponse(
                 fund.getFundId(),
                 fund.getGroup().getGroupId(),
-                fund.getBalance()
+                fund.getBalance(),
+                fund.getTargetAmount()
         );
     }
 
@@ -89,6 +102,7 @@ public class FundService {
                         f.getFundId(),
                         f.getGroup() != null ? f.getGroup().getGroupId() : null,
                         f.getBalance(),
+                        f.getTargetAmount(),
                         f.getCreatedAt(),
                         f.getUpdatedAt()
                 )
@@ -108,6 +122,9 @@ public class FundService {
         SharedFund fund = fundRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("SharedFund not found"));
         fund.setBalance(req.getBalance());// chi update, khong tang giam
+        if (req.getTargetAmount() != null) {
+            fund.setTargetAmount(req.getTargetAmount());
+        }
         return fundRepo.save(fund);
     }
 
