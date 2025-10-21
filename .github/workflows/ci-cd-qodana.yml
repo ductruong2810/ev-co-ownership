@@ -105,7 +105,7 @@ jobs:
 
       # Upload Qodana results
       - name: Upload Qodana results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: qodana-results-${{ github.sha }}
