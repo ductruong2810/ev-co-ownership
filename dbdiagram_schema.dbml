@@ -1,5 +1,4 @@
-// EV Co-ownership Database Schema for dbdiagram.io
-// Copy this code and paste into https://dbdiagram.io
+// EV Co-ownership Database Schema (Simplified, no Dispute modules)
 
 Table Roles {
   RoleId bigint [pk, increment]
@@ -51,7 +50,7 @@ Table Vehicle {
   LicensePlate varchar(20)
   ChassisNumber varchar(30)
   QrCode varchar(255)
-  VehicleValue decimal(15,2) [note: 'Value of the vehicle (VND)']
+  VehicleValue decimal(15,2)
   GroupId bigint [ref: - OwnershipGroup.GroupId]
   CreatedAt datetime [default: `now()`]
   UpdatedAt datetime [default: `now()`]
@@ -61,8 +60,8 @@ Table VehicleImages {
   ImageId bigint [pk, increment]
   VehicleId bigint [ref: > Vehicle.VehicleId, not null]
   ImageUrl varchar(500) [not null]
-  ImageType varchar(20) [not null, note: 'VEHICLE or LICENSE']
-  ApprovalStatus varchar(20) [default: 'PENDING', note: 'PENDING, APPROVED, REJECTED']
+  ImageType varchar(20) [not null]
+  ApprovalStatus varchar(20) [default: 'PENDING']
   ApprovedBy bigint [ref: > Users.UserId]
   ApprovedAt datetime
   RejectionReason varchar(500)
@@ -75,16 +74,14 @@ Table Contract {
   StartDate date
   EndDate date
   Terms text
-  RequiredDepositAmount decimal(15,2) [note: 'Required deposit amount for joining the group']
+  RequiredDepositAmount decimal(15,2)
   IsActive boolean [default: true]
   CreatedAt datetime [default: `now()`]
   UpdatedAt datetime [default: `now()`]
-  
-  // Contract Approval Fields (added after approval workflow implementation)
-  ApprovalStatus varchar(20) [default: 'PENDING', note: 'PENDING, APPROVED, REJECTED']
-  ApprovedBy bigint [ref: > Users.UserId, note: 'Staff/Admin who approved the contract']
-  ApprovedAt datetime [note: 'When the contract was approved/rejected']
-  RejectionReason varchar(500) [note: 'Reason for rejection if status is REJECTED']
+  ApprovalStatus varchar(20) [default: 'PENDING']
+  ApprovedBy bigint [ref: > Users.UserId]
+  ApprovedAt datetime
+  RejectionReason varchar(500)
 
   indexes {
     ApprovalStatus [name: 'IX_Contract_ApprovalStatus']
@@ -146,12 +143,12 @@ Table Notification {
 Table Incident {
   IncidentId bigint [pk, increment]
   BookingId bigint [ref: > UsageBooking.BookingId, not null]
-  IncidentType varchar(50) [note: 'BATTERY_FAILURE, ACCIDENT, TECHNICAL_ISSUE, DAMAGE']
+  IncidentType varchar(50)
   Description text
   EstimatedCost decimal(12,2)
   ActualCost decimal(12,2)
   Status varchar(20) [default: 'REPORTED']
-  ImageUrls text [note: 'JSON array of image URLs']
+  ImageUrls text
   IncidentDate datetime [default: `now()`]
   ResolvedDate datetime
   ResolvedBy bigint [ref: > Users.UserId]
@@ -162,21 +159,21 @@ Table Incident {
 Table VehicleCheck {
   Id bigint [pk, increment]
   BookingId bigint [ref: > UsageBooking.BookingId]
-  CheckType varchar(20) [note: 'PRE_USE, POST_USE, REJECTION']
+  CheckType varchar(20)
   Odometer int
   BatteryLevel decimal(5,2)
-  Cleanliness varchar(20) [note: 'CLEAN, DIRTY, VERY_DIRTY']
+  Cleanliness varchar(20)
   Notes text
-  Issues text [note: 'JSON array of issues']
-  Status varchar(20) [note: 'PASSED, REJECTED, PENDING']
+  Issues text
+  Status varchar(20)
   CreatedAt datetime [default: `now()`]
 }
 
 Table UserDocument {
   DocumentId bigint [pk, increment]
   UserId bigint [not null]
-  DocumentType varchar(20) [note: 'CITIZEN_ID, DRIVER_LICENSE']
-  Side varchar(10) [note: 'FRONT, BACK']
+  DocumentType varchar(20)
+  Side varchar(10)
   ImageUrl varchar(500) [not null]
   Status varchar(20) [default: 'PENDING']
   ReviewNote text
@@ -190,37 +187,19 @@ Table Voting {
   GroupId bigint [ref: > OwnershipGroup.GroupId]
   Title varchar(255)
   Description text
-  VotingType varchar(50) [note: 'BATTERY_UPGRADE, INSURANCE_CHANGE, SELL_VEHICLE, MAINTENANCE']
-  Options text [note: 'JSON: ["Option 1", "Option 2", "Option 3"]']
-  Results text [note: 'JSON: {"Option 1": 2, "Option 2": 1}']
+  VotingType varchar(50)
+  Options text
+  Results text
   Deadline datetime
   Status varchar(20) [default: 'ACTIVE']
   CreatedBy bigint [ref: > Users.UserId]
   CreatedAt datetime [default: `now()`]
 }
 
-Table Dispute {
-  DisputeId bigint [pk, increment]
-  FundId bigint [ref: > SharedFund.FundId, not null]
-  CreatedBy bigint
-  DisputeType varchar(50) [note: 'FINANCIAL, USAGE, DECISION']
-  RelatedEntityType varchar(50) [note: 'INCIDENT, PAYMENT, EXPENSE, VOTING']
-  RelatedEntityId bigint
-  Description text
-  DisputedAmount decimal(12,2)
-  Resolution text
-  ResolutionAmount decimal(12,2)
-  Status varchar(20) [default: 'OPEN']
-  ResolvedBy bigint [ref: > Users.UserId]
-  CreatedAt datetime [default: `now()`]
-  UpdatedAt datetime [default: `now()`]
-  ResolvedAt datetime
-}
-
 Table Expense {
   ExpenseId bigint [pk, increment]
   FundId bigint [ref: > SharedFund.FundId]
-  SourceType varchar(50) [note: 'MAINTENANCE, INCIDENT, VEHICLE_CHECK']
+  SourceType varchar(50)
   SourceId bigint
   Description text
   Amount decimal(12,2) [not null]
@@ -229,7 +208,7 @@ Table Expense {
 
 Table Payment {
   PaymentId bigint [pk, increment]
-  PayerUserId bigint [ref: > Users.UserId, not null, note: 'User who paid (initiator)']
+  PayerUserId bigint [ref: > Users.UserId, not null]
   FundId bigint [ref: > SharedFund.FundId, not null]
   Amount decimal(12,2) [not null]
   PaymentDate datetime [default: `now()`]
@@ -237,22 +216,16 @@ Table Payment {
   Status varchar(20) [default: 'PENDING']
   TransactionCode varchar(100)
   ProviderResponse text
-  PaymentType varchar(20) [not null, note: 'CONTRIBUTION, PENALTY, MAINTENANCE_FEE, DEPOSIT']
+  PaymentType varchar(20) [not null]
   Version bigint [default: 0]
-
-  // Personal payment support (money still goes to fund but tagged as personal)
-  PaymentCategory varchar(20) [default: 'GROUP', note: 'GROUP or PERSONAL']
-  ChargedUserId bigint [ref: > Users.UserId, note: 'User held personally responsible (required when PERSONAL)']
-  SourceDisputeId bigint [ref: > Dispute.DisputeId, note: 'If originated from a dispute']
+  PaymentCategory varchar(20) [default: 'GROUP']
+  ChargedUserId bigint [ref: > Users.UserId]
   PersonalReason text
 
   indexes {
     PaymentCategory [name: 'IX_Payment_Category']
     ChargedUserId [name: 'IX_Payment_ChargedUserId']
-    SourceDisputeId [name: 'IX_Payment_SourceDisputeId']
   }
-
-  note: 'Rule: when PaymentCategory = PERSONAL then ChargedUserId must be NOT NULL.'
 }
 
 Table FinancialReport {
@@ -268,7 +241,6 @@ Table FinancialReport {
 
   indexes {
     FundId [name: 'IX_FinancialReport_FundId']
-    GeneratedBy [name: 'IX_FinancialReport_GeneratedBy']
     (ReportYear, ReportMonth) [name: 'IX_FinancialReport_ReportYear_Month']
   }
 }
@@ -297,107 +269,4 @@ Table Invitation {
   CreatedAt datetime [default: `now()`]
   AcceptedAt datetime
   AcceptedBy bigint [ref: > Users.UserId]
-
-  indexes {
-    ExpiresAt [name: 'IX_Invitation_ExpiresAt']
-    (GroupId, ExpiresAt) [name: 'IX_Invitation_Group_ExpiresAt']
-    Token [unique, name: 'UQ_Invitation_Token']
-  }
-}
-// ===== Add-on: Dispute processing (no change to Dispute) =====
-
-Table DisputeTicket {
-  TicketId bigint [pk, increment]
-  DisputeId bigint [not null, ref: > Dispute.DisputeId]
-  Priority varchar(20) [default: 'MEDIUM']
-  AssignedTo bigint [ref: > Users.UserId]
-  OpenedAt datetime [default: `now()`]
-  DueFirstResponseAt datetime
-  DueResolutionAt datetime
-  ClosedAt datetime
-
-  indexes {
-    DisputeId [name: 'IX_DisputeTicket_DisputeId']
-    AssignedTo [name: 'IX_DisputeTicket_AssignedTo']
-    (DisputeId, ClosedAt) [name: 'IX_DisputeTicket_Open']
-  }
-}
-Table DisputeEvent {
-  EventId bigint [pk, increment]
-  TicketId bigint [ref: > DisputeTicket.TicketId]
-  ActorUserId bigint
-  ActorRole varchar(20) [note: 'USER/STAFF/SYSTEM']
-  EventType varchar(40) [not null, note: 'CREATED/ATTACHMENT_ADDED/.../CLOSED']
-  OldValue varchar(200)
-  NewValue varchar(200)
-  Note text
-  CreatedAt datetime [default: `now()`]
-
-  indexes {
-    TicketId [name: 'IX_DisputeEvent_TicketId']
-    EventType [name: 'IX_DisputeEvent_EventType']
-  }
-}
-
-Table DisputeAttachment {
-  AttachmentId bigint [pk, increment]
-  DisputeId bigint [not null, ref: > Dispute.DisputeId]
-  FileName varchar(255) [not null]
-  MimeType varchar(100) [not null]
-  SizeBytes bigint [not null]
-  StorageUrl varchar(1000) [not null]
-  Sha256 varchar(64)
-  ThumbnailUrl varchar(1000)
-  MetaJson text
-  UploadedBy bigint [not null, ref: > Users.UserId]
-  Visibility varchar(20) [default: 'USER', note: 'USER/STAFF/INTERNAL']
-  Status varchar(20) [default: 'ACTIVE', note: 'ACTIVE/SOFT_DELETED']
-  CreatedAt datetime [default: `now()`]
-  DeletedAt datetime
-
-  indexes {
-    DisputeId [name: 'IX_DisputeAttachment_DisputeId']
-    UploadedBy [name: 'IX_DisputeAttachment_UploadedBy']
-  }
-}
-
-// ===== Outcomes (kết quả xử lý) =====
-
-Table Refund {
-  RefundId bigint [pk, increment]
-  DisputeId bigint [not null, ref: > Dispute.DisputeId]
-  Amount decimal(15,2) [not null]
-  Method varchar(30) [not null, note: 'VNPAY/BANK/OTHER']
-  TxnRef varchar(100)
-  Status varchar(20) [default: 'PENDING', note: 'PENDING/SUCCESS/FAILED']
-  CreatedAt datetime [default: `now()`]
-  SettledAt datetime
-  Note text
-  Provider varchar(20) [default: 'VNPAY']
-  ProviderTxnRef varchar(100)
-  ProviderRefundRef varchar(100)
-  ReasonCode varchar(20)
-  Channel varchar(20)
-  RawResponse text
-
-  indexes {
-    DisputeId [name: 'IX_Refund_DisputeId']
-    Status [name: 'IX_Refund_Status']
-  }
-}
-Table JournalEntry {
-  EntryId bigint [pk, increment]
-  DisputeId bigint [not null, ref: > Dispute.DisputeId]
-  FundId bigint [not null, ref: > SharedFund.FundId]
-  AccountCode varchar(50) [not null]
-  Debit decimal(15,2) [not null, default: 0]
-  Credit decimal(15,2) [not null, default: 0]
-  Memo varchar(255)
-  PostedAt datetime
-  CreatedAt datetime [default: `now()`]
-
-  indexes {
-    DisputeId [name: 'IX_Journal_DisputeId']
-    FundId [name: 'IX_Journal_FundId']
-  }
 }
