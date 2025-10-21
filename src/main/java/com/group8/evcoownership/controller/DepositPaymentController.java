@@ -68,24 +68,6 @@ public class DepositPaymentController {
     }
 
     /**
-     * Kiểm tra và kích hoạt group nếu tất cả đã đóng tiền cọc
-     */
-    @PostMapping("/check-activation/{groupId}")
-    public ResponseEntity<Map<String, Object>> checkAndActivateGroup(
-            @PathVariable Long groupId) {
-
-        depositPaymentService.checkAndActivateGroup(groupId);
-
-        Map<String, Object> result = Map.of(
-                "success", true,
-                "message", "Group activation check completed",
-                "groupId", groupId
-        );
-
-        return ResponseEntity.ok(result);
-    }
-
-    /**
      * Xử lý VNPay callback cho deposit payment
      */
     @GetMapping("/deposit-callback")
