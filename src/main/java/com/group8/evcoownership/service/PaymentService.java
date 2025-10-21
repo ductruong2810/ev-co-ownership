@@ -1,6 +1,7 @@
 package com.group8.evcoownership.service;
 
 import com.group8.evcoownership.dto.CreatePaymentRequest;
+import com.group8.evcoownership.dto.PaymentRequest;
 import com.group8.evcoownership.dto.PaymentResponse;
 import com.group8.evcoownership.dto.UpdatePaymentRequest;
 import com.group8.evcoownership.entity.Payment;
@@ -62,7 +63,7 @@ public class PaymentService {
     }
 
     @Transactional
-    public PaymentResponse create(CreatePaymentRequest req) {
+    public PaymentResponse create(PaymentRequest req) {
         User user = userRepo.findById(req.getUserId())
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + req.getUserId()));
 
@@ -76,6 +77,7 @@ public class PaymentService {
                 .paymentMethod(req.getPaymentMethod())
                 .paymentType(PaymentType.valueOf(req.getPaymentType()))
                 .status(PaymentStatus.PENDING)
+                .paymentCategory("GROUP")
                 .transactionCode(req.getTransactionCode())
                 .build();
 

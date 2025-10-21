@@ -9,10 +9,10 @@ import java.time.LocalDateTime;
 @Data
 @Builder
 public class PaymentResponse {
-    private Long id;                // PaymentId
-    private Long userId;            // từ User.userId
+    private Long id;
+    private Long userId;
     private Long fundId;
-    private String userFullName;    // từ User.fullName
+    private String userFullName;
     private BigDecimal amount;
     private LocalDateTime paymentDate;
     private String paymentMethod;
@@ -20,4 +20,7 @@ public class PaymentResponse {
     private String transactionCode;
     private String providerResponse;
     private String paymentType;
+
+    // ⚙️ Thêm trường này để gửi link VNPAY ngay sau khi tạo payment
+    private String paymentUrl;
 }
