@@ -88,6 +88,7 @@ public class Payment {
 
     @PrePersist
     public void prePersist() {
+        this.paymentDate = LocalDateTime.now();
         if (version == null) version = 0L;
     }
 }

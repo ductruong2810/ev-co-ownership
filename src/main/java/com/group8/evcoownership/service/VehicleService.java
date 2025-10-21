@@ -54,6 +54,7 @@ public class VehicleService {
                 .model(req.model())
                 .licensePlate(req.licensePlate())
                 .chassisNumber(req.chassisNumber())
+                .vehicleValue(req.vehicleValue())
                 .ownershipGroup(group)
                 .build();
 
@@ -61,7 +62,7 @@ public class VehicleService {
         v = vehicleRepo.save(v);
 
         // Tự sinh QR, KHÔNG lấy từ client
-        v.setQrCode(buildQrPayload(v.getId(), v.getLicensePlate()));
+        v.setQrCode(buildQrPayload(v.getId()));
 
         // Lưu lần 2 sau khi set QR
         v = vehicleRepo.save(v);
@@ -69,7 +70,7 @@ public class VehicleService {
         return toDto(v);
     }
 
-    private String buildQrPayload(Long vehicleId, String licensePlate) {
+    private String buildQrPayload(Long vehicleId) {
         // QR chứa Group ID để checkin đơn giản (1 group = 1 xe)
         Vehicle vehicle = vehicleRepo.findById(vehicleId).orElse(null);
         if (vehicle != null && vehicle.getOwnershipGroup() != null) {

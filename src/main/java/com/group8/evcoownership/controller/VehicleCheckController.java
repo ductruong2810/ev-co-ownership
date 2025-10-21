@@ -1,13 +1,18 @@
 package com.group8.evcoownership.controller;
 
+import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.entity.VehicleCheck;
+import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.service.VehicleCheckService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/vehicle-checks")
@@ -15,62 +20,78 @@ import java.util.List;
 public class VehicleCheckController {
 
     private final VehicleCheckService vehicleCheckService;
+    private final UserRepository userRepository;
 
     /**
-     * User tạo pre-use check
+     * User tạo pre-use check với JWT authentication
      * Example:
      * POST /api/vehicle-checks/pre-use
      */
     @PostMapping("/pre-use")
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<VehicleCheck> createPreUseCheck(
             @RequestParam Long bookingId,
-            @RequestParam Long userId,
             @RequestParam(required = false) Integer odometer,
             @RequestParam(required = false) BigDecimal batteryLevel,
             @RequestParam(required = false) String cleanliness,
             @RequestParam(required = false) String notes,
             @RequestParam(required = false) String issues) {
 
+        // Lấy user từ JWT token
+        String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        User currentUser = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
         VehicleCheck check = vehicleCheckService.createPreUseCheck(
-                bookingId, userId, odometer, batteryLevel, cleanliness, notes, issues);
+                bookingId, currentUser.getUserId(), odometer, batteryLevel, cleanliness, notes, issues);
 
         return ResponseEntity.ok(check);
     }
 
     /**
-     * User tạo post-use check
+     * User tạo post-use check với JWT authentication
      * Example:
      * POST /api/vehicle-checks/post-use
      */
     @PostMapping("/post-use")
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<VehicleCheck> createPostUseCheck(
             @RequestParam Long bookingId,
-            @RequestParam Long userId,
             @RequestParam(required = false) Integer odometer,
             @RequestParam(required = false) BigDecimal batteryLevel,
             @RequestParam(required = false) String cleanliness,
             @RequestParam(required = false) String notes,
             @RequestParam(required = false) String issues) {
 
+        // Lấy user từ JWT token
+        String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        User currentUser = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
         VehicleCheck check = vehicleCheckService.createPostUseCheck(
-                bookingId, userId, odometer, batteryLevel, cleanliness, notes, issues);
+                bookingId, currentUser.getUserId(), odometer, batteryLevel, cleanliness, notes, issues);
 
         return ResponseEntity.ok(check);
     }
 
     /**
-     * User từ chối xe
+     * User từ chối xe với JWT authentication
      * Example:
      * POST /api/vehicle-checks/reject
      */
     @PostMapping("/reject")
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<VehicleCheck> rejectVehicle(
             @RequestParam Long bookingId,
-            @RequestParam Long userId,
             @RequestParam String issues,
             @RequestParam(required = false) String notes) {
 
-        VehicleCheck check = vehicleCheckService.rejectVehicle(bookingId, userId, issues, notes);
+        // Lấy user từ JWT token
+        String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        User currentUser = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        VehicleCheck check = vehicleCheckService.rejectVehicle(bookingId, currentUser.getUserId(), issues, notes);
         return ResponseEntity.ok(check);
     }
 
@@ -134,5 +155,22 @@ public class VehicleCheckController {
 
         Boolean hasCheck = vehicleCheckService.hasCheck(bookingId, checkType);
         return ResponseEntity.ok(hasCheck);
+    }
+
+    /**
+     * QR Code Check-in endpoint - Quét QR để tìm booking active của user
+     * Example:
+     * POST /api/vehicle-checks/qr-checkin
+     */
+    @PostMapping("/qr-checkin")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<Map<String, Object>> qrCheckIn(@RequestParam String qrCode) {
+        // Lấy user từ JWT token
+        String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        User currentUser = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Map<String, Object> result = vehicleCheckService.processQrCheckIn(qrCode, currentUser.getUserId());
+        return ResponseEntity.ok(result);
     }
 }
