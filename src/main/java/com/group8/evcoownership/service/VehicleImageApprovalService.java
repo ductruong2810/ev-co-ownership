@@ -163,15 +163,23 @@ public class VehicleImageApprovalService {
 
         vehicleImageRepository.saveAll(groupImages);
 
-        // Cập nhật trạng thái group nếu được duyệt
-        if (request.status() == ImageApprovalStatus.APPROVED) {
-            OwnershipGroup group = ownershipGroupRepository.findById(groupId)
-                    .orElseThrow(() -> new EntityNotFoundException("Group not found"));
+        // Cập nhật trạng thái group dựa trên kết quả duyệt
+        OwnershipGroup group = ownershipGroupRepository.findById(groupId)
+                .orElseThrow(() -> new EntityNotFoundException("Group not found"));
 
+        if (request.status() == ImageApprovalStatus.APPROVED) {
+            // Nếu tất cả hình được duyệt, chuyển group thành ACTIVE
             if (group.getStatus() == GroupStatus.PENDING) {
                 group.setStatus(GroupStatus.ACTIVE);
                 ownershipGroupRepository.save(group);
                 log.info("Group {} status updated to ACTIVE after all images approved", groupId);
+            }
+        } else if (request.status() == ImageApprovalStatus.REJECTED) {
+            // Nếu có hình bị từ chối, chuyển group thành INACTIVE để phản ánh việc cần upload lại
+            if (group.getStatus() == GroupStatus.PENDING) {
+                group.setStatus(GroupStatus.INACTIVE);
+                ownershipGroupRepository.save(group);
+                log.info("Group {} status updated to INACTIVE after images rejected", groupId);
             }
         }
 
@@ -180,7 +188,7 @@ public class VehicleImageApprovalService {
                 .totalImages(groupImages.size())
                 .approvedImages(request.status() == ImageApprovalStatus.APPROVED ? groupImages.size() : 0)
                 .rejectedImages(request.status() == ImageApprovalStatus.REJECTED ? groupImages.size() : 0)
-                .groupStatus(request.status() == ImageApprovalStatus.APPROVED ? GroupStatus.ACTIVE : GroupStatus.PENDING)
+                .groupStatus(group.getStatus())
                 .build();
     }
 
@@ -221,7 +229,7 @@ public class VehicleImageApprovalService {
     }
 
     /**
-     * Kiểm tra và cập nhật trạng thái group nếu tất cả hình ảnh đã được duyệt
+     * Kiểm tra và cập nhật trạng thái group dựa trên trạng thái hình ảnh
      */
     @Transactional
     public void checkAndUpdateGroupStatus(Long vehicleId) {
@@ -234,20 +242,25 @@ public class VehicleImageApprovalService {
 
         Long groupId = vehicle.getOwnershipGroup().getGroupId();
 
-        // Đếm tổng số hình ảnh và số hình ảnh đã được duyệt
+        // Đếm tổng số hình ảnh và số hình ảnh theo từng trạng thái
         long totalImages = vehicleImageRepository.countByVehicleId(vehicleId);
         long approvedImages = vehicleImageRepository.countByVehicleIdAndApprovalStatus(vehicleId, ImageApprovalStatus.APPROVED);
+        long rejectedImages = vehicleImageRepository.countByVehicleIdAndApprovalStatus(vehicleId, ImageApprovalStatus.REJECTED);
+
+        OwnershipGroup group = ownershipGroupRepository.findById(groupId)
+                .orElseThrow(() -> new EntityNotFoundException("Group not found"));
 
         // Nếu tất cả hình ảnh đã được duyệt và group đang ở trạng thái PENDING
-        if (totalImages > 0 && totalImages == approvedImages) {
-            OwnershipGroup group = ownershipGroupRepository.findById(groupId)
-                    .orElseThrow(() -> new EntityNotFoundException("Group not found"));
-
-            if (group.getStatus() == GroupStatus.PENDING) {
-                group.setStatus(GroupStatus.ACTIVE);
-                ownershipGroupRepository.save(group);
-                log.info("Group {} status updated to ACTIVE after all images approved", groupId);
-            }
+        if (totalImages > 0 && totalImages == approvedImages && group.getStatus() == GroupStatus.PENDING) {
+            group.setStatus(GroupStatus.ACTIVE);
+            ownershipGroupRepository.save(group);
+            log.info("Group {} status updated to ACTIVE after all images approved", groupId);
+        }
+        // Nếu có hình ảnh bị từ chối và group đang ở trạng thái PENDING
+        else if (rejectedImages > 0 && group.getStatus() == GroupStatus.PENDING) {
+            group.setStatus(GroupStatus.INACTIVE);
+            ownershipGroupRepository.save(group);
+            log.info("Group {} status updated to INACTIVE after images rejected", groupId);
         }
     }
 
