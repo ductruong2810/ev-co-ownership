@@ -68,26 +68,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             if (jwtUtil.validateToken(token)) {
                 String email = jwtUtil.extractEmail(token);
+                log.info("Extracted email from token: {}", email);
                 User user = userRepository.findByEmail(email).orElse(null);
 
                 if (user != null) {
+                    log.info("User found: {} with role: {}", user.getEmail(), user.getRole().getRoleName());
                     SimpleGrantedAuthority authority = new SimpleGrantedAuthority(
                             "ROLE_" + user.getRole().getRoleName().toString()
                     );
 
                     UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                            user,
+                            user.getEmail(),
                             null,
                             Collections.singletonList(authority)
-                    ) {
-                        @Override
-                        public String getName() {
-                            return user.getEmail();
-                        }
-                    };
+                    );
 
                     SecurityContextHolder.getContext().setAuthentication(auth);
                 } else {
+                    log.error("User not found for email: {}", email);
                     request.setAttribute("jwt_error", "Người dùng không tồn tại");
                 }
             } else {

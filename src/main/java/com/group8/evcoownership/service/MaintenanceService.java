@@ -3,6 +3,7 @@ package com.group8.evcoownership.service;
 import com.group8.evcoownership.entity.Maintenance;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.entity.Vehicle;
+import com.group8.evcoownership.enums.NotificationType;
 import com.group8.evcoownership.repository.MaintenanceRepository;
 import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.repository.VehicleRepository;
@@ -26,6 +27,7 @@ public class MaintenanceService {
     private final UserRepository userRepository;
     private final UsageBookingService usageBookingService;
     private final NotificationService notificationService;
+    private final NotificationOrchestrator notificationOrchestrator;
 
     // Technician tạo maintenance request (có thể được gọi từ VehicleReportService)
     public Maintenance createMaintenanceRequest(Long vehicleId, Long technicianId, String description, BigDecimal estimatedCost) {
@@ -44,7 +46,18 @@ public class MaintenanceService {
                 .maintenanceStatus("PENDING")
                 .build();
 
-        return maintenanceRepository.save(maintenance);
+        Maintenance savedMaintenance = maintenanceRepository.save(maintenance);
+
+        // Send maintenance request notification to group members
+        notificationOrchestrator.sendGroupNotification(
+                vehicle.getOwnershipGroup().getGroupId(),
+                NotificationType.MAINTENANCE_REQUESTED,
+                "Maintenance Requested",
+                String.format("Maintenance has been requested for vehicle %s: %s",
+                        vehicle.getLicensePlate(), description)
+        );
+
+        return savedMaintenance;
     }
 
     // Staff/Admin approve maintenance và tự động cancel bookings

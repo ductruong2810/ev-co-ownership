@@ -4,10 +4,7 @@ import com.group8.evcoownership.dto.ContractGenerationRequest;
 import com.group8.evcoownership.dto.ContractGenerationResponse;
 import com.group8.evcoownership.dto.DepositPaymentRequest;
 import com.group8.evcoownership.dto.DepositPaymentResponse;
-import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.enums.DepositStatus;
-import com.group8.evcoownership.enums.GroupRole;
-import com.group8.evcoownership.enums.GroupStatus;
 import com.group8.evcoownership.enums.PaymentStatus;
 import com.group8.evcoownership.repository.*;
 import com.group8.evcoownership.service.ContractGenerationService;
@@ -15,7 +12,6 @@ import com.group8.evcoownership.service.ContractService;
 import com.group8.evcoownership.service.DepositPaymentService;
 import com.group8.evcoownership.service.OwnershipGroupService;
 import jakarta.servlet.http.HttpServletRequest;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -63,67 +59,6 @@ class ContractFlowIntegrationTest {
 
     @Mock
     private HttpServletRequest httpRequest;
-
-    private OwnershipGroup testGroup;
-    private User testUser;
-    private OwnershipShare testShare;
-    private Vehicle testVehicle;
-    private Contract testContract;
-
-    @BeforeEach
-    void setUp() {
-        // Setup test data
-        testGroup = OwnershipGroup.builder()
-                .groupId(1L)
-                .groupName("Test EV Group")
-                .status(GroupStatus.PENDING)
-                .memberCapacity(3)
-                .description("Test group for EV sharing")
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
-
-        testUser = User.builder()
-                .userId(1L)
-                .fullName("Nguyễn Văn Test")
-                .email("test@example.com")
-                .phoneNumber("0901234567")
-                .build();
-
-        testShare = OwnershipShare.builder()
-                .id(new OwnershipShareId(1L, 1L))
-                .user(testUser)
-                .group(testGroup)
-                .groupRole(GroupRole.ADMIN)
-                .ownershipPercentage(new BigDecimal("40.00"))
-                .joinDate(LocalDateTime.now())
-                .depositStatus(DepositStatus.PENDING)
-                .updatedAt(LocalDateTime.now())
-                .build();
-
-        testVehicle = Vehicle.builder()
-                .Id(1L)
-                .brand("VinFast")
-                .model("VF 8 Plus")
-                .licensePlate("30A-123.45")
-                .vehicleValue(new BigDecimal("950000000")) // 950 triệu VND
-                .ownershipGroup(testGroup)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
-
-        testContract = Contract.builder()
-                .id(1L)
-                .group(testGroup)
-                .startDate(LocalDate.now())
-                .endDate(LocalDate.now().plusYears(1))
-                .terms("Test contract terms")
-                .requiredDepositAmount(new BigDecimal("38000000")) // 38 triệu VND (40% của 95 triệu)
-                .isActive(false)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
-    }
 
     @Test
     void testCompleteContractFlow() {

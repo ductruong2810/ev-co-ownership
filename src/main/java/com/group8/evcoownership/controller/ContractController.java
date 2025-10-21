@@ -9,7 +9,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -139,9 +139,8 @@ public class ContractController {
     public ResponseEntity<Map<String, Object>> approveContract(
             @PathVariable Long contractId,
             @Valid @RequestBody ContractApprovalRequest request,
-            Authentication authentication) {
+            @AuthenticationPrincipal String staffEmail) {
 
-        String staffEmail = authentication.getName();
         Map<String, Object> result = contractService.approveContract(contractId, request, staffEmail);
         return ResponseEntity.ok(result);
     }

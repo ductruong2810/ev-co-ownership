@@ -7,6 +7,7 @@ import com.group8.evcoownership.dto.UpdatePaymentRequest;
 import com.group8.evcoownership.entity.Payment;
 import com.group8.evcoownership.entity.SharedFund;
 import com.group8.evcoownership.entity.User;
+import com.group8.evcoownership.enums.NotificationType;
 import com.group8.evcoownership.enums.PaymentStatus;
 import com.group8.evcoownership.enums.PaymentType;
 import com.group8.evcoownership.repository.PaymentRepository;
@@ -33,6 +34,7 @@ public class PaymentService {
     private final UserRepository userRepo;
     private final SharedFundRepository fundRepo;
     private final FundService fundService;
+    private final NotificationOrchestrator notificationOrchestrator;
 
     // Map Entity -> DTO
     private PaymentResponse toDto(Payment p) {
@@ -253,6 +255,15 @@ public class PaymentService {
                 p.setStatus(PaymentStatus.FAILED);
                 if (providerResponseJson != null) p.setProviderResponse(providerResponseJson);
                 paymentRepo.save(p);
+
+                // Send payment failed notification
+                notificationOrchestrator.sendPaymentNotification(
+                        p.getPayer().getUserId(),
+                        NotificationType.PAYMENT_FAILED,
+                        "Payment Failed",
+                        String.format("Your payment of %s VND has failed. Please try again.", p.getAmount()),
+                        p.getId()
+                );
             }
             case COMPLETED -> {
                 // Pending -> Completed
@@ -267,6 +278,15 @@ public class PaymentService {
                 paymentRepo.saveAndFlush(p); // flush trước khi cộng quỹ
                 // Cộng quỹ đúng 1 lần khi chốt Completed
                 fundService.increaseBalance(p.getFund().getFundId(), p.getAmount());
+
+                // Send payment success notification
+                notificationOrchestrator.sendPaymentNotification(
+                        p.getPayer().getUserId(),
+                        NotificationType.PAYMENT_SUCCESS,
+                        "Payment Successful",
+                        String.format("Your payment of %s VND has been processed successfully", p.getAmount()),
+                        p.getId()
+                );
             }
             case REFUNDED -> {
                 // Completed -> Refunded

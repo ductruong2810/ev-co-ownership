@@ -202,12 +202,6 @@ public class UserDocumentService {
         }
     }
 
-    private void validateSide(String side) {
-        if (!side.equals("FRONT") && !side.equals("BACK")) {
-            throw new IllegalArgumentException("Side phải là FRONT hoặc BACK");
-        }
-    }
-
     private void validateImage(MultipartFile file) {
         if (file.isEmpty()) {
             throw new IllegalArgumentException("File không được để trống");

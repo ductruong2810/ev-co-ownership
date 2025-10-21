@@ -94,7 +94,6 @@ public class DepositPaymentController {
 
         String responseCode = params.get("vnp_ResponseCode");
         String transactionCode = params.get("vnp_TransactionNo");
-        String amount = params.get("vnp_Amount");
 
         Map<String, Object> result = new HashMap<>();
 

@@ -8,7 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -45,23 +45,19 @@ public class VehicleImageApprovalController {
         return ResponseEntity.ok(approvalService.getVehicleWithImagesByGroupId(groupId));
     }
 
-    @PatchMapping("/groups/{groupId}/approve")
-    public ResponseEntity<GroupApprovalResult> approveGroupImages(
+    @PatchMapping("/groups/{groupId}/review")
+    public ResponseEntity<GroupApprovalResult> reviewGroupImages(
             @PathVariable Long groupId,
             @RequestBody @Valid VehicleImageApprovalRequest request,
-            Authentication authentication) {
-
-        String staffEmail = authentication.getName();
+            @AuthenticationPrincipal String staffEmail) {
         return ResponseEntity.ok(approvalService.approveGroupImages(groupId, request, staffEmail));
     }
 
-    @PatchMapping("/{imageId}/approve")
-    public ResponseEntity<VehicleImageResponse> approveImage(
+    @PatchMapping("/{imageId}/review")
+    public ResponseEntity<VehicleImageResponse> reviewImage(
             @PathVariable Long imageId,
             @RequestBody @Valid VehicleImageApprovalRequest request,
-            Authentication authentication) {
-
-        String staffEmail = authentication.getName();
+            @AuthenticationPrincipal String staffEmail) {
         return ResponseEntity.ok(approvalService.approveImage(imageId, request, staffEmail));
     }
 
