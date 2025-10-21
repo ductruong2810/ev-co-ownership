@@ -13,6 +13,7 @@ public class GroupOwnershipSummaryResponse {
     private String groupName;
     private BigDecimal vehicleValue;
     private int totalMembers;
+    private Integer memberCapacity;
     private BigDecimal totalAllocatedPercentage;
     private boolean isFullyAllocated;
     private BigDecimal remainingPercentage;
