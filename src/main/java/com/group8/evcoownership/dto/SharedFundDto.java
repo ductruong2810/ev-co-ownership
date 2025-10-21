@@ -7,6 +7,7 @@ public record SharedFundDto(
         Long fundId,
         Long groupId,
         BigDecimal balance,
+        BigDecimal targetAmount,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {

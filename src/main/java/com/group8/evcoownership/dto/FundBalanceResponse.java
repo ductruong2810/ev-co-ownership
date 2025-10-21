@@ -13,4 +13,5 @@ public class FundBalanceResponse {
     private Long fundId;
     private Long groupId;
     private BigDecimal balance;
+    private BigDecimal targetAmount;
 }

@@ -2,6 +2,7 @@ package com.group8.evcoownership.controller;
 
 import com.group8.evcoownership.dto.AmountRequest;
 import com.group8.evcoownership.dto.FundBalanceResponse;
+import com.group8.evcoownership.dto.SharedFundCreateRequest;
 import com.group8.evcoownership.dto.SharedFundDto;
 import com.group8.evcoownership.dto.SharedFundUpdateRequest;
 import com.group8.evcoownership.entity.SharedFund;
@@ -22,17 +23,19 @@ public class FundController {
     private final FundService fundService;
 
     //--------Create------
-    // Api tao quy moi cho group (path)
+    // Api tao quy moi cho group (path) - targetAmount mặc định = 0
     @PostMapping("/{groupId}")
     public FundBalanceResponse createFund(@PathVariable Long groupId) {
         SharedFund fund = fundService.createOrGroup(groupId);
-        return new FundBalanceResponse(fund.getFundId(), fund.getGroup().getGroupId(), fund.getBalance());
+        return new FundBalanceResponse(fund.getFundId(), fund.getGroup().getGroupId(), fund.getBalance(), fund.getTargetAmount());
     }
-//    @PostMapping
-//    // Tao quy theo body(DTO)
-//    public SharedFund createFund(@Valid @RequestBody SharedFundCreateRequest req) {
-//        return fundService.create(req);
-//    }
+    
+    // Api tao quy theo body(DTO) - có thể tùy chọn targetAmount
+    @PostMapping
+    public FundBalanceResponse createFund(@Valid @RequestBody SharedFundCreateRequest req) {
+        SharedFund fund = fundService.create(req);
+        return new FundBalanceResponse(fund.getFundId(), fund.getGroup().getGroupId(), fund.getBalance(), fund.getTargetAmount());
+    }
 
     //-------Read------
 
