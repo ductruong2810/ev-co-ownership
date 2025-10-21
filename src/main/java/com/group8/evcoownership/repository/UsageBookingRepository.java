@@ -75,7 +75,7 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
                 SELECT ub
                 FROM UsageBooking ub
                 JOIN FETCH ub.user u
-                WHERE ub.vehicle.id = :vehicleId
+                WHERE ub.vehicle.Id = :vehicleId
                   AND ub.status IN ('Pending', 'Confirmed')
                   AND CAST(ub.startDateTime AS date) = :date
                 ORDER BY ub.startDateTime
@@ -113,7 +113,7 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
                 SELECT ub
                 FROM UsageBooking ub
                 JOIN FETCH ub.user u
-                WHERE ub.vehicle.id = :vehicleId
+                WHERE ub.vehicle.Id = :vehicleId
                   AND ub.status IN ('Pending', 'Confirmed')
                   AND (
                       (ub.startDateTime BETWEEN :startDateTime AND :endDateTime)
@@ -131,7 +131,7 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
                 SELECT ub
                 FROM UsageBooking ub
                 WHERE ub.user.userId = :userId
-                  AND ub.vehicle.id = :vehicleId
+                  AND ub.vehicle.Id = :vehicleId
                   AND ub.status = 'Confirmed'
                   AND ub.startDateTime <= CURRENT_TIMESTAMP
                   AND ub.endDateTime >= CURRENT_TIMESTAMP
