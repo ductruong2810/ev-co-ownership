@@ -302,7 +302,6 @@ class DepositPaymentServiceTest {
         when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(payment));
         when(shareRepository.findById(new OwnershipShareId(1L, 1L))).thenReturn(Optional.of(testShare));
         when(shareRepository.save(any(OwnershipShare.class))).thenReturn(testShare);
-        when(groupRepository.findById(1L)).thenReturn(Optional.of(testGroup));
 
         // Act
         DepositPaymentResponse response = depositPaymentService.confirmDepositPayment(paymentId, transactionCode);
