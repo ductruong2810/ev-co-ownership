@@ -139,9 +139,6 @@ public class DepositPaymentService {
         share.setUpdatedAt(LocalDateTime.now());
         shareRepository.save(share);
 
-        // Kiểm tra xem tất cả members đã đóng tiền cọc chưa
-        checkAndActivateGroup(payment.getFund().getGroup().getGroupId());
-
         return DepositPaymentResponse.builder()
                 .paymentId(paymentId)
                 .userId(payment.getPayer().getUserId())
@@ -154,30 +151,6 @@ public class DepositPaymentService {
                 .paidAt(LocalDateTime.now())
                 .message("Deposit payment completed successfully")
                 .build();
-    }
-
-    /**
-     * Kiểm tra và kích hoạt group nếu tất cả đã đóng tiền cọc
-     */
-    @Transactional
-    public void checkAndActivateGroup(Long groupId) {
-        OwnershipGroup group = groupRepository.findById(groupId)
-                .orElseThrow(() -> new EntityNotFoundException("Group not found"));
-
-        if (group.getStatus() != GroupStatus.PENDING) {
-            return; // Group đã active rồi
-        }
-
-        // Kiểm tra tất cả members đã đóng tiền cọc chưa
-        List<OwnershipShare> shares = shareRepository.findByGroupGroupId(groupId);
-        boolean allPaid = shares.stream()
-                .allMatch(share -> share.getDepositStatus() == DepositStatus.PAID);
-
-        if (allPaid && !shares.isEmpty()) {
-            group.setStatus(GroupStatus.ACTIVE);
-            group.setUpdatedAt(LocalDateTime.now());
-            groupRepository.save(group);
-        }
     }
 
     /**
