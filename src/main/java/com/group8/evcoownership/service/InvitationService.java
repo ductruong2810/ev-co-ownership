@@ -18,6 +18,7 @@ import com.group8.evcoownership.repository.UserDocumentRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -301,9 +302,11 @@ public class InvitationService {
                 || u.getRole().getRoleName().name().equalsIgnoreCase("ADMIN"));
     }
 
+    @Value("${app.frontend.url:http://localhost:3000}")
+    private String frontendUrl;
+
     private String buildAcceptUrl(String token) {
-        // TODO: đọc từ cấu hình FE base url (ví dụ app.frontend-base-url), tạm hard-code
-        return "http//localhost:3000/invitations/accept?token=" + token;
+        return frontendUrl + "/invitations/accept?token=" + token;
     }
 
     private InvitationResponse toDto(Invitation i) {
