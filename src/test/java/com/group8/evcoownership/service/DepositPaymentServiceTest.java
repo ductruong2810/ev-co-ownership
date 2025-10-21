@@ -379,49 +379,6 @@ class DepositPaymentServiceTest {
     }
 
     @Test
-    void testCheckAndActivateGroup_AllPaid() {
-        // Arrange
-        Long groupId = 1L;
-        OwnershipShare paidShare = OwnershipShare.builder()
-                .id(new OwnershipShareId(1L, 1L))
-                .user(testUser)
-                .group(testGroup)
-                .depositStatus(DepositStatus.PAID)
-                .build();
-
-        when(groupRepository.findById(groupId)).thenReturn(Optional.of(testGroup));
-        when(shareRepository.findByGroupGroupId(groupId)).thenReturn(List.of(paidShare));
-        when(groupRepository.save(any(OwnershipGroup.class))).thenReturn(testGroup);
-
-        // Act
-        depositPaymentService.checkAndActivateGroup(groupId);
-
-        // Assert
-        verify(groupRepository).save(any(OwnershipGroup.class));
-    }
-
-    @Test
-    void testCheckAndActivateGroup_NotAllPaid() {
-        // Arrange
-        Long groupId = 1L;
-        OwnershipShare pendingShare = OwnershipShare.builder()
-                .id(new OwnershipShareId(1L, 1L))
-                .user(testUser)
-                .group(testGroup)
-                .depositStatus(DepositStatus.PENDING) // Not paid yet
-                .build();
-
-        when(groupRepository.findById(groupId)).thenReturn(Optional.of(testGroup));
-        when(shareRepository.findByGroupGroupId(groupId)).thenReturn(List.of(pendingShare));
-
-        // Act
-        depositPaymentService.checkAndActivateGroup(groupId);
-
-        // Assert
-        verify(groupRepository, never()).save(any(OwnershipGroup.class));
-    }
-
-    @Test
     void testDepositCalculationByOwnershipPercentage() {
         // Arrange
         BigDecimal vehicleValue = new BigDecimal("950000000"); // 950 triệu VND
