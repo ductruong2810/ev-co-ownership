@@ -56,7 +56,17 @@
             <artifactId>azure-storage-blob</artifactId>
             <version>12.25.0</version>
         </dependency>
-        <!-- Logback versions managed by Spring Boot -->
+        <!-- Explicitly add secure versions -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.5.19</version>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-core</artifactId>
+            <version>1.5.19</version>
+        </dependency>
         <!-- https://mvnrepository.com/artifact/com.twilio.sdk/twilio -->
         <dependency>
             <groupId>com.twilio.sdk</groupId>
@@ -155,7 +165,17 @@
 
     <dependencyManagement>
         <dependencies>
-            <!-- Logback versions managed by Spring Boot -->
+            <!-- Override vulnerable transitive dependencies -->
+            <dependency>
+                <groupId>ch.qos.logback</groupId>
+                <artifactId>logback-classic</artifactId>
+                <version>1.5.15</version>
+            </dependency>
+            <dependency>
+                <groupId>ch.qos.logback</groupId>
+                <artifactId>logback-core</artifactId>
+                <version>1.5.15</version>
+            </dependency>
             <dependency>
                 <groupId>org.codehaus.janino</groupId>
                 <artifactId>janino</artifactId>
