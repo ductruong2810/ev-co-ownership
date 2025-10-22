@@ -1,6 +1,5 @@
 package com.group8.evcoownership.integration;
 
-import com.group8.evcoownership.dto.ContractGenerationRequest;
 import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.repository.*;
 import com.group8.evcoownership.service.ContractGenerationService;
@@ -20,7 +19,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -113,10 +111,10 @@ class ContractIntegrationTest {
 
         Vehicle testVehicle = ContractTestDataBuilder.TestScenarios.createBasicVehicle(testGroup);
         testVehicle.setId(null);
-        testVehicle = vehicleRepository.save(testVehicle);
+        vehicleRepository.save(testVehicle);
 
         OwnershipShare testShare = ContractTestDataBuilder.TestScenarios.createBasicShare(testGroup, testUser);
-        testShare = shareRepository.save(testShare);
+        shareRepository.save(testShare);
 
         // Mock deposit calculation
         when(depositCalculationService.calculateRequiredDepositAmount(any(OwnershipGroup.class)))

@@ -3,6 +3,8 @@ package com.group8.evcoownership.controller;
 import com.group8.evcoownership.dto.DepositPaymentRequest;
 import com.group8.evcoownership.dto.DepositPaymentResponse;
 import com.group8.evcoownership.service.DepositPaymentService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +18,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/deposits")
 @RequiredArgsConstructor
+@Tag(name = "Deposit Payments", description = "Quản lý thanh toán tiền cọc")
 public class DepositPaymentController {
 
     private final DepositPaymentService depositPaymentService;
@@ -24,6 +27,7 @@ public class DepositPaymentController {
      * Tạo payment cho tiền cọc với VNPay
      */
     @PostMapping("/create")
+    @Operation(summary = "Tạo thanh toán tiền cọc", description = "Tạo giao dịch thanh toán tiền cọc với tích hợp VNPay")
     public ResponseEntity<DepositPaymentResponse> createDepositPayment(
             @Valid @RequestBody DepositPaymentRequest request,
             HttpServletRequest httpRequest) {
@@ -36,6 +40,7 @@ public class DepositPaymentController {
      * Xác nhận payment thành công (callback từ payment gateway)
      */
     @PostMapping("/confirm/{paymentId}")
+    @Operation(summary = "Xác nhận thanh toán", description = "Xác nhận giao dịch thanh toán tiền cọc thành công")
     public ResponseEntity<DepositPaymentResponse> confirmDepositPayment(
             @PathVariable Long paymentId,
             @RequestParam String transactionCode) {
@@ -48,6 +53,7 @@ public class DepositPaymentController {
      * Lấy thông tin deposit của user trong group
      */
     @GetMapping("/info/{userId}/{groupId}")
+    @Operation(summary = "Thông tin tiền cọc", description = "Lấy thông tin tiền cọc của người dùng trong một nhóm")
     public ResponseEntity<Map<String, Object>> getDepositInfo(
             @PathVariable Long userId,
             @PathVariable Long groupId) {
@@ -60,6 +66,7 @@ public class DepositPaymentController {
      * Lấy danh sách deposit status của tất cả members trong group
      */
     @GetMapping("/group/{groupId}/status")
+    @Operation(summary = "Trạng thái tiền cọc nhóm", description = "Lấy trạng thái tiền cọc của tất cả thành viên trong nhóm")
     public ResponseEntity<List<Map<String, Object>>> getGroupDepositStatus(
             @PathVariable Long groupId) {
 
@@ -71,6 +78,7 @@ public class DepositPaymentController {
      * Xử lý VNPay callback cho deposit payment
      */
     @GetMapping("/deposit-callback")
+    @Operation(summary = "Callback VNPay", description = "Xử lý callback từ VNPay cho thanh toán tiền cọc")
     public ResponseEntity<Map<String, Object>> handleVnPayCallback(
             @RequestParam Map<String, String> params) {
 

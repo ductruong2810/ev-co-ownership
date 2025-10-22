@@ -3,6 +3,8 @@ package com.group8.evcoownership.controller;
 import com.group8.evcoownership.dto.UserDocumentDTO;
 import com.group8.evcoownership.entity.UserDocument;
 import com.group8.evcoownership.service.UserDocumentService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +19,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/user/documents")
 @Slf4j
+@Tag(name = "User Documents", description = "Quản lý tài liệu người dùng")
 public class UserDocumentController {
 
     @Autowired
@@ -24,6 +27,7 @@ public class UserDocumentController {
 
     // ================= UPLOAD MULTIPLE DOCUMENTS (2 SIDES AT ONCE) =================
     @PostMapping("/upload-batch")
+    @Operation(summary = "Upload tài liệu hàng loạt", description = "Upload cả mặt trước và mặt sau của tài liệu cùng lúc")
     public ResponseEntity<?> uploadBatchDocuments(
             @RequestParam("documentType") String documentType,
             @RequestParam("frontFile") MultipartFile frontFile,
@@ -52,6 +56,7 @@ public class UserDocumentController {
 
     // ================= GET ALL MY DOCUMENTS (TRẢ VỀ DTO) =================
     @GetMapping
+    @Operation(summary = "Danh sách tài liệu của tôi", description = "Lấy danh sách tất cả tài liệu của người dùng hiện tại")
     public ResponseEntity<List<UserDocumentDTO>> getMyDocuments(@AuthenticationPrincipal String email) {
         log.info("User {} fetching all documents", email);
 
@@ -67,6 +72,7 @@ public class UserDocumentController {
 
     // ================= GET DOCUMENTS BY TYPE (TRẢ VỀ DTO) =================
     @GetMapping("/type/{documentType}")
+    @Operation(summary = "Tài liệu theo loại", description = "Lấy danh sách tài liệu của người dùng theo loại cụ thể")
     public ResponseEntity<List<UserDocumentDTO>> getDocumentsByType(
             @PathVariable String documentType,
             @AuthenticationPrincipal String email) {
@@ -84,6 +90,7 @@ public class UserDocumentController {
 
     // ================= DELETE DOCUMENT =================
     @DeleteMapping("/{documentId}")
+    @Operation(summary = "Xóa tài liệu", description = "Xóa một tài liệu cụ thể của người dùng")
     public ResponseEntity<?> deleteDocument(
             @PathVariable String documentId,
             @AuthenticationPrincipal String email) {

@@ -9,6 +9,8 @@ import com.group8.evcoownership.service.LogoutService;
 import com.group8.evcoownership.utils.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +27,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
+@Tag(name = "Authentication", description = "Đăng nhập, đăng ký, OTP, đổi mật khẩu")
 public class AuthController {
 
     private static final Logger log = LoggerFactory.getLogger(AuthController.class);
@@ -43,12 +46,14 @@ public class AuthController {
 
     // ================= LOGIN =================
     @PostMapping("/login")
+    @Operation(summary = "Đăng nhập", description = "Xác thực người dùng và trả về access/refresh token")
     public ResponseEntity<LoginResponseDTO> login(@RequestBody LoginRequestDTO request) {
         return ResponseEntity.ok(authService.login(request));
     }
 
     // ================= REFRESH TOKEN =================
     @PostMapping("/refresh")
+    @Operation(summary = "Làm mới token", description = "Nhận access token mới bằng refresh token hợp lệ")
     public ResponseEntity<?> refresh(@Valid @RequestBody RefreshTokenRequestDTO request) {
 
         String refreshToken = request.getRefreshToken();
@@ -94,6 +99,7 @@ public class AuthController {
 
     // ================= REGISTER - STEP 1: GỬI OTP =================
     @PostMapping("/register/request-otp")
+    @Operation(summary = "Yêu cầu OTP đăng ký", description = "Gửi OTP đến email để xác thực đăng ký")
     public ResponseEntity<OtpResponseDTO> requestOtp(@Valid @RequestBody RegisterRequestDTO request) {
         OtpResponseDTO response = authService.requestOtp(request);
         return ResponseEntity.ok(response);
@@ -101,6 +107,7 @@ public class AuthController {
 
     // ================= VERIFY OTP CHUNG (UNIFIED) =================
     @PostMapping("/verify-otp")
+    @Operation(summary = "Xác minh OTP", description = "Xác minh OTP cho đăng ký hoặc đặt lại mật khẩu")
     public ResponseEntity<?> verifyOtp(@Valid @RequestBody VerifyOtpRequestDTO request) {
         try {
             VerifyOtpResponseDTO response = authService.verifyOtp(request.getOtp(), request.getType());
@@ -140,6 +147,7 @@ public class AuthController {
 
     // ================= RESEND OTP (UNIFIED - REGISTRATION & PASSWORD_RESET) =================
     @PostMapping("/resend-otp")
+    @Operation(summary = "Gửi lại OTP", description = "Gửi lại OTP cho đăng ký hoặc đặt lại mật khẩu")
     public ResponseEntity<OtpResponseDTO> resendOtp(@Valid @RequestBody ResendOtpRequestDTO request) {
         OtpResponseDTO response = authService.resendOtp(request.getEmail(), request.getType());
         return ResponseEntity.ok(response);
@@ -147,6 +155,7 @@ public class AuthController {
 
     // ================= LOGOUT =================
     @PostMapping("/logout")
+    @Operation(summary = "Đăng xuất", description = "Vô hiệu hóa token hiện tại")
     public ResponseEntity<Map<String, String>> logout(HttpServletRequest request) {
         try {
             String authHeader = request.getHeader("Authorization");
@@ -169,6 +178,7 @@ public class AuthController {
 
     // ================= FORGOT PASSWORD - STEP 1: GỬI OTP =================
     @PostMapping("/forgot-password")
+    @Operation(summary = "Quên mật khẩu - yêu cầu OTP", description = "Gửi OTP để đặt lại mật khẩu")
     public ResponseEntity<OtpResponseDTO> forgotPassword(@Valid @RequestBody ForgotPasswordRequestDTO request) {
         OtpResponseDTO response = authService.forgotPassword(request.getEmail());
         return ResponseEntity.ok(response);
@@ -176,6 +186,7 @@ public class AuthController {
 
     // ================= FORGOT PASSWORD - STEP 3: RESET PASSWORD (AUTO LOGIN) =================
     @PostMapping("/forgot-password/reset-password")
+    @Operation(summary = "Đặt lại mật khẩu", description = "Đặt lại mật khẩu bằng OTP/refresh token, tự động đăng nhập")
     public ResponseEntity<ResetPasswordResponseDTO> resetPassword(@Valid @RequestBody ResetPasswordRequestDTO request) {
         ResetPasswordResponseDTO response = authService.resetPasswordWithToken(request);
         return ResponseEntity.ok(response);
@@ -183,6 +194,7 @@ public class AuthController {
 
     // ================= CHANGE PASSWORD =================
     @PostMapping("/change-password")
+    @Operation(summary = "Đổi mật khẩu", description = "Người dùng đã đăng nhập có thể đổi mật khẩu")
     public ResponseEntity<?> changePassword(
             @Valid @RequestBody ChangePasswordRequestDTO request,
             Authentication authentication) {

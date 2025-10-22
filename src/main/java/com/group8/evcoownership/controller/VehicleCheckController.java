@@ -4,6 +4,8 @@ import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.entity.VehicleCheck;
 import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.service.VehicleCheckService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -17,6 +19,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/vehicle-checks")
 @RequiredArgsConstructor
+@Tag(name = "Vehicle Checks", description = "Quản lý kiểm tra phương tiện")
 public class VehicleCheckController {
 
     private final VehicleCheckService vehicleCheckService;
@@ -29,6 +32,7 @@ public class VehicleCheckController {
      */
     @PostMapping("/pre-use")
     @PreAuthorize("hasRole('USER')")
+    @Operation(summary = "Kiểm tra trước sử dụng", description = "Người dùng tạo báo cáo kiểm tra phương tiện trước khi sử dụng")
     public ResponseEntity<VehicleCheck> createPreUseCheck(
             @RequestParam Long bookingId,
             @RequestParam(required = false) Integer odometer,
@@ -55,6 +59,7 @@ public class VehicleCheckController {
      */
     @PostMapping("/post-use")
     @PreAuthorize("hasRole('USER')")
+    @Operation(summary = "Kiểm tra sau sử dụng", description = "Người dùng tạo báo cáo kiểm tra phương tiện sau khi sử dụng")
     public ResponseEntity<VehicleCheck> createPostUseCheck(
             @RequestParam Long bookingId,
             @RequestParam(required = false) Integer odometer,
@@ -81,6 +86,7 @@ public class VehicleCheckController {
      */
     @PostMapping("/reject")
     @PreAuthorize("hasRole('USER')")
+    @Operation(summary = "Từ chối phương tiện", description = "Người dùng từ chối sử dụng phương tiện do có vấn đề")
     public ResponseEntity<VehicleCheck> rejectVehicle(
             @RequestParam Long bookingId,
             @RequestParam String issues,
@@ -101,6 +107,7 @@ public class VehicleCheckController {
      * PUT /api/vehicle-checks/{checkId}/status
      */
     @PutMapping("/{checkId}/status")
+    @Operation(summary = "Cập nhật trạng thái kiểm tra", description = "Kỹ thuật viên phê duyệt hoặc từ chối báo cáo kiểm tra")
     public ResponseEntity<VehicleCheck> updateCheckStatus(
             @PathVariable Long checkId,
             @RequestParam String status,
@@ -116,6 +123,7 @@ public class VehicleCheckController {
      * GET /api/vehicle-checks/booking/{bookingId}
      */
     @GetMapping("/booking/{bookingId}")
+    @Operation(summary = "Kiểm tra theo booking", description = "Lấy danh sách tất cả kiểm tra của một booking")
     public ResponseEntity<List<VehicleCheck>> getChecksByBookingId(@PathVariable Long bookingId) {
         List<VehicleCheck> checks = vehicleCheckService.getChecksByBookingId(bookingId);
         return ResponseEntity.ok(checks);
@@ -127,6 +135,7 @@ public class VehicleCheckController {
      * GET /api/vehicle-checks/vehicle/{vehicleId}
      */
     @GetMapping("/vehicle/{vehicleId}")
+    @Operation(summary = "Kiểm tra theo phương tiện", description = "Lấy danh sách tất cả kiểm tra của một phương tiện")
     public ResponseEntity<List<VehicleCheck>> getChecksByVehicleId(@PathVariable Long vehicleId) {
         List<VehicleCheck> checks = vehicleCheckService.getChecksByVehicleId(vehicleId);
         return ResponseEntity.ok(checks);
@@ -138,6 +147,7 @@ public class VehicleCheckController {
      * GET /api/vehicle-checks/status/{status}
      */
     @GetMapping("/status/{status}")
+    @Operation(summary = "Kiểm tra theo trạng thái", description = "Lấy danh sách kiểm tra theo trạng thái cụ thể")
     public ResponseEntity<List<VehicleCheck>> getChecksByStatus(@PathVariable String status) {
         List<VehicleCheck> checks = vehicleCheckService.getChecksByStatus(status);
         return ResponseEntity.ok(checks);
@@ -149,6 +159,7 @@ public class VehicleCheckController {
      * GET /api/vehicle-checks/has-check/{bookingId}?checkType=PRE_USE
      */
     @GetMapping("/has-check/{bookingId}")
+    @Operation(summary = "Kiểm tra đã thực hiện", description = "Kiểm tra xem người dùng đã thực hiện kiểm tra loại nào chưa")
     public ResponseEntity<Boolean> hasCheck(
             @PathVariable Long bookingId,
             @RequestParam String checkType) {
@@ -164,6 +175,7 @@ public class VehicleCheckController {
      */
     @PostMapping("/qr-checkin")
     @PreAuthorize("hasRole('USER')")
+    @Operation(summary = "Check-in bằng QR code", description = "Quét QR code để check-in và tìm booking đang hoạt động")
     public ResponseEntity<Map<String, Object>> qrCheckIn(@RequestParam String qrCode) {
         // Lấy user từ JWT token
         String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();

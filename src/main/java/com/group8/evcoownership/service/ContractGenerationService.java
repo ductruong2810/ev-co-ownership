@@ -102,7 +102,7 @@ public class ContractGenerationService {
      * Generate contract cho group với template từ Frontend
      */
     @Transactional
-    public ContractGenerationResponse generateContract(Long groupId, ContractGenerationRequest request, String htmlTemplate) {
+    public ContractGenerationResponse generateContract(Long groupId, ContractGenerationRequest request) {
         // Kiểm tra group tồn tại
         groupRepository.findById(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));

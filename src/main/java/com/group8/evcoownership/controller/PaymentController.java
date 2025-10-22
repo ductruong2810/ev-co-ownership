@@ -3,6 +3,8 @@ package com.group8.evcoownership.controller;
 import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.service.PaymentService;
 import com.group8.evcoownership.service.VnPay_PaymentService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +18,7 @@ import java.util.Map;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/payments")
+@Tag(name = "Payments", description = "Quản lý thanh toán và giao dịch")
 public class PaymentController {
 
     private final PaymentService paymentService;
@@ -29,6 +32,7 @@ public class PaymentController {
     private final VnPay_PaymentService vnPayService;
 
     @PostMapping
+    @Operation(summary = "Tạo thanh toán", description = "Tạo một giao dịch thanh toán mới và sinh URL thanh toán VNPay")
     public ResponseEntity<?> createPayment(@RequestBody PaymentRequest request, HttpServletRequest servletRequest) {
         // 1️⃣ Lưu thông tin Payment trước (nếu bạn cần ghi DB)
         PaymentResponse payment = paymentService.create(request);
@@ -48,12 +52,14 @@ public class PaymentController {
 
     // READ - by id
     @GetMapping("/{id}")
+    @Operation(summary = "Lấy thông tin thanh toán", description = "Lấy thông tin chi tiết của một giao dịch thanh toán theo ID")
     public PaymentResponse getById(@PathVariable Long id) {
         return paymentService.getById(id);
     }
 
     // LIST (trả List, có page/size/sort/asc để limit/offset)
     @GetMapping
+    @Operation(summary = "Tìm kiếm thanh toán", description = "Tìm kiếm và lọc danh sách giao dịch thanh toán với phân trang")
     public List<PaymentResponse> search(
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) String status,
@@ -68,12 +74,14 @@ public class PaymentController {
 
     // UPDATE
     @PutMapping("/{id}")
+    @Operation(summary = "Cập nhật thanh toán", description = "Cập nhật thông tin của một giao dịch thanh toán")
     public PaymentResponse update(@PathVariable Long id,
                                   @Valid @RequestBody UpdatePaymentRequest req) {
         return paymentService.update(id, req);
     }
 
     @PutMapping("/{id}/status")
+    @Operation(summary = "Cập nhật trạng thái thanh toán", description = "Cập nhật trạng thái của giao dịch thanh toán")
     public PaymentResponse updateStatus(@PathVariable Long id,
                                         @Valid @RequestBody PaymentStatusUpdateRequest req) {
         return paymentService.updateStatus(id, req.status(), req.transactionCode(), req.providerResponseJson());
@@ -82,12 +90,14 @@ public class PaymentController {
     // DELETE
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Xóa thanh toán", description = "Xóa một giao dịch thanh toán khỏi hệ thống")
     public void delete(@PathVariable Long id) {
         paymentService.delete(id);
     }
 
     // MARK PAID (ví dụ gọi từ VNPay return/IPN sau khi verify)
     @PostMapping("/{id}/mark-paid")
+    @Operation(summary = "Đánh dấu đã thanh toán", description = "Đánh dấu giao dịch đã được thanh toán thành công")
     public PaymentResponse markPaid(@PathVariable Long id,
                                     @RequestParam(required = false) String transactionCode,
                                     @RequestBody(required = false) String providerResponseJson) {
@@ -96,6 +106,7 @@ public class PaymentController {
 
     // MARK FAILED
     @PostMapping("/{id}/mark-failed")
+    @Operation(summary = "Đánh dấu thanh toán thất bại", description = "Đánh dấu giao dịch thanh toán thất bại")
     public PaymentResponse markFailed(@PathVariable Long id,
                                       @RequestBody(required = false) String providerResponseJson) {
         return paymentService.markFailed(id, providerResponseJson);
@@ -103,6 +114,7 @@ public class PaymentController {
 
     // MARK REFUNDED (nếu có luồng hoàn tiền)
     @PostMapping("/{id}/mark-refunded")
+    @Operation(summary = "Đánh dấu đã hoàn tiền", description = "Đánh dấu giao dịch đã được hoàn tiền")
     public PaymentResponse markRefunded(@PathVariable Long id,
                                         @RequestBody(required = false) String providerResponseJson) {
         return paymentService.markRefunded(id, providerResponseJson);

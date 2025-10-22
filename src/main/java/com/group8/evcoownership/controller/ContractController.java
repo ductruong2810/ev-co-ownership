@@ -5,6 +5,8 @@ import com.group8.evcoownership.service.ContractGenerationService;
 import com.group8.evcoownership.service.ContractService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +19,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/contracts")
 @RequiredArgsConstructor
+@Tag(name = "Contracts", description = "Tạo, xuất PDF, ký và duyệt hợp đồng")
 public class ContractController {
 
     private final ContractService contractService;
@@ -30,6 +33,7 @@ public class ContractController {
      */
     @PostMapping("/generate/{groupId}/auto")
     @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
+    @Operation(summary = "Tạo hợp đồng tự động", description = "Sinh hợp đồng từ React TSX template do FE gửi lên")
     public ResponseEntity<ContractGenerationResponse> generateContractAuto(
             @PathVariable Long groupId,
             @RequestBody Map<String, String> request
@@ -50,6 +54,7 @@ public class ContractController {
      */
     @PostMapping("/export/{groupId}/pdf")
     @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
+    @Operation(summary = "Xuất hợp đồng PDF", description = "Xuất PDF từ nội dung TSX template do FE gửi lên")
     public ResponseEntity<byte[]> exportContractPdf(
             @PathVariable Long groupId,
             @RequestBody Map<String, String> request) {
@@ -75,6 +80,7 @@ public class ContractController {
      */
     @GetMapping("/{groupId}")
     @PreAuthorize("@ownershipGroupService.isGroupMember(authentication.name, #groupId)")
+    @Operation(summary = "Lấy thông tin hợp đồng", description = "Thông tin hợp đồng của một group")
     public ResponseEntity<Map<String, Object>> getContractInfo(@PathVariable Long groupId) {
         Map<String, Object> contractInfo = contractService.getContractInfo(groupId);
         return ResponseEntity.ok(contractInfo);
@@ -85,6 +91,7 @@ public class ContractController {
      */
     @PostMapping("/{groupId}/sign")
     @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
+    @Operation(summary = "Ký hợp đồng", description = "Chỉ admin của nhóm được phép ký")
     public ResponseEntity<Map<String, Object>> signContract(
             @PathVariable Long groupId,
             @RequestBody Map<String, Object> signRequest) {
@@ -98,6 +105,7 @@ public class ContractController {
      */
     @PatchMapping("/{contractId}/approve")
     @PreAuthorize("hasRole('STAFF') or hasRole('ADMIN')")
+    @Operation(summary = "Duyệt hợp đồng", description = "Staff/Admin phê duyệt hợp đồng")
     public ResponseEntity<Map<String, Object>> approveContract(
             @PathVariable Long contractId,
             @Valid @RequestBody ContractApprovalRequest request,
@@ -112,6 +120,7 @@ public class ContractController {
      */
     @GetMapping("/pending")
     @PreAuthorize("hasRole('STAFF') or hasRole('ADMIN')")
+    @Operation(summary = "Danh sách hợp đồng chờ duyệt", description = "Dành cho Staff/Admin, có phân trang")
     public ResponseEntity<Map<String, Object>> getPendingContracts(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {

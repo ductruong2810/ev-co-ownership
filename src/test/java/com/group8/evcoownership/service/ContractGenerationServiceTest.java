@@ -1,6 +1,5 @@
 package com.group8.evcoownership.service;
 
-import com.group8.evcoownership.dto.ContractGenerationRequest;
 import com.group8.evcoownership.dto.ContractGenerationResponse;
 import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.repository.ContractRepository;
@@ -54,13 +53,9 @@ class ContractGenerationServiceTest {
     private OwnershipGroup testGroup;
     private Contract testContract;
     private Vehicle testVehicle;
-    private User testUser;
     private OwnershipShare testShare;
-    private ContractGenerationRequest testRequest;
     private final Long TEST_GROUP_ID = 1L;
     private final Long TEST_CONTRACT_ID = 1L;
-    private final Long TEST_VEHICLE_ID = 1L;
-    private final Long TEST_USER_ID = 1L;
 
     @BeforeEach
     void setUp() {
@@ -73,16 +68,18 @@ class ContractGenerationServiceTest {
                 .build();
 
         // Setup test user
-        testUser = User.builder()
-                .userId(TEST_USER_ID)
+        Long testUserId = 1L;
+        User testUser = User.builder()
+                .userId(testUserId)
                 .fullName("Test User")
                 .email("test@example.com")
                 .phoneNumber("0123456789")
                 .build();
 
         // Setup test vehicle
+        Long testVehicleId = 1L;
         testVehicle = Vehicle.builder()
-                .Id(TEST_VEHICLE_ID)
+                .Id(testVehicleId)
                 .brand("VinFast")
                 .model("VF 8 Plus")
                 .licensePlate("30A-123.45")
@@ -93,7 +90,7 @@ class ContractGenerationServiceTest {
 
         // Setup test share
         testShare = OwnershipShare.builder()
-                .id(new OwnershipShareId(TEST_USER_ID, TEST_GROUP_ID))
+                .id(new OwnershipShareId(testUserId, TEST_GROUP_ID))
                 .group(testGroup)
                 .user(testUser)
                 .ownershipPercentage(new BigDecimal("20.00"))
@@ -112,15 +109,6 @@ class ContractGenerationServiceTest {
                 .updatedAt(LocalDateTime.now())
                 .build();
 
-        // Setup test request
-        testRequest = new ContractGenerationRequest(
-                LocalDate.of(2025, 1, 1),
-                LocalDate.of(2025, 12, 31),
-                "Test contract terms",
-                "Hà Nội",
-                "2025-01-01",
-                "EVS-001"
-        );
     }
 
     @Test
@@ -134,10 +122,8 @@ class ContractGenerationServiceTest {
         when(vehicleRepository.findByOwnershipGroup(testGroup)).thenReturn(Optional.of(testVehicle));
         when(shareRepository.findByGroupGroupId(TEST_GROUP_ID)).thenReturn(List.of(testShare));
 
-        String tsxTemplate = "<Component>{{data.contract.number}}</Component>";
-
         // When
-        ContractGenerationResponse result = contractGenerationService.generateContractAuto(TEST_GROUP_ID, "REACT_TSX", tsxTemplate);
+        ContractGenerationResponse result = contractGenerationService.generateContractAuto(TEST_GROUP_ID, "REACT_TSX", "<Component>{{data.contract.number}}</Component>");
 
         // Then
         assertNotNull(result);
@@ -165,10 +151,8 @@ class ContractGenerationServiceTest {
         when(vehicleRepository.findByOwnershipGroup(testGroup)).thenReturn(Optional.of(testVehicle));
         when(shareRepository.findByGroupGroupId(TEST_GROUP_ID)).thenReturn(List.of(testShare));
 
-        String tsxTemplate = "<Component>{{data.contract.number}}</Component>";
-
         // When
-        ContractGenerationResponse result = contractGenerationService.generateContractAuto(TEST_GROUP_ID, "REACT_TSX", tsxTemplate);
+        ContractGenerationResponse result = contractGenerationService.generateContractAuto(TEST_GROUP_ID, "REACT_TSX", "<Component>{{data.contract.number}}</Component>");
 
         // Then
         assertNotNull(result);
@@ -187,11 +171,9 @@ class ContractGenerationServiceTest {
     void generateContractAuto_GroupNotFound() {
         // Given
         when(groupRepository.findById(TEST_GROUP_ID)).thenReturn(Optional.empty());
-        String tsxTemplate = "<Component>{{data.contract.number}}</Component>";
-
         // When & Then
         assertThrows(EntityNotFoundException.class, () ->
-                contractGenerationService.generateContractAuto(TEST_GROUP_ID, "REACT_TSX", tsxTemplate));
+                contractGenerationService.generateContractAuto(TEST_GROUP_ID, "REACT_TSX", "<Component>{{data.contract.number}}</Component>"));
 
         verify(groupRepository).findById(TEST_GROUP_ID);
     }
@@ -206,10 +188,8 @@ class ContractGenerationServiceTest {
         when(vehicleRepository.findByOwnershipGroup(testGroup)).thenReturn(Optional.of(testVehicle));
         when(shareRepository.findByGroupGroupId(TEST_GROUP_ID)).thenReturn(List.of(testShare));
 
-        String tsxTemplate = content;
-
         // When
-        byte[] result = contractGenerationService.exportToPdf(TEST_GROUP_ID, tsxTemplate);
+        byte[] result = contractGenerationService.exportToPdf(TEST_GROUP_ID, content);
 
         // Then
         assertNotNull(result);

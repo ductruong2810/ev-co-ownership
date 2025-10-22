@@ -5,6 +5,7 @@ import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.enums.GroupStatus;
 import com.group8.evcoownership.service.OwnershipGroupService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -20,11 +21,13 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/groups")
 @RequiredArgsConstructor
+@Tag(name = "Ownership Groups", description = "Quản lý nhóm đồng sở hữu và phương tiện")
 public class OwnershipGroupController {
 
     private final OwnershipGroupService service;
 
     @PostMapping
+    @Operation(summary = "Tạo nhóm mới", description = "User tạo một nhóm đồng sở hữu mới")
     public OwnershipGroupResponse create(@RequestBody @Valid OwnershipGroupCreateRequest req,
                                          @AuthenticationPrincipal String userEmail) {
         return service.create(req, userEmail);
@@ -43,18 +46,21 @@ public class OwnershipGroupController {
     }
 
     @PutMapping("/{groupId}")
+    @Operation(summary = "Cập nhật nhóm", description = "Chủ nhóm hoặc thành viên có quyền cập nhật thông tin nhóm")
     public OwnershipGroupResponse updateByUser(@PathVariable Long groupId,
                                                @RequestBody @Valid OwnershipGroupUpdateRequest req) {
         return service.updateByUser(groupId, req);
     }
 
     @PatchMapping("/{groupId}/status")
+    @Operation(summary = "Cập nhật trạng thái nhóm", description = "Thay đổi trạng thái hoạt động của nhóm")
     public OwnershipGroupResponse updateStatus(@PathVariable Long groupId,
                                                @RequestBody @Valid OwnershipGroupStatusUpdateRequest req) {
         return service.updateStatus(groupId, req);
     }
 
     @GetMapping("/{groupId}")
+    @Operation(summary = "Lấy chi tiết nhóm", description = "Trả về thông tin chi tiết của một nhóm theo ID")
     public OwnershipGroupResponse getById(@PathVariable Long groupId) {
         return service.getById(groupId);
     }
@@ -63,6 +69,7 @@ public class OwnershipGroupController {
      * Lấy danh sách tất cả groups trong hệ thống (chỉ dành cho Staff và Admin)
      */
     @GetMapping("/staff/all")
+    @Operation(summary = "Danh sách tất cả nhóm (staff)", description = "Chỉ STAFF/ADMIN có thể xem, hỗ trợ lọc và phân trang")
     @PreAuthorize("hasRole('STAFF') or hasRole('ADMIN')")
     public Page<OwnershipGroupResponse> listAllGroups(
             @RequestParam(required = false) String keyword,
@@ -79,11 +86,13 @@ public class OwnershipGroupController {
      * Lấy tất cả groups mà user hiện tại đã tạo và tham gia
      */
     @GetMapping("/my-groups")
+    @Operation(summary = "Nhóm của tôi", description = "Lấy tất cả nhóm mà người dùng hiện tại tạo hoặc tham gia")
     public List<OwnershipGroupResponse> getMyGroups(@AuthenticationPrincipal String userEmail) {
         return service.getGroupsByUser(userEmail);
     }
 
     @DeleteMapping("/{groupId}")
+    @Operation(summary = "Xóa nhóm", description = "Xóa một nhóm theo ID")
     public void delete(@PathVariable Long groupId) {
         service.delete(groupId);
     }
