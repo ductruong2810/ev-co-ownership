@@ -1,16 +1,13 @@
 package com.group8.evcoownership.integration;
 
-import com.group8.evcoownership.dto.ContractGenerationRequest;
 import com.group8.evcoownership.dto.ContractGenerationResponse;
 import com.group8.evcoownership.dto.DepositPaymentRequest;
 import com.group8.evcoownership.dto.DepositPaymentResponse;
 import com.group8.evcoownership.enums.DepositStatus;
 import com.group8.evcoownership.enums.PaymentStatus;
-import com.group8.evcoownership.repository.*;
 import com.group8.evcoownership.service.ContractGenerationService;
 import com.group8.evcoownership.service.ContractService;
 import com.group8.evcoownership.service.DepositPaymentService;
-import com.group8.evcoownership.service.OwnershipGroupService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,7 +15,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -39,23 +35,6 @@ class ContractFlowIntegrationTest {
     @Mock
     private DepositPaymentService depositPaymentService;
 
-    @Mock
-    private OwnershipGroupService ownershipGroupService;
-
-    @Mock
-    private ContractRepository contractRepository;
-
-    @Mock
-    private OwnershipGroupRepository groupRepository;
-
-    @Mock
-    private OwnershipShareRepository shareRepository;
-
-    @Mock
-    private VehicleRepository vehicleRepository;
-
-    @Mock
-    private UserRepository userRepository;
 
     @Mock
     private HttpServletRequest httpRequest;
@@ -81,39 +60,30 @@ class ContractFlowIntegrationTest {
     @Test
     void testContractGeneration() {
         // Arrange
-        String htmlTemplate = "<html><body>{{group.name}} Contract</body></html>";
-        ContractGenerationRequest request = new ContractGenerationRequest(
-                LocalDate.now(),
-                LocalDate.now().plusYears(1),
-                "Test contract terms",
-                "Hà Nội",
-                LocalDate.now().toString(),
-                null
-        );
+        String tsxTemplate = "<Component>{group.name} Contract</Component>";
 
         ContractGenerationResponse expectedResponse = new ContractGenerationResponse(
-                1L, // contractId
-                "EVS-2025-001", // contractNumber
-                "<html><body>Test EV Group Contract</body></html>", // htmlContent
-                "/api/contracts/export/1/pdf", // pdfUrl
-                java.time.LocalDateTime.now(), // generatedAt
-                "GENERATED" // status
+                1L,
+                "EVS-2025-001",
+                java.util.Map.of("group", java.util.Map.of("name", "Test EV Group")),
+                java.time.LocalDateTime.now(),
+                "GENERATED"
         );
 
-        when(contractGenerationService.generateContract(1L, request, htmlTemplate))
+        when(contractGenerationService.generateContractAuto(1L, "REACT_TSX", tsxTemplate))
                 .thenReturn(expectedResponse);
 
         // Act
-        ContractGenerationResponse response = contractGenerationService.generateContract(1L, request, htmlTemplate);
+        ContractGenerationResponse response = contractGenerationService.generateContractAuto(1L, "REACT_TSX", tsxTemplate);
 
         // Assert
         assertNotNull(response);
         assertEquals(1L, response.contractId());
         assertEquals("EVS-2025-001", response.contractNumber());
-        assertTrue(response.htmlContent().contains("Test EV Group"));
+        assertEquals("Test EV Group", ((java.util.Map<?, ?>) response.props().get("group")).get("name"));
         assertEquals("GENERATED", response.status());
 
-        verify(contractGenerationService).generateContract(1L, request, htmlTemplate);
+        verify(contractGenerationService).generateContractAuto(1L, "REACT_TSX", tsxTemplate);
     }
 
     @Test
@@ -317,9 +287,7 @@ class ContractFlowIntegrationTest {
                 .thenThrow(new IllegalStateException("Contract must be signed before making deposit payment"));
 
         // Act & Assert
-        assertThrows(IllegalStateException.class, () -> {
-            depositPaymentService.createDepositPayment(request, httpRequest);
-        });
+        assertThrows(IllegalStateException.class, () -> depositPaymentService.createDepositPayment(request, httpRequest));
 
         verify(depositPaymentService).createDepositPayment(request, httpRequest);
     }
@@ -329,16 +297,16 @@ class ContractFlowIntegrationTest {
         // Test scenario with multiple members having different ownership percentages
 
         // Member 1: 40% ownership
-        testSingleMemberDeposit(1L, new BigDecimal("40.00"), new BigDecimal("38000000"));
+        testSingleMemberDeposit(1L, new BigDecimal("38000000"));
 
         // Member 2: 35% ownership  
-        testSingleMemberDeposit(2L, new BigDecimal("35.00"), new BigDecimal("33250000"));
+        testSingleMemberDeposit(2L, new BigDecimal("33250000"));
 
         // Member 3: 25% ownership
-        testSingleMemberDeposit(3L, new BigDecimal("25.00"), new BigDecimal("23750000"));
+        testSingleMemberDeposit(3L, new BigDecimal("23750000"));
     }
 
-    private void testSingleMemberDeposit(Long userId, BigDecimal ownershipPercentage, BigDecimal expectedAmount) {
+    private void testSingleMemberDeposit(Long userId, BigDecimal expectedAmount) {
         // Arrange
         DepositPaymentRequest request = new DepositPaymentRequest(
                 userId, 1L, expectedAmount, "VNPAY"

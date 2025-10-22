@@ -2,6 +2,8 @@ package com.group8.evcoownership.controller;
 
 import com.group8.evcoownership.entity.Maintenance;
 import com.group8.evcoownership.service.MaintenanceService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +15,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/maintenance")
 @RequiredArgsConstructor
+@Tag(name = "Maintenance", description = "Quản lý bảo trì và sửa chữa phương tiện")
 public class MaintenanceController {
 
     private final MaintenanceService maintenanceService;
@@ -23,6 +26,7 @@ public class MaintenanceController {
      * POST /api/maintenance/request
      */
     @PostMapping("/request")
+    @Operation(summary = "Tạo yêu cầu bảo trì", description = "Kỹ thuật viên tạo yêu cầu bảo trì cho phương tiện")
     public ResponseEntity<Maintenance> createMaintenanceRequest(
             @RequestParam Long vehicleId,
             @RequestParam Long technicianId,
@@ -41,6 +45,7 @@ public class MaintenanceController {
      * PUT /api/maintenance/1/approve
      */
     @PutMapping("/{maintenanceId}/approve")
+    @Operation(summary = "Phê duyệt bảo trì", description = "Staff/Admin phê duyệt yêu cầu bảo trì và tự động hủy các booking bị ảnh hưởng")
     public ResponseEntity<Map<String, Object>> approveMaintenance(
             @PathVariable Long maintenanceId,
             @RequestParam Long approvedByUserId,

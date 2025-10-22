@@ -1,6 +1,5 @@
 package com.group8.evcoownership.integration;
 
-import com.group8.evcoownership.dto.ContractGenerationRequest;
 import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.repository.*;
 import com.group8.evcoownership.service.ContractGenerationService;
@@ -20,7 +19,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -78,7 +76,7 @@ class ContractIntegrationTest {
 
     @Test
     @Order(2)
-    void contractGenerationService_GenerateContract_Success() {
+    void contractGenerationService_GenerateContractAuto_Success() {
         // Given
         OwnershipGroup testGroup = ContractTestDataBuilder.TestScenarios.createBasicGroup();
         testGroup.setGroupId(null);
@@ -88,25 +86,15 @@ class ContractIntegrationTest {
         Contract contract = contractService.createDefaultContract(testGroup.getGroupId());
         assertNotNull(contract);
 
-        ContractGenerationRequest request = new ContractGenerationRequest(
-                LocalDate.of(2025, 1, 1),
-                LocalDate.of(2025, 12, 31),
-                "Integration test contract terms",
-                "Hà Nội",
-                "2025-01-01",
-                "EVS-INT-001"
-        );
-
-        String htmlTemplate = "<html><body>{{data.contract.terms}}</body></html>";
+        String tsxTemplate = "<Component>{{data.contract.terms}}</Component>";
 
         // When
-        var result = contractGenerationService.generateContract(testGroup.getGroupId(), request, htmlTemplate);
+        var result = contractGenerationService.generateContractAuto(testGroup.getGroupId(), "REACT_TSX", tsxTemplate);
 
         // Then
         assertNotNull(result);
         assertNotNull(result.contractId());
-        assertNotNull(result.htmlContent());
-        assertTrue(result.htmlContent().contains("Integration test contract terms") || result.htmlContent().contains("contract"));
+        assertNotNull(result.props());
     }
 
     @Test
@@ -123,10 +111,10 @@ class ContractIntegrationTest {
 
         Vehicle testVehicle = ContractTestDataBuilder.TestScenarios.createBasicVehicle(testGroup);
         testVehicle.setId(null);
-        testVehicle = vehicleRepository.save(testVehicle);
+        vehicleRepository.save(testVehicle);
 
         OwnershipShare testShare = ContractTestDataBuilder.TestScenarios.createBasicShare(testGroup, testUser);
-        testShare = shareRepository.save(testShare);
+        shareRepository.save(testShare);
 
         // Mock deposit calculation
         when(depositCalculationService.calculateRequiredDepositAmount(any(OwnershipGroup.class)))
@@ -137,17 +125,8 @@ class ContractIntegrationTest {
         assertNotNull(contract);
 
         // Step 2: Generate contract with template
-        ContractGenerationRequest request = new ContractGenerationRequest(
-                LocalDate.of(2025, 1, 1),
-                LocalDate.of(2025, 12, 31),
-                "End-to-end test contract terms",
-                "Hà Nội",
-                "2025-01-01",
-                "EVS-E2E-001"
-        );
-
-        String htmlTemplate = "<html><body>{{data.contract.terms}}</body></html>";
-        var generationResult = contractGenerationService.generateContract(testGroup.getGroupId(), request, htmlTemplate);
+        String tsxTemplate = "<Component>{{data.contract.terms}}</Component>";
+        var generationResult = contractGenerationService.generateContractAuto(testGroup.getGroupId(), "REACT_TSX", tsxTemplate);
         assertNotNull(generationResult);
 
         // Step 3: Sign contract
