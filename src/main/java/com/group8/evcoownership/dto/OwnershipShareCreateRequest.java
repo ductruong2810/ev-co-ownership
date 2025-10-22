@@ -9,6 +9,6 @@ import java.math.BigDecimal;
 public record OwnershipShareCreateRequest(
         @NotNull Long userId,
         @NotNull Long groupId,
-        @NotNull @DecimalMin("0.01") @DecimalMax("100.00") BigDecimal ownershipPercentage
+        @NotNull @DecimalMin("0.00") @DecimalMax("100.00") BigDecimal ownershipPercentage
 ) {
 }
