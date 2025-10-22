@@ -40,7 +40,7 @@ public class OwnershipShare {
     private GroupRole groupRole; // default MEMBER
 
     @NotNull
-    @DecimalMin(value = "0.01")
+    @DecimalMin(value = "0.00")
     @DecimalMax(value = "100.00")
     @Column(name = "OwnershipPercentage", nullable = false, precision = 5, scale = 2)
     private BigDecimal ownershipPercentage;
