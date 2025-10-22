@@ -1,12 +1,21 @@
 package com.group8.evcoownership.service;
 
+import com.group8.evcoownership.dto.ContractApprovalRequest;
 import com.group8.evcoownership.entity.Contract;
 import com.group8.evcoownership.entity.OwnershipGroup;
+import com.group8.evcoownership.entity.User;
+import com.group8.evcoownership.enums.ContractApprovalStatus;
+import com.group8.evcoownership.enums.NotificationType;
+import com.group8.evcoownership.enums.RoleName;
 import com.group8.evcoownership.repository.ContractRepository;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
+import com.group8.evcoownership.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -23,6 +32,8 @@ public class ContractService {
     private final ContractRepository contractRepository;
     private final OwnershipGroupRepository groupRepository;
     private final DepositCalculationService depositCalculationService;
+    private final UserRepository userRepository;
+    private final NotificationOrchestrator notificationOrchestrator;
 
     /**
      * Lấy contract của group
@@ -58,9 +69,22 @@ public class ContractService {
                 .terms("Standard EV co-ownership contract for 1 year")
                 .requiredDepositAmount(calculatedDepositAmount)
                 .isActive(true)
+                .approvalStatus(ContractApprovalStatus.PENDING)
                 .build();
 
-        return contractRepository.save(contract);
+        Contract savedContract = contractRepository.save(contract);
+
+        // Send notification to group members (skip in unit tests where orchestrator is not injected)
+        if (notificationOrchestrator != null) {
+            notificationOrchestrator.sendGroupNotification(
+                    groupId,
+                    NotificationType.CONTRACT_CREATED,
+                    "Contract Created",
+                    "A new co-ownership contract has been created for your group"
+            );
+        }
+
+        return savedContract;
     }
 
     /**
@@ -84,6 +108,7 @@ public class ContractService {
                 .terms(terms)
                 .requiredDepositAmount(requiredDepositAmount)
                 .isActive(true)
+                .approvalStatus(ContractApprovalStatus.PENDING)
                 .build();
 
         return contractRepository.save(contract);
@@ -247,5 +272,105 @@ public class ContractService {
                 .orElse(null));
 
         return signature.toString();
+    }
+
+    /**
+     * Staff duyệt hợp đồng
+     */
+    @Transactional
+    public Map<String, Object> approveContract(Long contractId, ContractApprovalRequest request, String staffEmail) {
+        // Kiểm tra quyền staff
+        User staff = userRepository.findByEmail(staffEmail)
+                .orElseThrow(() -> new EntityNotFoundException("Staff not found"));
+
+        if (staff.getRole().getRoleName() != RoleName.STAFF &&
+                staff.getRole().getRoleName() != RoleName.ADMIN) {
+            throw new IllegalStateException("Only staff can approve contracts");
+        }
+
+        // Lấy contract
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new EntityNotFoundException("Contract not found"));
+
+        // Cập nhật trạng thái duyệt
+        contract.setApprovalStatus(request.status());
+        contract.setApprovedBy(staff);
+        contract.setApprovedAt(LocalDateTime.now());
+
+        if (request.status() == ContractApprovalStatus.REJECTED) {
+            contract.setRejectionReason(request.rejectionReason());
+        } else {
+            contract.setRejectionReason(null);
+        }
+
+        Contract savedContract = contractRepository.save(contract);
+
+        // Send notification to group members
+        NotificationType notificationType = request.status() == ContractApprovalStatus.APPROVED
+                ? NotificationType.CONTRACT_APPROVED
+                : NotificationType.CONTRACT_REJECTED;
+
+        String title = request.status() == ContractApprovalStatus.APPROVED
+                ? "Contract Approved"
+                : "Contract Rejected";
+
+        String message = request.status() == ContractApprovalStatus.APPROVED
+                ? "Your co-ownership contract has been approved"
+                : "Your contract has been rejected: " + request.rejectionReason();
+
+        notificationOrchestrator.sendGroupNotification(
+                savedContract.getGroup().getGroupId(),
+                notificationType,
+                title,
+                message
+        );
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", true);
+        result.put("contractId", savedContract.getId());
+        result.put("groupId", savedContract.getGroup().getGroupId());
+        result.put("approvalStatus", savedContract.getApprovalStatus());
+        result.put("approvedBy", staff.getEmail());
+        result.put("approvedAt", savedContract.getApprovedAt());
+        result.put("rejectionReason", savedContract.getRejectionReason());
+        result.put("message", "Contract " + request.status().name().toLowerCase() + " successfully");
+
+        return result;
+    }
+
+    /**
+     * Lấy danh sách hợp đồng chờ duyệt (cho staff)
+     */
+    public Map<String, Object> getPendingContracts(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Contract> contracts = contractRepository.findByApprovalStatus(ContractApprovalStatus.PENDING, pageable);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("contracts", contracts.getContent().stream().map(this::toContractSummary).toList());
+        result.put("totalElements", contracts.getTotalElements());
+        result.put("totalPages", contracts.getTotalPages());
+        result.put("currentPage", contracts.getNumber());
+        result.put("size", contracts.getSize());
+        result.put("hasNext", contracts.hasNext());
+        result.put("hasPrevious", contracts.hasPrevious());
+
+        return result;
+    }
+
+    /**
+     * Convert Contract to summary format
+     */
+    private Map<String, Object> toContractSummary(Contract contract) {
+        Map<String, Object> summary = new HashMap<>();
+        summary.put("contractId", contract.getId());
+        summary.put("groupId", contract.getGroup().getGroupId());
+        summary.put("groupName", contract.getGroup().getGroupName());
+        summary.put("startDate", contract.getStartDate());
+        summary.put("endDate", contract.getEndDate());
+        summary.put("requiredDepositAmount", contract.getRequiredDepositAmount());
+        summary.put("approvalStatus", contract.getApprovalStatus());
+        summary.put("createdAt", contract.getCreatedAt());
+        summary.put("updatedAt", contract.getUpdatedAt());
+        return summary;
     }
 }

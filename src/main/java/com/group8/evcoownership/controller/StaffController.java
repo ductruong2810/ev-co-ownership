@@ -1,8 +1,10 @@
 package com.group8.evcoownership.controller;
 
-import com.group8.evcoownership.dto.UserProfileResponseDTO;
 import com.group8.evcoownership.dto.ReviewDocumentRequestDTO;
+import com.group8.evcoownership.dto.UserProfileResponseDTO;
 import com.group8.evcoownership.service.StaffService;
+import com.group8.evcoownership.util.AuthUtils;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -10,7 +12,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
 
@@ -56,7 +57,7 @@ public class StaffController {
             @Valid @RequestBody ReviewDocumentRequestDTO request,
             Authentication authentication) {
 
-        String staffEmail = authentication.getName();
+        String staffEmail = AuthUtils.getCurrentUserEmail(authentication);
         log.info("Staff {} reviewing document {}", staffEmail, documentId);
 
         String message = staffService.reviewDocument(documentId, request, staffEmail);
@@ -69,7 +70,7 @@ public class StaffController {
             @PathVariable Long documentId,
             Authentication authentication) {
 
-        String staffEmail = authentication.getName();
+        String staffEmail = AuthUtils.getCurrentUserEmail(authentication);
         log.info("Staff {} approving document {}", staffEmail, documentId);
 
         String message = staffService.approveDocument(documentId, staffEmail);
@@ -83,7 +84,7 @@ public class StaffController {
             @RequestParam String reason,
             Authentication authentication) {
 
-        String staffEmail = authentication.getName();
+        String staffEmail = AuthUtils.getCurrentUserEmail(authentication);
         log.info("Staff {} rejecting document {}", staffEmail, documentId);
 
         String message = staffService.rejectDocument(documentId, reason, staffEmail);

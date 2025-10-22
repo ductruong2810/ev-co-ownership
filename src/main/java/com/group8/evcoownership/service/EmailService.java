@@ -56,6 +56,45 @@ public class EmailService {
         }
     }
 
+    // Dùng cho lời mời tham gia nhóm
+    public void sendInvitationEmail(
+            String to,
+            String groupName,
+            String inviterName,
+            String token,
+            String otp,
+            java.time.LocalDateTime expiresAt,
+            java.math.BigDecimal suggestedPercentage, // có thể null
+            String acceptUrl // URL FE: ví dụ https://app.xyz/invitations/accept?token=...
+    ) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            Context context = new Context();
+            context.setVariable("inviterName", inviterName);
+            context.setVariable("groupName", groupName);
+            context.setVariable("otp", otp);
+            context.setVariable("expiresAt", expiresAt);
+            context.setVariable("suggestedPercentage", suggestedPercentage);
+            context.setVariable("websiteUrl", frontendUrl);
+
+            String htmlContent = templateEngine.process("invitation-email", context);
+
+            helper.setTo(to);
+            helper.setSubject("Lời mời tham gia nhóm EV: " + groupName);
+            helper.setText(htmlContent, true);
+
+            mailSender.send(message);
+            log.info("Invitation email sent successfully to: {}", to);
+        } catch (MessagingException e) {
+            log.error("Failed to send invitation email to: {}", to, e);
+            throw new RuntimeException("Không thể gửi email. Vui lòng thử lại sau.");
+        }
+    }
+
+    // ========== THÊM METHOD NÀY ==========
+
     /**
      * Gửi OTP email cho đặt lại mật khẩu
      */

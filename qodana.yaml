@@ -13,15 +13,22 @@ version: "1.0"
 profile:
   name: qodana.starter
 
-#Enable inspections
-#include:
-#  - name: <SomeEnabledInspectionId>
+#Enable inspections - chỉ focus vào những inspection quan trọng nhất
+include:
+  - name: "Java"
+  - name: "Spring"
+  - name: "Security"
 
-#Disable inspections
-#exclude:
-#  - name: <SomeDisabledInspectionId>
-#    paths:
-#      - <path/where/not/run/inspection>
+#Disable inspections - loại bỏ những check không cần thiết để tăng tốc
+exclude:
+  - name: "UnusedCode"
+    paths:
+      - "src/test/**"
+  - name: "SpellCheckingInspection"
+  - name: "Typo"
+  - name: "JavaDoc"
+    paths:
+      - "src/main/java/com/group8/evcoownership/dto/**"
 
 projectJDK: "17" #(Applied in CI/CD pipeline)
 

@@ -1,16 +1,17 @@
 package com.group8.evcoownership.controller;
 
-import com.group8.evcoownership.dto.CreatePaymentRequest;
-import com.group8.evcoownership.dto.PaymentResponse;
-import com.group8.evcoownership.dto.PaymentStatusUpdateRequest;
-import com.group8.evcoownership.dto.UpdatePaymentRequest;
+import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.service.PaymentService;
+import com.group8.evcoownership.service.VnPay_PaymentService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -20,10 +21,29 @@ public class PaymentController {
     private final PaymentService paymentService;
 
     // CREATE
+//    @PostMapping
+//    @ResponseStatus(HttpStatus.CREATED)
+//    public PaymentResponse create(@Valid @RequestBody CreatePaymentRequest req) {
+//        return paymentService.create(req);
+//    }
+    private final VnPay_PaymentService vnPayService;
+
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public PaymentResponse create(@Valid @RequestBody CreatePaymentRequest req) {
-        return paymentService.create(req);
+    public ResponseEntity<?> createPayment(@RequestBody PaymentRequest request, HttpServletRequest servletRequest) {
+        // 1️⃣ Lưu thông tin Payment trước (nếu bạn cần ghi DB)
+        PaymentResponse payment = paymentService.create(request);
+
+        // 2️⃣ Nếu phương thức thanh toán là VNPAY => sinh link thanh toán
+
+            String paymentUrl = vnPayService.createPaymentUrl(request.getAmount().longValue(), servletRequest);
+            return ResponseEntity.ok(Map.of(
+                    "payment", payment,
+                    "paymentUrl", paymentUrl
+            ));
+
+//
+//        // 3️⃣ Nếu là phương thức khác (chuyển khoản, tiền mặt…)
+//        return ResponseEntity.status(HttpStatus.CREATED).body(payment);
     }
 
     // READ - by id

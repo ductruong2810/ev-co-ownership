@@ -140,17 +140,25 @@ GO
 CREATE TABLE Contract
 (
     ContractId            BIGINT IDENTITY (1,1) PRIMARY KEY,
-    GroupId               BIGINT       NOT NULL,
+    GroupId               BIGINT        NOT NULL,
     TemplateId            BIGINT,
     StartDate             DATE,
     EndDate               DATE,
     Terms                 NVARCHAR(MAX),
     RequiredDepositAmount DECIMAL(15, 2),
-    IsActive              BIT                   DEFAULT 1,
-    CreatedAt             DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
-    UpdatedAt             DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
+    IsActive              BIT                    DEFAULT 1,
+    CreatedAt             DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
+    UpdatedAt             DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
+
+    -- Contract Approval Fields (added after approval workflow implementation)
+    ApprovalStatus        NVARCHAR(20)  NOT NULL DEFAULT 'PENDING', -- PENDING, APPROVED, REJECTED
+    ApprovedBy            BIGINT        NULL,                       -- Staff/Admin who approved the contract
+    ApprovedAt            DATETIME2(7)  NULL,                       -- When the contract was approved/rejected
+    RejectionReason       NVARCHAR(500) NULL,                       -- Reason for rejection if status is REJECTED
+
     FOREIGN KEY (GroupId) REFERENCES OwnershipGroup (GroupId),
-    FOREIGN KEY (TemplateId) REFERENCES ContractTemplate (TemplateId)
+    FOREIGN KEY (TemplateId) REFERENCES ContractTemplate (TemplateId),
+    FOREIGN KEY (ApprovedBy) REFERENCES Users (UserId)
 );
 GO
 
@@ -515,6 +523,10 @@ CREATE INDEX IX_Vehicle_LicensePlate ON Vehicle (LicensePlate);
 CREATE INDEX IX_VehicleImages_VehicleId ON VehicleImages (VehicleId);
 CREATE INDEX IX_VehicleImages_ImageType ON VehicleImages (ImageType);
 
+-- Contract
+CREATE INDEX IX_Contract_ApprovalStatus ON Contract (ApprovalStatus);
+CREATE INDEX IX_Contract_ApprovedBy ON Contract (ApprovedBy);
+
 -- UsageBooking
 CREATE INDEX IX_UsageBooking_UserId ON UsageBooking (UserId);
 CREATE INDEX IX_UsageBooking_VehicleId ON UsageBooking (VehicleId);
@@ -668,8 +680,10 @@ VALUES (N'Standard EV Contract', N'Standard HTML template for EV co-ownership co
         1);
 
 -- Contract sample (using template)
-INSERT INTO Contract(GroupId, TemplateId, StartDate, EndDate, Terms, RequiredDepositAmount, IsActive)
-VALUES (1, 1, '2024-01-01', '2025-01-01', N'Standard EV co-ownership contract terms...', 2000000, 1);
+INSERT INTO Contract(GroupId, TemplateId, StartDate, EndDate, Terms, RequiredDepositAmount, IsActive, ApprovalStatus,
+                     ApprovedBy, ApprovedAt)
+VALUES (1, 1, '2024-01-01', '2025-01-01', N'Standard EV co-ownership contract terms...', 2000000, 1, 'APPROVED', 2,
+        SYSUTCDATETIME());
 
 -- =============================================
 -- END
@@ -682,60 +696,61 @@ CREATE TABLE Invitation
 (
     InvitationId        BIGINT IDENTITY (1,1) PRIMARY KEY,
 
-    GroupId             BIGINT        NOT NULL,              -- FK -> OwnershipGroup
-    InviterUserId       BIGINT        NOT NULL,              -- FK -> Users (người mời)
-    InviteeEmail        NVARCHAR(100) NOT NULL,              -- email người được mời
-    EmailNormalized     AS LOWER(InviteeEmail) PERSISTED,    -- phục vụ unique filtered index
+    GroupId             BIGINT        NOT NULL,           -- FK -> OwnershipGroup
+    InviterUserId       BIGINT        NOT NULL,           -- FK -> Users (người mời)
+    InviteeEmail        NVARCHAR(100) NOT NULL,           -- email người được mời
+    EmailNormalized     AS LOWER(InviteeEmail) PERSISTED, -- phục vụ unique filtered index
 
-    Token               VARCHAR(128)  NOT NULL,              -- opaque token trong link
-    OtpCode             VARCHAR(6)    NOT NULL,              -- OTP 6 số (nếu lưu hash: tăng size & bỏ CHECK)
+    Token               VARCHAR(128)  NOT NULL,           -- opaque token trong link
+    OtpCode             VARCHAR(6)    NOT NULL,           -- OTP 6 số (nếu lưu hash: tăng size & bỏ CHECK)
 
-    Status              NVARCHAR(20)  NOT NULL,              -- PENDING / ACCEPTED / EXPIRED
-    SuggestedPercentage DECIMAL(5,2)  NULL,                  -- gợi ý %, tuỳ chọn
+    Status              NVARCHAR(20)  NOT NULL,           -- PENDING / ACCEPTED / EXPIRED
+    SuggestedPercentage DECIMAL(5, 2) NULL,               -- gợi ý %, tuỳ chọn
 
-    ExpiresAt           DATETIME2(7)  NOT NULL,              -- hạn dùng token/OTP
-    ResendCount         INT           NOT NULL CONSTRAINT DF_Invitation_ResendCount DEFAULT (0),
+    ExpiresAt           DATETIME2(7)  NOT NULL,           -- hạn dùng token/OTP
+    ResendCount         INT           NOT NULL
+        CONSTRAINT DF_Invitation_ResendCount DEFAULT (0),
     LastSentAt          DATETIME2(7)  NULL,
 
     CreatedAt           DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
     AcceptedAt          DATETIME2(7)  NULL,
-    AcceptedBy          BIGINT        NULL                   -- FK -> Users (user đã accept)
+    AcceptedBy          BIGINT        NULL                -- FK -> Users (user đã accept)
 );
 GO
 
 ALTER TABLE Invitation
-  ADD CONSTRAINT FK_Invitation_Group
-  FOREIGN KEY (GroupId) REFERENCES OwnershipGroup (GroupId)
-  ON DELETE CASCADE;                                        -- xoá group xoá luôn lời mời
+    ADD CONSTRAINT FK_Invitation_Group
+        FOREIGN KEY (GroupId) REFERENCES OwnershipGroup (GroupId)
+            ON DELETE CASCADE; -- xoá group xoá luôn lời mời
 GO
 
 ALTER TABLE Invitation
-  ADD CONSTRAINT FK_Invitation_Inviter
-  FOREIGN KEY (InviterUserId) REFERENCES Users (UserId);
+    ADD CONSTRAINT FK_Invitation_Inviter
+        FOREIGN KEY (InviterUserId) REFERENCES Users (UserId);
 GO
 
 ALTER TABLE Invitation
-  ADD CONSTRAINT FK_Invitation_AcceptedBy
-  FOREIGN KEY (AcceptedBy) REFERENCES Users (UserId)
-  ON DELETE SET NULL;                                       -- giữ audit nếu user bị xoá
+    ADD CONSTRAINT FK_Invitation_AcceptedBy
+        FOREIGN KEY (AcceptedBy) REFERENCES Users (UserId)
+            ON DELETE SET NULL; -- giữ audit nếu user bị xoá
 GO
 
 -- Trạng thái hợp lệ
 ALTER TABLE Invitation
-  ADD CONSTRAINT CK_Invitation_Status
-  CHECK (Status IN (N'PENDING', N'ACCEPTED', N'EXPIRED'));
+    ADD CONSTRAINT CK_Invitation_Status
+        CHECK (Status IN (N'PENDING', N'ACCEPTED', N'EXPIRED'));
 GO
 
 -- OTP 6 chữ số (bỏ nếu bạn lưu hash)
 ALTER TABLE Invitation
-  ADD CONSTRAINT CK_Invitation_Otp
-  CHECK (OtpCode NOT LIKE '%[^0-9]%' AND LEN(OtpCode) = 6);
+    ADD CONSTRAINT CK_Invitation_Otp
+        CHECK (OtpCode NOT LIKE '%[^0-9]%' AND LEN(OtpCode) = 6);
 GO
 
 -- SuggestedPercentage trong [0..100]
 ALTER TABLE Invitation
-  ADD CONSTRAINT CK_Invitation_SuggestedPct
-  CHECK (SuggestedPercentage IS NULL OR (SuggestedPercentage >= 0.00 AND SuggestedPercentage <= 100.00));
+    ADD CONSTRAINT CK_Invitation_SuggestedPct
+        CHECK (SuggestedPercentage IS NULL OR (SuggestedPercentage >= 0.00 AND SuggestedPercentage <= 100.00));
 GO
 
 -- Token duy nhất
@@ -744,8 +759,8 @@ GO
 
 -- Không cho trùng email đang PENDING trong cùng group (case-insensitive)
 CREATE UNIQUE INDEX UQ_Invitation_Group_Email_Pending
-ON Invitation (GroupId, EmailNormalized)
-WHERE Status = N'PENDING';
+    ON Invitation (GroupId, EmailNormalized)
+    WHERE Status = N'PENDING';
 GO
 
 -- Hỗ trợ dọn dẹp & tra cứu
@@ -758,3 +773,20 @@ CREATE UNIQUE INDEX UQ_Vehicle_GroupId ON Vehicle (GroupId) WHERE GroupId IS NOT
 GO
 
 -- =============================================
+ALTER TABLE Contract
+    ADD ApprovalStatus NVARCHAR(20) NOT NULL DEFAULT 'PENDING';
+ALTER TABLE Contract
+    ADD ApprovedBy BIGINT NULL;
+ALTER TABLE Contract
+    ADD ApprovedAt DATETIME2(7) NULL;
+ALTER TABLE Contract
+    ADD RejectionReason NVARCHAR(500) NULL;
+
+-- Add foreign key constraint
+ALTER TABLE Contract
+    ADD CONSTRAINT FK_Contract_ApprovedBy
+        FOREIGN KEY (ApprovedBy) REFERENCES Users (UserId);
+
+-- Add indexes for performance
+CREATE INDEX IX_Contract_ApprovalStatus ON Contract (ApprovalStatus);
+CREATE INDEX IX_Contract_ApprovedBy ON Contract (ApprovedBy);

@@ -9,6 +9,7 @@ import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.enums.DepositStatus;
 import com.group8.evcoownership.enums.GroupRole;
 import com.group8.evcoownership.enums.GroupStatus;
+import com.group8.evcoownership.enums.NotificationType;
 import com.group8.evcoownership.exception.InsufficientDocumentsException;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
 import com.group8.evcoownership.repository.OwnershipShareRepository;
@@ -26,6 +27,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -37,6 +39,8 @@ public class OwnershipGroupService {
     private final UserRepository userRepository;
     private final UserDocumentRepository userDocumentRepository;
     private final VehicleService vehicleService;
+    private final NotificationOrchestrator notificationOrchestrator;
+    private final FundService fundService;
 
     @Value("${app.validation.enabled:true}")
     private boolean validationEnabled;
@@ -152,6 +156,18 @@ public class OwnershipGroupService {
 
         ownershipShareRepository.save(ownershipShare);
 
+        // Tự động tạo quỹ cho nhóm mới
+        fundService.createOrGroup(savedGroup.getGroupId());
+
+        // Send notification to group creator
+        notificationOrchestrator.sendComprehensiveNotification(
+                user.getUserId(),
+                NotificationType.GROUP_CREATED,
+                "Group Created",
+                String.format("You have successfully created co-ownership group: %s", savedGroup.getGroupName()),
+                Map.of("groupId", savedGroup.getGroupId(), "groupName", savedGroup.getGroupName())
+        );
+
         return toDto(savedGroup);
     }
 
@@ -160,7 +176,7 @@ public class OwnershipGroupService {
             String groupName, String description, Integer memberCapacity,
             java.math.BigDecimal vehicleValue, String licensePlate, String chassisNumber,
             MultipartFile[] vehicleImages, String[] imageTypes, String userEmail) {
-        // Step 1: Create ownership group với userEmail
+        // Step 1: Create ownership group với userEmail (quỹ sẽ được tạo tự động)
         OwnershipGroupCreateRequest groupRequest = new OwnershipGroupCreateRequest(
                 groupName, description, memberCapacity);
         OwnershipGroupResponse groupResponse = create(groupRequest, userEmail);
@@ -189,7 +205,7 @@ public class OwnershipGroupService {
                 vehicleResponse.licensePlate(),
                 vehicleResponse.chassisNumber(),
                 vehicleResponse.qrCode(),
-                vehicleValue,
+                vehicleResponse.vehicleValue(),
                 uploadedImages
         );
     }
@@ -294,6 +310,17 @@ public class OwnershipGroupService {
     }
 
     // ---- Authorization methods ----
+
+    /**
+     * Lấy tất cả groups mà user đã tạo và tham gia (bao gồm cả ADMIN và MEMBER)
+     */
+    public List<OwnershipGroupResponse> getGroupsByUser(String userEmail) {
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new EntityNotFoundException("User not found: " + userEmail));
+
+        List<OwnershipGroup> groups = ownershipShareRepository.findGroupsByUserId(user.getUserId());
+        return groups.stream().map(this::toDto).toList();
+    }
 
     /**
      * Kiểm tra user có phải là admin của group không

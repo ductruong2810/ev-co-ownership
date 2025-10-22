@@ -33,6 +33,8 @@ public class VnPay_PaymentService {
     private String vnp_Command;
     @Value("${payment.vnPay.orderType}")
     private String orderType;
+    @Value("${app.frontend.url:http://localhost:3000}")
+    private String frontendUrl;
 
     public String createPaymentUrl(long fee, HttpServletRequest request) {
         return createPaymentUrl(fee, request, false);
@@ -68,7 +70,7 @@ public class VnPay_PaymentService {
         String status = request.getParameter("vnp_ResponseCode");
         String redirectUrl = String.format(
                 "%s/payment-status?vnp_ResponseCode=%s",
-                "http://localhost:5173",
+                frontendUrl,
                 status
         );
         response.sendRedirect(redirectUrl);
