@@ -34,7 +34,7 @@ public class OwnershipGroupController {
     }
 
     @PostMapping("/with-vehicle")
-    @Operation(summary = "Create group with vehicle and multiple images")
+    @Operation(summary = "Tạo nhóm với phương tiện", description = "Tạo nhóm đồng sở hữu mới kèm theo phương tiện và nhiều hình ảnh")
     public GroupWithVehicleResponse createGroupWithVehicle(
             CreateGroupWithVehicleRequest request,
             @AuthenticationPrincipal String userEmail) {
@@ -97,4 +97,3 @@ public class OwnershipGroupController {
         service.delete(groupId);
     }
 }
-
