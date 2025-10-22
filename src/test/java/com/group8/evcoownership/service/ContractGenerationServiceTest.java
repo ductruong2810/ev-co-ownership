@@ -124,7 +124,7 @@ class ContractGenerationServiceTest {
     }
 
     @Test
-    void generateContract_NewContract_Success() {
+    void generateContractAuto_NewContract_Success() {
         // Given
         when(groupRepository.findById(TEST_GROUP_ID)).thenReturn(Optional.of(testGroup));
         when(contractRepository.findByGroupGroupId(TEST_GROUP_ID)).thenReturn(Optional.empty());
@@ -134,18 +134,17 @@ class ContractGenerationServiceTest {
         when(vehicleRepository.findByOwnershipGroup(testGroup)).thenReturn(Optional.of(testVehicle));
         when(shareRepository.findByGroupGroupId(TEST_GROUP_ID)).thenReturn(List.of(testShare));
 
-        String htmlTemplate = "<html>{{data.contract.number}}</html>";
+        String tsxTemplate = "<Component>{{data.contract.number}}</Component>";
 
         // When
-        ContractGenerationResponse result = contractGenerationService.generateContract(TEST_GROUP_ID, testRequest, htmlTemplate);
+        ContractGenerationResponse result = contractGenerationService.generateContractAuto(TEST_GROUP_ID, "REACT_TSX", tsxTemplate);
 
         // Then
         assertNotNull(result);
         assertEquals(TEST_CONTRACT_ID, result.contractId());
         assertNotNull(result.contractNumber());
         assertTrue(result.contractNumber().startsWith("EVS-"));
-        assertNotNull(result.htmlContent());
-        assertEquals("/api/contracts/export/1/pdf", result.pdfUrl());
+        assertNotNull(result.props());
         assertEquals("GENERATED", result.status());
         assertNotNull(result.generatedAt());
 
@@ -157,7 +156,7 @@ class ContractGenerationServiceTest {
     }
 
     @Test
-    void generateContract_UpdateExistingContract_Success() {
+    void generateContractAuto_UpdateExistingContract_Success() {
         // Given
         when(groupRepository.findById(TEST_GROUP_ID)).thenReturn(Optional.of(testGroup));
         when(contractRepository.findByGroupGroupId(TEST_GROUP_ID)).thenReturn(Optional.of(testContract));
@@ -166,16 +165,16 @@ class ContractGenerationServiceTest {
         when(vehicleRepository.findByOwnershipGroup(testGroup)).thenReturn(Optional.of(testVehicle));
         when(shareRepository.findByGroupGroupId(TEST_GROUP_ID)).thenReturn(List.of(testShare));
 
-        String htmlTemplate = "<html>{{data.contract.number}}</html>";
+        String tsxTemplate = "<Component>{{data.contract.number}}</Component>";
 
         // When
-        ContractGenerationResponse result = contractGenerationService.generateContract(TEST_GROUP_ID, testRequest, htmlTemplate);
+        ContractGenerationResponse result = contractGenerationService.generateContractAuto(TEST_GROUP_ID, "REACT_TSX", tsxTemplate);
 
         // Then
         assertNotNull(result);
         assertEquals(TEST_CONTRACT_ID, result.contractId());
         assertNotNull(result.contractNumber());
-        assertNotNull(result.htmlContent());
+        assertNotNull(result.props());
         assertEquals("GENERATED", result.status());
 
         verify(groupRepository, times(2)).findById(TEST_GROUP_ID);
@@ -185,69 +184,36 @@ class ContractGenerationServiceTest {
     }
 
     @Test
-    void generateContract_GroupNotFound() {
+    void generateContractAuto_GroupNotFound() {
         // Given
         when(groupRepository.findById(TEST_GROUP_ID)).thenReturn(Optional.empty());
-        String htmlTemplate = "<html>{{data.contract.number}}</html>";
+        String tsxTemplate = "<Component>{{data.contract.number}}</Component>";
 
         // When & Then
         assertThrows(EntityNotFoundException.class, () ->
-                contractGenerationService.generateContract(TEST_GROUP_ID, testRequest, htmlTemplate));
+                contractGenerationService.generateContractAuto(TEST_GROUP_ID, "REACT_TSX", tsxTemplate));
 
         verify(groupRepository).findById(TEST_GROUP_ID);
     }
 
-    @Test
-    void generateHtmlPreview_Success() {
-        // Given
-        when(contractRepository.findByGroupGroupId(TEST_GROUP_ID)).thenReturn(Optional.of(testContract));
-        // Template sẽ được truyền từ Frontend
-        when(vehicleRepository.findByOwnershipGroup(testGroup)).thenReturn(Optional.of(testVehicle));
-        when(shareRepository.findByGroupGroupId(TEST_GROUP_ID)).thenReturn(List.of(testShare));
-
-        String htmlTemplate = "<html>{{data.contract.number}}</html>";
-
-        // When
-        String result = contractGenerationService.generateHtmlPreview(TEST_GROUP_ID, htmlTemplate);
-
-        // Then
-        assertNotNull(result);
-        assertTrue(result.contains("EVS-"));
-
-        verify(contractRepository).findByGroupGroupId(TEST_GROUP_ID);
-        // TemplateService đã được xóa
-    }
-
-    @Test
-    void generateHtmlPreview_ContractNotFound() {
-        // Given
-        when(contractRepository.findByGroupGroupId(TEST_GROUP_ID)).thenReturn(Optional.empty());
-        String htmlTemplate = "<html>{{data.contract.number}}</html>";
-
-        // When & Then
-        assertThrows(EntityNotFoundException.class, () ->
-                contractGenerationService.generateHtmlPreview(TEST_GROUP_ID, htmlTemplate));
-
-        verify(contractRepository).findByGroupGroupId(TEST_GROUP_ID);
-    }
-
+    // Removed HTML preview tests (TSX-only)
     @Test
     void exportToPdf_Success() {
         // Given
-        String htmlContent = "<html>Test Contract</html>";
+        String content = "<Component>Test Contract</Component>";
         when(contractRepository.findByGroupGroupId(TEST_GROUP_ID)).thenReturn(Optional.of(testContract));
         // Template sẽ được truyền từ Frontend
         when(vehicleRepository.findByOwnershipGroup(testGroup)).thenReturn(Optional.of(testVehicle));
         when(shareRepository.findByGroupGroupId(TEST_GROUP_ID)).thenReturn(List.of(testShare));
 
-        String htmlTemplate = htmlContent;
+        String tsxTemplate = content;
 
         // When
-        byte[] result = contractGenerationService.exportToPdf(TEST_GROUP_ID, htmlTemplate);
+        byte[] result = contractGenerationService.exportToPdf(TEST_GROUP_ID, tsxTemplate);
 
         // Then
         assertNotNull(result);
-        assertEquals(htmlContent, new String(result));
+        assertEquals(content, new String(result));
 
         verify(contractRepository).findByGroupGroupId(TEST_GROUP_ID);
         // TemplateService đã được xóa

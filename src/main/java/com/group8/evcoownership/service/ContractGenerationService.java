@@ -2,7 +2,6 @@ package com.group8.evcoownership.service;
 
 import com.group8.evcoownership.dto.ContractGenerationRequest;
 import com.group8.evcoownership.dto.ContractGenerationResponse;
-import com.group8.evcoownership.dto.ContractTemplateRequest;
 import com.group8.evcoownership.entity.Contract;
 import com.group8.evcoownership.entity.OwnershipGroup;
 import com.group8.evcoownership.entity.OwnershipShare;
@@ -36,6 +35,68 @@ public class ContractGenerationService {
     private final OwnershipShareRepository shareRepository;
     // Template sẽ được xử lý ở Frontend, không cần TemplateService
     // private final TemplateService templateService;
+    /**
+     * React TSX only: auto-generate contract from TSX template sent by FE.
+     * - startDate = today
+     * - endDate = today + 1 year
+     * - terms extracted from templateContent (if present)
+     */
+    @Transactional
+    public ContractGenerationResponse generateContractAuto(Long groupId, String templateType, String templateContent) {
+        if (templateContent == null || templateContent.trim().isEmpty()) {
+            throw new IllegalArgumentException("Template content is required from Frontend");
+        }
+        if (!"REACT_TSX".equalsIgnoreCase(templateType)) {
+            throw new IllegalArgumentException("Only REACT_TSX is supported");
+        }
+
+        groupRepository.findById(groupId)
+                .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
+
+        LocalDate start = LocalDate.now();
+        LocalDate end = start.plusYears(1);
+        String terms = extractTermsFromTemplate(templateContent);
+
+        ContractGenerationRequest req = new ContractGenerationRequest(
+                start,
+                end,
+                terms,
+                "HCM",
+                start.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
+                null
+        );
+
+        Contract contract = createOrUpdateContract(groupId, req);
+        Map<String, Object> props = prepareContractData(groupId, contract);
+
+        String contractNumber = contract.getId() != null ?
+                generateContractNumber(contract.getId()) :
+                "EVS-" + groupId + "-" + System.currentTimeMillis();
+
+        return new ContractGenerationResponse(
+                contract.getId(),
+                contractNumber,
+                props,
+                LocalDateTime.now(),
+                "GENERATED"
+        );
+    }
+
+    /**
+     * Extract terms section from a React TSX template.
+     * Simple approach: find between a heading like 'ĐIỀU KHOẢN HỢP ĐỒNG' and next section or end.
+     */
+    public String extractTermsFromTemplate(String tsx) {
+        if (tsx == null) return null;
+        String marker = "ĐIỀU KHOẢN HỢP ĐỒNG";
+        int idx = tsx.indexOf(marker);
+        if (idx < 0) return null;
+        String after = tsx.substring(idx + marker.length());
+        // Stop at next major heading tag or end
+        int stop = after.indexOf("</");
+        String raw = stop > 0 ? after.substring(0, stop) : after;
+        return raw.trim();
+    }
 
     /**
      * Generate contract cho group với template từ Frontend
@@ -49,8 +110,8 @@ public class ContractGenerationService {
         // Tạo hoặc cập nhật contract
         Contract contract = createOrUpdateContract(groupId, request);
 
-        // Generate HTML content từ template được truyền từ Frontend
-        String htmlContent = generateHtmlContent(groupId, contract, htmlTemplate);
+        // Chuẩn bị dữ liệu props cho Frontend render
+        Map<String, Object> props = prepareContractData(groupId, contract);
 
         // Generate contract number nếu chưa có
         String contractNumber = contract.getId() != null ?
@@ -60,64 +121,25 @@ public class ContractGenerationService {
         return new ContractGenerationResponse(
                 contract.getId(),
                 contractNumber,
-                htmlContent,
-                "/api/contracts/export/" + groupId + "/pdf",
+                props,
                 LocalDateTime.now(),
                 "GENERATED"
         );
     }
 
+    // Removed HTML preview; TSX-only flow uses templateContent directly
+
     /**
-     * Generate HTML preview với template từ Frontend
+     * Export to PDF từ React TSX template content (placeholder implementation)
      */
-    public String generateHtmlPreview(Long groupId, String htmlTemplate) {
+    public byte[] exportToPdf(Long groupId, String templateContent) {
         Contract contract = contractRepository.findByGroupGroupId(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Contract not found for group: " + groupId));
-
-        return generateHtmlContent(groupId, contract, htmlTemplate);
+        String htmlContent = generateHtmlContent(groupId, contract, templateContent);
+        return htmlContent.getBytes();
     }
 
-    /**
-     * Export to PDF với template từ Frontend
-     */
-    public byte[] exportToPdf(Long groupId, String htmlTemplate) {
-        String htmlContent = generateHtmlPreview(groupId, htmlTemplate);
-
-        // TODO: Implement HTML to PDF conversion
-        // Có thể dùng iText, Flying Saucer, hoặc external service
-        return htmlContent.getBytes(); // Placeholder
-    }
-
-    /**
-     * Generate contract with flexible template types (JSON, MARKDOWN, DOCX, PDF)
-     * Minimal implementation to satisfy controller call; extend rendering per type later.
-     */
-    public Map<String, Object> generateContractFlexible(Long groupId, ContractTemplateRequest request) {
-        Map<String, Object> result = new HashMap<>();
-
-        String templateType = request.templateType() == null ? "" : request.templateType().toUpperCase();
-        if (!(templateType.equals("REACT_TSX") || templateType.equals("JSON") || templateType.equals("MARKDOWN")
-                || templateType.equals("DOCX") || templateType.equals("PDF"))) {
-            throw new IllegalArgumentException("Unsupported templateType: " + request.templateType());
-        }
-
-        result.put("success", true);
-        result.put("groupId", groupId);
-        result.put("templateType", templateType);
-        result.put("templateName", request.templateName());
-        result.put("description", request.description());
-        result.put("templateProps", request.templateProps());
-
-        // Xử lý React TSX template
-        if ("REACT_TSX".equals(templateType)) {
-            result.put("reactComponent", request.template());
-            result.put("message", "React TSX template received. Frontend can render with provided props.");
-        } else {
-            result.put("message", "Template accepted. Rendering pipeline can be implemented per type.");
-        }
-
-        return result;
-    }
+    // Removed flexible multi-format handler: TSX-only
 
     /**
      * Tạo hoặc cập nhật contract
@@ -261,12 +283,12 @@ public class ContractGenerationService {
                 for (Map.Entry<String, Object> subEntry : subMap.entrySet()) {
                     String placeholder = "data." + key + "." + subEntry.getKey();
                     String replacement = formatValue(subEntry.getValue());
-                    result = result.replaceAll("\\{\\{" + placeholder + "\\}\\}", replacement);
+                    result = result.replace("{{" + placeholder + "}}", replacement);
                 }
             } else {
                 String placeholder = "data." + key;
                 String replacement = formatValue(value);
-                result = result.replaceAll("\\{\\{" + placeholder + "\\}\\}", replacement);
+                result = result.replace("{{" + placeholder + "}}", replacement);
             }
         }
 

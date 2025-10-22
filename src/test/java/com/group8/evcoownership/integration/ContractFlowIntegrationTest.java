@@ -81,7 +81,7 @@ class ContractFlowIntegrationTest {
     @Test
     void testContractGeneration() {
         // Arrange
-        String htmlTemplate = "<html><body>{{group.name}} Contract</body></html>";
+        String tsxTemplate = "<Component>{group.name} Contract</Component>";
         ContractGenerationRequest request = new ContractGenerationRequest(
                 LocalDate.now(),
                 LocalDate.now().plusYears(1),
@@ -92,28 +92,27 @@ class ContractFlowIntegrationTest {
         );
 
         ContractGenerationResponse expectedResponse = new ContractGenerationResponse(
-                1L, // contractId
-                "EVS-2025-001", // contractNumber
-                "<html><body>Test EV Group Contract</body></html>", // htmlContent
-                "/api/contracts/export/1/pdf", // pdfUrl
-                java.time.LocalDateTime.now(), // generatedAt
-                "GENERATED" // status
+                1L,
+                "EVS-2025-001",
+                java.util.Map.of("group", java.util.Map.of("name", "Test EV Group")),
+                java.time.LocalDateTime.now(),
+                "GENERATED"
         );
 
-        when(contractGenerationService.generateContract(1L, request, htmlTemplate))
+        when(contractGenerationService.generateContractAuto(1L, "REACT_TSX", tsxTemplate))
                 .thenReturn(expectedResponse);
 
         // Act
-        ContractGenerationResponse response = contractGenerationService.generateContract(1L, request, htmlTemplate);
+        ContractGenerationResponse response = contractGenerationService.generateContractAuto(1L, "REACT_TSX", tsxTemplate);
 
         // Assert
         assertNotNull(response);
         assertEquals(1L, response.contractId());
         assertEquals("EVS-2025-001", response.contractNumber());
-        assertTrue(response.htmlContent().contains("Test EV Group"));
+        assertEquals("Test EV Group", ((java.util.Map<?, ?>) response.props().get("group")).get("name"));
         assertEquals("GENERATED", response.status());
 
-        verify(contractGenerationService).generateContract(1L, request, htmlTemplate);
+        verify(contractGenerationService).generateContractAuto(1L, "REACT_TSX", tsxTemplate);
     }
 
     @Test
