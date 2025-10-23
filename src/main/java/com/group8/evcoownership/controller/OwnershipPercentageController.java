@@ -7,6 +7,8 @@ import com.group8.evcoownership.dto.OwnershipPageDataResponse;
 import com.group8.evcoownership.dto.ValidationResponse;
 import com.group8.evcoownership.service.OwnershipShareService;
 import com.group8.evcoownership.service.UserProfileService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +21,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/ownership-percentage")
 @RequiredArgsConstructor
+@Tag(name = "Ownership Percentage", description = "Quản lý tỷ lệ sở hữu trong nhóm")
 public class OwnershipPercentageController {
 
     private final OwnershipShareService ownershipShareService;
@@ -29,6 +32,7 @@ public class OwnershipPercentageController {
      * GET /api/ownership-percentage/page-data/{groupId}
      */
     @GetMapping("/page-data/{groupId}")
+    @Operation(summary = "Dữ liệu trang tỷ lệ sở hữu", description = "Lấy tất cả dữ liệu cần thiết cho trang nhập tỷ lệ sở hữu")
     public ResponseEntity<OwnershipPageDataResponse> getOwnershipPageData(
             @PathVariable Long groupId,
             @AuthenticationPrincipal String userEmail) {
@@ -59,6 +63,7 @@ public class OwnershipPercentageController {
      * GET /api/ownership-percentage/{groupId}
      */
     @GetMapping("/{groupId}")
+    @Operation(summary = "Tỷ lệ sở hữu của tôi", description = "Lấy thông tin tỷ lệ sở hữu của người dùng hiện tại trong nhóm")
     public ResponseEntity<OwnershipPercentageResponse> getOwnershipPercentage(
             @PathVariable Long groupId,
             @AuthenticationPrincipal String userEmail) {
@@ -75,6 +80,7 @@ public class OwnershipPercentageController {
      * PUT /api/ownership-percentage/{groupId}
      */
     @PutMapping("/{groupId}")
+    @Operation(summary = "Cập nhật tỷ lệ sở hữu", description = "Cập nhật tỷ lệ sở hữu của người dùng trong nhóm")
     public ResponseEntity<OwnershipPercentageResponse> updateOwnershipPercentage(
             @PathVariable Long groupId,
             @AuthenticationPrincipal String userEmail,
@@ -93,6 +99,7 @@ public class OwnershipPercentageController {
      * GET /api/ownership-percentage/group/{groupId}/summary
      */
     @GetMapping("/group/{groupId}/summary")
+    @Operation(summary = "Tổng quan tỷ lệ nhóm", description = "Lấy tổng quan tỷ lệ sở hữu của tất cả thành viên trong nhóm")
     public ResponseEntity<GroupOwnershipSummaryResponse> getGroupOwnershipSummary(
             @PathVariable Long groupId,
             @AuthenticationPrincipal String userEmail) {
@@ -110,6 +117,7 @@ public class OwnershipPercentageController {
      * POST /api/ownership-percentage/{groupId}/reset
      */
     @PostMapping("/{groupId}/reset")
+    @Operation(summary = "Reset tỷ lệ sở hữu", description = "Reset tỷ lệ sở hữu của người dùng về 0%")
     public ResponseEntity<OwnershipPercentageResponse> resetOwnershipPercentage(
             @PathVariable Long groupId,
             @AuthenticationPrincipal String userEmail) {
@@ -126,6 +134,7 @@ public class OwnershipPercentageController {
      * POST /api/ownership-percentage/{groupId}/validate
      */
     @PostMapping("/{groupId}/validate")
+    @Operation(summary = "Kiểm tra tỷ lệ sở hữu", description = "Kiểm tra tính hợp lệ của tỷ lệ sở hữu trước khi lưu")
     public ResponseEntity<ValidationResponse> validateOwnershipPercentage(
             @PathVariable Long groupId,
             @AuthenticationPrincipal String userEmail,
@@ -155,6 +164,7 @@ public class OwnershipPercentageController {
      * GET /api/ownership-percentage/{groupId}/suggestions
      */
     @GetMapping("/{groupId}/suggestions")
+    @Operation(summary = "Gợi ý tỷ lệ sở hữu", description = "Lấy danh sách các tỷ lệ sở hữu được gợi ý cho nhóm")
     public ResponseEntity<List<BigDecimal>> getOwnershipSuggestions(@PathVariable Long groupId) {
         List<BigDecimal> suggestions = ownershipShareService.getOwnershipSuggestions(groupId);
         return ResponseEntity.ok(suggestions);

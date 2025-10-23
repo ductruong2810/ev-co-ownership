@@ -90,7 +90,7 @@ public class DepositPaymentService {
                 .fund(fund)
                 .amount(request.amount())
                 .paymentMethod(request.paymentMethod())
-                .paymentType(PaymentType.CONTRIBUTION)
+                .paymentType(PaymentType.DEPOSIT)
                 .status(PaymentStatus.PENDING)
                 .paymentCategory("GROUP")
                 .build();
@@ -127,7 +127,7 @@ public class DepositPaymentService {
         }
 
         // Cập nhật payment status
-        paymentService.markPaid(paymentId, transactionCode, null);
+        paymentService.updateStatus(paymentId, PaymentStatus.COMPLETED, transactionCode, null);
 
         // Cập nhật deposit status của user
         OwnershipShareId shareId = new OwnershipShareId(payment.getPayer().getUserId(),

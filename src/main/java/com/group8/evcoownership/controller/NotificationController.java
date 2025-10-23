@@ -6,6 +6,8 @@ import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.repository.NotificationRepository;
 import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.service.NotificationOrchestrator;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,6 +22,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/notifications")
 @RequiredArgsConstructor
+@Tag(name = "Notifications", description = "Quản lý thông báo")
 public class NotificationController {
 
     private final NotificationRepository notificationRepository;
@@ -30,6 +33,7 @@ public class NotificationController {
      * Get notifications for current user
      */
     @GetMapping
+    @Operation(summary = "Danh sách thông báo", description = "Lấy danh sách thông báo của người dùng hiện tại với phân trang")
     public ResponseEntity<Page<NotificationDto>> getNotifications(
             @AuthenticationPrincipal String email,
             Pageable pageable,
@@ -47,6 +51,7 @@ public class NotificationController {
      * Get unread notification count
      */
     @GetMapping("/unread-count")
+    @Operation(summary = "Số thông báo chưa đọc", description = "Lấy số lượng thông báo chưa đọc của người dùng")
     public ResponseEntity<Map<String, Long>> getUnreadCount(@AuthenticationPrincipal String email) {
         User user = getUserByEmail(email);
 
@@ -58,6 +63,7 @@ public class NotificationController {
      * Mark notification as read
      */
     @PutMapping("/{notificationId}/read")
+    @Operation(summary = "Đánh dấu đã đọc", description = "Đánh dấu một thông báo cụ thể là đã đọc")
     public ResponseEntity<Void> markAsRead(@PathVariable Long notificationId, @AuthenticationPrincipal String email) {
         User user = getUserByEmail(email);
         Notification notification = getNotificationOrThrow(notificationId);
@@ -71,6 +77,7 @@ public class NotificationController {
      * Mark all notifications as read
      */
     @PutMapping("/mark-all-read")
+    @Operation(summary = "Đánh dấu tất cả đã đọc", description = "Đánh dấu tất cả thông báo của người dùng là đã đọc")
     public ResponseEntity<Void> markAllAsRead(@AuthenticationPrincipal String email) {
         User user = getUserByEmail(email);
         List<Notification> unreadNotifications = notificationRepository.findByUserAndIsRead(user, false);
@@ -83,6 +90,7 @@ public class NotificationController {
      * Delete notification
      */
     @DeleteMapping("/{notificationId}")
+    @Operation(summary = "Xóa thông báo", description = "Xóa một thông báo cụ thể")
     public ResponseEntity<Void> deleteNotification(@PathVariable Long notificationId, @AuthenticationPrincipal String email) {
         User user = getUserByEmail(email);
         Notification notification = getNotificationOrThrow(notificationId);
@@ -95,6 +103,7 @@ public class NotificationController {
      * Test notification (for development)
      */
     @PostMapping("/test")
+    @Operation(summary = "Gửi thông báo test", description = "Gửi thông báo test để kiểm tra hệ thống (chỉ dành cho development)")
     public ResponseEntity<Void> sendTestNotification(@AuthenticationPrincipal String email) {
         User user = getUserByEmail(email);
 

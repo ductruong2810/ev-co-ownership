@@ -53,7 +53,9 @@ public class SecurityConfig {
                                 "/api/expenses/**",
                                 "/api/user/profile/**",
                                 "/api/shares/**",
-                                "/api/vehicles/**"
+                                "/api/vehicles/**",
+                                "/api/deposits/**",
+                                "/api/contracts/**"
                         ).permitAll()
                         .requestMatchers("/api/groups/**").authenticated()
                         .requestMatchers("/api/staff/**", "/api/admin/**").hasAnyRole("STAFF", "ADMIN")
