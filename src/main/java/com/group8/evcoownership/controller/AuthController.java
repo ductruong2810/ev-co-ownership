@@ -21,8 +21,6 @@ import java.util.Map;
 @Tag(name = "Authentication", description = "Login, Register, OTP, Password Management")
 public class AuthController {
 
-    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
-
     @Autowired
     private AuthService authService;
 

@@ -378,13 +378,6 @@ public class AuthService {
         }
     }
 
-    // ================= CANCEL PENDING REGISTRATION =================
-    public void cancelPendingRegistration(String email) {
-        if (pendingUsers.remove(email) != null) {
-            log.info("Cancelled pending registration for email: {}", email);
-        }
-    }
-
     // ================= FORGOT PASSWORD =================
     public OtpResponseDTO forgotPassword(String email) {
         log.info("Processing forgot password request for email: {}", email);

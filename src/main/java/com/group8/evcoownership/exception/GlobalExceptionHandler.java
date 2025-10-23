@@ -1,6 +1,5 @@
 package com.group8.evcoownership.exception;
 
-import com.group8.evcoownership.dto.ErrorResponseDTO;
 import com.group8.evcoownership.dto.ValidationErrorResponseDTO;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.ConstraintViolationException;
