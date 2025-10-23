@@ -1,5 +1,6 @@
 package com.group8.evcoownership.service;
 
+import com.group8.evcoownership.dto.SaveContractDataRequest;
 import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.repository.ContractRepository;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
@@ -122,15 +123,10 @@ class ContractGenerationServiceTest {
         when(vehicleRepository.findByOwnershipGroup(testGroup)).thenReturn(Optional.of(testVehicle));
         when(shareRepository.findByGroupGroupId(TEST_GROUP_ID)).thenReturn(List.of(testShare));
 
-        Map<String, Object> contractData = new HashMap<>();
-        contractData.put("contract", Map.of(
-                "effectiveDate", "2025-01-01",
-                "endDate", "2025-12-31",
-                "terms", "Test contract terms"
-        ));
+        SaveContractDataRequest request = new SaveContractDataRequest("Test contract terms");
 
         // When
-        Map<String, Object> result = contractGenerationService.saveContractFromData(TEST_GROUP_ID, contractData);
+        Map<String, Object> result = contractGenerationService.saveContractFromData(TEST_GROUP_ID, request);
 
         // Then
         assertNotNull(result);
@@ -156,15 +152,10 @@ class ContractGenerationServiceTest {
         when(vehicleRepository.findByOwnershipGroup(testGroup)).thenReturn(Optional.of(testVehicle));
         when(shareRepository.findByGroupGroupId(TEST_GROUP_ID)).thenReturn(List.of(testShare));
 
-        Map<String, Object> contractData = new HashMap<>();
-        contractData.put("contract", Map.of(
-                "effectiveDate", "2025-01-01",
-                "endDate", "2025-12-31",
-                "terms", "Updated contract terms"
-        ));
+        SaveContractDataRequest request = new SaveContractDataRequest("Updated contract terms");
 
         // When
-        Map<String, Object> result = contractGenerationService.saveContractFromData(TEST_GROUP_ID, contractData);
+        Map<String, Object> result = contractGenerationService.saveContractFromData(TEST_GROUP_ID, request);
 
         // Then
         assertNotNull(result);
@@ -184,12 +175,11 @@ class ContractGenerationServiceTest {
         // Given
         when(groupRepository.findById(TEST_GROUP_ID)).thenReturn(Optional.empty());
         
-        Map<String, Object> contractData = new HashMap<>();
-        contractData.put("contract", Map.of("terms", "Test terms"));
+        SaveContractDataRequest request = new SaveContractDataRequest("Test terms");
         
         // When & Then
         assertThrows(EntityNotFoundException.class, () ->
-                contractGenerationService.saveContractFromData(TEST_GROUP_ID, contractData));
+                contractGenerationService.saveContractFromData(TEST_GROUP_ID, request));
 
         verify(groupRepository).findById(TEST_GROUP_ID);
     }

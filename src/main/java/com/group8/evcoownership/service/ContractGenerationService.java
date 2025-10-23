@@ -2,6 +2,7 @@ package com.group8.evcoownership.service;
 
 import com.group8.evcoownership.dto.ContractGenerationRequest;
 import com.group8.evcoownership.dto.ContractGenerationResponse;
+import com.group8.evcoownership.dto.SaveContractDataRequest;
 import com.group8.evcoownership.entity.Contract;
 import com.group8.evcoownership.entity.OwnershipGroup;
 import com.group8.evcoownership.entity.OwnershipShare;
@@ -9,7 +10,6 @@ import com.group8.evcoownership.entity.Vehicle;
 import com.group8.evcoownership.repository.ContractRepository;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
 import com.group8.evcoownership.repository.OwnershipShareRepository;
-import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.repository.VehicleRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -34,9 +34,7 @@ public class ContractGenerationService {
     private final OwnershipGroupRepository groupRepository;
     private final VehicleRepository vehicleRepository;
     private final OwnershipShareRepository ownershipShareRepository;
-    private final UserRepository userRepository;
-    // Template sẽ được xử lý ở Frontend, không cần TemplateService
-    // private final TemplateService templateService;
+
     /**
      * Generate contract data only - Backend chỉ đẩy dữ liệu lên Frontend
      * Frontend không cần gửi template xuống
@@ -79,30 +77,14 @@ public class ContractGenerationService {
      * Lưu contract từ dữ liệu Frontend gửi lên
      */
     @Transactional
-    public Map<String, Object> saveContractFromData(Long groupId, Map<String, Object> contractData) {
+    public Map<String, Object> saveContractFromData(Long groupId, SaveContractDataRequest request) {
         OwnershipGroup group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
 
-        // Extract contract info từ Frontend data
-        @SuppressWarnings("unchecked")
-        Map<String, Object> contractInfo = (Map<String, Object>) contractData.get("contract");
-        
-        LocalDate startDate = LocalDate.now();
-        LocalDate endDate = startDate.plusYears(1);
-        String terms = "Điều khoản hợp đồng sở hữu xe chung EVShare";
-        
-        if (contractInfo != null) {
-            // Parse dates nếu có
-            if (contractInfo.get("effectiveDate") != null) {
-                startDate = LocalDate.parse(contractInfo.get("effectiveDate").toString());
-            }
-            if (contractInfo.get("endDate") != null) {
-                endDate = LocalDate.parse(contractInfo.get("endDate").toString());
-            }
-            if (contractInfo.get("terms") != null) {
-                terms = contractInfo.get("terms").toString();
-            }
-        }
+        // Tự động tính toán ngày hiệu lực và ngày kết thúc
+        LocalDate startDate = LocalDate.now(); // Ngày ký = hôm nay
+        LocalDate endDate = startDate.plusYears(1); // Ngày kết thúc = ngày ký + 1 năm
+        String terms = request.terms();
 
         // Kiểm tra đã có contract chưa
         Contract existingContract = contractRepository.findByGroup(group).orElse(null);

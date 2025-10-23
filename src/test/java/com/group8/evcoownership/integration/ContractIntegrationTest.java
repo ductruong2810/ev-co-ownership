@@ -1,5 +1,6 @@
 package com.group8.evcoownership.integration;
 
+import com.group8.evcoownership.dto.SaveContractDataRequest;
 import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.repository.*;
 import com.group8.evcoownership.service.ContractGenerationService;
@@ -87,15 +88,10 @@ class ContractIntegrationTest {
         Contract contract = contractService.createDefaultContract(testGroup.getGroupId());
         assertNotNull(contract);
 
-        Map<String, Object> contractData = new HashMap<>();
-        contractData.put("contract", Map.of(
-                "effectiveDate", "2025-01-01",
-                "endDate", "2025-12-31",
-                "terms", "Test contract terms"
-        ));
+        SaveContractDataRequest request = new SaveContractDataRequest("Test contract terms");
 
         // When
-        var result = contractGenerationService.saveContractFromData(testGroup.getGroupId(), contractData);
+        var result = contractGenerationService.saveContractFromData(testGroup.getGroupId(), request);
 
         // Then
         assertNotNull(result);
@@ -131,13 +127,8 @@ class ContractIntegrationTest {
         assertNotNull(contract);
 
         // Step 2: Save contract with data
-        Map<String, Object> contractData = new HashMap<>();
-        contractData.put("contract", Map.of(
-                "effectiveDate", "2025-01-01",
-                "endDate", "2025-12-31",
-                "terms", "Test contract terms"
-        ));
-        var generationResult = contractGenerationService.saveContractFromData(testGroup.getGroupId(), contractData);
+        SaveContractDataRequest request = new SaveContractDataRequest("Test contract terms");
+        var generationResult = contractGenerationService.saveContractFromData(testGroup.getGroupId(), request);
         assertNotNull(generationResult);
 
         // Step 3: Sign contract
