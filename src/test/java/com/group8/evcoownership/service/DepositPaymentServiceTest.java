@@ -315,7 +315,7 @@ class DepositPaymentServiceTest {
         assertEquals(transactionCode, response.transactionCode());
         assertNotNull(response.paidAt());
 
-        verify(paymentService).markPaid(paymentId, transactionCode, null);
+        verify(paymentService).updateStatus(paymentId, PaymentStatus.COMPLETED, transactionCode, null);
         verify(shareRepository).save(any(OwnershipShare.class));
     }
 
