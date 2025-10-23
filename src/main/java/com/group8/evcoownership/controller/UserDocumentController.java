@@ -7,11 +7,13 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -33,25 +35,50 @@ public class UserDocumentController {
             @RequestParam("frontFile") MultipartFile frontFile,
             @RequestParam("backFile") MultipartFile backFile,
             @AuthenticationPrincipal String email) {
-        log.info("User {} uploading batch documents: {}", email, documentType);
 
-        Map<String, UserDocument> documents = userDocumentService.uploadBatchDocuments(
-                email, documentType, frontFile, backFile
-        );
+        try {
+            log.info("User {} uploading batch documents: {}", email, documentType);
 
-        return ResponseEntity.ok(Map.of(
-                "message", "Upload cả 2 mặt thành công",
-                "front", Map.of(
-                        "documentId", documents.get("FRONT").getDocumentId(),
-                        "imageUrl", documents.get("FRONT").getImageUrl(),
-                        "status", documents.get("FRONT").getStatus()
-                ),
-                "back", Map.of(
-                        "documentId", documents.get("BACK").getDocumentId(),
-                        "imageUrl", documents.get("BACK").getImageUrl(),
-                        "status", documents.get("BACK").getStatus()
-                )
-        ));
+            Map<String, UserDocument> documents = userDocumentService.uploadBatchDocuments(
+                    email, documentType, frontFile, backFile
+            );
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "Upload cả 2 mặt thành công",
+                    "front", Map.of(
+                            "documentId", documents.get("FRONT").getDocumentId(),
+                            "imageUrl", documents.get("FRONT").getImageUrl(),
+                            "status", documents.get("FRONT").getStatus()
+                    ),
+                    "back", Map.of(
+                            "documentId", documents.get("BACK").getDocumentId(),
+                            "imageUrl", documents.get("BACK").getImageUrl(),
+                            "status", documents.get("BACK").getStatus()
+                    )
+            ));
+
+        } catch (IllegalArgumentException e) {
+            log.error("Validation error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of(
+                            "timestamp", LocalDateTime.now().toString(),
+                            "status", 400,
+                            "error", "Bad Request",
+                            "message", e.getMessage(),
+                            "path", "/api/user/documents/upload-batch"
+                    ));
+
+        } catch (Exception e) {
+            log.error("Upload error: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(
+                            "timestamp", LocalDateTime.now().toString(),
+                            "status", 500,
+                            "error", "Internal Server Error",
+                            "message", "Không thể upload file. Vui lòng thử lại sau.",
+                            "path", "/api/user/documents/upload-batch"
+                    ));
+        }
     }
 
     // ================= GET ALL MY DOCUMENTS (TRẢ VỀ DTO) =================
@@ -62,7 +89,6 @@ public class UserDocumentController {
 
         List<UserDocument> documents = userDocumentService.getMyDocuments(email);
 
-        // ← MAP SANG DTO ĐỂ TRÁNH CIRCULAR REFERENCE
         List<UserDocumentDTO> dtos = documents.stream()
                 .map(UserDocumentDTO::fromEntity)
                 .collect(Collectors.toList());
@@ -80,7 +106,6 @@ public class UserDocumentController {
 
         List<UserDocument> documents = userDocumentService.getDocumentsByType(email, documentType);
 
-        // ← MAP SANG DTO
         List<UserDocumentDTO> dtos = documents.stream()
                 .map(UserDocumentDTO::fromEntity)
                 .collect(Collectors.toList());
@@ -105,9 +130,25 @@ public class UserDocumentController {
 
         } catch (NumberFormatException e) {
             log.error("Invalid document ID format: {}", documentId);
-            throw new IllegalArgumentException(
-                    String.format("ID tài liệu '%s' không hợp lệ. Vui lòng nhập số nguyên dương", documentId)
-            );
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of(
+                            "timestamp", LocalDateTime.now().toString(),
+                            "status", 400,
+                            "error", "Bad Request",
+                            "message", String.format("ID tài liệu '%s' không hợp lệ. Vui lòng nhập số nguyên dương", documentId),
+                            "path", "/api/user/documents/" + documentId
+                    ));
+
+        } catch (Exception e) {
+            log.error("Delete error: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(
+                            "timestamp", LocalDateTime.now().toString(),
+                            "status", 500,
+                            "error", "Internal Server Error",
+                            "message", e.getMessage(),
+                            "path", "/api/user/documents/" + documentId
+                    ));
         }
     }
 }
