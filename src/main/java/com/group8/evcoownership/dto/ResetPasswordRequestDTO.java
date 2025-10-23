@@ -8,10 +8,10 @@ import lombok.Data;
 @Data
 public class ResetPasswordRequestDTO {
 
-    @NotBlank(message = "Reset token không được để trống")
+    @NotBlank(message = "Reset token cannot be empty!")
     private String resetToken; // Token nhận từ bước 2
 
-    @NotBlank(message = "Mật khẩu mới không được để trống")
+    @NotBlank(message = "New password cannot be blank!")
     @Size(min = 8, max = 50, message = "Mật khẩu phải từ 8-50 ký tự")
     @Pattern(
             regexp = "^(?!.*[<>])(?!.*(?i)script)(?!.*(?i)javascript)(?!.*(?i)onerror)(?!.*(?i)onload)[a-zA-Z0-9!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,./?~`]+$",
@@ -19,6 +19,6 @@ public class ResetPasswordRequestDTO {
     )
     private String newPassword;
 
-    @NotBlank(message = "Xác nhận mật khẩu không được để trống")
+    @NotBlank(message = "Confirm password cannot be blank!")
     private String confirmPassword;
 }
