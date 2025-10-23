@@ -36,11 +36,11 @@ public class OwnershipGroupController {
     @PostMapping("/with-vehicle")
     @Operation(summary = "Tạo nhóm với phương tiện", description = "Tạo nhóm đồng sở hữu mới kèm theo phương tiện và nhiều hình ảnh")
     public GroupWithVehicleResponse createGroupWithVehicle(
-            CreateGroupWithVehicleRequest request,
+            @Valid  @ModelAttribute CreateGroupWithVehicleRequest request,
             @AuthenticationPrincipal String userEmail) {
-
+        Integer memberCapacity = Integer.parseInt(request.memberCapacity());
         return service.createGroupWithVehicle(
-                request.groupName(), request.description(), request.memberCapacity(),
+                request.groupName(), request.description(), memberCapacity,
                 request.vehicleValue(), request.licensePlate(), request.chassisNumber(),
                 request.vehicleImages(), request.imageTypes(), userEmail);
     }
