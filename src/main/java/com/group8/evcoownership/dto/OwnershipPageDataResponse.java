@@ -16,4 +16,5 @@ public class OwnershipPageDataResponse {
     private OwnershipPercentageResponse userOwnership;
     private GroupOwnershipSummaryResponse groupSummary;
     private List<BigDecimal> suggestions;
+    private VehicleResponse vehicleInfo; // Sử dụng VehicleResponse có sẵn
 }
