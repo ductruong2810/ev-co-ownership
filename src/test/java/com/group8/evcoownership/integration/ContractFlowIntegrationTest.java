@@ -2,6 +2,7 @@ package com.group8.evcoownership.integration;
 
 import com.group8.evcoownership.dto.DepositPaymentRequest;
 import com.group8.evcoownership.dto.DepositPaymentResponse;
+import com.group8.evcoownership.dto.SaveContractDataRequest;
 import com.group8.evcoownership.enums.DepositStatus;
 import com.group8.evcoownership.enums.PaymentStatus;
 import com.group8.evcoownership.service.ContractGenerationService;
@@ -60,12 +61,7 @@ class ContractFlowIntegrationTest {
     @Test
     void testContractGeneration() {
         // Arrange
-        Map<String, Object> contractData = new HashMap<>();
-        contractData.put("contract", Map.of(
-                "effectiveDate", "2025-01-01",
-                "endDate", "2025-12-31",
-                "terms", "Test contract terms"
-        ));
+        SaveContractDataRequest request = new SaveContractDataRequest("Test contract terms");
 
         Map<String, Object> expectedResponse = new HashMap<>();
         expectedResponse.put("contractId", 1L);
@@ -73,11 +69,11 @@ class ContractFlowIntegrationTest {
         expectedResponse.put("status", "SAVED");
         expectedResponse.put("savedToDatabase", true);
 
-        when(contractGenerationService.saveContractFromData(1L, contractData))
+        when(contractGenerationService.saveContractFromData(1L, request))
                 .thenReturn(expectedResponse);
 
         // Act
-        Map<String, Object> response = contractGenerationService.saveContractFromData(1L, contractData);
+        Map<String, Object> response = contractGenerationService.saveContractFromData(1L, request);
 
         // Assert
         assertNotNull(response);
@@ -85,7 +81,7 @@ class ContractFlowIntegrationTest {
         assertEquals("EVS-2025-001", response.get("contractNumber"));
         assertEquals("SAVED", response.get("status"));
 
-        verify(contractGenerationService).saveContractFromData(1L, contractData);
+        verify(contractGenerationService).saveContractFromData(1L, request);
     }
 
     @Test

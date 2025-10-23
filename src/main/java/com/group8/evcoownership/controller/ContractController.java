@@ -1,9 +1,9 @@
 package com.group8.evcoownership.controller;
 
 import com.group8.evcoownership.dto.ContractApprovalRequest;
+import com.group8.evcoownership.dto.SaveContractDataRequest;
 import com.group8.evcoownership.service.ContractGenerationService;
 import com.group8.evcoownership.service.ContractService;
-import com.group8.evcoownership.service.OwnershipGroupService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import io.swagger.v3.oas.annotations.Operation;
@@ -24,7 +24,6 @@ public class ContractController {
 
     private final ContractService contractService;
     private final ContractGenerationService contractGenerationService;
-    private final OwnershipGroupService ownershipGroupService;
 
 
     /**
@@ -46,9 +45,9 @@ public class ContractController {
     @Operation(summary = "Lưu dữ liệu hợp đồng", description = "Lưu dữ liệu hợp đồng xuống cơ sở dữ liệu")
     public ResponseEntity<Map<String, Object>> saveContractData(
             @PathVariable Long groupId,
-            @RequestBody Map<String, Object> contractData
+            @RequestBody @Valid SaveContractDataRequest request
     ) {
-        Map<String, Object> savedContract = contractGenerationService.saveContractFromData(groupId, contractData);
+        Map<String, Object> savedContract = contractGenerationService.saveContractFromData(groupId, request);
         return ResponseEntity.ok(savedContract);
     }
 

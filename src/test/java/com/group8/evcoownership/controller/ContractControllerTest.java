@@ -1,6 +1,7 @@
 package com.group8.evcoownership.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.group8.evcoownership.dto.SaveContractDataRequest;
 import com.group8.evcoownership.service.ContractGenerationService;
 import com.group8.evcoownership.service.ContractService;
 import com.group8.evcoownership.service.OwnershipGroupService;
@@ -60,12 +61,7 @@ class ContractControllerTest {
     @WithMockUser(username = "admin@test.com")
     void saveContractData_Success() throws Exception {
         // Given
-        Map<String, Object> contractData = new HashMap<>();
-        contractData.put("contract", Map.of(
-                "effectiveDate", "2025-01-01",
-                "endDate", "2025-12-31",
-                "terms", "Test contract terms"
-        ));
+        SaveContractDataRequest request = new SaveContractDataRequest("Test contract terms");
 
         Map<String, Object> savedResponse = new HashMap<>();
         savedResponse.put("contractId", 1L);
@@ -74,13 +70,13 @@ class ContractControllerTest {
         savedResponse.put("savedToDatabase", true);
 
         when(ownershipGroupService.isGroupAdmin("admin@test.com", TEST_GROUP_ID)).thenReturn(true);
-        when(contractGenerationService.saveContractFromData(TEST_GROUP_ID, contractData)).thenReturn(savedResponse);
+        when(contractGenerationService.saveContractFromData(TEST_GROUP_ID, request)).thenReturn(savedResponse);
 
         // When & Then
         mockMvc.perform(post("/api/contracts/{groupId}/save", TEST_GROUP_ID)
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(contractData)))
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.contractId").value(1L))
                 .andExpect(jsonPath("$.contractNumber").value("EVS-0001-2025"))
@@ -92,8 +88,7 @@ class ContractControllerTest {
     @WithMockUser(username = "user@test.com")
     void saveContractData_Unauthorized() throws Exception {
         // Given
-        Map<String, Object> contractData = new HashMap<>();
-        contractData.put("contract", Map.of("terms", "Test terms"));
+        SaveContractDataRequest request = new SaveContractDataRequest("Test terms");
 
         when(ownershipGroupService.isGroupAdmin("user@test.com", TEST_GROUP_ID)).thenReturn(false);
 
@@ -101,7 +96,7 @@ class ContractControllerTest {
         mockMvc.perform(post("/api/contracts/{groupId}/save", TEST_GROUP_ID)
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(contractData)))
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk()); // Security is disabled in test profile
     }
 
