@@ -8,11 +8,13 @@ import com.group8.evcoownership.exception.UnauthorizedException;
 import com.group8.evcoownership.repository.UserDocumentRepository;
 import com.group8.evcoownership.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,43 +32,7 @@ public class UserDocumentService {
     @Autowired
     private AzureBlobStorageService azureBlobStorageService;
 
-    // ================= UPLOAD SINGLE DOCUMENT =================
-//    public UserDocument uploadDocument(String email, String documentType, String side, MultipartFile file) {
-//
-//        validateDocumentType(documentType);
-//        validateSide(side);
-//        validateImage(file);
-//
-//        User user = userRepository.findByEmail(email)
-//                .orElseThrow(() -> new IllegalArgumentException("User không tồn tại"));
-//
-//        // Xóa document cũ nếu đã tồn tại (cùng type và side)
-//        userDocumentRepository
-//                .findByUserIdAndDocumentTypeAndSide(user.getUserId(), documentType, side)
-//                .ifPresent(existingDoc -> {
-//                    azureBlobStorageService.deleteFile(existingDoc.getImageUrl());
-//                    userDocumentRepository.delete(existingDoc);
-//                });
-//
-//        // Upload file lên Azure
-//        String fileUrl = azureBlobStorageService.uploadFile(file);
-//
-//        // Tạo document mới
-//        UserDocument document = UserDocument.builder()
-//                .userId(user.getUserId())
-//                .documentType(documentType)
-//                .side(side)
-//                .imageUrl(fileUrl)
-//                .status("PENDING")
-//                .build();
-//
-//        UserDocument saved = userDocumentRepository.save(document);
-//        log.info("Document uploaded: userId={}, type={}, side={}", user.getUserId(), documentType, side);
-//
-//        return saved;
-//    }
-
-    // ================= UPLOAD BATCH DOCUMENTS (FRONT + BACK) =================
+    // ================= UPLOAD BATCH DOCUMENTS (FRONT + BACK) WITH DUPLICATE CHECK =================
     @Transactional
     public Map<String, UserDocument> uploadBatchDocuments(
             String email,
@@ -77,6 +43,27 @@ public class UserDocumentService {
         validateDocumentType(documentType);
         validateImage(frontFile);
         validateImage(backFile);
+
+        // CHECK IF TWO FILES ARE IDENTICAL (only in memory, no DB storage)
+        try {
+            String frontHash = calculateFileHash(frontFile);
+            String backHash = calculateFileHash(backFile);
+
+            if (frontHash.equals(backHash)) {
+                log.error("Duplicate files detected: frontHash={}, backHash={}",
+                        frontHash.substring(0, 8), backHash.substring(0, 8));
+                throw new IllegalArgumentException(
+                        "Ảnh mặt trước và mặt sau không được giống nhau. Vui lòng chọn 2 ảnh khác nhau."
+                );
+            }
+
+            log.info("Files are different (OK): frontHash={}, backHash={}",
+                    frontHash.substring(0, 8), backHash.substring(0, 8));
+
+        } catch (IOException e) {
+            log.error("Error calculating file hash: {}", e.getMessage());
+            throw new RuntimeException("Không thể xử lý file. Vui lòng thử lại.");
+        }
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("User không tồn tại"));
@@ -113,6 +100,19 @@ public class UserDocumentService {
         return results;
     }
 
+    // ================= CALCULATE FILE HASH (MD5) - IN MEMORY ONLY =================
+    private String calculateFileHash(MultipartFile file) throws IOException {
+        try {
+            byte[] fileBytes = file.getBytes();
+            String hash = DigestUtils.md5Hex(fileBytes);
+            log.debug("Calculated hash for {}: {}", file.getOriginalFilename(), hash);
+            return hash;
+        } catch (IOException e) {
+            log.error("Error reading file bytes: {}", e.getMessage());
+            throw new IOException("Không thể đọc file. Vui lòng thử lại.");
+        }
+    }
+
     // ================= HELPER: UPLOAD SINGLE SIDE =================
     private UserDocument uploadSingleSide(User user, String documentType, String side, MultipartFile file) {
 
@@ -127,7 +127,7 @@ public class UserDocumentService {
         // Upload file lên Azure
         String fileUrl = azureBlobStorageService.uploadFile(file);
 
-        // Tạo document mới
+        // Tạo document mới (NO fileHash field needed)
         UserDocument document = UserDocument.builder()
                 .userId(user.getUserId())
                 .documentType(documentType)
