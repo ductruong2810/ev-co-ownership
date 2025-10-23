@@ -14,7 +14,7 @@ public class ResetPasswordRequestDTO {
     @NotBlank(message = "Mật khẩu mới không được để trống")
     @Size(min = 8, max = 50, message = "Mật khẩu phải từ 8-50 ký tự")
     @Pattern(
-            regexp = "^(?=.*[A-Z])(?=.*[@#$%^&+=!])(?!.*[<>\\\\\"'/;`()]).{5,50}$",
+            regexp = "^(?!.*[<>])(?!.*(?i)script)(?!.*(?i)javascript)(?!.*(?i)onerror)(?!.*(?i)onload)[a-zA-Z0-9!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,./?~`]+$",
             message = "Mật khẩu phải có 5-50 ký tự, ít nhất 1 chữ hoa và 1 ký tự đặc biệt"
     )
     private String newPassword;
