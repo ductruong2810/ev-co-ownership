@@ -12,9 +12,9 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 @Component
 public class OtpUtil {
-    private static final int OTP_EXPIRATION_MINUTES = 5; // Tăng từ 3 lên 5 phút
-    private static final int MAX_FAILED_ATTEMPTS = 3; // Giới hạn số lần thử
-    private static final int LOCKOUT_MINUTES = 15; // Khóa 15 phút nếu thử sai quá nhiều
+    private static final int OTP_EXPIRATION_MINUTES = 5;
+    private static final int MAX_FAILED_ATTEMPTS = 3;
+    private static final int LOCKOUT_MINUTES = 15;
 
     private final Map<String, OtpEntry> otpCache = new ConcurrentHashMap<>();
     private final Map<String, FailedAttempt> failedAttempts = new ConcurrentHashMap<>();
@@ -26,6 +26,7 @@ public class OtpUtil {
     private record FailedAttempt(int count, LocalDateTime lockoutUntil) {
     }
 
+    // ================= GENERATE OTP =================
     public String generateOtp(String email) {
         // Kiểm tra xem email có bị khóa không
         FailedAttempt attempt = failedAttempts.get(email);
@@ -48,6 +49,7 @@ public class OtpUtil {
         return otp;
     }
 
+    // ================= VERIFY OTP =================
     public boolean verifyOtp(String email, String otp) {
         log.info("Verifying OTP for email: {}", email);
 
@@ -87,6 +89,7 @@ public class OtpUtil {
         return valid;
     }
 
+    // ================= RECORD FAILED ATTEMPT =================
     private void recordFailedAttempt(String email) {
         FailedAttempt currentAttempt = failedAttempts.get(email);
         int newCount = (currentAttempt != null) ? currentAttempt.count + 1 : 1;
@@ -102,7 +105,44 @@ public class OtpUtil {
         }
     }
 
-    // Dọn dẹp OTP và failed attempts hết hạn mỗi 10 phút
+    // ================= GET REMAINING ATTEMPTS =================
+    public int getRemainingAttempts(String email) {
+        FailedAttempt attempt = failedAttempts.get(email);
+        if (attempt == null) return MAX_FAILED_ATTEMPTS;
+        if (attempt.lockoutUntil.isAfter(LocalDateTime.now())) return 0;
+        return Math.max(0, MAX_FAILED_ATTEMPTS - attempt.count);
+    }
+
+    // ================= INVALIDATE OTP (CLEANUP METHOD) - THÊM MỚI =================
+    /**
+     * Remove OTP data for given email
+     * Used for cleanup when email sending fails or user cancels registration
+     */
+    public void invalidateOtp(String email) {
+        OtpEntry removed = otpCache.remove(email);
+        if (removed != null) {
+            log.info("Invalidated OTP for email: {}", email);
+        }
+    }
+
+    // ================= CHECK IF OTP EXISTS - THÊM MỚI =================
+    /**
+     * Check if OTP exists for given email
+     */
+    public boolean hasOtp(String email) {
+        OtpEntry entry = otpCache.get(email);
+        if (entry == null) {
+            return false;
+        }
+        // Check if expired
+        if (entry.expireAt.isBefore(LocalDateTime.now())) {
+            otpCache.remove(email);
+            return false;
+        }
+        return true;
+    }
+
+    // ================= SCHEDULED CLEANUP =================
     @Scheduled(fixedRate = 600000) // 10 phút
     public void cleanupExpiredEntries() {
         LocalDateTime now = LocalDateTime.now();
@@ -128,13 +168,5 @@ public class OtpUtil {
 
         log.debug("Cleanup completed. OTP cache size: {}, Failed attempts size: {}",
                 otpCache.size(), failedAttempts.size());
-    }
-
-    // Phương thức để kiểm tra trạng thái (dùng cho debugging)
-    public int getRemainingAttempts(String email) {
-        FailedAttempt attempt = failedAttempts.get(email);
-        if (attempt == null) return MAX_FAILED_ATTEMPTS;
-        if (attempt.lockoutUntil.isAfter(LocalDateTime.now())) return 0;
-        return Math.max(0, MAX_FAILED_ATTEMPTS - attempt.count);
     }
 }
