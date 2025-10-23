@@ -61,6 +61,9 @@ class DepositPaymentServiceTest {
     private VehicleRepository vehicleRepository;
 
     @Mock
+    private NotificationOrchestrator notificationOrchestrator;
+
+    @Mock
     private HttpServletRequest httpRequest;
 
     @InjectMocks
@@ -123,6 +126,7 @@ class DepositPaymentServiceTest {
                 .terms("Test contract terms [ĐÃ KÝ]")
                 .requiredDepositAmount(new BigDecimal("38000000")) // 38 triệu VND
                 .isActive(false)
+                .approvalStatus(ContractApprovalStatus.PENDING)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -302,6 +306,10 @@ class DepositPaymentServiceTest {
         when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(payment));
         when(shareRepository.findById(new OwnershipShareId(1L, 1L))).thenReturn(Optional.of(testShare));
         when(shareRepository.save(any(OwnershipShare.class))).thenReturn(testShare);
+        when(paymentService.updateStatus(paymentId, PaymentStatus.COMPLETED, transactionCode, null))
+                .thenReturn(null); // Mock the updateStatus call
+        when(shareRepository.findByGroupGroupId(1L)).thenReturn(List.of(testShare));
+        when(contractRepository.findByGroupGroupId(1L)).thenReturn(Optional.of(testContract));
 
         // Act
         DepositPaymentResponse response = depositPaymentService.confirmDepositPayment(paymentId, transactionCode);

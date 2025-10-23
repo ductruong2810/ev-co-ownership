@@ -1,6 +1,5 @@
 package com.group8.evcoownership.service;
 
-import com.group8.evcoownership.dto.ContractGenerationResponse;
 import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.repository.ContractRepository;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
@@ -18,6 +17,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -122,17 +122,23 @@ class ContractGenerationServiceTest {
         when(vehicleRepository.findByOwnershipGroup(testGroup)).thenReturn(Optional.of(testVehicle));
         when(shareRepository.findByGroupGroupId(TEST_GROUP_ID)).thenReturn(List.of(testShare));
 
+        Map<String, Object> contractData = new HashMap<>();
+        contractData.put("contract", Map.of(
+                "effectiveDate", "2025-01-01",
+                "endDate", "2025-12-31",
+                "terms", "Test contract terms"
+        ));
+
         // When
-        ContractGenerationResponse result = contractGenerationService.generateContractAuto(TEST_GROUP_ID, "REACT_TSX", "<Component>{{data.contract.number}}</Component>");
+        Map<String, Object> result = contractGenerationService.saveContractFromData(TEST_GROUP_ID, contractData);
 
         // Then
         assertNotNull(result);
-        assertEquals(TEST_CONTRACT_ID, result.contractId());
-        assertNotNull(result.contractNumber());
-        assertTrue(result.contractNumber().startsWith("EVS-"));
-        assertNotNull(result.props());
-        assertEquals("GENERATED", result.status());
-        assertNotNull(result.generatedAt());
+        assertEquals(TEST_CONTRACT_ID, result.get("contractId"));
+        assertNotNull(result.get("contractNumber"));
+        assertTrue(result.get("contractNumber").toString().startsWith("EVS-"));
+        assertEquals("SAVED", result.get("status"));
+        assertEquals(true, result.get("savedToDatabase"));
 
         verify(groupRepository, times(2)).findById(TEST_GROUP_ID);
         verify(contractRepository).findByGroupGroupId(TEST_GROUP_ID);
@@ -142,24 +148,30 @@ class ContractGenerationServiceTest {
     }
 
     @Test
-    void generateContractAuto_UpdateExistingContract_Success() {
+    void saveContractFromData_UpdateExistingContract_Success() {
         // Given
         when(groupRepository.findById(TEST_GROUP_ID)).thenReturn(Optional.of(testGroup));
         when(contractRepository.findByGroupGroupId(TEST_GROUP_ID)).thenReturn(Optional.of(testContract));
         when(contractRepository.save(any(Contract.class))).thenReturn(testContract);
-        // Template sẽ được truyền từ Frontend
         when(vehicleRepository.findByOwnershipGroup(testGroup)).thenReturn(Optional.of(testVehicle));
         when(shareRepository.findByGroupGroupId(TEST_GROUP_ID)).thenReturn(List.of(testShare));
 
+        Map<String, Object> contractData = new HashMap<>();
+        contractData.put("contract", Map.of(
+                "effectiveDate", "2025-01-01",
+                "endDate", "2025-12-31",
+                "terms", "Updated contract terms"
+        ));
+
         // When
-        ContractGenerationResponse result = contractGenerationService.generateContractAuto(TEST_GROUP_ID, "REACT_TSX", "<Component>{{data.contract.number}}</Component>");
+        Map<String, Object> result = contractGenerationService.saveContractFromData(TEST_GROUP_ID, contractData);
 
         // Then
         assertNotNull(result);
-        assertEquals(TEST_CONTRACT_ID, result.contractId());
-        assertNotNull(result.contractNumber());
-        assertNotNull(result.props());
-        assertEquals("GENERATED", result.status());
+        assertEquals(TEST_CONTRACT_ID, result.get("contractId"));
+        assertNotNull(result.get("contractNumber"));
+        assertEquals("SAVED", result.get("status"));
+        assertEquals(true, result.get("savedToDatabase"));
 
         verify(groupRepository, times(2)).findById(TEST_GROUP_ID);
         verify(contractRepository).findByGroupGroupId(TEST_GROUP_ID);
@@ -168,12 +180,16 @@ class ContractGenerationServiceTest {
     }
 
     @Test
-    void generateContractAuto_GroupNotFound() {
+    void saveContractFromData_GroupNotFound() {
         // Given
         when(groupRepository.findById(TEST_GROUP_ID)).thenReturn(Optional.empty());
+        
+        Map<String, Object> contractData = new HashMap<>();
+        contractData.put("contract", Map.of("terms", "Test terms"));
+        
         // When & Then
         assertThrows(EntityNotFoundException.class, () ->
-                contractGenerationService.generateContractAuto(TEST_GROUP_ID, "REACT_TSX", "<Component>{{data.contract.number}}</Component>"));
+                contractGenerationService.saveContractFromData(TEST_GROUP_ID, contractData));
 
         verify(groupRepository).findById(TEST_GROUP_ID);
     }

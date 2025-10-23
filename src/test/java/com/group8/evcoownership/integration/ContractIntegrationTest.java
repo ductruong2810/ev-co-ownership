@@ -19,6 +19,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -86,15 +87,20 @@ class ContractIntegrationTest {
         Contract contract = contractService.createDefaultContract(testGroup.getGroupId());
         assertNotNull(contract);
 
-        String tsxTemplate = "<Component>{{data.contract.terms}}</Component>";
+        Map<String, Object> contractData = new HashMap<>();
+        contractData.put("contract", Map.of(
+                "effectiveDate", "2025-01-01",
+                "endDate", "2025-12-31",
+                "terms", "Test contract terms"
+        ));
 
         // When
-        var result = contractGenerationService.generateContractAuto(testGroup.getGroupId(), "REACT_TSX", tsxTemplate);
+        var result = contractGenerationService.saveContractFromData(testGroup.getGroupId(), contractData);
 
         // Then
         assertNotNull(result);
-        assertNotNull(result.contractId());
-        assertNotNull(result.props());
+        assertNotNull(result.get("contractId"));
+        assertNotNull(result.get("status"));
     }
 
     @Test
@@ -124,9 +130,14 @@ class ContractIntegrationTest {
         Contract contract = contractService.createDefaultContract(testGroup.getGroupId());
         assertNotNull(contract);
 
-        // Step 2: Generate contract with template
-        String tsxTemplate = "<Component>{{data.contract.terms}}</Component>";
-        var generationResult = contractGenerationService.generateContractAuto(testGroup.getGroupId(), "REACT_TSX", tsxTemplate);
+        // Step 2: Save contract with data
+        Map<String, Object> contractData = new HashMap<>();
+        contractData.put("contract", Map.of(
+                "effectiveDate", "2025-01-01",
+                "endDate", "2025-12-31",
+                "terms", "Test contract terms"
+        ));
+        var generationResult = contractGenerationService.saveContractFromData(testGroup.getGroupId(), contractData);
         assertNotNull(generationResult);
 
         // Step 3: Sign contract

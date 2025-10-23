@@ -1,14 +1,14 @@
 package com.group8.evcoownership.controller;
 
-import com.group8.evcoownership.dto.*;
+import com.group8.evcoownership.dto.ContractApprovalRequest;
 import com.group8.evcoownership.service.ContractGenerationService;
 import com.group8.evcoownership.service.ContractService;
+import com.group8.evcoownership.service.OwnershipGroupService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -24,67 +24,34 @@ public class ContractController {
 
     private final ContractService contractService;
     private final ContractGenerationService contractGenerationService;
+    private final OwnershipGroupService ownershipGroupService;
+
 
     /**
-     * Generate contract automatically from React TSX template (Frontend provides templateContent)
-     * - startDate = today
-     * - endDate = today + 1 year
-     * - terms extracted from TSX content
-     */
-    @PostMapping("/generate/{groupId}/auto")
-    @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
-    @Operation(summary = "Tạo hợp đồng tự động", description = "Sinh hợp đồng từ React TSX template do FE gửi lên")
-    public ResponseEntity<ContractGenerationResponse> generateContractAuto(
-            @PathVariable Long groupId,
-            @RequestBody Map<String, String> request
-    ) {
-        String templateContent = request == null ? null : request.get("templateContent");
-        ContractGenerationResponse response = contractGenerationService.generateContractAuto(
-                groupId,
-                "REACT_TSX",
-                templateContent
-        );
-        return ResponseEntity.ok(response);
-    }
-
-    // Removed legacy flexible/preview/with-template: TSX-only flow below
-
-    /**
-     * Export hợp đồng thành PDF từ React TSX template (Frontend gửi templateContent)
-     */
-    @PostMapping("/export/{groupId}/pdf")
-    @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
-    @Operation(summary = "Xuất hợp đồng PDF", description = "Xuất PDF từ nội dung TSX template do FE gửi lên")
-    public ResponseEntity<byte[]> exportContractPdf(
-            @PathVariable Long groupId,
-            @RequestBody Map<String, String> request) {
-
-        String templateContent = request.get("templateContent");
-        if (templateContent == null || templateContent.trim().isEmpty()) {
-            throw new IllegalArgumentException("Template content is required from Frontend");
-        }
-
-        byte[] pdfBytes = contractGenerationService.exportToPdf(groupId, templateContent);
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_PDF);
-        headers.setContentDispositionFormData("attachment", "contract-" + groupId + ".pdf");
-
-        return ResponseEntity.ok()
-                .headers(headers)
-                .body(pdfBytes);
-    }
-
-    /**
-     * Lấy thông tin contract của group
+     * Lấy thông tin contract của group (cho members)
      */
     @GetMapping("/{groupId}")
     @PreAuthorize("@ownershipGroupService.isGroupMember(authentication.name, #groupId)")
-    @Operation(summary = "Lấy thông tin hợp đồng", description = "Thông tin hợp đồng của một group")
+    @Operation(summary = "Lấy thông tin hợp đồng", description = "Lấy thông tin hợp đồng của nhóm")
     public ResponseEntity<Map<String, Object>> getContractInfo(@PathVariable Long groupId) {
         Map<String, Object> contractInfo = contractService.getContractInfo(groupId);
         return ResponseEntity.ok(contractInfo);
     }
+
+    /**
+     * Lưu contract data xuống database
+     */
+    @PostMapping("/{groupId}/save")
+    @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
+    @Operation(summary = "Lưu dữ liệu hợp đồng", description = "Lưu dữ liệu hợp đồng xuống cơ sở dữ liệu")
+    public ResponseEntity<Map<String, Object>> saveContractData(
+            @PathVariable Long groupId,
+            @RequestBody Map<String, Object> contractData
+    ) {
+        Map<String, Object> savedContract = contractGenerationService.saveContractFromData(groupId, contractData);
+        return ResponseEntity.ok(savedContract);
+    }
+
 
     /**
      * Ký hợp đồng (chỉ admin group)

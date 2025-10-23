@@ -54,8 +54,8 @@ public class OwnershipGroupController {
 
     @GetMapping("/{groupId}")
     @Operation(summary = "Lấy chi tiết nhóm", description = "Trả về thông tin chi tiết của một nhóm theo ID")
-    public OwnershipGroupResponse getById(@PathVariable Long groupId) {
-        return service.getById(groupId);
+    public OwnershipGroupResponse getById(@PathVariable Long groupId, @AuthenticationPrincipal String userEmail) {
+        return service.getByIdWithUserRole(groupId, userEmail);
     }
 
     /**
