@@ -12,7 +12,7 @@ public class VerifyResetOtpRequestDTO {
 //    private String email;
     //không cần thiết vì chỉ cần nhập OTP thôi
 
-    @NotBlank(message = "OTP không được để trống")
-    @Size(min = 6, max = 6, message = "OTP phải có 6 ký tự")
+    @NotBlank(message = "OTP cannot be blank!")
+    @Size(min = 6, max = 6, message = "OTP must have 6 characters!")
     private String otp;
 }

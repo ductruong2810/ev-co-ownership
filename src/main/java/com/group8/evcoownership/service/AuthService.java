@@ -73,6 +73,37 @@ public class AuthService {
                 .role(user.getRole().getRoleName().name())
                 .build();
     }
+    // ================= REFRESH TOKEN =================
+    public LoginResponseDTO refreshToken(String refreshToken) {
+        log.info("Processing token refresh");
+
+        if (refreshToken == null || refreshToken.trim().isEmpty()) {
+            throw new IllegalArgumentException("Refresh token cannot be empty");
+        }
+
+        if (!jwtUtil.validateToken(refreshToken)) {
+            throw new IllegalArgumentException("Refresh token is invalid or has expired");
+        }
+
+        String email = jwtUtil.extractEmail(refreshToken);
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new IllegalStateException("Account is not activated");
+        }
+
+        String newAccessToken = jwtUtil.generateToken(user);
+        String newRefreshToken = jwtUtil.generateRefreshToken(user);
+
+        log.info("Tokens refreshed successfully for user: {}", email);
+
+        return LoginResponseDTO.builder()
+                .accessToken(newAccessToken)
+                .refreshToken(newRefreshToken)
+                .role(user.getRole().getRoleName().name())
+                .build();
+    }
 
     // ================= REQUEST OTP (REGISTRATION) =================
     public OtpResponseDTO requestOtp(RegisterRequestDTO request) {
