@@ -2,8 +2,10 @@ package com.group8.evcoownership.service;
 
 import com.group8.evcoownership.entity.Contract;
 import com.group8.evcoownership.entity.OwnershipGroup;
+import com.group8.evcoownership.entity.OwnershipShare;
 import com.group8.evcoownership.repository.ContractRepository;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
+import com.group8.evcoownership.repository.OwnershipShareRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,6 +18,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -31,6 +34,9 @@ class ContractServiceTest {
 
     @Mock
     private OwnershipGroupRepository groupRepository;
+
+    @Mock
+    private OwnershipShareRepository ownershipShareRepository;
 
     @Mock
     private DepositCalculationService depositCalculationService;
@@ -75,7 +81,20 @@ class ContractServiceTest {
                 .groupId(newGroupId)
                 .groupName("New Test EV Group")
                 .description("New test group for EV co-ownership")
-                .memberCapacity(5)
+                .memberCapacity(2) // Set to 2 for easier testing
+                .build();
+
+        // Create 2 ownership shares to match memberCapacity
+        OwnershipShare share1 = OwnershipShare.builder()
+                .id(new com.group8.evcoownership.entity.OwnershipShareId(1L, newGroupId))
+                .group(newGroup)
+                .ownershipPercentage(new BigDecimal("50.00"))
+                .build();
+        
+        OwnershipShare share2 = OwnershipShare.builder()
+                .id(new com.group8.evcoownership.entity.OwnershipShareId(2L, newGroupId))
+                .group(newGroup)
+                .ownershipPercentage(new BigDecimal("50.00"))
                 .build();
 
         Contract newContract = Contract.builder()
@@ -92,6 +111,7 @@ class ContractServiceTest {
 
         when(groupRepository.findById(newGroupId)).thenReturn(Optional.of(newGroup));
         when(contractRepository.findByGroup(newGroup)).thenReturn(Optional.empty());
+        when(ownershipShareRepository.findByGroupGroupId(newGroupId)).thenReturn(List.of(share1, share2)); // 2 members = memberCapacity
         when(depositCalculationService.calculateRequiredDepositAmount(newGroup))
                 .thenReturn(new BigDecimal("2000000"));
         when(contractRepository.save(any(Contract.class))).thenReturn(newContract);
@@ -108,8 +128,9 @@ class ContractServiceTest {
         assertNotNull(result.getEndDate());
         assertEquals(result.getStartDate().plusYears(1), result.getEndDate());
 
-        verify(groupRepository).findById(newGroupId);
+        verify(groupRepository, times(2)).findById(newGroupId); // Called twice: once in createDefaultContract, once in validateContractCreation
         verify(contractRepository).findByGroup(newGroup);
+        verify(ownershipShareRepository).findByGroupGroupId(newGroupId);
         verify(depositCalculationService).calculateRequiredDepositAmount(newGroup);
         verify(contractRepository).save(any(Contract.class));
     }

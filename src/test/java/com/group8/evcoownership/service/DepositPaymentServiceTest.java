@@ -126,7 +126,7 @@ class DepositPaymentServiceTest {
                 .terms("Test contract terms [ĐÃ KÝ]")
                 .requiredDepositAmount(new BigDecimal("38000000")) // 38 triệu VND
                 .isActive(false)
-                .approvalStatus(ContractApprovalStatus.PENDING)
+                .approvalStatus(ContractApprovalStatus.SIGNED)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -399,9 +399,9 @@ class DepositPaymentServiceTest {
         // Act - Sử dụng reflection để test private method
         try {
             java.lang.reflect.Method method = DepositPaymentService.class.getDeclaredMethod(
-                    "calculateDepositAmountForUser", User.class, OwnershipGroup.class, OwnershipShare.class);
+                    "calculateDepositAmountForUser", OwnershipGroup.class, OwnershipShare.class);
             method.setAccessible(true);
-            BigDecimal result = (BigDecimal) method.invoke(depositPaymentService, testUser, testGroup, testShare);
+            BigDecimal result = (BigDecimal) method.invoke(depositPaymentService, testGroup, testShare);
 
             // Assert
             assertEquals(expectedDeposit, result);
@@ -421,9 +421,9 @@ class DepositPaymentServiceTest {
         // Act - Sử dụng reflection để test private method
         try {
             java.lang.reflect.Method method = DepositPaymentService.class.getDeclaredMethod(
-                    "calculateDepositAmountForUser", User.class, OwnershipGroup.class, OwnershipShare.class);
+                    "calculateDepositAmountForUser", OwnershipGroup.class, OwnershipShare.class);
             method.setAccessible(true);
-            BigDecimal result = (BigDecimal) method.invoke(depositPaymentService, testUser, testGroup, testShare);
+            BigDecimal result = (BigDecimal) method.invoke(depositPaymentService, testGroup, testShare);
 
             // Assert
             assertEquals(new BigDecimal("2000000"), result);

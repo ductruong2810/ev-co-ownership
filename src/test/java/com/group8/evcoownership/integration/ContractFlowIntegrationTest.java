@@ -5,7 +5,6 @@ import com.group8.evcoownership.dto.DepositPaymentResponse;
 import com.group8.evcoownership.dto.SaveContractDataRequest;
 import com.group8.evcoownership.enums.DepositStatus;
 import com.group8.evcoownership.enums.PaymentStatus;
-import com.group8.evcoownership.service.ContractGenerationService;
 import com.group8.evcoownership.service.ContractService;
 import com.group8.evcoownership.service.DepositPaymentService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,9 +25,6 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ContractFlowIntegrationTest {
-
-    @Mock
-    private ContractGenerationService contractGenerationService;
 
     @Mock
     private ContractService contractService;
@@ -69,11 +65,11 @@ class ContractFlowIntegrationTest {
         expectedResponse.put("status", "SAVED");
         expectedResponse.put("savedToDatabase", true);
 
-        when(contractGenerationService.saveContractFromData(1L, request))
+        when(contractService.saveContractFromData(1L, request))
                 .thenReturn(expectedResponse);
 
         // Act
-        Map<String, Object> response = contractGenerationService.saveContractFromData(1L, request);
+        Map<String, Object> response = contractService.saveContractFromData(1L, request);
 
         // Assert
         assertNotNull(response);
@@ -81,7 +77,7 @@ class ContractFlowIntegrationTest {
         assertEquals("EVS-2025-001", response.get("contractNumber"));
         assertEquals("SAVED", response.get("status"));
 
-        verify(contractGenerationService).saveContractFromData(1L, request);
+        verify(contractService).saveContractFromData(1L, request);
     }
 
     @Test
