@@ -32,6 +32,10 @@ public class UserDocument {
     @Column(name = "ImageUrl", length = 500, nullable = false)
     private String imageUrl;
 
+    //them vao 23/10/2025
+    @Column(name = "FileHash", length = 64)
+    private String fileHash;
+
     @Column(name = "Status", length = 20)
     private String status; // PENDING, APPROVED, REJECTED
 
