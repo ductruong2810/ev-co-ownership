@@ -22,7 +22,7 @@ public record CreateGroupWithVehicleRequest(
 
         @NotNull(message = "Vehicle value is required")
         @DecimalMin(value = "0.01", message = "Vehicle value must be positive")
-        @DecimalMax(value = "10000000000", message = "Vehicle value cannot exceed 10 billion VND")
+        @DecimalMax(value = "100000000000", message = "Vehicle value cannot exceed 100 billion VND")
         BigDecimal vehicleValue,
 
         @NotBlank(message = "License plate is required")

@@ -14,7 +14,6 @@ import com.group8.evcoownership.repository.InvitationRepository;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
 import com.group8.evcoownership.repository.OwnershipShareRepository;
 import com.group8.evcoownership.repository.UserRepository;
-import com.group8.evcoownership.repository.UserDocumentRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -41,7 +40,7 @@ public class InvitationService {
     private final OwnershipShareRepository shareRepo;
     private final UserRepository userRepo;
     private final EmailService emailService;
-    private final UserDocumentRepository userDocumentRepository;
+    private final UserDocumentValidationService userDocumentValidationService;
     private final OwnershipShareService shareService;
 
     // ===================== CREATE =====================
@@ -242,7 +241,7 @@ public class InvitationService {
         var percent = java.math.BigDecimal.ZERO;
 
         // Kiểm tra user có đầy đủ giấy tờ đã được duyệt không
-        validateUserDocuments(user.getUserId());
+        userDocumentValidationService.validateUserDocuments(user.getUserId());
 
         // Dùng OwnershipShareService để add share + auto-activate
         var addReq = new com.group8.evcoownership.dto.OwnershipShareCreateRequest(
@@ -379,27 +378,6 @@ public class InvitationService {
         );
     }
 
-    /**
-     * Kiểm tra user có đầy đủ giấy tờ đã được duyệt không
-     */
-    private void validateUserDocuments(Long userId) {
-        // Lấy tất cả documents của user
-        var documents = userDocumentRepository.findByUserId(userId);
-        
-        // Kiểm tra có đủ 2 loại giấy tờ: CITIZEN_ID và DRIVER_LICENSE
-        boolean hasCitizenId = documents.stream()
-                .anyMatch(doc -> "CITIZEN_ID".equals(doc.getDocumentType()) && "APPROVED".equals(doc.getStatus()));
-        
-        boolean hasDriverLicense = documents.stream()
-                .anyMatch(doc -> "DRIVER_LICENSE".equals(doc.getDocumentType()) && "APPROVED".equals(doc.getStatus()));
-        
-        if (!hasCitizenId) {
-            throw new IllegalStateException("User must have approved Citizen ID document to join group");
-        }
-        
-        if (!hasDriverLicense) {
-            throw new IllegalStateException("User must have approved Driver License document to join group");
-        }
-    }
+    // Removed validateUserDocuments method - moved to UserDocumentValidationService
 
 }

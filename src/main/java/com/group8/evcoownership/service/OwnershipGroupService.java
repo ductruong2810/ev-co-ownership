@@ -142,7 +142,7 @@ public class OwnershipGroupService {
 
         var savedGroup = repo.save(entity);
 
-        // Tự động thêm người tạo group làm ADMIN với 100% ownership
+        // Tự động thêm người tạo group làm ADMIN với 0% ownership (để phân bổ sau)
         var shareId = new OwnershipShareId(user.getUserId(), savedGroup.getGroupId());
         var ownershipShare = OwnershipShare.builder()
                 .id(shareId)
@@ -150,7 +150,7 @@ public class OwnershipGroupService {
                 .group(savedGroup)
                 .groupRole(GroupRole.ADMIN)
                 .depositStatus(DepositStatus.PENDING)
-                .ownershipPercentage(java.math.BigDecimal.valueOf(100.00))
+                .ownershipPercentage(java.math.BigDecimal.ZERO) // Bắt đầu với 0%
                 .joinDate(LocalDateTime.now())
                 .build();
 
