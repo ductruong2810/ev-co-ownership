@@ -2,7 +2,6 @@ package com.group8.evcoownership.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.group8.evcoownership.dto.SaveContractDataRequest;
-import com.group8.evcoownership.service.ContractGenerationService;
 import com.group8.evcoownership.service.ContractService;
 import com.group8.evcoownership.service.OwnershipGroupService;
 import com.group8.evcoownership.testconfig.TestConfig;
@@ -42,9 +41,6 @@ class ContractControllerTest {
     private ContractService contractService;
 
     @MockitoBean
-    private ContractGenerationService contractGenerationService;
-
-    @MockitoBean
     private OwnershipGroupService ownershipGroupService;
 
     @Autowired
@@ -70,7 +66,7 @@ class ContractControllerTest {
         savedResponse.put("savedToDatabase", true);
 
         when(ownershipGroupService.isGroupAdmin("admin@test.com", TEST_GROUP_ID)).thenReturn(true);
-        when(contractGenerationService.saveContractFromData(TEST_GROUP_ID, request)).thenReturn(savedResponse);
+        when(contractService.saveContractFromData(TEST_GROUP_ID, request)).thenReturn(savedResponse);
 
         // When & Then
         mockMvc.perform(post("/api/contracts/{groupId}/save", TEST_GROUP_ID)

@@ -71,7 +71,7 @@ CREATE TABLE OwnershipShare
     GroupId             BIGINT        NOT NULL,
     GroupRole           NVARCHAR(50)  NOT NULL DEFAULT 'MEMBER',
     OwnershipPercentage DECIMAL(5, 2) NOT NULL
-        CHECK (OwnershipPercentage > 0 AND OwnershipPercentage <= 100),
+        CHECK (OwnershipPercentage >= 0 AND OwnershipPercentage <= 100),
     JoinDate            DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
     DepositStatus       NVARCHAR(20)  NOT NULL DEFAULT 'PENDING',
     UpdatedAt           DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
@@ -771,22 +771,3 @@ GO
 -- Mỗi group chỉ có 1 vehicle (áp dụng khi GroupId NOT NULL)
 CREATE UNIQUE INDEX UQ_Vehicle_GroupId ON Vehicle (GroupId) WHERE GroupId IS NOT NULL;
 GO
-
--- =============================================
-ALTER TABLE Contract
-    ADD ApprovalStatus NVARCHAR(20) NOT NULL DEFAULT 'PENDING';
-ALTER TABLE Contract
-    ADD ApprovedBy BIGINT NULL;
-ALTER TABLE Contract
-    ADD ApprovedAt DATETIME2(7) NULL;
-ALTER TABLE Contract
-    ADD RejectionReason NVARCHAR(500) NULL;
-
--- Add foreign key constraint
-ALTER TABLE Contract
-    ADD CONSTRAINT FK_Contract_ApprovedBy
-        FOREIGN KEY (ApprovedBy) REFERENCES Users (UserId);
-
--- Add indexes for performance
-CREATE INDEX IX_Contract_ApprovalStatus ON Contract (ApprovalStatus);
-CREATE INDEX IX_Contract_ApprovedBy ON Contract (ApprovedBy);
