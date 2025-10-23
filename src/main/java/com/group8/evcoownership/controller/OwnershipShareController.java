@@ -1,12 +1,6 @@
 package com.group8.evcoownership.controller;
 
-import com.group8.evcoownership.dto.OwnershipShareCreateRequest;
-import com.group8.evcoownership.dto.OwnershipShareResponse;
-import com.group8.evcoownership.dto.OwnershipPercentageRequest;
-import com.group8.evcoownership.dto.OwnershipPercentageResponse;
-import com.group8.evcoownership.dto.GroupOwnershipSummaryResponse;
-import com.group8.evcoownership.dto.OwnershipPageDataResponse;
-import com.group8.evcoownership.dto.ValidationResponse;
+import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.service.OwnershipShareService;
 import com.group8.evcoownership.service.UserProfileService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -68,7 +62,7 @@ public class OwnershipShareController {
      * GET /api/shares/page-data/{groupId}
      */
     @GetMapping("/page-data/{groupId}")
-    @Operation(summary = "Dữ liệu trang tỷ lệ sở hữu", description = "Lấy tất cả dữ liệu cần thiết cho trang nhập tỷ lệ sở hữu")
+    @Operation(summary = "Dữ liệu trang tỷ lệ sở hữu", description = "Lấy tất cả dữ liệu cần thiết cho trang nhập tỷ lệ sở hữu bao gồm thông tin xe")
     public ResponseEntity<OwnershipPageDataResponse> getOwnershipPageData(
             @PathVariable Long groupId,
             @AuthenticationPrincipal String userEmail) {
@@ -85,10 +79,14 @@ public class OwnershipShareController {
         // Lấy gợi ý tỷ lệ
         List<BigDecimal> suggestions = service.getOwnershipSuggestions(groupId);
         
+        // Lấy thông tin xe (bao gồm biển số)
+        VehicleResponse vehicleInfo = service.getVehicleInfo(groupId);
+        
         OwnershipPageDataResponse response = OwnershipPageDataResponse.builder()
                 .userOwnership(userOwnership)
                 .groupSummary(groupSummary)
                 .suggestions(suggestions)
+                .vehicleInfo(vehicleInfo)
                 .build();
         
         return ResponseEntity.ok(response);
@@ -114,14 +112,17 @@ public class OwnershipShareController {
     }
 
     /**
-     * Cập nhật tỷ lệ sở hữu của thành viên khác (admin function)
-     * PUT /api/shares/{groupId}/{userId}/percentage
+     * Cập nhật tỷ lệ sở hữu của thành viên (lấy userId từ token)
+     * PUT /api/shares/{groupId}/percentage
      */
-    @PutMapping("/{groupId}/{userId}/percentage")
-    @Operation(summary = "Cập nhật tỷ lệ sở hữu thành viên", description = "Cập nhật tỷ lệ sở hữu của thành viên và tự động kích hoạt nhóm")
+    @PutMapping("/{groupId}/percentage")
+    @Operation(summary = "Cập nhật tỷ lệ sở hữu thành viên",
+            description = "Cập nhật tỷ lệ sở hữu của thành viên")
     public OwnershipPercentageResponse updateMemberOwnershipPercentage(@PathVariable Long groupId,
-                                                                      @PathVariable Long userId,
+                                                                      @AuthenticationPrincipal String userEmail,
                                                                       @RequestBody @Valid OwnershipPercentageRequest req) {
+        // Lấy userId từ JWT token
+        Long userId = userProfileService.getUserProfile(userEmail).getUserId();
         return service.updateOwnershipPercentage(userId, groupId, req);
     }
 
