@@ -3,8 +3,9 @@ package com.group8.evcoownership.service;
 import com.group8.evcoownership.dto.DepositPaymentRequest;
 import com.group8.evcoownership.dto.DepositPaymentResponse;
 import com.group8.evcoownership.entity.*;
+import com.group8.evcoownership.enums.ContractApprovalStatus;
 import com.group8.evcoownership.enums.DepositStatus;
-import com.group8.evcoownership.enums.GroupStatus;
+import com.group8.evcoownership.enums.NotificationType;
 import com.group8.evcoownership.enums.PaymentStatus;
 import com.group8.evcoownership.enums.PaymentType;
 import com.group8.evcoownership.exception.DepositPaymentException;
@@ -36,6 +37,7 @@ public class DepositPaymentService {
     private final VnPay_PaymentService vnPayPaymentService;
     private final DepositCalculationService depositCalculationService;
     private final VehicleRepository vehicleRepository;
+    private final NotificationOrchestrator notificationOrchestrator;
 
     /**
      * Tạo payment cho tiền cọc với VNPay
@@ -139,6 +141,10 @@ public class DepositPaymentService {
         share.setUpdatedAt(LocalDateTime.now());
         shareRepository.save(share);
 
+        // Kiểm tra và tự động kích hoạt contract nếu tất cả deposit đã đóng đầy đủ
+        Long groupId = payment.getFund().getGroup().getGroupId();
+        checkAndActivateContractIfAllDepositsPaid(groupId);
+
         return DepositPaymentResponse.builder()
                 .paymentId(paymentId)
                 .userId(payment.getPayer().getUserId())
@@ -151,6 +157,42 @@ public class DepositPaymentService {
                 .paidAt(LocalDateTime.now())
                 .message("Deposit payment completed successfully")
                 .build();
+    }
+
+    /**
+     * Kiểm tra và tự động kích hoạt contract nếu tất cả deposit đã đóng đầy đủ
+     */
+    @Transactional
+    public void checkAndActivateContractIfAllDepositsPaid(Long groupId) {
+        // Lấy tất cả ownership shares của group
+        List<OwnershipShare> shares = shareRepository.findByGroupGroupId(groupId);
+        
+        // Kiểm tra tất cả shares đã đóng deposit chưa
+        boolean allDepositsPaid = shares.stream()
+                .allMatch(share -> share.getDepositStatus() == DepositStatus.PAID);
+        
+        if (allDepositsPaid && !shares.isEmpty()) {
+            // Lấy contract của group
+            Contract contract = contractRepository.findByGroupGroupId(groupId)
+                    .orElse(null);
+            
+            if (contract != null && contract.getApprovalStatus() == ContractApprovalStatus.PENDING) {
+                // Tự động kích hoạt contract
+                contract.setApprovalStatus(ContractApprovalStatus.APPROVED);
+                contract.setApprovedAt(LocalDateTime.now());
+                contractRepository.save(contract);
+                
+                // Gửi notification cho tất cả thành viên
+                if (notificationOrchestrator != null) {
+                    notificationOrchestrator.sendGroupNotification(
+                            groupId,
+                            NotificationType.CONTRACT_APPROVED,
+                            "Contract Activated",
+                            "All deposits have been paid successfully. Your co-ownership contract is now active!"
+                    );
+                }
+            }
+        }
     }
 
     /**

@@ -252,6 +252,72 @@ public class OwnershipGroupService {
     }
 
     /**
+     * Lấy thông tin group với role của user hiện tại
+     */
+    public OwnershipGroupResponse getByIdWithUserRole(Long groupId, String userEmail) {
+        var entity = repo.findById(groupId)
+                .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
+        
+        OwnershipGroupResponse response = toDto(entity);
+        
+        // Thêm thông tin role của user
+        try {
+            var user = userRepository.findByEmail(userEmail)
+                    .orElseThrow(() -> new EntityNotFoundException("User not found: " + userEmail));
+
+            var ownershipShare = ownershipShareRepository.findById_UserIdAndGroup_GroupId(user.getUserId(), groupId)
+                    .orElse(null);
+
+            if (ownershipShare != null) {
+                response = new OwnershipGroupResponse(
+                        response.groupId(),
+                        response.groupName(),
+                        response.description(),
+                        response.memberCapacity(),
+                        response.status(),
+                        response.createdAt(),
+                        response.updatedAt(),
+                        ownershipShare.getGroupRole().toString(),
+                        ownershipShare.getGroupRole() == GroupRole.ADMIN,
+                        true,
+                        ownershipShare.getOwnershipPercentage()
+                );
+            } else {
+                response = new OwnershipGroupResponse(
+                        response.groupId(),
+                        response.groupName(),
+                        response.description(),
+                        response.memberCapacity(),
+                        response.status(),
+                        response.createdAt(),
+                        response.updatedAt(),
+                        null,
+                        false,
+                        false,
+                        null
+                );
+            }
+        } catch (Exception e) {
+            // Nếu có lỗi, trả về response không có thông tin user
+            response = new OwnershipGroupResponse(
+                    response.groupId(),
+                    response.groupName(),
+                    response.description(),
+                    response.memberCapacity(),
+                    response.status(),
+                    response.createdAt(),
+                    response.updatedAt(),
+                    null,
+                    false,
+                    false,
+                    null
+            );
+        }
+        
+        return response;
+    }
+
+    /**
      * list: dùng các hàm derived query đã có trong Repository (không dùng Specification)
      * - keyword: tìm theo GroupName (contains, ignore case)
      * - status: PENDING/ACTIVE/INACTIVE

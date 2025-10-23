@@ -55,14 +55,14 @@ public class AuthService {
     // ================= LOGIN =================
     public LoginResponseDTO login(LoginRequestDTO request) {
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new InvalidCredentialsException("Email hoặc mật khẩu không chính xác"));
+                .orElseThrow(() -> new InvalidCredentialsException("Email or password is incorrect"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            throw new InvalidCredentialsException("Email hoặc mật khẩu không chính xác");
+            throw new InvalidCredentialsException("Email or password is incorrect");
         }
 
         if (user.getStatus() != UserStatus.ACTIVE) {
-            throw new IllegalStateException("Tài khoản chưa được kích hoạt. Vui lòng xác thực email.");
+            throw new IllegalStateException("Account is not activated. Please verify your email");
         }
 
         boolean rememberMe = request.isRememberMe();
@@ -73,29 +73,55 @@ public class AuthService {
                 .role(user.getRole().getRoleName().name())
                 .build();
     }
+    // ================= REFRESH TOKEN =================
+    public LoginResponseDTO refreshToken(String refreshToken) {
+        log.info("Processing token refresh");
+
+        if (refreshToken == null || refreshToken.trim().isEmpty()) {
+            throw new IllegalArgumentException("Refresh token cannot be empty");
+        }
+
+        if (!jwtUtil.validateToken(refreshToken)) {
+            throw new IllegalArgumentException("Refresh token is invalid or has expired");
+        }
+
+        String email = jwtUtil.extractEmail(refreshToken);
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new IllegalStateException("Account is not activated");
+        }
+
+        String newAccessToken = jwtUtil.generateToken(user);
+        String newRefreshToken = jwtUtil.generateRefreshToken(user);
+
+        log.info("Tokens refreshed successfully for user: {}", email);
+
+        return LoginResponseDTO.builder()
+                .accessToken(newAccessToken)
+                .refreshToken(newRefreshToken)
+                .role(user.getRole().getRoleName().name())
+                .build();
+    }
 
     // ================= REQUEST OTP (REGISTRATION) =================
     public OtpResponseDTO requestOtp(RegisterRequestDTO request) {
         String email = request.getEmail();
 
         if (userRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException("Email đã được đăng ký");
+            throw new IllegalArgumentException("Email is already registered");
         }
 
         if (!request.getPassword().equals(request.getConfirmPassword())) {
-            throw new IllegalArgumentException("Mật khẩu và xác nhận mật khẩu không khớp");
+            throw new IllegalArgumentException("Password and confirm password do not match");
         }
 
         String otp = null;
 
         try {
-            // Generate OTP
             otp = otpUtil.generateOtp(email);
-
-            // Send email FIRST
             emailService.sendOtpEmail(email, request.getFullName(), otp);
-
-            // Store data only if email sent successfully
             pendingUsers.put(email, request);
             registerOtpToEmailMap.put(otp, email);
 
@@ -103,7 +129,7 @@ public class AuthService {
 
             return OtpResponseDTO.builder()
                     .email(email)
-                    .message("Mã OTP đã được gửi đến email của bạn")
+                    .message("OTP has been sent to your email")
                     .type(OtpType.REGISTRATION)
                     .expiresIn(300)
                     .build();
@@ -111,24 +137,24 @@ public class AuthService {
         } catch (Exception e) {
             log.error("Failed to send registration OTP to {}: {}", email, e.getMessage());
 
-            // ← CLEANUP USING invalidateOtp()
             if (otp != null) {
-                otpUtil.invalidateOtp(email);  // ← USE THIS METHOD
+                otpUtil.invalidateOtp(email);
             }
             pendingUsers.remove(email);
             if (otp != null) {
                 registerOtpToEmailMap.remove(otp);
             }
 
-            throw new RuntimeException("Không thể gửi email xác thực. Vui lòng thử lại sau.");
+            throw new RuntimeException("Unable to send verification email. Please try again later");
         }
     }
+
     // ================= VERIFY OTP =================
     public VerifyOtpResponseDTO verifyOtp(String otp, OtpType type) {
         log.info("Verifying OTP with type: {}", type);
 
         if (otp == null || otp.trim().isEmpty()) {
-            throw new IllegalArgumentException("OTP không được để trống");
+            throw new IllegalArgumentException("OTP cannot be empty");
         }
 
         if (type == null) {
@@ -149,7 +175,7 @@ public class AuthService {
             throw e;
         } catch (Exception e) {
             log.error("Unexpected error: {}", e.getMessage(), e);
-            throw new RuntimeException("Đã xảy ra lỗi trong quá trình xác thực. Vui lòng thử lại.");
+            throw new RuntimeException("An error occurred during verification. Please try again");
         }
     }
 
@@ -160,14 +186,14 @@ public class AuthService {
         String email = registerOtpToEmailMap.get(otp);
         if (email == null) {
             log.error("Registration OTP not found or expired: {}", otp);
-            throw new IllegalArgumentException("OTP không hợp lệ hoặc đã hết hạn");
+            throw new IllegalArgumentException("OTP is invalid or has expired");
         }
 
         RegisterRequestDTO request = pendingUsers.get(email);
         if (request == null) {
             log.error("No pending registration found for email: {}", email);
             registerOtpToEmailMap.remove(otp);
-            throw new IllegalStateException("Không tìm thấy thông tin đăng ký. Vui lòng yêu cầu OTP mới.");
+            throw new IllegalStateException("Registration information not found. Please request a new OTP");
         }
 
         boolean isOtpValid = otpUtil.verifyOtp(email, otp);
@@ -177,10 +203,10 @@ public class AuthService {
                 pendingUsers.remove(email);
                 registerOtpToEmailMap.remove(otp);
                 log.error("Registration OTP verification failed - no attempts remaining");
-                throw new IllegalStateException("Bạn đã nhập sai OTP quá nhiều lần. Vui lòng yêu cầu OTP mới.");
+                throw new IllegalStateException("You have entered an incorrect OTP too many times. Please request a new OTP");
             }
             log.error("Invalid registration OTP. Remaining attempts: {}", remainingAttempts);
-            throw new IllegalArgumentException("OTP không hợp lệ. Bạn còn " + remainingAttempts + " lần thử.");
+            throw new IllegalArgumentException("Invalid OTP. You have " + remainingAttempts + " attempts remaining");
         }
 
         User user = createUser(request);
@@ -196,7 +222,7 @@ public class AuthService {
 
         return VerifyOtpResponseDTO.builder()
                 .email(email)
-                .message("Đăng ký tài khoản thành công! Bạn đã được tự động đăng nhập.")
+                .message("Account registration successful! You have been automatically logged in")
                 .type(OtpType.REGISTRATION)
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
@@ -211,13 +237,13 @@ public class AuthService {
         String email = otpToEmailMap.get(otp);
         if (email == null) {
             log.error("Password reset OTP not found or expired: {}", otp);
-            throw new IllegalArgumentException("OTP không hợp lệ hoặc đã hết hạn");
+            throw new IllegalArgumentException("OTP is invalid or has expired");
         }
 
         if (!pendingPasswordResets.containsKey(email)) {
             log.error("No pending password reset found for email: {}", email);
             otpToEmailMap.remove(otp);
-            throw new IllegalStateException("Không tìm thấy yêu cầu đặt lại mật khẩu. Vui lòng yêu cầu OTP mới.");
+            throw new IllegalStateException("Password reset request not found. Please request a new OTP");
         }
 
         boolean isOtpValid = otpUtil.verifyOtp(email, otp);
@@ -227,10 +253,10 @@ public class AuthService {
                 pendingPasswordResets.remove(email);
                 otpToEmailMap.remove(otp);
                 log.error("Password reset OTP verification failed - no attempts remaining");
-                throw new IllegalStateException("Bạn đã nhập sai OTP quá nhiều lần. Vui lòng yêu cầu OTP mới.");
+                throw new IllegalStateException("You have entered an incorrect OTP too many times. Please request a new OTP");
             }
             log.error("Invalid password reset OTP. Remaining attempts: {}", remainingAttempts);
-            throw new IllegalArgumentException("OTP không hợp lệ. Bạn còn " + remainingAttempts + " lần thử.");
+            throw new IllegalArgumentException("Invalid OTP. You have " + remainingAttempts + " attempts remaining");
         }
 
         String resetToken = generateResetToken();
@@ -242,7 +268,7 @@ public class AuthService {
 
         return VerifyOtpResponseDTO.builder()
                 .email(email)
-                .message("Xác thực OTP thành công. Vui lòng đặt mật khẩu mới.")
+                .message("OTP verification successful. Please set your new password")
                 .type(OtpType.PASSWORD_RESET)
                 .resetToken(resetToken)
                 .build();
@@ -255,7 +281,7 @@ public class AuthService {
         Role coOwnerRole = roleRepository.findByRoleName(RoleName.CO_OWNER)
                 .orElseThrow(() -> {
                     log.error("Role CO_OWNER not found in database");
-                    return new IllegalStateException("Lỗi cấu hình hệ thống. Vui lòng liên hệ quản trị viên.");
+                    return new IllegalStateException("System configuration error. Please contact the administrator");
                 });
 
         User user = User.builder()
@@ -279,7 +305,7 @@ public class AuthService {
         } else if (type == OtpType.PASSWORD_RESET) {
             return resendPasswordResetOtp(email);
         } else {
-            throw new IllegalArgumentException("OTP type không hợp lệ");
+            throw new IllegalArgumentException("Invalid OTP type");
         }
     }
 
@@ -290,26 +316,21 @@ public class AuthService {
         RegisterRequestDTO request = pendingUsers.get(email);
         if (request == null) {
             log.warn("Resend OTP attempt for non-pending email: {}", email);
-            throw new IllegalStateException("Không tìm thấy thông tin đăng ký. Vui lòng đăng ký lại từ đầu.");
+            throw new IllegalStateException("Registration information not found. Please register again from the beginning");
         }
 
         String newOtp = null;
 
         try {
-            // Generate new OTP
             newOtp = otpUtil.generateOtp(email);
-
-            // Send email FIRST (trước khi store)
             emailService.sendOtpEmail(email, request.getFullName(), newOtp);
-
-            // Only store if email sent successfully
             registerOtpToEmailMap.put(newOtp, email);
 
             log.info("Registration OTP resent successfully to email: {}", email);
 
             return OtpResponseDTO.builder()
                     .email(email)
-                    .message("Mã OTP mới đã được gửi đến email của bạn")
+                    .message("A new OTP has been sent to your email")
                     .type(OtpType.REGISTRATION)
                     .expiresIn(300)
                     .build();
@@ -320,7 +341,7 @@ public class AuthService {
                 otpUtil.invalidateOtp(email);
             }
 
-            throw new RuntimeException("Không thể gửi lại OTP. Vui lòng thử lại sau.");
+            throw new RuntimeException("Unable to resend OTP. Please try again later");
         }
     }
 
@@ -330,7 +351,7 @@ public class AuthService {
 
         if (!pendingPasswordResets.containsKey(email)) {
             log.warn("Resend password reset OTP attempt for non-pending reset: {}", email);
-            throw new IllegalStateException("Không tìm thấy yêu cầu đặt lại mật khẩu. Vui lòng yêu cầu lại từ đầu.");
+            throw new IllegalStateException("Password reset request not found. Please request again from the beginning");
         }
 
         try {
@@ -343,7 +364,7 @@ public class AuthService {
 
             return OtpResponseDTO.builder()
                     .email(email)
-                    .message("Mã OTP mới đã được gửi đến email của bạn")
+                    .message("A new OTP has been sent to your email")
                     .type(OtpType.PASSWORD_RESET)
                     .expiresIn(300)
                     .build();
@@ -353,14 +374,7 @@ public class AuthService {
             throw e;
         } catch (Exception e) {
             log.error("Unexpected error while resending password reset OTP to {}: {}", email, e.getMessage(), e);
-            throw new RuntimeException("Không thể gửi lại OTP. Vui lòng thử lại sau.");
-        }
-    }
-
-    // ================= CANCEL PENDING REGISTRATION =================
-    public void cancelPendingRegistration(String email) {
-        if (pendingUsers.remove(email) != null) {
-            log.info("Cancelled pending registration for email: {}", email);
+            throw new RuntimeException("Unable to resend OTP. Please try again later");
         }
     }
 
@@ -371,24 +385,19 @@ public class AuthService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> {
                     log.warn("Forgot password attempt for non-existent email: {}", email);
-                    return new IllegalArgumentException("Email không tồn tại trong hệ thống");
+                    return new IllegalArgumentException("Email does not exist in the system");
                 });
 
         if (user.getStatus() != UserStatus.ACTIVE) {
             log.warn("Forgot password attempt for inactive account: {}", email);
-            throw new IllegalStateException("Tài khoản chưa được kích hoạt. Vui lòng liên hệ quản trị viên.");
+            throw new IllegalStateException("Account is not activated. Please contact the administrator");
         }
 
         String otp = null;
 
         try {
-            // Generate OTP
             otp = otpUtil.generateOtp(email);
-
-            // Send email FIRST
             emailService.sendPasswordResetOtpEmail(email, otp);
-
-            // Only store if email sent successfully
             pendingPasswordResets.put(email, email);
             otpToEmailMap.put(otp, email);
 
@@ -396,7 +405,7 @@ public class AuthService {
 
             return OtpResponseDTO.builder()
                     .email(email)
-                    .message("Mã OTP đã được gửi đến email của bạn")
+                    .message("OTP has been sent to your email")
                     .type(OtpType.PASSWORD_RESET)
                     .expiresIn(300)
                     .build();
@@ -412,10 +421,9 @@ public class AuthService {
                 otpToEmailMap.remove(otp);
             }
 
-            throw new RuntimeException("Không thể gửi OTP. Vui lòng thử lại sau.");
+            throw new RuntimeException("Unable to send OTP. Please try again later");
         }
     }
-
 
     // ================= RESET PASSWORD WITH TOKEN =================
     public ResetPasswordResponseDTO resetPasswordWithToken(ResetPasswordRequestDTO request) {
@@ -423,21 +431,21 @@ public class AuthService {
         log.info("Processing password reset with token");
 
         if (resetToken == null || resetToken.trim().isEmpty()) {
-            throw new IllegalArgumentException("Reset token không được để trống");
+            throw new IllegalArgumentException("Reset token cannot be empty");
         }
         if (!request.getNewPassword().equals(request.getConfirmPassword())) {
-            throw new IllegalArgumentException("Mật khẩu và xác nhận mật khẩu không khớp");
+            throw new IllegalArgumentException("Password and confirm password do not match");
         }
 
         try {
             String email = resetTokens.get(resetToken);
             if (email == null) {
                 log.error("Invalid or expired reset token");
-                throw new IllegalArgumentException("Reset token không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu OTP mới.");
+                throw new IllegalArgumentException("Reset token is invalid or has expired. Please request a new OTP");
             }
 
             User user = userRepository.findByEmail(email)
-                    .orElseThrow(() -> new IllegalStateException("Không tìm thấy tài khoản"));
+                    .orElseThrow(() -> new IllegalStateException("Account not found"));
 
             user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
             userRepository.save(user);
@@ -449,7 +457,7 @@ public class AuthService {
             log.info("Password reset successfully for email: {} - Auto login enabled", email);
 
             return ResetPasswordResponseDTO.builder()
-                    .message("Đặt lại mật khẩu thành công! Bạn đã được tự động đăng nhập.")
+                    .message("Password reset successful! You have been automatically logged in")
                     .accessToken(accessToken)
                     .build();
 
@@ -457,7 +465,7 @@ public class AuthService {
             throw e;
         } catch (Exception e) {
             log.error("Unexpected error during password reset: {}", e.getMessage(), e);
-            throw new RuntimeException("Đã xảy ra lỗi trong quá trình đặt lại mật khẩu. Vui lòng thử lại.");
+            throw new RuntimeException("An error occurred during password reset. Please try again");
         }
     }
 
@@ -466,40 +474,40 @@ public class AuthService {
         log.info("Processing change password request for email: {}", email);
 
         if (email == null || email.trim().isEmpty()) {
-            throw new IllegalArgumentException("Email không được để trống");
+            throw new IllegalArgumentException("Email cannot be empty");
         }
         if (!request.getNewPassword().equals(request.getConfirmPassword())) {
-            throw new IllegalArgumentException("Mật khẩu mới và xác nhận mật khẩu không khớp");
+            throw new IllegalArgumentException("New password and confirm password do not match");
         }
 
         try {
             User user = userRepository.findByEmail(email)
                     .orElseThrow(() -> {
                         log.error("User not found for email: {}", email);
-                        return new IllegalArgumentException("Không tìm thấy tài khoản");
+                        return new IllegalArgumentException("Account not found");
                     });
 
             if (!passwordEncoder.matches(request.getOldPassword(), user.getPasswordHash())) {
                 log.warn("Invalid old password for email: {}", email);
-                throw new IllegalArgumentException("Mật khẩu cũ không chính xác");
+                throw new IllegalArgumentException("Old password is incorrect");
             }
 
             if (passwordEncoder.matches(request.getNewPassword(), user.getPasswordHash())) {
                 log.warn("New password same as old password for email: {}", email);
-                throw new IllegalArgumentException("Mật khẩu mới phải khác mật khẩu cũ");
+                throw new IllegalArgumentException("New password must be different from old password");
             }
 
             user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
             userRepository.save(user);
 
             log.info("Password changed successfully for email: {}", email);
-            return "Đổi mật khẩu thành công!";
+            return "Password changed successfully!";
 
         } catch (IllegalArgumentException e) {
             throw e;
         } catch (Exception e) {
             log.error("Unexpected error during password change for email {}: {}", email, e.getMessage(), e);
-            throw new RuntimeException("Đã xảy ra lỗi trong quá trình đổi mật khẩu. Vui lòng thử lại.");
+            throw new RuntimeException("An error occurred during password change. Please try again");
         }
     }
 

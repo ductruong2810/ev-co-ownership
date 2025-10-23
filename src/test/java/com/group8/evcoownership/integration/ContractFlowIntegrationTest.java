@@ -1,6 +1,5 @@
 package com.group8.evcoownership.integration;
 
-import com.group8.evcoownership.dto.ContractGenerationResponse;
 import com.group8.evcoownership.dto.DepositPaymentRequest;
 import com.group8.evcoownership.dto.DepositPaymentResponse;
 import com.group8.evcoownership.enums.DepositStatus;
@@ -17,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -60,30 +60,32 @@ class ContractFlowIntegrationTest {
     @Test
     void testContractGeneration() {
         // Arrange
-        String tsxTemplate = "<Component>{group.name} Contract</Component>";
+        Map<String, Object> contractData = new HashMap<>();
+        contractData.put("contract", Map.of(
+                "effectiveDate", "2025-01-01",
+                "endDate", "2025-12-31",
+                "terms", "Test contract terms"
+        ));
 
-        ContractGenerationResponse expectedResponse = new ContractGenerationResponse(
-                1L,
-                "EVS-2025-001",
-                java.util.Map.of("group", java.util.Map.of("name", "Test EV Group")),
-                java.time.LocalDateTime.now(),
-                "GENERATED"
-        );
+        Map<String, Object> expectedResponse = new HashMap<>();
+        expectedResponse.put("contractId", 1L);
+        expectedResponse.put("contractNumber", "EVS-2025-001");
+        expectedResponse.put("status", "SAVED");
+        expectedResponse.put("savedToDatabase", true);
 
-        when(contractGenerationService.generateContractAuto(1L, "REACT_TSX", tsxTemplate))
+        when(contractGenerationService.saveContractFromData(1L, contractData))
                 .thenReturn(expectedResponse);
 
         // Act
-        ContractGenerationResponse response = contractGenerationService.generateContractAuto(1L, "REACT_TSX", tsxTemplate);
+        Map<String, Object> response = contractGenerationService.saveContractFromData(1L, contractData);
 
         // Assert
         assertNotNull(response);
-        assertEquals(1L, response.contractId());
-        assertEquals("EVS-2025-001", response.contractNumber());
-        assertEquals("Test EV Group", ((java.util.Map<?, ?>) response.props().get("group")).get("name"));
-        assertEquals("GENERATED", response.status());
+        assertEquals(1L, response.get("contractId"));
+        assertEquals("EVS-2025-001", response.get("contractNumber"));
+        assertEquals("SAVED", response.get("status"));
 
-        verify(contractGenerationService).generateContractAuto(1L, "REACT_TSX", tsxTemplate);
+        verify(contractGenerationService).saveContractFromData(1L, contractData);
     }
 
     @Test

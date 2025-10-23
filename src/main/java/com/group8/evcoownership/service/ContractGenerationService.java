@@ -9,6 +9,7 @@ import com.group8.evcoownership.entity.Vehicle;
 import com.group8.evcoownership.repository.ContractRepository;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
 import com.group8.evcoownership.repository.OwnershipShareRepository;
+import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.repository.VehicleRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -32,54 +33,196 @@ public class ContractGenerationService {
     private final ContractRepository contractRepository;
     private final OwnershipGroupRepository groupRepository;
     private final VehicleRepository vehicleRepository;
-    private final OwnershipShareRepository shareRepository;
+    private final OwnershipShareRepository ownershipShareRepository;
+    private final UserRepository userRepository;
     // Template sẽ được xử lý ở Frontend, không cần TemplateService
     // private final TemplateService templateService;
     /**
-     * React TSX only: auto-generate contract from TSX template sent by FE.
-     * - startDate = today
-     * - endDate = today + 1 year
-     * - terms extracted from templateContent (if present)
+     * Generate contract data only - Backend chỉ đẩy dữ liệu lên Frontend
+     * Frontend không cần gửi template xuống
+     * Contract CHƯA được lưu xuống database (chỉ tạo để hiển thị)
      */
-    @Transactional
-    public ContractGenerationResponse generateContractAuto(Long groupId, String templateType, String templateContent) {
-        if (templateContent == null || templateContent.trim().isEmpty()) {
-            throw new IllegalArgumentException("Template content is required from Frontend");
-        }
-        if (!"REACT_TSX".equalsIgnoreCase(templateType)) {
-            throw new IllegalArgumentException("Only REACT_TSX is supported");
-        }
-
-        groupRepository.findById(groupId)
+    public Map<String, Object> generateContractDataOnly(Long groupId) {
+        OwnershipGroup group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
 
         LocalDate start = LocalDate.now();
         LocalDate end = start.plusYears(1);
-        String terms = extractTermsFromTemplate(templateContent);
+        String terms = "Điều khoản hợp đồng sở hữu xe chung EVShare"; // Default terms
 
-        ContractGenerationRequest req = new ContractGenerationRequest(
-                start,
-                end,
-                terms,
-                "HCM",
-                start.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
-                null
-        );
+        // Tạo contract object tạm thời (không lưu xuống database)
+        Contract tempContract = Contract.builder()
+                .group(group)
+                .startDate(start)
+                .endDate(end)
+                .terms(terms)
+                .isActive(true)
+                .approvalStatus(com.group8.evcoownership.enums.ContractApprovalStatus.PENDING)
+                .build();
 
-        Contract contract = createOrUpdateContract(groupId, req);
-        Map<String, Object> props = prepareContractData(groupId, contract);
+        Map<String, Object> contractData = prepareContractData(groupId, tempContract);
 
+        // Thêm contract number vào response
+        String contractNumber = "EVS-" + groupId + "-" + System.currentTimeMillis();
+        
+        contractData.put("contractNumber", contractNumber);
+        contractData.put("contractId", null); // Chưa có ID vì chưa lưu
+        contractData.put("generatedAt", LocalDateTime.now());
+        contractData.put("status", "GENERATED");
+        contractData.put("savedToDatabase", false); // Chưa lưu xuống database
+
+        return contractData;
+    }
+
+
+    /**
+     * Lưu contract từ dữ liệu Frontend gửi lên
+     */
+    @Transactional
+    public Map<String, Object> saveContractFromData(Long groupId, Map<String, Object> contractData) {
+        OwnershipGroup group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
+
+        // Extract contract info từ Frontend data
+        @SuppressWarnings("unchecked")
+        Map<String, Object> contractInfo = (Map<String, Object>) contractData.get("contract");
+        
+        LocalDate startDate = LocalDate.now();
+        LocalDate endDate = startDate.plusYears(1);
+        String terms = "Điều khoản hợp đồng sở hữu xe chung EVShare";
+        
+        if (contractInfo != null) {
+            // Parse dates nếu có
+            if (contractInfo.get("effectiveDate") != null) {
+                startDate = LocalDate.parse(contractInfo.get("effectiveDate").toString());
+            }
+            if (contractInfo.get("endDate") != null) {
+                endDate = LocalDate.parse(contractInfo.get("endDate").toString());
+            }
+            if (contractInfo.get("terms") != null) {
+                terms = contractInfo.get("terms").toString();
+            }
+        }
+
+        // Kiểm tra đã có contract chưa
+        Contract existingContract = contractRepository.findByGroup(group).orElse(null);
+        
+        Contract contract;
+        if (existingContract != null) {
+            // Cập nhật contract hiện có
+            existingContract.setStartDate(startDate);
+            existingContract.setEndDate(endDate);
+            existingContract.setTerms(terms);
+            existingContract.setUpdatedAt(LocalDateTime.now());
+            contract = contractRepository.save(existingContract);
+        } else {
+            // Tạo contract mới và lưu xuống database
+            ContractGenerationRequest req = new ContractGenerationRequest(
+                    startDate,
+                    endDate,
+                    terms,
+                    "HCM",
+                    startDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
+                    null
+            );
+            contract = createOrUpdateContract(groupId, req);
+        }
+
+        // Chuẩn bị response data
+        Map<String, Object> responseData = prepareContractData(groupId, contract);
+        
         String contractNumber = contract.getId() != null ?
                 generateContractNumber(contract.getId()) :
                 "EVS-" + groupId + "-" + System.currentTimeMillis();
+        
+        responseData.put("contractNumber", contractNumber);
+        responseData.put("contractId", contract.getId());
+        responseData.put("savedAt", LocalDateTime.now());
+        responseData.put("status", "SAVED");
+        responseData.put("savedToDatabase", true);
 
-        return new ContractGenerationResponse(
-                contract.getId(),
-                contractNumber,
-                props,
-                LocalDateTime.now(),
-                "GENERATED"
-        );
+        return responseData;
+    }
+
+    /**
+     * Lấy contract data đã lưu từ database
+     */
+    public Map<String, Object> getContractDataFromDatabase(Long groupId) {
+        OwnershipGroup group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
+
+        Contract contract = contractRepository.findByGroup(group)
+                .orElseThrow(() -> new EntityNotFoundException("Contract not found for group: " + groupId));
+
+        Map<String, Object> contractData = prepareContractData(groupId, contract);
+        
+        String contractNumber = contract.getId() != null ?
+                generateContractNumber(contract.getId()) :
+                "EVS-" + groupId + "-" + System.currentTimeMillis();
+        
+        contractData.put("contractNumber", contractNumber);
+        contractData.put("contractId", contract.getId());
+        contractData.put("approvalStatus", contract.getApprovalStatus());
+        contractData.put("isActive", contract.getIsActive());
+        contractData.put("createdAt", contract.getCreatedAt());
+        contractData.put("updatedAt", contract.getUpdatedAt());
+        contractData.put("savedToDatabase", true);
+
+        return contractData;
+    }
+
+    /**
+     * Export PDF từ dữ liệu - Backend tự tạo PDF không cần template từ Frontend
+     */
+    public byte[] exportToPdfFromData(Long groupId) {
+        // Lấy dữ liệu contract
+        Map<String, Object> contractData = generateContractDataOnly(groupId);
+        
+        // Tạo HTML content từ dữ liệu
+        String htmlContent = generateHtmlFromData(contractData);
+        
+        // Convert HTML to PDF (placeholder implementation)
+        // TODO: Implement actual PDF generation
+        return htmlContent.getBytes();
+    }
+
+    /**
+     * Generate HTML content từ dữ liệu contract
+     */
+    private String generateHtmlFromData(Map<String, Object> contractData) {
+        StringBuilder html = new StringBuilder();
+        html.append("<!DOCTYPE html><html><head><title>Contract</title></head><body>");
+        html.append("<h1>Hợp đồng sở hữu xe chung</h1>");
+        
+        // Contract info
+        @SuppressWarnings("unchecked")
+        Map<String, Object> contract = (Map<String, Object>) contractData.get("contract");
+        if (contract != null) {
+            html.append("<h2>Thông tin hợp đồng</h2>");
+            html.append("<p>Số hợp đồng: ").append(contract.get("number")).append("</p>");
+            html.append("<p>Ngày hiệu lực: ").append(contract.get("effectiveDate")).append("</p>");
+            html.append("<p>Ngày kết thúc: ").append(contract.get("endDate")).append("</p>");
+        }
+        
+        // Group info
+        @SuppressWarnings("unchecked")
+        Map<String, Object> group = (Map<String, Object>) contractData.get("group");
+        if (group != null) {
+            html.append("<h2>Thông tin nhóm</h2>");
+            html.append("<p>Tên nhóm: ").append(group.get("name")).append("</p>");
+        }
+        
+        // Vehicle info
+        @SuppressWarnings("unchecked")
+        Map<String, Object> vehicle = (Map<String, Object>) contractData.get("vehicle");
+        if (vehicle != null) {
+            html.append("<h2>Thông tin xe</h2>");
+            html.append("<p>Model: ").append(vehicle.get("model")).append("</p>");
+            html.append("<p>Biển số: ").append(vehicle.get("plate")).append("</p>");
+        }
+        
+        html.append("</body></html>");
+        return html.toString();
     }
 
     /**
@@ -193,7 +336,7 @@ public class ContractGenerationService {
     private Map<String, Object> prepareContractData(Long groupId, Contract contract) {
         OwnershipGroup group = contract.getGroup();
         Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group).orElse(null);
-        List<OwnershipShare> shares = shareRepository.findByGroupGroupId(groupId);
+        List<OwnershipShare> shares = ownershipShareRepository.findByGroupGroupId(groupId);
 
         Map<String, Object> data = new HashMap<>();
 
