@@ -71,7 +71,7 @@ public class DepositPaymentService {
         }
 
         // Tính toán số tiền cọc dựa trên tỷ lệ sở hữu của user
-        BigDecimal requiredAmount = calculateDepositAmountForUser(user, group, share);
+        BigDecimal requiredAmount = calculateDepositAmountForUser(group, share);
         if (request.amount().compareTo(requiredAmount) != 0) {
             throw new DepositPaymentException("Deposit amount must be exactly " + requiredAmount + " VND (based on ownership percentage: " + share.getOwnershipPercentage() + "%)");
         }
@@ -176,20 +176,23 @@ public class DepositPaymentService {
             Contract contract = contractRepository.findByGroupGroupId(groupId)
                     .orElse(null);
             
-            if (contract != null && contract.getApprovalStatus() == ContractApprovalStatus.PENDING) {
-                // Tự động kích hoạt contract
-                contract.setApprovalStatus(ContractApprovalStatus.APPROVED);
-                contract.setApprovedAt(LocalDateTime.now());
-                contractRepository.save(contract);
-                
-                // Gửi notification cho tất cả thành viên
-                if (notificationOrchestrator != null) {
-                    notificationOrchestrator.sendGroupNotification(
-                            groupId,
-                            NotificationType.CONTRACT_APPROVED,
-                            "Contract Activated",
-                            "All deposits have been paid successfully. Your co-ownership contract is now active!"
-                    );
+            if (contract != null && contract.getApprovalStatus() == ContractApprovalStatus.SIGNED) {
+                // Kiểm tra điều kiện auto-approve: số lượng thành viên và deposit
+                if (canAutoApproveContract(shares)) {
+                    // Tự động kích hoạt contract (chuyển từ SIGNED → APPROVED)
+                    contract.setApprovalStatus(ContractApprovalStatus.APPROVED);
+                    contract.setApprovedAt(LocalDateTime.now());
+                    contractRepository.save(contract);
+                    
+                    // Gửi notification cho tất cả thành viên
+                    if (notificationOrchestrator != null) {
+                        notificationOrchestrator.sendGroupNotification(
+                                groupId,
+                                NotificationType.CONTRACT_APPROVED,
+                                "Contract Activated",
+                                "All deposits have been paid successfully. Your co-ownership contract is now active!"
+                        );
+                    }
                 }
             }
         }
@@ -206,7 +209,7 @@ public class DepositPaymentService {
                 .orElseThrow(() -> new EntityNotFoundException("Contract not found"));
 
         // Tính toán số tiền cọc dựa trên tỷ lệ sở hữu
-        BigDecimal requiredAmount = calculateDepositAmountForUser(share.getUser(), share.getGroup(), share);
+        BigDecimal requiredAmount = calculateDepositAmountForUser(share.getGroup(), share);
 
         Map<String, Object> info = new HashMap<>();
         info.put("userId", userId);
@@ -239,7 +242,7 @@ public class DepositPaymentService {
             status.put("joinDate", share.getJoinDate());
 
             // Tính toán số tiền cọc cho user này
-            BigDecimal depositAmount = calculateDepositAmountForUser(share.getUser(), group, share);
+            BigDecimal depositAmount = calculateDepositAmountForUser(group, share);
             status.put("requiredDepositAmount", depositAmount);
 
             return status;
@@ -249,7 +252,7 @@ public class DepositPaymentService {
     /**
      * Tính toán số tiền cọc cho user dựa trên tỷ lệ sở hữu
      */
-    private BigDecimal calculateDepositAmountForUser(User user, OwnershipGroup group, OwnershipShare share) {
+    private BigDecimal calculateDepositAmountForUser(OwnershipGroup group, OwnershipShare share) {
         // Tìm Vehicle của group để lấy giá trị xe (sử dụng VehicleRepository)
         Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group).orElse(null);
 
@@ -263,5 +266,24 @@ public class DepositPaymentService {
             // Fallback về công thức cũ nếu không có vehicleValue
             return depositCalculationService.calculateRequiredDepositAmount(group.getMemberCapacity());
         }
+    }
+
+    /**
+     * Kiểm tra có thể tự động duyệt contract không
+     * Business rules: 
+     * 1. Số thành viên thực tế = memberCapacity của group
+     * 2. Tất cả thành viên đã đóng deposit (đã được kiểm tra ở trên)
+     */
+    private boolean canAutoApproveContract(List<OwnershipShare> shares) {
+        if (shares.isEmpty()) {
+            return false;
+        }
+        
+        // Lấy group để kiểm tra memberCapacity
+        OwnershipGroup group = shares.get(0).getGroup();
+        Integer memberCapacity = group.getMemberCapacity();
+        
+        // Kiểm tra số lượng thành viên thực tế = memberCapacity
+        return memberCapacity != null && shares.size() == memberCapacity;
     }
 }

@@ -3,7 +3,6 @@ package com.group8.evcoownership.integration;
 import com.group8.evcoownership.dto.SaveContractDataRequest;
 import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.repository.*;
-import com.group8.evcoownership.service.ContractGenerationService;
 import com.group8.evcoownership.service.ContractService;
 import com.group8.evcoownership.service.DepositCalculationService;
 import com.group8.evcoownership.testconfig.TestConfig;
@@ -38,9 +37,6 @@ class ContractIntegrationTest {
     private ContractService contractService;
 
     @Autowired
-    private ContractGenerationService contractGenerationService;
-
-    @Autowired
     private ContractRepository contractRepository;
 
     @Autowired
@@ -66,6 +62,17 @@ class ContractIntegrationTest {
         testGroup.setGroupId(null);
         testGroup = groupRepository.save(testGroup);
 
+        // Create enough members to match memberCapacity (5)
+        for (int i = 1; i <= 5; i++) {
+            User testUser = ContractTestDataBuilder.TestScenarios.createBasicUser();
+            testUser.setUserId(null);
+            testUser.setEmail("user" + i + "@test.com");
+            testUser = userRepository.save(testUser);
+
+            OwnershipShare testShare = ContractTestDataBuilder.TestScenarios.createBasicShare(testGroup, testUser);
+            shareRepository.save(testShare);
+        }
+
         // When
         Contract result = contractService.createDefaultContract(testGroup.getGroupId());
 
@@ -84,6 +91,17 @@ class ContractIntegrationTest {
         testGroup.setGroupId(null);
         testGroup = groupRepository.save(testGroup);
 
+        // Create enough members to match memberCapacity (5)
+        for (int i = 1; i <= 5; i++) {
+            User testUser = ContractTestDataBuilder.TestScenarios.createBasicUser();
+            testUser.setUserId(null);
+            testUser.setEmail("user" + i + "@test.com");
+            testUser = userRepository.save(testUser);
+
+            OwnershipShare testShare = ContractTestDataBuilder.TestScenarios.createBasicShare(testGroup, testUser);
+            shareRepository.save(testShare);
+        }
+
         // Create contract first
         Contract contract = contractService.createDefaultContract(testGroup.getGroupId());
         assertNotNull(contract);
@@ -91,7 +109,7 @@ class ContractIntegrationTest {
         SaveContractDataRequest request = new SaveContractDataRequest("Test contract terms");
 
         // When
-        var result = contractGenerationService.saveContractFromData(testGroup.getGroupId(), request);
+        var result = contractService.saveContractFromData(testGroup.getGroupId(), request);
 
         // Then
         assertNotNull(result);
@@ -107,16 +125,20 @@ class ContractIntegrationTest {
         testGroup.setGroupId(null);
         testGroup = groupRepository.save(testGroup);
 
-        User testUser = ContractTestDataBuilder.TestScenarios.createBasicUser();
-        testUser.setUserId(null);
-        testUser = userRepository.save(testUser);
+        // Create enough members to match memberCapacity (5)
+        for (int i = 1; i <= 5; i++) {
+            User testUser = ContractTestDataBuilder.TestScenarios.createBasicUser();
+            testUser.setUserId(null);
+            testUser.setEmail("user" + i + "@test.com");
+            testUser = userRepository.save(testUser);
+
+            OwnershipShare testShare = ContractTestDataBuilder.TestScenarios.createBasicShare(testGroup, testUser);
+            shareRepository.save(testShare);
+        }
 
         Vehicle testVehicle = ContractTestDataBuilder.TestScenarios.createBasicVehicle(testGroup);
         testVehicle.setId(null);
         vehicleRepository.save(testVehicle);
-
-        OwnershipShare testShare = ContractTestDataBuilder.TestScenarios.createBasicShare(testGroup, testUser);
-        shareRepository.save(testShare);
 
         // Mock deposit calculation
         when(depositCalculationService.calculateRequiredDepositAmount(any(OwnershipGroup.class)))
@@ -128,7 +150,7 @@ class ContractIntegrationTest {
 
         // Step 2: Save contract with data
         SaveContractDataRequest request = new SaveContractDataRequest("Test contract terms");
-        var generationResult = contractGenerationService.saveContractFromData(testGroup.getGroupId(), request);
+        var generationResult = contractService.saveContractFromData(testGroup.getGroupId(), request);
         assertNotNull(generationResult);
 
         // Step 3: Sign contract
