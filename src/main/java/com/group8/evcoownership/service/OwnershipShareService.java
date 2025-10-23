@@ -4,7 +4,6 @@ package com.group8.evcoownership.service;
 import com.group8.evcoownership.dto.OwnershipShareCreateRequest;
 import com.group8.evcoownership.dto.OwnershipShareResponse;
 import com.group8.evcoownership.dto.OwnershipShareUpdateDepositStatusRequest;
-import com.group8.evcoownership.dto.OwnershipShareUpdatePercentageRequest;
 import com.group8.evcoownership.dto.OwnershipPercentageRequest;
 import com.group8.evcoownership.dto.OwnershipPercentageResponse;
 import com.group8.evcoownership.dto.GroupOwnershipSummaryResponse;
@@ -109,28 +108,6 @@ public class OwnershipShareService {
         return toDto(saved);
     }
 
-    /**
-     * Cập nhật % sở hữu (chỉ khi group ACTIVE)
-     */
-    @Transactional
-    public OwnershipShareResponse updatePercentage(Long groupId, Long userId,
-                                                   OwnershipShareUpdatePercentageRequest req) {
-        var group = groupRepo.findById(groupId)
-                .orElseThrow(() -> new EntityNotFoundException("Group not found"));
-        if (group.getStatus() != GroupStatus.ACTIVE) {
-            throw new IllegalStateException("Group is not ACTIVE");
-        }
-
-        var id = new OwnershipShareId(userId, groupId);
-        var share = shareRepo.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Membership not found"));
-
-        share.setOwnershipPercentage(req.ownershipPercentage());
-        var saved = shareRepo.save(share);
-
-//        tryActivate(groupId);
-        return toDto(saved);
-    }
 
     /**
      * Cập nhật trạng thái đặt cọc (tuỳ nhu cầu, không phụ thuộc PENDING)
