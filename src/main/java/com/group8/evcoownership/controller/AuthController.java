@@ -27,7 +27,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
-@Tag(name = "Authentication", description = "Đăng nhập, đăng ký, OTP, đổi mật khẩu")
+@Tag(name = "Authentication", description = "Login, Register, OTP, Password Management")
 public class AuthController {
 
     private static final Logger log = LoggerFactory.getLogger(AuthController.class);
@@ -46,37 +46,70 @@ public class AuthController {
 
     // ================= LOGIN =================
     @PostMapping("/login")
-    @Operation(summary = "Đăng nhập", description = "Xác thực người dùng và trả về access/refresh token")
-    public ResponseEntity<LoginResponseDTO> login(@RequestBody LoginRequestDTO request) {
-        return ResponseEntity.ok(authService.login(request));
+    @Operation(summary = "Login", description = "Authenticate user and return access/refresh tokens")
+    public ResponseEntity<?> login(@RequestBody LoginRequestDTO request) {
+        try {
+            return ResponseEntity.ok(authService.login(request));
+        } catch (Exception e) {
+            log.error("Login error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of(
+                            "timestamp", LocalDateTime.now().toString(),
+                            "status", 401,
+                            "error", "Unauthorized",
+                            "message", e.getMessage(),
+                            "field", "email,password",
+                            "path", "/api/auth/login"
+                    ));
+        }
     }
 
     // ================= REFRESH TOKEN =================
     @PostMapping("/refresh")
-    @Operation(summary = "Làm mới token", description = "Nhận access token mới bằng refresh token hợp lệ")
+    @Operation(summary = "Refresh token", description = "Get new access token using valid refresh token")
     public ResponseEntity<?> refresh(@Valid @RequestBody RefreshTokenRequestDTO request) {
-
         String refreshToken = request.getRefreshToken();
 
         try {
             if (refreshToken == null || refreshToken.trim().isEmpty()) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(Map.of("error", "Refresh token không được để trống"));
+                        .body(Map.of(
+                                "timestamp", LocalDateTime.now().toString(),
+                                "status", 400,
+                                "error", "Bad Request",
+                                "message", "Refresh token cannot be empty",
+                                "field", "refreshToken",
+                                "path", "/api/auth/refresh"
+                        ));
             }
 
             if (!jwtUtil.validateToken(refreshToken)) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(Map.of("error", "Refresh token không hợp lệ hoặc đã hết hạn"));
+                        .body(Map.of(
+                                "timestamp", LocalDateTime.now().toString(),
+                                "status", 401,
+                                "error", "Unauthorized",
+                                "message", "Refresh token is invalid or has expired",
+                                "field", "refreshToken",
+                                "path", "/api/auth/refresh"
+                        ));
             }
 
             String email = jwtUtil.extractEmail(refreshToken);
 
             User user = userRepository.findByEmail(email)
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+                    .orElseThrow(() -> new RuntimeException("User not found"));
 
             if (user.getStatus() != UserStatus.ACTIVE) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(Map.of("error", "Tài khoản chưa được kích hoạt"));
+                        .body(Map.of(
+                                "timestamp", LocalDateTime.now().toString(),
+                                "status", 403,
+                                "error", "Forbidden",
+                                "message", "Account is not activated",
+                                "field", "status",
+                                "path", "/api/auth/refresh"
+                        ));
             }
 
             String newAccessToken = jwtUtil.generateToken(user);
@@ -87,27 +120,59 @@ public class AuthController {
             return ResponseEntity.ok(LoginResponseDTO.builder()
                     .accessToken(newAccessToken)
                     .refreshToken(newRefreshToken)
-                    .role(user.getRole().getRoleName().name())  // ← THÊM DÒNG NÀY
+                    .role(user.getRole().getRoleName().name())
                     .build());
 
         } catch (Exception e) {
             log.error("Error refreshing token: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "Không thể làm mới token. Vui lòng đăng nhập lại."));
+                    .body(Map.of(
+                            "timestamp", LocalDateTime.now().toString(),
+                            "status", 401,
+                            "error", "Unauthorized",
+                            "message", "Unable to refresh token. Please login again",
+                            "field", "refreshToken",
+                            "path", "/api/auth/refresh"
+                    ));
         }
     }
 
-    // ================= REGISTER - STEP 1: GỬI OTP =================
+    // ================= REGISTER - STEP 1: REQUEST OTP =================
     @PostMapping("/register/request-otp")
-    @Operation(summary = "Yêu cầu OTP đăng ký", description = "Gửi OTP đến email để xác thực đăng ký")
-    public ResponseEntity<OtpResponseDTO> requestOtp(@Valid @RequestBody RegisterRequestDTO request) {
-        OtpResponseDTO response = authService.requestOtp(request);
-        return ResponseEntity.ok(response);
+    @Operation(summary = "Request registration OTP", description = "Send OTP to email for registration verification")
+    public ResponseEntity<?> requestOtp(@Valid @RequestBody RegisterRequestDTO request) {
+        try {
+            OtpResponseDTO response = authService.requestOtp(request);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            log.error("Validation error: {}", e.getMessage());
+            String field = determineFieldFromMessage(e.getMessage(), "email,password,confirmPassword");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of(
+                            "timestamp", LocalDateTime.now().toString(),
+                            "status", 400,
+                            "error", "Bad Request",
+                            "message", e.getMessage(),
+                            "field", field,
+                            "path", "/api/auth/register/request-otp"
+                    ));
+        } catch (Exception e) {
+            log.error("Registration OTP error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(
+                            "timestamp", LocalDateTime.now().toString(),
+                            "status", 500,
+                            "error", "Internal Server Error",
+                            "message", e.getMessage(),
+                            "field", "email",
+                            "path", "/api/auth/register/request-otp"
+                    ));
+        }
     }
 
-    // ================= VERIFY OTP CHUNG (UNIFIED) =================
+    // ================= VERIFY OTP (UNIFIED) =================
     @PostMapping("/verify-otp")
-    @Operation(summary = "Xác minh OTP", description = "Xác minh OTP cho đăng ký hoặc đặt lại mật khẩu")
+    @Operation(summary = "Verify OTP", description = "Verify OTP for registration or password reset")
     public ResponseEntity<?> verifyOtp(@Valid @RequestBody VerifyOtpRequestDTO request) {
         try {
             VerifyOtpResponseDTO response = authService.verifyOtp(request.getOtp(), request.getType());
@@ -120,6 +185,7 @@ public class AuthController {
                             "status", 400,
                             "error", "Bad Request",
                             "message", e.getMessage(),
+                            "field", "otp",
                             "path", "/api/auth/verify-otp"
                     ));
         } catch (IllegalStateException e) {
@@ -130,6 +196,7 @@ public class AuthController {
                             "status", 400,
                             "error", "Bad Request",
                             "message", e.getMessage(),
+                            "field", "otp",
                             "path", "/api/auth/verify-otp"
                     ));
         } catch (Exception e) {
@@ -139,62 +206,153 @@ public class AuthController {
                             "timestamp", LocalDateTime.now().toString(),
                             "status", 500,
                             "error", "Internal Server Error",
-                            "message", "Đã xảy ra lỗi không xác định. Vui lòng thử lại sau",
+                            "message", "An unexpected error occurred. Please try again later",
+                            "field", "otp",
                             "path", "/api/auth/verify-otp"
                     ));
         }
     }
 
-    // ================= RESEND OTP (UNIFIED - REGISTRATION & PASSWORD_RESET) =================
+    // ================= RESEND OTP (UNIFIED) =================
     @PostMapping("/resend-otp")
-    @Operation(summary = "Gửi lại OTP", description = "Gửi lại OTP cho đăng ký hoặc đặt lại mật khẩu")
-    public ResponseEntity<OtpResponseDTO> resendOtp(@Valid @RequestBody ResendOtpRequestDTO request) {
-        OtpResponseDTO response = authService.resendOtp(request.getEmail(), request.getType());
-        return ResponseEntity.ok(response);
+    @Operation(summary = "Resend OTP", description = "Resend OTP for registration or password reset")
+    public ResponseEntity<?> resendOtp(@Valid @RequestBody ResendOtpRequestDTO request) {
+        try {
+            OtpResponseDTO response = authService.resendOtp(request.getEmail(), request.getType());
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            log.error("Resend OTP error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of(
+                            "timestamp", LocalDateTime.now().toString(),
+                            "status", 400,
+                            "error", "Bad Request",
+                            "message", e.getMessage(),
+                            "field", "email",
+                            "path", "/api/auth/resend-otp"
+                    ));
+        } catch (Exception e) {
+            log.error("Unexpected error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(
+                            "timestamp", LocalDateTime.now().toString(),
+                            "status", 500,
+                            "error", "Internal Server Error",
+                            "message", e.getMessage(),
+                            "field", "email",
+                            "path", "/api/auth/resend-otp"
+                    ));
+        }
     }
 
     // ================= LOGOUT =================
     @PostMapping("/logout")
-    @Operation(summary = "Đăng xuất", description = "Vô hiệu hóa token hiện tại")
+    @Operation(summary = "Logout", description = "Invalidate current token")
     public ResponseEntity<Map<String, String>> logout(HttpServletRequest request) {
         try {
             String authHeader = request.getHeader("Authorization");
 
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Không tìm thấy token"));
+                return ResponseEntity.badRequest().body(Map.of(
+                        "error", "Token not found",
+                        "field", "Authorization"
+                ));
             }
 
             String token = authHeader.substring(7);
             logoutService.logout(token);
 
-            return ResponseEntity.ok(Map.of("message", "Đăng xuất thành công"));
+            return ResponseEntity.ok(Map.of("message", "Logout successful"));
 
         } catch (Exception e) {
             log.error("Logout error: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Có lỗi xảy ra khi đăng xuất"));
+                    .body(Map.of(
+                            "error", "An error occurred during logout",
+                            "field", "token"
+                    ));
         }
     }
 
-    // ================= FORGOT PASSWORD - STEP 1: GỬI OTP =================
+    // ================= FORGOT PASSWORD - REQUEST OTP =================
     @PostMapping("/forgot-password")
-    @Operation(summary = "Quên mật khẩu - yêu cầu OTP", description = "Gửi OTP để đặt lại mật khẩu")
-    public ResponseEntity<OtpResponseDTO> forgotPassword(@Valid @RequestBody ForgotPasswordRequestDTO request) {
-        OtpResponseDTO response = authService.forgotPassword(request.getEmail());
-        return ResponseEntity.ok(response);
+    @Operation(summary = "Forgot password - request OTP", description = "Send OTP to reset password")
+    public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequestDTO request) {
+        try {
+            OtpResponseDTO response = authService.forgotPassword(request.getEmail());
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            log.error("Forgot password error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of(
+                            "timestamp", LocalDateTime.now().toString(),
+                            "status", 400,
+                            "error", "Bad Request",
+                            "message", e.getMessage(),
+                            "field", "email",
+                            "path", "/api/auth/forgot-password"
+                    ));
+        } catch (IllegalStateException e) {
+            log.error("Account state error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of(
+                            "timestamp", LocalDateTime.now().toString(),
+                            "status", 403,
+                            "error", "Forbidden",
+                            "message", e.getMessage(),
+                            "field", "status",
+                            "path", "/api/auth/forgot-password"
+                    ));
+        } catch (Exception e) {
+            log.error("Unexpected error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(
+                            "timestamp", LocalDateTime.now().toString(),
+                            "status", 500,
+                            "error", "Internal Server Error",
+                            "message", e.getMessage(),
+                            "field", "email",
+                            "path", "/api/auth/forgot-password"
+                    ));
+        }
     }
 
-    // ================= FORGOT PASSWORD - STEP 3: RESET PASSWORD (AUTO LOGIN) =================
+    // ================= RESET PASSWORD WITH TOKEN =================
     @PostMapping("/forgot-password/reset-password")
-    @Operation(summary = "Đặt lại mật khẩu", description = "Đặt lại mật khẩu bằng OTP/refresh token, tự động đăng nhập")
-    public ResponseEntity<ResetPasswordResponseDTO> resetPassword(@Valid @RequestBody ResetPasswordRequestDTO request) {
-        ResetPasswordResponseDTO response = authService.resetPasswordWithToken(request);
-        return ResponseEntity.ok(response);
+    @Operation(summary = "Reset password", description = "Reset password using token, auto login")
+    public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequestDTO request) {
+        try {
+            ResetPasswordResponseDTO response = authService.resetPasswordWithToken(request);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            log.error("Reset password validation error: {}", e.getMessage());
+            String field = determineFieldFromMessage(e.getMessage(), "resetToken,newPassword,confirmPassword");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of(
+                            "timestamp", LocalDateTime.now().toString(),
+                            "status", 400,
+                            "error", "Bad Request",
+                            "message", e.getMessage(),
+                            "field", field,
+                            "path", "/api/auth/forgot-password/reset-password"
+                    ));
+        } catch (Exception e) {
+            log.error("Unexpected error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(
+                            "timestamp", LocalDateTime.now().toString(),
+                            "status", 500,
+                            "error", "Internal Server Error",
+                            "message", e.getMessage(),
+                            "field", "resetToken",
+                            "path", "/api/auth/forgot-password/reset-password"
+                    ));
+        }
     }
 
     // ================= CHANGE PASSWORD =================
     @PostMapping("/change-password")
-    @Operation(summary = "Đổi mật khẩu", description = "Người dùng đã đăng nhập có thể đổi mật khẩu")
+    @Operation(summary = "Change password", description = "Logged-in users can change their password")
     public ResponseEntity<?> changePassword(
             @Valid @RequestBody ChangePasswordRequestDTO request,
             Authentication authentication) {
@@ -207,7 +365,8 @@ public class AuthController {
                                 "timestamp", LocalDateTime.now().toString(),
                                 "status", 401,
                                 "error", "Unauthorized",
-                                "message", "Bạn cần đăng nhập để thực hiện thao tác này",
+                                "message", "You need to login to perform this action",
+                                "field", "authentication",
                                 "path", "/api/auth/change-password"
                         ));
             }
@@ -221,7 +380,8 @@ public class AuthController {
                                 "timestamp", LocalDateTime.now().toString(),
                                 "status", 401,
                                 "error", "Unauthorized",
-                                "message", "Không thể xác thực người dùng",
+                                "message", "Unable to authenticate user",
+                                "field", "email",
                                 "path", "/api/auth/change-password"
                         ));
             }
@@ -231,12 +391,14 @@ public class AuthController {
 
         } catch (IllegalArgumentException e) {
             log.error("Validation error during password change: {}", e.getMessage());
+            String field = determineFieldFromMessage(e.getMessage(), "oldPassword,newPassword,confirmPassword");
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of(
                             "timestamp", LocalDateTime.now().toString(),
                             "status", 400,
                             "error", "Bad Request",
                             "message", e.getMessage(),
+                            "field", field,
                             "path", "/api/auth/change-password"
                     ));
 
@@ -247,9 +409,25 @@ public class AuthController {
                             "timestamp", LocalDateTime.now().toString(),
                             "status", 500,
                             "error", "Internal Server Error",
-                            "message", "Đã xảy ra lỗi không xác định. Vui lòng thử lại",
+                            "message", "An unexpected error occurred. Please try again",
+                            "field", "unknown",
                             "path", "/api/auth/change-password"
                     ));
         }
+    }
+
+    // ================= HELPER METHOD TO DETERMINE FIELD =================
+    private String determineFieldFromMessage(String message, String defaultFields) {
+        message = message.toLowerCase();
+
+        if (message.contains("email")) return "email";
+        if (message.contains("password") && message.contains("confirm")) return "password,confirmPassword";
+        if (message.contains("old password")) return "oldPassword";
+        if (message.contains("new password")) return "newPassword";
+        if (message.contains("confirm password")) return "confirmPassword";
+        if (message.contains("reset token")) return "resetToken";
+        if (message.contains("otp")) return "otp";
+
+        return defaultFields;
     }
 }
