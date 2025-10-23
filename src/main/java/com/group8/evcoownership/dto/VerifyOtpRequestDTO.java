@@ -15,8 +15,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class VerifyOtpRequestDTO {
 
-    @NotBlank(message = "OTP không được để trống")
-    @Pattern(regexp = "^[0-9]{6}$", message = "OTP phải là 6 chữ số")
+    @NotBlank(message = "OTP cannot be blank!")
+    @Pattern(regexp = "^[0-9]{6}$", message = "OTP must be 6 digits!")
     private String otp;
 
     @NotNull(message = "Type is required")
