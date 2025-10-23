@@ -1,7 +1,6 @@
 package com.group8.evcoownership.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.group8.evcoownership.dto.ContractGenerationResponse;
 import com.group8.evcoownership.service.ContractGenerationService;
 import com.group8.evcoownership.service.ContractService;
 import com.group8.evcoownership.service.OwnershipGroupService;
@@ -23,7 +22,6 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -52,90 +50,58 @@ class ContractControllerTest {
     private ObjectMapper objectMapper;
 
     private final Long TEST_GROUP_ID = 1L;
-    private ContractGenerationResponse testResponse;
-    private Map<String, Object> testTemplateRequest;
 
     @BeforeEach
     void setUp() {
-        testTemplateRequest = Map.of(
-                "templateContent", "<Component>{{data.contract.number}}</Component>"
-        );
-
-        testResponse = new ContractGenerationResponse(
-                1L,
-                "EVS-001",
-                Map.of("contract", Map.of("number", "EVS-001")),
-                LocalDateTime.now(),
-                "GENERATED"
-        );
+        // Setup test data if needed
     }
 
     @Test
     @WithMockUser(username = "admin@test.com")
-    void generateContractAuto_Success() throws Exception {
+    void saveContractData_Success() throws Exception {
         // Given
+        Map<String, Object> contractData = new HashMap<>();
+        contractData.put("contract", Map.of(
+                "effectiveDate", "2025-01-01",
+                "endDate", "2025-12-31",
+                "terms", "Test contract terms"
+        ));
+
+        Map<String, Object> savedResponse = new HashMap<>();
+        savedResponse.put("contractId", 1L);
+        savedResponse.put("contractNumber", "EVS-0001-2025");
+        savedResponse.put("status", "SAVED");
+        savedResponse.put("savedToDatabase", true);
+
         when(ownershipGroupService.isGroupAdmin("admin@test.com", TEST_GROUP_ID)).thenReturn(true);
-        when(contractGenerationService.generateContractAuto(anyLong(), eq("REACT_TSX"), anyString()))
-                .thenReturn(testResponse);
+        when(contractGenerationService.saveContractFromData(TEST_GROUP_ID, contractData)).thenReturn(savedResponse);
 
         // When & Then
-        mockMvc.perform(post("/api/contracts/generate/{groupId}/auto", TEST_GROUP_ID)
+        mockMvc.perform(post("/api/contracts/{groupId}/save", TEST_GROUP_ID)
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(testTemplateRequest)))
+                        .content(objectMapper.writeValueAsString(contractData)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.contractId").value(1L))
-                .andExpect(jsonPath("$.contractNumber").value("EVS-001"))
-                .andExpect(jsonPath("$.props.contract.number").value("EVS-001"))
-                .andExpect(jsonPath("$.status").value("GENERATED"));
+                .andExpect(jsonPath("$.contractNumber").value("EVS-0001-2025"))
+                .andExpect(jsonPath("$.status").value("SAVED"))
+                .andExpect(jsonPath("$.savedToDatabase").value(true));
     }
 
     @Test
     @WithMockUser(username = "user@test.com")
-    void generateContractAuto_Unauthorized() throws Exception {
+    void saveContractData_Unauthorized() throws Exception {
         // Given
+        Map<String, Object> contractData = new HashMap<>();
+        contractData.put("contract", Map.of("terms", "Test terms"));
+
         when(ownershipGroupService.isGroupAdmin("user@test.com", TEST_GROUP_ID)).thenReturn(false);
 
         // When & Then
-        mockMvc.perform(post("/api/contracts/generate/{groupId}/auto", TEST_GROUP_ID)
+        mockMvc.perform(post("/api/contracts/{groupId}/save", TEST_GROUP_ID)
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(testTemplateRequest)))
-                .andExpect(status().isOk()); // Security is disabled in test profile
-    }
-
-    // Removed preview and with-template tests (TSX-only auto flow)
-
-    @Test
-    @WithMockUser(username = "admin@test.com")
-    void exportContractPdf_Success() throws Exception {
-        // Given
-        byte[] pdfBytes = "PDF content".getBytes();
-        when(ownershipGroupService.isGroupAdmin("admin@test.com", TEST_GROUP_ID)).thenReturn(true);
-        when(contractGenerationService.exportToPdf(eq(TEST_GROUP_ID), anyString())).thenReturn(pdfBytes);
-
-        // When & Then
-        mockMvc.perform(post("/api/contracts/export/{groupId}/pdf", TEST_GROUP_ID)
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"templateContent\": \"<Component>Test</Component>\"}"))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_PDF_VALUE))
-                .andExpect(header().string("Content-Disposition", "form-data; name=\"attachment\"; filename=\"contract-1.pdf\""))
-                .andExpect(content().bytes(pdfBytes));
-    }
-
-    @Test
-    @WithMockUser(username = "user@test.com")
-    void exportContractPdf_Unauthorized() throws Exception {
-        // Given
-        when(ownershipGroupService.isGroupAdmin("user@test.com", TEST_GROUP_ID)).thenReturn(false);
-
-        // When & Then
-        mockMvc.perform(post("/api/contracts/export/{groupId}/pdf", TEST_GROUP_ID)
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(testTemplateRequest)))
+                        .content(objectMapper.writeValueAsString(contractData)))
                 .andExpect(status().isOk()); // Security is disabled in test profile
     }
 
