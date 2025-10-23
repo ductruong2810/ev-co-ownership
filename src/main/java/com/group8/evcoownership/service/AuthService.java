@@ -76,7 +76,9 @@ public class AuthService {
 
     // ================= REQUEST OTP (REGISTRATION) =================
     public OtpResponseDTO requestOtp(RegisterRequestDTO request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
+        String email = request.getEmail();
+
+        if (userRepository.existsByEmail(email)) {
             throw new IllegalArgumentException("Email đã được đăng ký");
         }
 
@@ -84,23 +86,43 @@ public class AuthService {
             throw new IllegalArgumentException("Mật khẩu và xác nhận mật khẩu không khớp");
         }
 
-        String otp = otpUtil.generateOtp(request.getEmail());
-        pendingUsers.put(request.getEmail(), request);
-        registerOtpToEmailMap.put(otp, request.getEmail());
+        String otp = null;
 
-        // ← FIX: Thêm fullName
-        emailService.sendOtpEmail(request.getEmail(), request.getFullName(), otp);
+        try {
+            // Generate OTP
+            otp = otpUtil.generateOtp(email);
 
-        log.info("Registration OTP sent to email: {}", request.getEmail());
+            // Send email FIRST
+            emailService.sendOtpEmail(email, request.getFullName(), otp);
 
-        return OtpResponseDTO.builder()
-                .email(request.getEmail())
-                .message("Mã OTP đã được gửi đến email của bạn")
-                .type(OtpType.REGISTRATION)
-                .expiresIn(300)
-                .build();
+            // Store data only if email sent successfully
+            pendingUsers.put(email, request);
+            registerOtpToEmailMap.put(otp, email);
+
+            log.info("Registration OTP sent to email: {}", email);
+
+            return OtpResponseDTO.builder()
+                    .email(email)
+                    .message("Mã OTP đã được gửi đến email của bạn")
+                    .type(OtpType.REGISTRATION)
+                    .expiresIn(300)
+                    .build();
+
+        } catch (Exception e) {
+            log.error("Failed to send registration OTP to {}: {}", email, e.getMessage());
+
+            // ← CLEANUP USING invalidateOtp()
+            if (otp != null) {
+                otpUtil.invalidateOtp(email);  // ← USE THIS METHOD
+            }
+            pendingUsers.remove(email);
+            if (otp != null) {
+                registerOtpToEmailMap.remove(otp);
+            }
+
+            throw new RuntimeException("Không thể gửi email xác thực. Vui lòng thử lại sau.");
+        }
     }
-
     // ================= VERIFY OTP =================
     public VerifyOtpResponseDTO verifyOtp(String otp, OtpType type) {
         log.info("Verifying OTP with type: {}", type);
@@ -271,12 +293,17 @@ public class AuthService {
             throw new IllegalStateException("Không tìm thấy thông tin đăng ký. Vui lòng đăng ký lại từ đầu.");
         }
 
-        try {
-            String newOtp = otpUtil.generateOtp(email);
-            registerOtpToEmailMap.put(newOtp, email);
+        String newOtp = null;
 
-            // ← FIX: Thêm fullName
+        try {
+            // Generate new OTP
+            newOtp = otpUtil.generateOtp(email);
+
+            // Send email FIRST (trước khi store)
             emailService.sendOtpEmail(email, request.getFullName(), newOtp);
+
+            // Only store if email sent successfully
+            registerOtpToEmailMap.put(newOtp, email);
 
             log.info("Registration OTP resent successfully to email: {}", email);
 
@@ -287,11 +314,12 @@ public class AuthService {
                     .expiresIn(300)
                     .build();
 
-        } catch (RuntimeException e) {
-            log.error("Failed to resend registration OTP to email {}: {}", email, e.getMessage());
-            throw e;
         } catch (Exception e) {
-            log.error("Unexpected error while resending registration OTP to email {}: {}", email, e.getMessage(), e);
+            log.error("Failed to resend registration OTP to email {}: {}", email, e.getMessage());
+            if (newOtp != null) {
+                otpUtil.invalidateOtp(email);
+            }
+
             throw new RuntimeException("Không thể gửi lại OTP. Vui lòng thử lại sau.");
         }
     }
@@ -351,11 +379,18 @@ public class AuthService {
             throw new IllegalStateException("Tài khoản chưa được kích hoạt. Vui lòng liên hệ quản trị viên.");
         }
 
+        String otp = null;
+
         try {
-            String otp = otpUtil.generateOtp(email);
+            // Generate OTP
+            otp = otpUtil.generateOtp(email);
+
+            // Send email FIRST
+            emailService.sendPasswordResetOtpEmail(email, otp);
+
+            // Only store if email sent successfully
             pendingPasswordResets.put(email, email);
             otpToEmailMap.put(otp, email);
-            emailService.sendPasswordResetOtpEmail(email, otp);
 
             log.info("Password reset OTP sent successfully to: {}", email);
 
@@ -366,14 +401,21 @@ public class AuthService {
                     .expiresIn(300)
                     .build();
 
-        } catch (RuntimeException e) {
-            log.error("Failed to send password reset OTP to {}: {}", email, e.getMessage());
-            throw e;
         } catch (Exception e) {
-            log.error("Unexpected error during forgot password for {}: {}", email, e.getMessage(), e);
+            log.error("Failed to send password reset OTP to {}: {}", email, e.getMessage());
+
+            if (otp != null) {
+                otpUtil.invalidateOtp(email);
+            }
+            pendingPasswordResets.remove(email);
+            if (otp != null) {
+                otpToEmailMap.remove(otp);
+            }
+
             throw new RuntimeException("Không thể gửi OTP. Vui lòng thử lại sau.");
         }
     }
+
 
     // ================= RESET PASSWORD WITH TOKEN =================
     public ResetPasswordResponseDTO resetPasswordWithToken(ResetPasswordRequestDTO request) {
