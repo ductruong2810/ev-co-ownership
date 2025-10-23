@@ -26,13 +26,6 @@ public class OwnershipGroupController {
 
     private final OwnershipGroupService service;
 
-    @PostMapping
-    @Operation(summary = "Tạo nhóm mới", description = "User tạo một nhóm đồng sở hữu mới")
-    public OwnershipGroupResponse create(@RequestBody @Valid OwnershipGroupCreateRequest req,
-                                         @AuthenticationPrincipal String userEmail) {
-        return service.create(req, userEmail);
-    }
-
     @PostMapping("/with-vehicle")
     @Operation(summary = "Tạo nhóm với phương tiện", description = "Tạo nhóm đồng sở hữu mới kèm theo phương tiện và nhiều hình ảnh")
     public GroupWithVehicleResponse createGroupWithVehicle(
