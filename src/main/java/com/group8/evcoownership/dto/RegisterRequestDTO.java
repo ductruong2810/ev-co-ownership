@@ -30,7 +30,7 @@ public class RegisterRequestDTO {
     @Size(min = 8, max = 50, message = "Password must be between 8 and 50 characters")
     // Ít nhất 1 chữ hoa, 1 chữ thường, 1 số và 1 ký tự đặc biệt
     @Pattern(
-            regexp = "^(?=.*[A-Z])(?=.*[@#$%^&+=!])(?!.*[<>\\\\\"'/;`()]).{5,50}$",
+            regexp = "^(?!.*[<>])(?!.*(?i)script)(?!.*(?i)javascript)(?!.*(?i)onerror)(?!.*(?i)onload)[a-zA-Z0-9!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,./?~`]+$",
             message = "Mật khẩu phải có 5-50 ký tự, ít nhất 1 chữ hoa và 1 ký tự đặc biệt"
     )
     private String password;
