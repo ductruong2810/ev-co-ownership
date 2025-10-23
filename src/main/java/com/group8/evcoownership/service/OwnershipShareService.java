@@ -1,12 +1,7 @@
 package com.group8.evcoownership.service;
 
 
-import com.group8.evcoownership.dto.OwnershipShareCreateRequest;
-import com.group8.evcoownership.dto.OwnershipShareResponse;
-import com.group8.evcoownership.dto.OwnershipShareUpdateDepositStatusRequest;
-import com.group8.evcoownership.dto.OwnershipPercentageRequest;
-import com.group8.evcoownership.dto.OwnershipPercentageResponse;
-import com.group8.evcoownership.dto.GroupOwnershipSummaryResponse;
+import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.entity.OwnershipShare;
 import com.group8.evcoownership.entity.OwnershipShareId;
 import com.group8.evcoownership.enums.DepositStatus;
@@ -16,7 +11,6 @@ import com.group8.evcoownership.enums.NotificationType;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
 import com.group8.evcoownership.repository.OwnershipShareRepository;
 import com.group8.evcoownership.repository.UserRepository;
-import com.group8.evcoownership.repository.UserDocumentRepository;
 import com.group8.evcoownership.repository.VehicleRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
@@ -35,9 +29,9 @@ public class OwnershipShareService {
     private final OwnershipShareRepository shareRepo;
     private final OwnershipGroupRepository groupRepo;
     private final UserRepository userRepo;
-    private final UserDocumentRepository userDocumentRepository;
     private final VehicleRepository vehicleRepository;
     private final NotificationOrchestrator notificationOrchestrator;
+    private final UserDocumentValidationService userDocumentValidationService;
 
     // ------- mapping -------
     private OwnershipShareResponse toDto(OwnershipShare s) {
@@ -73,7 +67,7 @@ public class OwnershipShareService {
         }
 
         // Kiểm tra user có đầy đủ giấy tờ đã được duyệt không
-        validateUserDocuments(user.getUserId());
+        userDocumentValidationService.validateUserDocuments(user.getUserId());
 
         long currentMembers = shareRepo.countByGroup_GroupId(group.getGroupId());
         long capacity = group.getMemberCapacity() == null ? Long.MAX_VALUE : group.getMemberCapacity();
@@ -108,26 +102,6 @@ public class OwnershipShareService {
         return toDto(saved);
     }
 
-
-    /**
-     * Cập nhật trạng thái đặt cọc (tuỳ nhu cầu, không phụ thuộc PENDING)
-     */
-    @Transactional
-    public OwnershipShareResponse updateDepositStatus(Long groupId, Long userId,
-                                                      OwnershipShareUpdateDepositStatusRequest req) {
-        var id = new OwnershipShareId(userId, groupId);
-        var share = shareRepo.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Membership not found"));
-
-        share.setDepositStatus(req.newStatus());
-        var saved = shareRepo.save(share);
-
-        // Nếu bạn muốn yêu cầu tất cả PAID mới Active, hãy bật điều kiện trong tryActivate và gọi ở đây:
-        // tryActivate(groupId);
-
-        return toDto(saved);
-    }
-
     /**
      * Xoá 1 thành viên (chỉ khi ACTIVE)
      */
@@ -146,12 +120,6 @@ public class OwnershipShareService {
 //        tryActivate(groupId);
     }
 
-    public OwnershipShareResponse getOne(Long groupId, Long userId) {
-        var id = new OwnershipShareId(userId, groupId);
-        return shareRepo.findById(id).map(this::toDto)
-                .orElseThrow(() -> new EntityNotFoundException("Membership not found"));
-    }
-
     public List<OwnershipShareResponse> listByGroup(Long groupId) {
         if (!groupRepo.existsById(groupId)) throw new EntityNotFoundException("Group not found");
         return shareRepo.findByGroup_GroupId(groupId).stream().map(this::toDto).toList();
@@ -164,9 +132,7 @@ public class OwnershipShareService {
 
     // ================== AUTO ACTIVATE ==================
 
-    /**
-     * Đủ điều kiện thì chuyển ACTIVE -> VERIFIED (không phụ thuộc role/cọc, trừ khi bạn muốn bật).
-     */
+
 //    @Transactional
 //    protected void tryActivate(Long groupId) {
 //        var group = groupRepo.findById(groupId)
@@ -471,26 +437,29 @@ public class OwnershipShareService {
         }
     }
 
+    // Removed validateUserDocuments method - moved to UserDocumentValidationService
+
     /**
-     * Kiểm tra user có đầy đủ giấy tờ đã được duyệt không
+     * Lấy thông tin xe của group (bao gồm biển số)
      */
-    private void validateUserDocuments(Long userId) {
-        // Lấy tất cả documents của user
-        var documents = userDocumentRepository.findByUserId(userId);
+    public VehicleResponse getVehicleInfo(Long groupId) {
+        var group = groupRepo.findById(groupId)
+                .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
         
-        // Kiểm tra có đủ 2 loại giấy tờ: CITIZEN_ID và DRIVER_LICENSE
-        boolean hasCitizenId = documents.stream()
-                .anyMatch(doc -> "CITIZEN_ID".equals(doc.getDocumentType()) && "APPROVED".equals(doc.getStatus()));
+        var vehicle = vehicleRepository.findByOwnershipGroup(group)
+                .orElseThrow(() -> new EntityNotFoundException("Vehicle not found for group: " + groupId));
         
-        boolean hasDriverLicense = documents.stream()
-                .anyMatch(doc -> "DRIVER_LICENSE".equals(doc.getDocumentType()) && "APPROVED".equals(doc.getStatus()));
-        
-        if (!hasCitizenId) {
-            throw new IllegalStateException("User must have approved Citizen ID document to join group");
-        }
-        
-        if (!hasDriverLicense) {
-            throw new IllegalStateException("User must have approved Driver License document to join group");
-        }
+        return new VehicleResponse(
+                vehicle.getId(),
+                vehicle.getBrand(),
+                vehicle.getModel(),
+                vehicle.getLicensePlate(), // Biển số xe
+                vehicle.getChassisNumber(),
+                vehicle.getQrCode(),
+                vehicle.getOwnershipGroup().getGroupId(),
+                vehicle.getVehicleValue(),
+                vehicle.getCreatedAt(),
+                vehicle.getUpdatedAt()
+        );
     }
 }
