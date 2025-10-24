@@ -47,11 +47,11 @@ public class DepositCalculationService {
      * Tính toán required deposit amount dựa trên OwnershipGroup
      * <p>
      * Công thức ưu tiên:
-     * 1. Nếu có Vehicle với vehicleValue: (vehicleValue * 10%) / memberCapacity
+     * 1. Nếu có Vehicle với vehicleValue: vehicleValue * 10% (tổng deposit cho cả group)
      * 2. Nếu không có Vehicle hoặc vehicleValue: BASE_DEPOSIT_AMOUNT + (memberCapacity * CAPACITY_MULTIPLIER * BASE_DEPOSIT_AMOUNT)
      *
      * @param group OwnershipGroup để tính deposit
-     * @return Required deposit amount
+     * @return Required deposit amount (tổng cho cả group)
      */
     public BigDecimal calculateRequiredDepositAmount(OwnershipGroup group) {
         if (group == null) {
@@ -62,8 +62,8 @@ public class DepositCalculationService {
         Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group).orElse(null);
 
         if (vehicle != null && vehicle.getVehicleValue() != null && vehicle.getVehicleValue().compareTo(BigDecimal.ZERO) > 0) {
-            // Có vehicleValue, tính theo giá trị xe
-            return calculateRequiredDepositAmount(vehicle.getVehicleValue(), group.getMemberCapacity());
+            // Có vehicleValue, tính tổng deposit = 10% giá trị xe
+            return vehicle.getVehicleValue().multiply(new BigDecimal("0.1"));
         } else {
             // Không có vehicleValue, tính theo memberCapacity
             return calculateRequiredDepositAmount(group.getMemberCapacity());

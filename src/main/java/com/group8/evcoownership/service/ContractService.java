@@ -211,10 +211,20 @@ public class ContractService {
 
     /**
      * Lấy requiredDepositAmount của group
+     * Nếu có contract thì lấy từ contract, nếu không thì tính từ group
      */
     public BigDecimal getRequiredDepositAmount(Long groupId) {
-        Contract contract = getContractByGroup(groupId);
-        return contract.getRequiredDepositAmount();
+        OwnershipGroup group = getGroupById(groupId);
+        
+        // Kiểm tra có contract không
+        Contract contract = contractRepository.findByGroupGroupId(groupId).orElse(null);
+        
+        if (contract != null) {
+            return contract.getRequiredDepositAmount();
+        } else {
+            // Tính deposit amount cho group khi chưa có contract
+            return depositCalculationService.calculateRequiredDepositAmount(group);
+        }
     }
 
     /**
@@ -265,23 +275,40 @@ public class ContractService {
 
     /**
      * Lấy thông tin contract của group
+     * Nếu có contract thì lấy từ contract, nếu không thì tính từ group
      */
     public Map<String, Object> getContractInfo(Long groupId) {
-        Contract contract = getContractByGroup(groupId);
-        OwnershipGroup group = contract.getGroup();
-
+        OwnershipGroup group = getGroupById(groupId);
+        
+        // Kiểm tra có contract không
+        Contract contract = contractRepository.findByGroupGroupId(groupId).orElse(null);
+        
         Map<String, Object> info = new HashMap<>();
-        info.put("contractId", contract.getId());
+        info.put("contractId", contract != null ? contract.getId() : null);
         info.put("groupId", groupId);
         info.put("groupName", group.getGroupName());
-        info.put("startDate", contract.getStartDate());
-        info.put("endDate", contract.getEndDate());
-        info.put("terms", contract.getTerms());
-        info.put("requiredDepositAmount", contract.getRequiredDepositAmount());
-        info.put("isActive", contract.getIsActive());
+        
+        if (contract != null) {
+            // Có contract
+            info.put("startDate", contract.getStartDate());
+            info.put("endDate", contract.getEndDate());
+            info.put("terms", contract.getTerms());
+            info.put("requiredDepositAmount", contract.getRequiredDepositAmount());
+            info.put("isActive", contract.getIsActive());
+            info.put("createdAt", contract.getCreatedAt());
+            info.put("updatedAt", contract.getUpdatedAt());
+        } else {
+            // Chưa có contract, tính toán từ group
+            info.put("startDate", null);
+            info.put("endDate", null);
+            info.put("terms", null);
+            info.put("requiredDepositAmount", depositCalculationService.calculateRequiredDepositAmount(group));
+            info.put("isActive", false);
+            info.put("createdAt", null);
+            info.put("updatedAt", null);
+        }
+        
         info.put("templateId", null); // Template sẽ được xử lý ở Frontend
-        info.put("createdAt", contract.getCreatedAt());
-        info.put("updatedAt", contract.getUpdatedAt());
 
         return info;
     }
@@ -375,6 +402,151 @@ public class ContractService {
                 .orElse(null));
 
         return signature.toString();
+    }
+
+    /**
+     * Tự động ký contract cho group
+     * Điều kiện: Group đã có đủ thành viên và vehicle
+     */
+    @Transactional
+    public Map<String, Object> autoSignContract(Long groupId) {
+        OwnershipGroup group = getGroupById(groupId);
+        
+        // Kiểm tra điều kiện để ký tự động
+        validateContractGeneration(groupId);
+        
+        // Kiểm tra đã có contract chưa
+        Contract existingContract = contractRepository.findByGroup(group).orElse(null);
+        
+        Contract contract;
+        if (existingContract != null) {
+            // Cập nhật contract hiện có
+            contract = existingContract;
+        } else {
+            // Tạo contract mới
+            LocalDate startDate = LocalDate.now();
+            LocalDate endDate = startDate.plusYears(1);
+            
+            BigDecimal requiredDepositAmount = depositCalculationService.calculateRequiredDepositAmount(group);
+            String terms = generateContractTerms(groupId);
+            
+            contract = Contract.builder()
+                    .group(group)
+                    .startDate(startDate)
+                    .endDate(endDate)
+                    .terms(terms)
+                    .requiredDepositAmount(requiredDepositAmount)
+                    .isActive(true)
+                    .approvalStatus(ContractApprovalStatus.PENDING)
+                    .build();
+        }
+        
+        // Tự động ký contract
+        String signatureInfo = buildAutoSignatureInfo(groupId);
+        contract.setTerms(contract.getTerms() + "\n\n" + signatureInfo);
+        contract.setApprovalStatus(ContractApprovalStatus.SIGNED);
+        contract.setUpdatedAt(LocalDateTime.now());
+        
+        Contract savedContract = contractRepository.save(contract);
+        
+        // Gửi notification cho tất cả thành viên
+        if (notificationOrchestrator != null) {
+            notificationOrchestrator.sendGroupNotification(
+                    groupId,
+                    NotificationType.CONTRACT_CREATED,
+                    "Contract Auto-Signed",
+                    "Your co-ownership contract has been automatically signed and is ready for deposit payments."
+            );
+        }
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", true);
+        result.put("contractId", savedContract.getId());
+        result.put("contractNumber", generateContractNumber(savedContract.getId()));
+        result.put("status", "AUTO_SIGNED");
+        result.put("signedAt", LocalDateTime.now());
+        result.put("message", "Contract has been automatically signed");
+        
+        return result;
+    }
+    
+    /**
+     * Xây dựng thông tin chữ ký tự động
+     */
+    private String buildAutoSignatureInfo(Long groupId) {
+        LocalDateTime now = LocalDateTime.now();
+        String timestamp = now.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+        
+        StringBuilder signature = new StringBuilder();
+        signature.append("[ĐÃ KÝ TỰ ĐỘNG] ").append(timestamp);
+        signature.append(" - Hệ thống EV Co-Ownership");
+        
+        // Thêm thông tin pháp lý
+        signature.append("\n\n[THÔNG TIN PHÁP LÝ]");
+        signature.append("\n- Contract được ký tự động khi đủ điều kiện");
+        signature.append("\n- Tất cả thành viên đã đồng ý với điều khoản hợp đồng");
+        signature.append("\n- Chữ ký này có giá trị pháp lý đầy đủ");
+        signature.append("\n- Thời gian ký: ").append(timestamp);
+        signature.append("\n- Contract ID: ").append(contractRepository.findByGroupGroupId(groupId)
+                .map(Contract::getId)
+                .orElse(null));
+        
+        return signature.toString();
+    }
+
+    /**
+     * Kiểm tra điều kiện để ký tự động contract
+     */
+    public Map<String, Object> checkAutoSignConditions(Long groupId) {
+        OwnershipGroup group = getGroupById(groupId);
+        
+        Map<String, Object> conditions = new HashMap<>();
+        
+        // Kiểm tra số thành viên
+        List<OwnershipShare> shares = getSharesByGroupId(groupId);
+        Integer memberCapacity = group.getMemberCapacity();
+        boolean hasEnoughMembers = shares.size() == memberCapacity;
+        conditions.put("hasEnoughMembers", hasEnoughMembers);
+        conditions.put("currentMembers", shares.size());
+        conditions.put("requiredMembers", memberCapacity);
+        
+        // Kiểm tra có vehicle không
+        Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group).orElse(null);
+        boolean hasVehicle = vehicle != null && vehicle.getVehicleValue() != null && vehicle.getVehicleValue().compareTo(BigDecimal.ZERO) > 0;
+        conditions.put("hasVehicle", hasVehicle);
+        conditions.put("vehicleValue", vehicle != null ? vehicle.getVehicleValue() : BigDecimal.ZERO);
+        
+        // Kiểm tra contract status
+        Contract contract = contractRepository.findByGroupGroupId(groupId).orElse(null);
+        boolean canSign = contract == null || contract.getApprovalStatus() == ContractApprovalStatus.PENDING;
+        conditions.put("canSign", canSign);
+        conditions.put("contractStatus", contract != null ? contract.getApprovalStatus() : "NO_CONTRACT");
+        
+        // Tổng kết
+        boolean allConditionsMet = hasEnoughMembers && hasVehicle && canSign;
+        conditions.put("allConditionsMet", allConditionsMet);
+        conditions.put("canAutoSign", allConditionsMet);
+        
+        return conditions;
+    }
+    
+    /**
+     * Tự động kiểm tra và ký contract nếu đủ điều kiện
+     * Method này có thể được gọi từ scheduler hoặc event listener
+     */
+    @Transactional
+    public Map<String, Object> checkAndAutoSignContract(Long groupId) {
+        Map<String, Object> conditions = checkAutoSignConditions(groupId);
+        
+        if ((Boolean) conditions.get("canAutoSign")) {
+            return autoSignContract(groupId);
+        } else {
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", false);
+            result.put("message", "Contract cannot be auto-signed yet");
+            result.put("conditions", conditions);
+            return result;
+        }
     }
 
     // Removed manual approval methods - contracts are now auto-approved after signing
@@ -552,7 +724,17 @@ public class ContractService {
         // Finance info
         Map<String, Object> financeInfo = new HashMap<>();
         financeInfo.put("vehiclePrice", vehicle != null ? vehicle.getVehicleValue() : BigDecimal.ZERO);
-        financeInfo.put("depositAmount", contract != null ? contract.getRequiredDepositAmount() : BigDecimal.ZERO);
+        
+        // Tính deposit amount: nếu có contract thì lấy từ contract, nếu không thì tính từ group
+        BigDecimal depositAmount;
+        if (contract != null) {
+            depositAmount = contract.getRequiredDepositAmount();
+        } else {
+            // Tính deposit amount cho group khi chưa có contract
+            depositAmount = depositCalculationService.calculateRequiredDepositAmount(group);
+        }
+        financeInfo.put("depositAmount", depositAmount);
+        
         financeInfo.put("targetAmount", BigDecimal.valueOf(50000000)); // Default target
         financeInfo.put("contributionRule", "Theo tỷ lệ sở hữu");
         data.put("finance", financeInfo);

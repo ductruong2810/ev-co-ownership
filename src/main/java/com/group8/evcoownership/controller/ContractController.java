@@ -112,5 +112,55 @@ public class ContractController {
         return ResponseEntity.ok(result);
     }
 
+    /**
+     * API: Tự động ký contract cho group
+     * ------------------------------------------------------------
+     * Dành cho:
+     *   - Group Admin
+     *   - System (tự động trigger)
+     *
+     * Điều kiện:
+     *   - Group đã có đủ thành viên theo memberCapacity
+     *   - Group đã có vehicle với vehicleValue
+     *   - Contract chưa được ký
+     */
+    @PostMapping("/{groupId}/auto-sign")
+    @PreAuthorize("@authUtils.isGroupMember(#groupId)")
+    @Operation(summary = "Tự động ký contract", description = "Tự động ký contract khi đủ điều kiện")
+    public ResponseEntity<Map<String, Object>> autoSignContract(@PathVariable Long groupId) {
+        Map<String, Object> result = contractService.autoSignContract(groupId);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * API: Kiểm tra điều kiện ký tự động contract
+     * ------------------------------------------------------------
+     * Dành cho:
+     *   - Group Admin
+     *   - Các thành viên trong nhóm
+     */
+    @GetMapping("/{groupId}/auto-sign-conditions")
+    @PreAuthorize("@authUtils.isGroupMember(#groupId)")
+    @Operation(summary = "Kiểm tra điều kiện ký tự động", description = "Kiểm tra các điều kiện cần thiết để ký tự động contract")
+    public ResponseEntity<Map<String, Object>> checkAutoSignConditions(@PathVariable Long groupId) {
+        Map<String, Object> conditions = contractService.checkAutoSignConditions(groupId);
+        return ResponseEntity.ok(conditions);
+    }
+
+    /**
+     * API: Tự động kiểm tra và ký contract nếu đủ điều kiện
+     * ------------------------------------------------------------
+     * Dành cho:
+     *   - System (scheduler)
+     *   - Group Admin
+     */
+    @PostMapping("/{groupId}/check-and-auto-sign")
+    @PreAuthorize("@authUtils.isGroupMember(#groupId)")
+    @Operation(summary = "Kiểm tra và ký tự động", description = "Tự động kiểm tra điều kiện và ký contract nếu đủ điều kiện")
+    public ResponseEntity<Map<String, Object>> checkAndAutoSignContract(@PathVariable Long groupId) {
+        Map<String, Object> result = contractService.checkAndAutoSignContract(groupId);
+        return ResponseEntity.ok(result);
+    }
+
     // Removed manual approval endpoints - contracts are now auto-approved
 }
