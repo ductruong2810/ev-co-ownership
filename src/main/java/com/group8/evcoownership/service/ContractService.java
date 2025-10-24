@@ -236,12 +236,12 @@ public class ContractService {
         String signatureInfo = buildSignatureInfo(adminName, signatureType, groupId);
         contract.setTerms(contract.getTerms() + "\n\n" + signatureInfo);
         contract.setUpdatedAt(LocalDateTime.now());
-        
+
         // Chuyển status từ PENDING → SIGNED
         contract.setApprovalStatus(ContractApprovalStatus.SIGNED);
 
         Contract savedContract = contractRepository.save(contract);
-        
+
         // Không tự động duyệt ngay sau khi ký
         // Contract sẽ được auto-approve khi tất cả deposit đã được thanh toán
         // Logic này được xử lý trong DepositPaymentService.checkAndActivateContractIfAllDepositsPaid()
@@ -291,24 +291,25 @@ public class ContractService {
     /**
      * Lưu contract từ dữ liệu Frontend gửi lên
      */
+    /**
+     * Lưu contract từ dữ liệu Frontend gửi lên
+     */
     @Transactional
-    public Map<String, Object> saveContractFromData(Long groupId, SaveContractDataRequest request) {
+    public Map<String, Object> saveContractFromData(Long groupId) {  // Removed SaveContractDataRequest
         OwnershipGroup group = getGroupById(groupId);
 
         // Tự động tính toán ngày hiệu lực và ngày kết thúc
         LocalDate startDate = LocalDate.now(); // Ngày ký = hôm nay
         LocalDate endDate = startDate.plusYears(1); // Ngày kết thúc = ngày ký + 1 năm
-        String terms = request.terms();
 
         // Kiểm tra đã có contract chưa
         Contract existingContract = contractRepository.findByGroup(group).orElse(null);
-        
+
         Contract contract;
         if (existingContract != null) {
             // Cập nhật contract hiện có
             existingContract.setStartDate(startDate);
             existingContract.setEndDate(endDate);
-            existingContract.setTerms(terms);
             existingContract.setUpdatedAt(LocalDateTime.now());
             contract = contractRepository.save(existingContract);
         } else {
@@ -316,7 +317,6 @@ public class ContractService {
             ContractGenerationRequest req = new ContractGenerationRequest(
                     startDate,
                     endDate,
-                    terms,
                     "HCM",
                     startDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
                     null
@@ -326,11 +326,11 @@ public class ContractService {
 
         // Chuẩn bị response data
         Map<String, Object> responseData = prepareContractData(groupId, contract);
-        
+
         String contractNumber = contract.getId() != null ?
                 generateContractNumber(contract.getId()) :
                 "EVS-" + groupId + "-" + System.currentTimeMillis();
-        
+
         responseData.put("contractNumber", contractNumber);
         responseData.put("contractId", contract.getId());
         responseData.put("savedAt", LocalDateTime.now());
@@ -352,12 +352,11 @@ public class ContractService {
             // Cập nhật contract hiện tại
             existingContract.setStartDate(request.startDate());
             existingContract.setEndDate(request.endDate());
-            existingContract.setTerms(request.terms());
             return contractRepository.save(existingContract);
         } else {
             // Kiểm tra điều kiện tạo contract mới
             validateContractCreation(groupId);
-            
+
             // Tạo contract mới
             // Tính requiredDepositAmount
             BigDecimal requiredDepositAmount = getRequiredDepositAmount(groupId);
@@ -366,7 +365,6 @@ public class ContractService {
                     .group(group)
                     .startDate(request.startDate())
                     .endDate(request.endDate())
-                    .terms(request.terms())
                     .requiredDepositAmount(requiredDepositAmount)
                     .isActive(true)
                     .approvalStatus(ContractApprovalStatus.PENDING) // Luôn bắt đầu với PENDING
@@ -506,17 +504,17 @@ public class ContractService {
      */
     private void validateContractCreation(Long groupId) {
         OwnershipGroup group = getGroupById(groupId);
-        
+
         List<OwnershipShare> shares = getSharesByGroupId(groupId);
         Integer memberCapacity = group.getMemberCapacity();
-        
+
         if (memberCapacity == null) {
             throw new IllegalStateException("Group memberCapacity is not set");
         }
-        
+
         if (shares.size() != memberCapacity) {
             throw new IllegalStateException(
-                String.format("Cannot create contract: Expected %d members, but found %d members", 
+                String.format("Cannot create contract: Expected %d members, but found %d members",
                     memberCapacity, shares.size())
             );
         }

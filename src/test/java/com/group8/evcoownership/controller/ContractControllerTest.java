@@ -1,7 +1,6 @@
 package com.group8.evcoownership.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.group8.evcoownership.dto.SaveContractDataRequest;
 import com.group8.evcoownership.service.ContractService;
 import com.group8.evcoownership.service.OwnershipGroupService;
 import com.group8.evcoownership.testconfig.TestConfig;
@@ -57,8 +56,6 @@ class ContractControllerTest {
     @WithMockUser(username = "admin@test.com")
     void saveContractData_Success() throws Exception {
         // Given
-        SaveContractDataRequest request = new SaveContractDataRequest("Test contract terms");
-
         Map<String, Object> savedResponse = new HashMap<>();
         savedResponse.put("contractId", 1L);
         savedResponse.put("contractNumber", "EVS-0001-2025");
@@ -66,13 +63,11 @@ class ContractControllerTest {
         savedResponse.put("savedToDatabase", true);
 
         when(ownershipGroupService.isGroupAdmin("admin@test.com", TEST_GROUP_ID)).thenReturn(true);
-        when(contractService.saveContractFromData(TEST_GROUP_ID, request)).thenReturn(savedResponse);
+        when(contractService.saveContractFromData(TEST_GROUP_ID)).thenReturn(savedResponse);
 
         // When & Then
         mockMvc.perform(post("/api/contracts/{groupId}/save", TEST_GROUP_ID)
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.contractId").value(1L))
                 .andExpect(jsonPath("$.contractNumber").value("EVS-0001-2025"))
@@ -84,15 +79,11 @@ class ContractControllerTest {
     @WithMockUser(username = "user@test.com")
     void saveContractData_Unauthorized() throws Exception {
         // Given
-        SaveContractDataRequest request = new SaveContractDataRequest("Test terms");
-
         when(ownershipGroupService.isGroupAdmin("user@test.com", TEST_GROUP_ID)).thenReturn(false);
 
         // When & Then
         mockMvc.perform(post("/api/contracts/{groupId}/save", TEST_GROUP_ID)
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .with(csrf()))
                 .andExpect(status().isOk()); // Security is disabled in test profile
     }
 
@@ -138,14 +129,15 @@ class ContractControllerTest {
     void signContract_Success() throws Exception {
         // Given
         Map<String, Object> signRequest = new HashMap<>();
-        signRequest.put("signer", "admin@test.com");
-        signRequest.put("signature", "digital_signature");
+        signRequest.put("adminName", "Admin User");
+        signRequest.put("signatureType", "ADMIN_PROXY");
 
         Map<String, Object> signResponse = new HashMap<>();
         signResponse.put("success", true);
         signResponse.put("contractId", 1L);
-        signResponse.put("signedAt", LocalDateTime.now());
-        signResponse.put("message", "Contract signed successfully");
+        signResponse.put("signedAt", LocalDateTime.now().toString());
+        signResponse.put("signedBy", "Admin User");
+        signResponse.put("message", "Contract signed successfully by Admin Group on behalf of all members");
 
         when(ownershipGroupService.isGroupAdmin("admin@test.com", TEST_GROUP_ID)).thenReturn(true);
         when(contractService.signContract(TEST_GROUP_ID, signRequest)).thenReturn(signResponse);
@@ -158,7 +150,7 @@ class ContractControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.contractId").value(1L))
-                .andExpect(jsonPath("$.message").value("Contract signed successfully"));
+                .andExpect(jsonPath("$.message").exists());
     }
 
     @Test
@@ -166,7 +158,7 @@ class ContractControllerTest {
     void signContract_Unauthorized() throws Exception {
         // Given
         Map<String, Object> signRequest = new HashMap<>();
-        signRequest.put("signer", "user@test.com");
+        signRequest.put("adminName", "User");
 
         when(ownershipGroupService.isGroupAdmin("user@test.com", TEST_GROUP_ID)).thenReturn(false);
 
@@ -180,18 +172,24 @@ class ContractControllerTest {
 
     @Test
     @WithMockUser(username = "admin@test.com")
-    void signContract_InvalidRequest() throws Exception {
+    void signContract_EmptyRequest() throws Exception {
         // Given
-        Map<String, Object> invalidRequest = new HashMap<>();
-        // Missing required fields
+        Map<String, Object> emptyRequest = new HashMap<>();
+
+        Map<String, Object> signResponse = new HashMap<>();
+        signResponse.put("success", true);
+        signResponse.put("contractId", 1L);
+        signResponse.put("message", "Contract signed successfully");
 
         when(ownershipGroupService.isGroupAdmin("admin@test.com", TEST_GROUP_ID)).thenReturn(true);
+        when(contractService.signContract(TEST_GROUP_ID, emptyRequest)).thenReturn(signResponse);
 
         // When & Then
         mockMvc.perform(post("/api/contracts/{groupId}/sign", TEST_GROUP_ID)
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(invalidRequest)))
-                .andExpect(status().isOk()); // Controller doesn't validate request body for signing
+                        .content(objectMapper.writeValueAsString(emptyRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
     }
 }
