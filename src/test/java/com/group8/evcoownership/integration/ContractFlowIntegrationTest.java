@@ -60,22 +60,22 @@ class ContractFlowIntegrationTest {
         Map<String, Object> expectedResponse = new HashMap<>();
         expectedResponse.put("contractId", 1L);
         expectedResponse.put("contractNumber", "EVS-2025-001");
-        expectedResponse.put("status", "SAVED");
-        expectedResponse.put("savedToDatabase", true);
+        expectedResponse.put("status", "GENERATED");
+        expectedResponse.put("savedToDatabase", false);
 
-        when(contractService.saveContractFromData(1L))
+        when(contractService.generateContractData(1L))
                 .thenReturn(expectedResponse);
 
         // Act
-        Map<String, Object> response = contractService.saveContractFromData(1L);
+        Map<String, Object> response = contractService.generateContractData(1L);
 
         // Assert
         assertNotNull(response);
         assertEquals(1L, response.get("contractId"));
         assertEquals("EVS-2025-001", response.get("contractNumber"));
-        assertEquals("SAVED", response.get("status"));
+        assertEquals("GENERATED", response.get("status"));
 
-        verify(contractService).saveContractFromData(1L);
+        verify(contractService).generateContractData(1L);
     }
 
     @Test

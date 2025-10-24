@@ -67,8 +67,7 @@ class ContractControllerTest {
         when(contractService.generateContractData(TEST_GROUP_ID)).thenReturn(generatedResponse);
 
         // When & Then
-        mockMvc.perform(post("/api/contracts/{groupId}/generate", TEST_GROUP_ID)
-                        .with(csrf()))
+        mockMvc.perform(get("/api/contracts/{groupId}/generate", TEST_GROUP_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.contractId").isEmpty())
                 .andExpect(jsonPath("$.contractNumber").value("EVS-1-1234567890"))
@@ -85,8 +84,7 @@ class ContractControllerTest {
         when(ownershipGroupService.isGroupAdmin("user@test.com", TEST_GROUP_ID)).thenReturn(false);
 
         // When & Then
-        mockMvc.perform(post("/api/contracts/{groupId}/generate", TEST_GROUP_ID)
-                        .with(csrf()))
+        mockMvc.perform(get("/api/contracts/{groupId}/generate", TEST_GROUP_ID))
                 .andExpect(status().isOk()); // Security is disabled in test profile
     }
 

@@ -16,6 +16,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
@@ -55,6 +56,7 @@ class ContractIntegrationTest {
 
     @Test
     @Order(1)
+    @Transactional
     void contractService_CreateDefaultContract_Success() {
         // Given
         OwnershipGroup testGroup = ContractTestDataBuilder.TestScenarios.createBasicGroup();
@@ -73,17 +75,18 @@ class ContractIntegrationTest {
         }
 
         // When
-        Contract result = contractService.createDefaultContract(testGroup.getGroupId());
-
+        Map<String, Object> contractData = contractService.generateContractData(testGroup.getGroupId());
+        
         // Then
-        assertNotNull(result);
-        assertEquals(testGroup.getGroupId(), result.getGroup().getGroupId());
-        assertNotNull(result.getTerms());
-        assertTrue(result.getTerms().contains("contract") || result.getTerms().contains("Contract"));
+        assertNotNull(contractData);
+        assertEquals(testGroup.getGroupId(), contractData.get("groupId"));
+        assertNotNull(contractData.get("terms"));
+        assertTrue(((String) contractData.get("terms")).contains("HỢP ĐỒNG") || ((String) contractData.get("terms")).contains("hợp đồng"));
     }
 
     @Test
     @Order(2)
+    @Transactional
     void contractGenerationService_GenerateContractAuto_Success() {
         // Given
         OwnershipGroup testGroup = ContractTestDataBuilder.TestScenarios.createBasicGroup();
@@ -101,12 +104,19 @@ class ContractIntegrationTest {
             shareRepository.save(testShare);
         }
 
-        // Create contract first
-        Contract contract = contractService.createDefaultContract(testGroup.getGroupId());
-        assertNotNull(contract);
+        // Generate contract data first
+        Map<String, Object> contractData = contractService.generateContractData(testGroup.getGroupId());
+        assertNotNull(contractData);
 
-        // When
-        var result = contractService.saveContractFromData(testGroup.getGroupId());
+        // When - Sign contract with data
+        Map<String, Object> signData = new HashMap<>();
+        signData.put("terms", contractData.get("terms"));
+        signData.put("startDate", contractData.get("startDate").toString());
+        signData.put("endDate", contractData.get("endDate").toString());
+        signData.put("adminName", "Test Admin");
+        signData.put("signatureType", "ADMIN_PROXY");
+        
+        var result = contractService.signContractWithData(testGroup.getGroupId(), signData);
 
         // Then
         assertNotNull(result);
@@ -116,6 +126,7 @@ class ContractIntegrationTest {
 
     @Test
     @Order(3)
+    @Transactional
     void contractWorkflow_EndToEnd_Success() {
         // Given
         OwnershipGroup testGroup = ContractTestDataBuilder.TestScenarios.createBasicGroup();
@@ -141,19 +152,15 @@ class ContractIntegrationTest {
         when(depositCalculationService.calculateRequiredDepositAmount(any(OwnershipGroup.class)))
                 .thenReturn(new BigDecimal("2000000"));
 
-        // Step 1: Create contract
-        Contract contract = contractService.createDefaultContract(testGroup.getGroupId());
-        assertNotNull(contract);
+        // Step 1: Generate contract data
+        Map<String, Object> contractData = contractService.generateContractData(testGroup.getGroupId());
+        assertNotNull(contractData);
 
-        // Step 2: Save contract with data
-        var generationResult = contractService.saveContractFromData(testGroup.getGroupId());
-        assertNotNull(generationResult);
-
-        // Step 3: Sign contract
+        // Step 2: Sign contract with data
         Map<String, Object> signRequest = Map.of(
-                "terms", generationResult.get("terms"),
-                "startDate", generationResult.get("startDate").toString(),
-                "endDate", generationResult.get("endDate").toString(),
+                "terms", contractData.get("terms"),
+                "startDate", contractData.get("startDate").toString(),
+                "endDate", contractData.get("endDate").toString(),
                 "adminName", "Test Admin",
                 "signatureType", "ADMIN_PROXY"
         );
