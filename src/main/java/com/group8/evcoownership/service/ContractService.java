@@ -317,7 +317,6 @@ public class ContractService {
             ContractGenerationRequest req = new ContractGenerationRequest(
                     startDate,
                     endDate,
-                    terms,
                     "HCM",
                     startDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
                     null
@@ -341,57 +340,6 @@ public class ContractService {
         return responseData;
     }
 
-    /**
-     * Lưu contract từ dữ liệu Frontend gửi lên
-     */
-    /**
-     * Lưu contract từ dữ liệu Frontend gửi lên
-     */
-    @Transactional
-    public Map<String, Object> saveContractFromData(Long groupId) {  // Removed SaveContractDataRequest
-        OwnershipGroup group = getGroupById(groupId);
-
-        // Tự động tính toán ngày hiệu lực và ngày kết thúc
-        LocalDate startDate = LocalDate.now(); // Ngày ký = hôm nay
-        LocalDate endDate = startDate.plusYears(1); // Ngày kết thúc = ngày ký + 1 năm
-
-        // Kiểm tra đã có contract chưa
-        Contract existingContract = contractRepository.findByGroup(group).orElse(null);
-
-        Contract contract;
-        if (existingContract != null) {
-            // Cập nhật contract hiện có
-            existingContract.setStartDate(startDate);
-            existingContract.setEndDate(endDate);
-            existingContract.setUpdatedAt(LocalDateTime.now());
-            contract = contractRepository.save(existingContract);
-        } else {
-            // Tạo contract mới và lưu xuống database
-            ContractGenerationRequest req = new ContractGenerationRequest(
-                    startDate,
-                    endDate,
-                    "HCM",
-                    startDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
-                    null
-            );
-            contract = createOrUpdateContract(groupId, req);
-        }
-
-        // Chuẩn bị response data
-        Map<String, Object> responseData = prepareContractData(groupId, contract);
-
-        String contractNumber = contract.getId() != null ?
-                generateContractNumber(contract.getId()) :
-                "EVS-" + groupId + "-" + System.currentTimeMillis();
-
-        responseData.put("contractNumber", contractNumber);
-        responseData.put("contractId", contract.getId());
-        responseData.put("savedAt", LocalDateTime.now());
-        responseData.put("status", "SAVED");
-        responseData.put("savedToDatabase", true);
-
-        return responseData;
-    }
 
     /**
      * Tạo hoặc cập nhật contract
@@ -412,12 +360,13 @@ public class ContractService {
 
             // Tạo contract mới
             // Tính requiredDepositAmount
-            BigDecimal requiredDepositAmount = getRequiredDepositAmount(groupId);
+            BigDecimal requiredDepositAmount = depositCalculationService.calculateRequiredDepositAmount(group);
 
             Contract newContract = Contract.builder()
                     .group(group)
                     .startDate(request.startDate())
                     .endDate(request.endDate())
+                    .terms("Standard EV co-ownership contract for 1 year")
                     .requiredDepositAmount(requiredDepositAmount)
                     .isActive(true)
                     .approvalStatus(ContractApprovalStatus.PENDING) // Luôn bắt đầu với PENDING
