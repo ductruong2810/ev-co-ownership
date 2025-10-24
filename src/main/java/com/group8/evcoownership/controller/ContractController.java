@@ -4,6 +4,7 @@ import com.group8.evcoownership.service.ContractService;
 import lombok.RequiredArgsConstructor;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -13,39 +14,41 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/contracts")
 @RequiredArgsConstructor
-@Tag(name = "Contracts", description = "Create, export PDF, sign and approve contracts")
+@Tag(name = "Contracts", description = "Tạo, xuất PDF, ký và duyệt hợp đồng")
 public class ContractController {
 
     private final ContractService contractService;
 
+
     /**
-     * Get contract info of group (for members)
+     * Lấy thông tin contract của group (cho members)
      */
     @GetMapping("/{groupId}")
     @PreAuthorize("@ownershipGroupService.isGroupMember(authentication.name, #groupId)")
-    @Operation(summary = "Get contract information", description = "Get contract information of the group")
+    @Operation(summary = "Lấy thông tin hợp đồng", description = "Lấy thông tin hợp đồng của nhóm")
     public ResponseEntity<Map<String, Object>> getContractInfo(@PathVariable Long groupId) {
         Map<String, Object> contractInfo = contractService.getContractInfo(groupId);
         return ResponseEntity.ok(contractInfo);
     }
 
     /**
-     * Save contract data to database
+     * Lưu contract data xuống database (tự động generate nội dung)
      */
     @PostMapping("/{groupId}/save")
     @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
-    @Operation(summary = "Save contract data", description = "Save contract data to database")
+    @Operation(summary = "Lưu dữ liệu hợp đồng", description = "Tự động tạo và lưu hợp đồng xuống cơ sở dữ liệu")
     public ResponseEntity<Map<String, Object>> saveContractData(@PathVariable Long groupId) {
         Map<String, Object> savedContract = contractService.saveContractFromData(groupId);
         return ResponseEntity.ok(savedContract);
     }
 
+
     /**
-     * Sign contract (admin only)
+     * Ký hợp đồng (chỉ admin group)
      */
     @PostMapping("/{groupId}/sign")
     @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
-    @Operation(summary = "Sign contract", description = "Only group admin can sign the contract")
+    @Operation(summary = "Ký hợp đồng", description = "Chỉ admin của nhóm được phép ký")
     public ResponseEntity<Map<String, Object>> signContract(
             @PathVariable Long groupId,
             @RequestBody Map<String, Object> signRequest) {
@@ -53,4 +56,6 @@ public class ContractController {
         Map<String, Object> result = contractService.signContract(groupId, signRequest);
         return ResponseEntity.ok(result);
     }
+
+    // Removed manual approval endpoints - contracts are now auto-approved
 }
