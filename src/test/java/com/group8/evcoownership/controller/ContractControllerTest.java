@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -57,8 +58,6 @@ class ContractControllerTest {
     @WithMockUser(username = "admin@test.com")
     void saveContractData_Success() throws Exception {
         // Given
-        SaveContractDataRequest request = new SaveContractDataRequest("Test contract terms");
-
         Map<String, Object> savedResponse = new HashMap<>();
         savedResponse.put("contractId", 1L);
         savedResponse.put("contractNumber", "EVS-0001-2025");
@@ -66,18 +65,18 @@ class ContractControllerTest {
         savedResponse.put("savedToDatabase", true);
 
         when(ownershipGroupService.isGroupAdmin("admin@test.com", TEST_GROUP_ID)).thenReturn(true);
-        when(contractService.saveContractFromData(TEST_GROUP_ID, request)).thenReturn(savedResponse);
+        when(contractService.saveContractFromData(TEST_GROUP_ID)).thenReturn(savedResponse);
 
         // When & Then
         mockMvc.perform(post("/api/contracts/{groupId}/save", TEST_GROUP_ID)
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.contractId").value(1L))
                 .andExpect(jsonPath("$.contractNumber").value("EVS-0001-2025"))
                 .andExpect(jsonPath("$.status").value("SAVED"))
                 .andExpect(jsonPath("$.savedToDatabase").value(true));
+
+        verify(contractService).saveContractFromData(TEST_GROUP_ID);
     }
 
     @Test

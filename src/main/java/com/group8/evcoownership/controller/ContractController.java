@@ -1,8 +1,6 @@
 package com.group8.evcoownership.controller;
 
-import com.group8.evcoownership.dto.SaveContractDataRequest;
 import com.group8.evcoownership.service.ContractService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -34,16 +32,13 @@ public class ContractController {
     }
 
     /**
-     * Lưu contract data xuống database
+     * Lưu contract data xuống database (tự động generate nội dung)
      */
     @PostMapping("/{groupId}/save")
     @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
-    @Operation(summary = "Lưu dữ liệu hợp đồng", description = "Lưu dữ liệu hợp đồng xuống cơ sở dữ liệu")
-    public ResponseEntity<Map<String, Object>> saveContractData(
-            @PathVariable Long groupId,
-            @RequestBody @Valid SaveContractDataRequest request
-    ) {
-        Map<String, Object> savedContract = contractService.saveContractFromData(groupId, request);
+    @Operation(summary = "Lưu dữ liệu hợp đồng", description = "Tự động tạo và lưu hợp đồng xuống cơ sở dữ liệu")
+    public ResponseEntity<Map<String, Object>> saveContractData(@PathVariable Long groupId) {
+        Map<String, Object> savedContract = contractService.saveContractFromData(groupId);
         return ResponseEntity.ok(savedContract);
     }
 
