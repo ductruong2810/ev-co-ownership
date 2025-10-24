@@ -419,13 +419,13 @@ public class ContractService {
         // Tự động tính toán ngày hiệu lực và ngày kết thúc
         LocalDate startDate = LocalDate.now(); // Ngày ký = hôm nay
         LocalDate endDate = startDate.plusYears(1); // Ngày kết thúc = ngày ký + 1 năm
-
+        
         // Tự động generate nội dung contract
         String terms = generateContractTerms(groupId);
 
         // Kiểm tra đã có contract chưa
         Contract existingContract = contractRepository.findByGroup(group).orElse(null);
-
+        
         Contract contract;
         if (existingContract != null) {
             // Cập nhật contract hiện có
@@ -448,11 +448,11 @@ public class ContractService {
 
         // Chuẩn bị response data
         Map<String, Object> responseData = prepareContractData(groupId, contract);
-
+        
         String contractNumber = contract.getId() != null ?
                 generateContractNumber(contract.getId()) :
                 "EVS-" + groupId + "-" + System.currentTimeMillis();
-
+        
         responseData.put("contractNumber", contractNumber);
         responseData.put("contractId", contract.getId());
         responseData.put("startDate", startDate);
@@ -631,20 +631,20 @@ public class ContractService {
         OwnershipGroup group = getGroupById(groupId);
         Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group).orElse(null);
         List<OwnershipShare> shares = getSharesByGroupId(groupId);
-
+        
         StringBuilder terms = new StringBuilder();
-
+        
         // Header
         terms.append("HỢP ĐỒNG SỞ HỮU XE CHUNG\n");
         terms.append("Nhóm: ").append(group.getGroupName()).append("\n\n");
-
+        
         // Contract info
         terms.append("ĐIỀU 1: THÔNG TIN HỢP ĐỒNG\n");
         terms.append("- Số hợp đồng: ").append(generateContractNumber(groupId)).append("\n");
         terms.append("- Ngày hiệu lực: ").append(formatDate(LocalDate.now())).append("\n");
         terms.append("- Ngày kết thúc: ").append(formatDate(LocalDate.now().plusYears(1))).append("\n");
         terms.append("- Thời hạn: 12 tháng\n\n");
-
+        
         // Vehicle info
         terms.append("ĐIỀU 2: THÔNG TIN XE\n");
         if (vehicle != null) {
@@ -656,49 +656,49 @@ public class ContractService {
             terms.append("- Thông tin xe sẽ được cập nhật sau\n");
         }
         terms.append("\n");
-
+        
         // Members info
         terms.append("ĐIỀU 3: THÀNH VIÊN NHÓM\n");
         terms.append("- Số thành viên: ").append(shares.size()).append("\n");
         terms.append("- Sức chứa tối đa: ").append(group.getMemberCapacity()).append("\n");
         for (OwnershipShare share : shares) {
             terms.append("- ").append(share.getUser().getFullName())
-                    .append(" (").append(share.getOwnershipPercentage()).append("%)\n");
+                 .append(" (").append(share.getOwnershipPercentage()).append("%)\n");
         }
         terms.append("\n");
-
+        
         // Financial terms
         terms.append("ĐIỀU 4: ĐIỀU KHOẢN TÀI CHÍNH\n");
         terms.append("- Tiền cọc yêu cầu: ").append(formatCurrency(getRequiredDepositAmount(groupId))).append("\n");
         terms.append("- Quỹ chung mục tiêu: 50,000,000 VND\n");
         terms.append("- Quy tắc đóng góp: Theo tỷ lệ sở hữu\n");
         terms.append("- Tài khoản quỹ: MB Bank 0123456789\n\n");
-
+        
         // Usage terms
         terms.append("ĐIỀU 5: QUY TẮC SỬ DỤNG\n");
         terms.append("- Phương thức phân bổ: Điểm tín dụng lịch sử & phiên bốc thăm tuần\n");
         terms.append("- Ưu tiên: Theo điểm tín dụng và lịch sử sử dụng\n\n");
-
+        
         // Maintenance terms
         terms.append("ĐIỀU 6: BẢO DƯỠNG VÀ SỬA CHỮA\n");
         terms.append("- Phê duyệt: Biểu quyết > 50% theo tỷ lệ sở hữu cho chi phí > 5 triệu\n");
         terms.append("- Bảo hiểm: PVI – Gói vật chất toàn diện\n");
         terms.append("- Chi phí: Chia theo tỷ lệ sở hữu\n\n");
-
+        
         // Dispute resolution
         terms.append("ĐIỀU 7: GIẢI QUYẾT TRANH CHẤP\n");
         terms.append("- Phương thức: Biểu quyết đa số\n");
         terms.append("- Trọng tài: Theo tỷ lệ sở hữu\n");
         terms.append("- Luật áp dụng: Pháp luật Việt Nam\n\n");
-
+        
         // Signatures
         terms.append("ĐIỀU 8: CHỮ KÝ\n");
         terms.append("- Đại diện nhóm: Admin Group\n");
         terms.append("- Ngày ký: ").append(formatDate(LocalDate.now())).append("\n");
         terms.append("- Địa điểm: Hà Nội\n\n");
-
+        
         terms.append("Hợp đồng này có hiệu lực từ ngày ký và được tất cả thành viên nhóm đồng ý.\n");
-
+        
         return terms.toString();
     }
 
@@ -735,8 +735,8 @@ public class ContractService {
 
         if (shares.size() != memberCapacity) {
             throw new IllegalStateException(
-                    String.format("Cannot create contract: Expected %d members, but found %d members",
-                            memberCapacity, shares.size())
+                String.format("Cannot create contract: Expected %d members, but found %d members",
+                    memberCapacity, shares.size())
             );
         }
     }
