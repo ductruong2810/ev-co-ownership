@@ -16,6 +16,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
@@ -55,6 +56,7 @@ class ContractIntegrationTest {
 
     @Test
     @Order(1)
+    @Transactional
     void contractService_CreateDefaultContract_Success() {
         // Given
         OwnershipGroup testGroup = ContractTestDataBuilder.TestScenarios.createBasicGroup();
@@ -79,11 +81,12 @@ class ContractIntegrationTest {
         assertNotNull(contractData);
         assertEquals(testGroup.getGroupId(), contractData.get("groupId"));
         assertNotNull(contractData.get("terms"));
-        assertTrue(((String) contractData.get("terms")).contains("contract") || ((String) contractData.get("terms")).contains("Contract"));
+        assertTrue(((String) contractData.get("terms")).contains("HỢP ĐỒNG") || ((String) contractData.get("terms")).contains("hợp đồng"));
     }
 
     @Test
     @Order(2)
+    @Transactional
     void contractGenerationService_GenerateContractAuto_Success() {
         // Given
         OwnershipGroup testGroup = ContractTestDataBuilder.TestScenarios.createBasicGroup();
@@ -123,6 +126,7 @@ class ContractIntegrationTest {
 
     @Test
     @Order(3)
+    @Transactional
     void contractWorkflow_EndToEnd_Success() {
         // Given
         OwnershipGroup testGroup = ContractTestDataBuilder.TestScenarios.createBasicGroup();

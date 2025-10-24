@@ -454,6 +454,7 @@ public class ContractService {
         Map<String, Object> responseData = prepareContractData(groupId);
 
         // Thêm thông tin contract được generate
+        responseData.put("groupId", groupId);
         responseData.put("terms", terms);
         responseData.put("startDate", startDate);
         responseData.put("endDate", endDate);
