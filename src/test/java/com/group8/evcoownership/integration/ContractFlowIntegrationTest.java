@@ -63,11 +63,11 @@ class ContractFlowIntegrationTest {
         expectedResponse.put("status", "GENERATED");
         expectedResponse.put("savedToDatabase", false);
 
-        when(contractService.generateContractData(1L))
+        when(contractService.generateContractData(1L, 1L))
                 .thenReturn(expectedResponse);
 
         // Act
-        Map<String, Object> response = contractService.generateContractData(1L);
+        Map<String, Object> response = contractService.generateContractData(1L, 1L);
 
         // Assert
         assertNotNull(response);
@@ -75,7 +75,7 @@ class ContractFlowIntegrationTest {
         assertEquals("EVS-2025-001", response.get("contractNumber"));
         assertEquals("GENERATED", response.get("status"));
 
-        verify(contractService).generateContractData(1L);
+        verify(contractService).generateContractData(1L, 1L);
     }
 
     @Test
@@ -93,25 +93,25 @@ class ContractFlowIntegrationTest {
                 "success", true,
                 "contractId", 1L,
                 "contractNumber", "EVS-0001-2025",
-                "status", "SIGNED",
+                "status", "AUTO_SIGNED",
                 "signedAt", LocalDateTime.now(),
-                "message", "Contract has been signed successfully"
+                "message", "Contract has been automatically signed"
         );
 
-        when(contractService.signContractWithData(1L, signRequest))
+        when(contractService.autoSignContract(1L))
                 .thenReturn(expectedResponse);
 
         // Act
-        Map<String, Object> response = contractService.signContractWithData(1L, signRequest);
+        Map<String, Object> response = contractService.autoSignContract(1L);
 
         // Assert
         assertNotNull(response);
         assertTrue((Boolean) response.get("success"));
         assertEquals(1L, response.get("contractId"));
-        assertEquals("SIGNED", response.get("status"));
-        assertTrue(response.get("message").toString().contains("Contract has been signed successfully"));
+        assertEquals("AUTO_SIGNED", response.get("status"));
+        assertTrue(response.get("message").toString().contains("Contract has been automatically signed"));
 
-        verify(contractService).signContractWithData(1L, signRequest);
+        verify(contractService).autoSignContract(1L);
     }
 
     @Test
