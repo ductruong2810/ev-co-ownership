@@ -20,11 +20,8 @@ import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -100,93 +97,143 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(response);
     }
 
+    // ========== 400 - INVALID JSON FORMAT ==========
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<ValidationErrorResponseDTO> handleInvalidJSON(
+            org.springframework.http.converter.HttpMessageNotReadableException ex, WebRequest request) {
+
+        logger.warn("Invalid JSON format: {}", ex.getMessage());
+
+        String field = "body";
+        String message = "Invalid JSON format";
+
+        String errorMsg = ex.getMessage();
+        if (errorMsg != null) {
+            if (errorMsg.contains("contractId")) {
+                field = "contractId";
+                message = "Contract ID must be a number";
+            } else if (errorMsg.contains("action")) {
+                field = "action";
+                message = "Action must be a string";
+            } else if (errorMsg.contains("reason")) {
+                field = "reason";
+                message = "Reason must be a string";
+            }
+        }
+
+        return ResponseEntity.badRequest().body(
+                ValidationErrorResponseDTO.singleError(400, "Validation Failed", message, field,
+                        request.getDescription(false).replace("uri=", ""))
+        );
+    }
+
+    // ========== 400 - INVALID CONTRACT ACTION ==========
+    @ExceptionHandler(InvalidContractActionException.class)
+    public ResponseEntity<ValidationErrorResponseDTO> handleInvalidContractAction(
+            InvalidContractActionException ex, WebRequest request) {
+
+        logger.warn("Invalid contract action: {}", ex.getMessage());
+
+        String field = "action";
+        if (ex.getMessage().contains("reason")) {
+            field = "reason";
+        } else if (ex.getMessage().contains("Contract ID")) {
+            field = "contractId";
+        }
+
+        return ResponseEntity.badRequest().body(
+                ValidationErrorResponseDTO.singleError(400, "Validation Failed", ex.getMessage(), field,
+                        request.getDescription(false).replace("uri=", ""))
+        );
+    }
+
     // ========== FILE UPLOAD - SIZE EXCEEDED ==========
     @ExceptionHandler(MaxUploadSizeExceededException.class)
-    public ResponseEntity<Map<String, Object>> handleMaxUploadSizeExceeded(
+    public ResponseEntity<ValidationErrorResponseDTO> handleMaxUploadSizeExceeded(
             MaxUploadSizeExceededException ex, WebRequest request) {
 
         logger.warn("File size exceeded: {}", ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(
-                buildErrorResponse(413, "File Too Large",
-                        "File size exceeds the allowed limit (maximum 10MB)",
-                        "file", request.getDescription(false).replace("uri=", ""))
+                ValidationErrorResponseDTO.singleError(413, "File Too Large",
+                        "File size exceeds the allowed limit (maximum 10MB)", "file",
+                        request.getDescription(false).replace("uri=", ""))
         );
     }
 
     // ========== FILE UPLOAD - MULTIPART ERROR ==========
     @ExceptionHandler(MultipartException.class)
-    public ResponseEntity<Map<String, Object>> handleMultipartException(
+    public ResponseEntity<ValidationErrorResponseDTO> handleMultipartException(
             MultipartException ex, WebRequest request) {
 
         logger.warn("Multipart error: {}", ex.getMessage());
 
         return ResponseEntity.badRequest().body(
-                buildErrorResponse(400, "Bad Request",
-                        "File upload error. Please check the file and try again",
-                        "file", request.getDescription(false).replace("uri=", ""))
+                ValidationErrorResponseDTO.singleError(400, "Bad Request",
+                        "File upload error. Please check the file and try again", "file",
+                        request.getDescription(false).replace("uri=", ""))
         );
     }
 
     // ========== AUTHENTICATION ERRORS ==========
     @ExceptionHandler({AuthenticationException.class, BadCredentialsException.class})
-    public ResponseEntity<Map<String, Object>> handleAuthenticationException(
+    public ResponseEntity<ValidationErrorResponseDTO> handleAuthenticationException(
             Exception ex, WebRequest request) {
 
         logger.warn("Authentication failed: {}", ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
-                buildErrorResponse(401, "Unauthorized",
-                        "Invalid email or password",
-                        "email,password", request.getDescription(false).replace("uri=", ""))
+                ValidationErrorResponseDTO.singleError(401, "Unauthorized",
+                        "Invalid email or password", "email,password",
+                        request.getDescription(false).replace("uri=", ""))
         );
     }
 
     // ========== ACCESS DENIED (403) ==========
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<Map<String, Object>> handleAccessDenied(
+    public ResponseEntity<ValidationErrorResponseDTO> handleAccessDenied(
             AccessDeniedException ex, WebRequest request) {
 
         logger.warn("Access denied: {}", ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
-                buildErrorResponse(403, "Forbidden",
-                        "You do not have permission to access this resource",
-                        "authorization", request.getDescription(false).replace("uri=", ""))
+                ValidationErrorResponseDTO.singleError(403, "Forbidden",
+                        "You do not have permission to access this resource", "authorization",
+                        request.getDescription(false).replace("uri=", ""))
         );
     }
 
     // ========== 404 - NO RESOURCE FOUND ==========
     @ExceptionHandler(NoResourceFoundException.class)
-    public ResponseEntity<Map<String, Object>> handleNoResourceFound(
+    public ResponseEntity<ValidationErrorResponseDTO> handleNoResourceFound(
             NoResourceFoundException ex, WebRequest request) {
 
         logger.warn("No resource found: {}", ex.getResourcePath());
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
-                buildErrorResponse(404, "Not Found",
-                        "Endpoint does not exist. Please check the URL",
-                        "path", request.getDescription(false).replace("uri=", ""))
+                ValidationErrorResponseDTO.singleError(404, "Not Found",
+                        "Endpoint does not exist. Please check the URL", "path",
+                        request.getDescription(false).replace("uri=", ""))
         );
     }
 
     // ========== 404 - NO HANDLER FOUND ==========
     @ExceptionHandler(NoHandlerFoundException.class)
-    public ResponseEntity<Map<String, Object>> handleNoHandlerFound(
+    public ResponseEntity<ValidationErrorResponseDTO> handleNoHandlerFound(
             NoHandlerFoundException ex, WebRequest request) {
 
         logger.warn("No handler found: {} {}", ex.getHttpMethod(), ex.getRequestURL());
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
-                buildErrorResponse(404, "Not Found",
-                        "Endpoint does not exist. Please check the URL",
-                        "path", request.getDescription(false).replace("uri=", ""))
+                ValidationErrorResponseDTO.singleError(404, "Not Found",
+                        "Endpoint does not exist. Please check the URL", "path",
+                        request.getDescription(false).replace("uri=", ""))
         );
     }
 
     // ========== 405 - METHOD NOT ALLOWED ==========
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
-    public ResponseEntity<Map<String, Object>> handleMethodNotAllowed(
+    public ResponseEntity<ValidationErrorResponseDTO> handleMethodNotAllowed(
             HttpRequestMethodNotSupportedException ex, WebRequest request) {
 
         logger.warn("Method not allowed: {} for {}", ex.getMethod(), request.getDescription(false));
@@ -201,7 +248,7 @@ public class GlobalExceptionHandler {
         }
 
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(
-                buildErrorResponse(405, "Method Not Allowed",
+                ValidationErrorResponseDTO.singleError(405, "Method Not Allowed",
                         String.format("Method %s is not supported. Supported methods: %s", ex.getMethod(), supportedMethods),
                         "method", request.getDescription(false).replace("uri=", ""))
         );
@@ -209,7 +256,7 @@ public class GlobalExceptionHandler {
 
     // ========== CUSTOM - RESOURCE NOT FOUND ==========
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<Map<String, Object>> handleResourceNotFound(
+    public ResponseEntity<ValidationErrorResponseDTO> handleResourceNotFound(
             ResourceNotFoundException ex, WebRequest request) {
 
         logger.warn("Resource not found: {}", ex.getMessage());
@@ -217,67 +264,67 @@ public class GlobalExceptionHandler {
         String field = determineFieldFromMessage(ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
-                buildErrorResponse(404, "Not Found", ex.getMessage(), field,
+                ValidationErrorResponseDTO.singleError(404, "Not Found", ex.getMessage(), field,
                         request.getDescription(false).replace("uri=", ""))
         );
     }
 
     // ========== CUSTOM - UNAUTHORIZED EXCEPTION ==========
     @ExceptionHandler(UnauthorizedException.class)
-    public ResponseEntity<Map<String, Object>> handleUnauthorizedException(
+    public ResponseEntity<ValidationErrorResponseDTO> handleUnauthorizedException(
             UnauthorizedException ex, WebRequest request) {
 
         logger.warn("Unauthorized action: {}", ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
-                buildErrorResponse(403, "Forbidden", ex.getMessage(), "authorization",
+                ValidationErrorResponseDTO.singleError(403, "Forbidden", ex.getMessage(), "authorization",
                         request.getDescription(false).replace("uri=", ""))
         );
     }
 
     // ========== CUSTOM - FILE STORAGE EXCEPTION ==========
     @ExceptionHandler(FileStorageException.class)
-    public ResponseEntity<Map<String, Object>> handleFileStorageException(
+    public ResponseEntity<ValidationErrorResponseDTO> handleFileStorageException(
             FileStorageException ex, WebRequest request) {
 
         logger.error("File storage error: {}", ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
-                buildErrorResponse(500, "File Storage Error",
-                        "File storage error. Please try again later",
-                        "file", request.getDescription(false).replace("uri=", ""))
+                ValidationErrorResponseDTO.singleError(500, "File Storage Error",
+                        "File storage error. Please try again later", "file",
+                        request.getDescription(false).replace("uri=", ""))
         );
     }
 
     // ========== CUSTOM - INVALID CREDENTIALS ==========
     @ExceptionHandler(InvalidCredentialsException.class)
-    public ResponseEntity<Map<String, Object>> handleInvalidCredentials(
+    public ResponseEntity<ValidationErrorResponseDTO> handleInvalidCredentials(
             InvalidCredentialsException ex, WebRequest request) {
 
         logger.warn("Invalid credentials attempt from: {}", request.getDescription(false));
 
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
-                buildErrorResponse(401, "Unauthorized", ex.getMessage(), "email,password",
+                ValidationErrorResponseDTO.singleError(401, "Unauthorized", ex.getMessage(), "email,password",
                         request.getDescription(false).replace("uri=", ""))
         );
     }
 
     // ========== 404 - ENTITY NOT FOUND ==========
     @ExceptionHandler(EntityNotFoundException.class)
-    public ResponseEntity<Map<String, Object>> handleEntityNotFound(
+    public ResponseEntity<ValidationErrorResponseDTO> handleEntityNotFound(
             EntityNotFoundException ex, WebRequest request) {
 
         String field = determineFieldFromMessage(ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
-                buildErrorResponse(404, "Not Found", ex.getMessage(), field,
+                ValidationErrorResponseDTO.singleError(404, "Not Found", ex.getMessage(), field,
                         request.getDescription(false).replace("uri=", ""))
         );
     }
 
     // ========== 409 - CONFLICT ==========
     @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<Map<String, Object>> handleIllegalState(
+    public ResponseEntity<ValidationErrorResponseDTO> handleIllegalState(
             IllegalStateException ex, WebRequest request) {
 
         logger.warn("Illegal state: {}", ex.getMessage());
@@ -306,14 +353,14 @@ public class GlobalExceptionHandler {
         }
 
         return ResponseEntity.status(status).body(
-                buildErrorResponse(status.value(), errorType, ex.getMessage(), field,
+                ValidationErrorResponseDTO.singleError(status.value(), errorType, ex.getMessage(), field,
                         request.getDescription(false).replace("uri=", ""))
         );
     }
 
     // ========== 400 - BAD REQUEST ==========
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<Map<String, Object>> handleIllegalArgument(
+    public ResponseEntity<ValidationErrorResponseDTO> handleIllegalArgument(
             IllegalArgumentException ex, WebRequest request) {
 
         logger.warn("Illegal argument: {}", ex.getMessage());
@@ -336,87 +383,76 @@ public class GlobalExceptionHandler {
         }
 
         return ResponseEntity.badRequest().body(
-                buildErrorResponse(400, errorType, ex.getMessage(), field,
+                ValidationErrorResponseDTO.singleError(400, errorType, ex.getMessage(), field,
                         request.getDescription(false).replace("uri=", ""))
         );
     }
 
     // ========== 400 - IMAGE VALIDATION ==========
     @ExceptionHandler(ImageValidationException.class)
-    public ResponseEntity<Map<String, Object>> handleImageValidation(
+    public ResponseEntity<ValidationErrorResponseDTO> handleImageValidation(
             ImageValidationException ex, WebRequest request) {
 
         logger.warn("Image validation failed: {}", ex.getMessage());
 
         return ResponseEntity.badRequest().body(
-                buildErrorResponse(400, "Image Validation Failed", ex.getMessage(), "image",
+                ValidationErrorResponseDTO.singleError(400, "Image Validation Failed", ex.getMessage(), "image",
                         request.getDescription(false).replace("uri=", ""))
         );
     }
 
     // ========== 400 - INSUFFICIENT DOCUMENTS ==========
     @ExceptionHandler(InsufficientDocumentsException.class)
-    public ResponseEntity<Map<String, Object>> handleInsufficientDocuments(
+    public ResponseEntity<ValidationErrorResponseDTO> handleInsufficientDocuments(
             InsufficientDocumentsException ex, WebRequest request) {
 
         logger.warn("Insufficient documents: {}", ex.getMessage());
 
         return ResponseEntity.badRequest().body(
-                buildErrorResponse(400, "Bad Request", ex.getMessage(), "documents",
+                ValidationErrorResponseDTO.singleError(400, "Bad Request", ex.getMessage(), "documents",
                         request.getDescription(false).replace("uri=", ""))
         );
     }
 
     // ========== 400 - DEPOSIT PAYMENT ERRORS ==========
     @ExceptionHandler(DepositPaymentException.class)
-    public ResponseEntity<Map<String, Object>> handleDepositPaymentException(
+    public ResponseEntity<ValidationErrorResponseDTO> handleDepositPaymentException(
             DepositPaymentException ex, WebRequest request) {
 
         logger.warn("Deposit payment error: {}", ex.getMessage());
 
         return ResponseEntity.badRequest().body(
-                buildErrorResponse(400, "Deposit Payment Error", ex.getMessage(), "payment",
+                ValidationErrorResponseDTO.singleError(400, "Deposit Payment Error", ex.getMessage(), "payment",
                         request.getDescription(false).replace("uri=", ""))
         );
     }
 
     // ========== 409 - PAYMENT CONFLICT ==========
     @ExceptionHandler(PaymentConflictException.class)
-    public ResponseEntity<Map<String, Object>> handlePaymentConflictException(
+    public ResponseEntity<ValidationErrorResponseDTO> handlePaymentConflictException(
             PaymentConflictException ex, WebRequest request) {
 
         logger.warn("Payment conflict: {}", ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(
-                buildErrorResponse(409, "Payment Conflict", ex.getMessage(), "payment",
+                ValidationErrorResponseDTO.singleError(409, "Payment Conflict", ex.getMessage(), "payment",
                         request.getDescription(false).replace("uri=", ""))
         );
     }
 
     // ========== 500 - INTERNAL SERVER ERROR (FALLBACK) ==========
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, Object>> handleAll(Exception ex, WebRequest request) {
+    public ResponseEntity<ValidationErrorResponseDTO> handleAll(Exception ex, WebRequest request) {
         logger.error("An unexpected error occurred: ", ex);
 
         return ResponseEntity.internalServerError().body(
-                buildErrorResponse(500, "Internal Server Error",
-                        "An unexpected error occurred",
-                        "unknown", request.getDescription(false).replace("uri=", ""))
+                ValidationErrorResponseDTO.singleError(500, "Internal Server Error",
+                        "An unexpected error occurred", "unknown",
+                        request.getDescription(false).replace("uri=", ""))
         );
     }
 
-    // ========== HELPER METHODS ==========
-    private Map<String, Object> buildErrorResponse(int status, String error, String message, String field, String path) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("timestamp", LocalDateTime.now().toString());
-        response.put("status", status);
-        response.put("error", error);
-        response.put("message", message);
-        response.put("field", field);
-        response.put("path", path);
-        return response;
-    }
-
+    // ========== HELPER METHOD ==========
     private String determineFieldFromMessage(String message) {
         if (message == null) return "unknown";
 

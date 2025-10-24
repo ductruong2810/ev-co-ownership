@@ -20,10 +20,20 @@ public class ValidationErrorResponseDTO {
 
     @Data
     @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
     public static class FieldError {
         private String field;
         private String message;
+    }
+
+    // Helper method: tạo response với 1 lỗi duy nhất
+    public static ValidationErrorResponseDTO singleError(
+            int status, String error, String message, String field, String path) {
+        return ValidationErrorResponseDTO.builder()
+                .status(status)
+                .error(error)
+                .message(message)
+                .path(path)
+                .errors(List.of(FieldError.builder().field(field).message(message).build()))
+                .build();
     }
 }

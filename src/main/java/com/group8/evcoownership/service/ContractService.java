@@ -1,12 +1,11 @@
 package com.group8.evcoownership.service;
 
+import com.group8.evcoownership.dto.ContractDTO;
 import com.group8.evcoownership.dto.ContractGenerationRequest;
-import com.group8.evcoownership.entity.Contract;
-import com.group8.evcoownership.entity.OwnershipGroup;
-import com.group8.evcoownership.entity.OwnershipShare;
-import com.group8.evcoownership.entity.Vehicle;
+import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.enums.ContractApprovalStatus;
 import com.group8.evcoownership.enums.NotificationType;
+import com.group8.evcoownership.exception.ResourceNotFoundException;
 import com.group8.evcoownership.repository.ContractRepository;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
 import com.group8.evcoownership.repository.OwnershipShareRepository;
@@ -518,5 +517,84 @@ public class ContractService {
             );
         }
     }
+
+    @Transactional
+    public ContractDTO approveContract(Long contractId, User admin) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
+
+        if (contract.getApprovalStatus() != ContractApprovalStatus.PENDING) {
+            throw new IllegalStateException("Only pending contracts can be approved");
+        }
+
+        contract.setApprovalStatus(ContractApprovalStatus.APPROVED);
+        contract.setApprovedBy(admin);
+        contract.setApprovedAt(LocalDateTime.now());
+        contract.setIsActive(true);
+
+        return convertToDTO(contractRepository.save(contract));
+    }
+
+    @Transactional
+    public ContractDTO rejectContract(Long contractId, String reason, User admin) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
+
+        if (contract.getApprovalStatus() != ContractApprovalStatus.PENDING) {
+            throw new IllegalStateException("Only pending contracts can be rejected");
+        }
+
+        contract.setApprovalStatus(ContractApprovalStatus.REJECTED);
+        contract.setApprovedBy(admin);
+        contract.setApprovedAt(LocalDateTime.now());
+        contract.setRejectionReason(reason);
+        contract.setIsActive(false);
+
+        return convertToDTO(contractRepository.save(contract));
+
+    }
+
+    private ContractDTO convertToDTO(Contract contract) {
+        ContractDTO dto = new ContractDTO();
+        dto.setId(contract.getId());
+        dto.setGroupId(contract.getGroup().getGroupId());
+        dto.setStartDate(contract.getStartDate());
+        dto.setEndDate(contract.getEndDate());
+        dto.setRequiredDepositAmount(contract.getRequiredDepositAmount());
+        dto.setIsActive(contract.getIsActive());
+        dto.setApprovalStatus(contract.getApprovalStatus());
+        dto.setApprovedById(contract.getApprovedBy() != null ? contract.getApprovedBy().getUserId() : null);
+        dto.setApprovedAt(contract.getApprovedAt());
+        dto.setRejectionReason(contract.getRejectionReason());
+        dto.setCreatedAt(contract.getCreatedAt());
+        dto.setUpdatedAt(contract.getUpdatedAt());
+        return dto;
+    }
+
+    public List<ContractDTO> getAllContracts() {
+        return contractRepository.findAll().stream()
+                .map(this::convertToDTO)
+                .toList();
+    }
+
+    public ContractDTO getContractById(Long contractId) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
+        return convertToDTO(contract);
+    }
+
+    public List<ContractDTO> getContractsByStatus(ContractApprovalStatus status) {
+        return contractRepository.findByApprovalStatus(status).stream()
+                .map(this::convertToDTO)
+                .toList();
+    }
+
+    public boolean contractExists(Long contractId) {
+        return contractRepository.existsById(contractId);
+    }
+
+
+
+
 
 }
