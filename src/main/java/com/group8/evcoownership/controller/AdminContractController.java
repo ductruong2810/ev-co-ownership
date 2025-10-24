@@ -17,6 +17,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin/contracts")
@@ -91,6 +92,17 @@ public class AdminContractController {
         return ResponseEntity.ok(contract);
     }
 
+    /**
+     * Kiểm tra trạng thái đóng tiền cọc của hợp đồng (Admin only)
+     */
+    @GetMapping("/{groupId}/deposit-status")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> checkDepositStatus(@PathVariable Long groupId) {
+        Map<String, Object> status = contractService.checkDepositStatus(groupId);
+        return ResponseEntity.ok(status);
+    }
+
+
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<ContractDTO>> getAllContracts() {
@@ -111,5 +123,4 @@ public class AdminContractController {
         List<ContractDTO> contracts = contractService.getContractsByStatus(ContractApprovalStatus.PENDING);
         return ResponseEntity.ok(contracts);
     }
-
 }
