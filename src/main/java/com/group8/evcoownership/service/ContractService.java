@@ -774,6 +774,74 @@ public class ContractService {
         return dto;
     }
 
+    /**
+     * Kiểm tra hợp đồng đã đóng đủ tiền cọc chưa (Admin only)
+     */
+    public Map<String, Object> checkDepositStatus(Long groupId) {
+        // 1. Lấy hợp đồng
+        Contract contract = getContractByGroup(groupId);
+        BigDecimal requiredAmount = contract.getRequiredDepositAmount();
+
+        // 2. Lấy danh sách thành viên
+        List<OwnershipShare> shares = getSharesByGroupId(groupId);
+
+        // 3. Tính tổng tiền đã đóng (COMPLETED deposits)
+        BigDecimal totalPaid = BigDecimal.ZERO;
+        int paidMembers = 0;
+
+        List<Map<String, Object>> memberDetails = new java.util.ArrayList<>();
+
+        for (OwnershipShare share : shares) {
+            Map<String, Object> memberInfo = new LinkedHashMap<>();
+
+            // Tính tiền cọc cần đóng của từng thành viên
+            BigDecimal memberRequired = requiredAmount
+                    .multiply(share.getOwnershipPercentage())
+                    .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+
+            // Kiểm tra trạng thái đóng cọc
+            boolean isPaid = share.getDepositStatus() == com.group8.evcoownership.enums.DepositStatus.PAID;
+
+            if (isPaid) {
+                totalPaid = totalPaid.add(memberRequired);
+                paidMembers++;
+            }
+
+            memberInfo.put("userId", share.getUser().getUserId());
+            memberInfo.put("fullName", share.getUser().getFullName());
+            memberInfo.put("ownershipPercentage", share.getOwnershipPercentage());
+            memberInfo.put("requiredDeposit", memberRequired);
+            memberInfo.put("depositStatus", share.getDepositStatus().name());
+            memberInfo.put("isPaid", isPaid);
+
+            memberDetails.add(memberInfo);
+        }
+
+        // 4. Tính toán
+        boolean isFullyPaid = totalPaid.compareTo(requiredAmount) >= 0;
+        BigDecimal remaining = isFullyPaid ? BigDecimal.ZERO : requiredAmount.subtract(totalPaid);
+        int totalMembers = shares.size();
+        boolean allMembersPaid = paidMembers == totalMembers;
+
+        // 5. Response
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("groupId", groupId);
+        result.put("contractId", contract.getId());
+        result.put("requiredDepositAmount", requiredAmount);
+        result.put("totalPaid", totalPaid);
+        result.put("remaining", remaining);
+        result.put("isFullyPaid", isFullyPaid);
+        result.put("totalMembers", totalMembers);
+        result.put("paidMembers", paidMembers);
+        result.put("allMembersPaid", allMembersPaid);
+        result.put("paymentProgress", String.format("%.1f%%",
+                totalPaid.multiply(BigDecimal.valueOf(100)).divide(requiredAmount, 1, java.math.RoundingMode.HALF_UP).doubleValue()));
+        result.put("memberDetails", memberDetails);
+
+        return result;
+    }
+
+
     public List<ContractDTO> getAllContracts() {
         return contractRepository.findAll().stream()
                 .map(this::convertToDTO)
