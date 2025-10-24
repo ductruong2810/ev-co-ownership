@@ -4,6 +4,9 @@ import com.group8.evcoownership.service.ContractService;
 import lombok.RequiredArgsConstructor;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +20,38 @@ import java.util.Map;
 public class ContractController {
 
     private final ContractService contractService;
+
+    /**
+     * API: Xem chi tiết hợp đồng của một nhóm
+     * ------------------------------------------------------------
+     * Dành cho:
+     *   - Group Admin
+     *   - Các thành viên trong nhóm
+     *
+     * Mục đích:
+     *   Khi người dùng bấm "Xem hợp đồng" ở giao diện FE,
+     *   API này sẽ trả về thông tin chi tiết gồm:
+     *     1. Hợp đồng (terms, deposit, startDate, endDate, ...)
+     *     2. Nhóm (tên, trạng thái, ngày tạo, ...)
+     *     3. Danh sách thành viên (tên, email, vai trò, % sở hữu, trạng thái cọc, ...)
+     */
+    @GetMapping("/{groupId}/details")
+    @PreAuthorize("@ownershipGroupService.isGroupMember(authentication.name, #groupId)")
+    @Operation(
+            summary = "Xem chi tiết hợp đồng",
+            description = "Trả về thông tin hợp đồng, nhóm và danh sách thành viên trong nhóm"
+    )
+    public ResponseEntity<Map<String, Object>> getContractInfoDetail(
+            @PathVariable Long groupId) {
+
+        // Gọi service xử lý logic lấy thông tin chi tiết
+        Map<String, Object> contractDetail = contractService.getContractInfoDetail(groupId);
+
+        // Trả kết quả về client với HTTP 200 OK
+        return ResponseEntity.ok(contractDetail);
+    }
+
+
 
     /**
      * Get contract info of group (for members)
@@ -53,4 +88,6 @@ public class ContractController {
         Map<String, Object> result = contractService.signContract(groupId, signRequest);
         return ResponseEntity.ok(result);
     }
+
+    // Removed manual approval endpoints - contracts are now auto-approved
 }
