@@ -55,37 +55,37 @@ class ContractControllerTest {
 
     @Test
     @WithMockUser(username = "admin@test.com")
-    void saveContractData_Success() throws Exception {
+    void generateContractData_Success() throws Exception {
         // Given
-        Map<String, Object> savedResponse = new HashMap<>();
-        savedResponse.put("contractId", 1L);
-        savedResponse.put("contractNumber", "EVS-0001-2025");
-        savedResponse.put("status", "SAVED");
-        savedResponse.put("savedToDatabase", true);
+        Map<String, Object> generatedResponse = new HashMap<>();
+        generatedResponse.put("contractId", null);
+        generatedResponse.put("contractNumber", "EVS-1-1234567890");
+        generatedResponse.put("status", "GENERATED");
+        generatedResponse.put("savedToDatabase", false);
 
         when(ownershipGroupService.isGroupAdmin("admin@test.com", TEST_GROUP_ID)).thenReturn(true);
-        when(contractService.saveContractFromData(TEST_GROUP_ID)).thenReturn(savedResponse);
+        when(contractService.generateContractData(TEST_GROUP_ID)).thenReturn(generatedResponse);
 
         // When & Then
-        mockMvc.perform(post("/api/contracts/{groupId}/save", TEST_GROUP_ID)
+        mockMvc.perform(post("/api/contracts/{groupId}/generate", TEST_GROUP_ID)
                         .with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.contractId").value(1L))
-                .andExpect(jsonPath("$.contractNumber").value("EVS-0001-2025"))
-                .andExpect(jsonPath("$.status").value("SAVED"))
-                .andExpect(jsonPath("$.savedToDatabase").value(true));
+                .andExpect(jsonPath("$.contractId").isEmpty())
+                .andExpect(jsonPath("$.contractNumber").value("EVS-1-1234567890"))
+                .andExpect(jsonPath("$.status").value("GENERATED"))
+                .andExpect(jsonPath("$.savedToDatabase").value(false));
 
-        verify(contractService).saveContractFromData(TEST_GROUP_ID);
+        verify(contractService).generateContractData(TEST_GROUP_ID);
     }
 
     @Test
     @WithMockUser(username = "user@test.com")
-    void saveContractData_Unauthorized() throws Exception {
+    void generateContractData_Unauthorized() throws Exception {
         // Given
         when(ownershipGroupService.isGroupAdmin("user@test.com", TEST_GROUP_ID)).thenReturn(false);
 
         // When & Then
-        mockMvc.perform(post("/api/contracts/{groupId}/save", TEST_GROUP_ID)
+        mockMvc.perform(post("/api/contracts/{groupId}/generate", TEST_GROUP_ID)
                         .with(csrf()))
                 .andExpect(status().isOk()); // Security is disabled in test profile
     }
@@ -131,28 +131,33 @@ class ContractControllerTest {
     @WithMockUser(username = "admin@test.com")
     void signContract_Success() throws Exception {
         // Given
-        Map<String, Object> signRequest = new HashMap<>();
-        signRequest.put("adminName", "Admin User");
-        signRequest.put("signatureType", "ADMIN_PROXY");
+        Map<String, Object> contractData = new HashMap<>();
+        contractData.put("terms", "Test contract terms");
+        contractData.put("startDate", "2025-01-01");
+        contractData.put("endDate", "2026-01-01");
+        contractData.put("adminName", "Admin User");
+        contractData.put("signatureType", "ADMIN_PROXY");
 
         Map<String, Object> signResponse = new HashMap<>();
         signResponse.put("success", true);
         signResponse.put("contractId", 1L);
+        signResponse.put("contractNumber", "EVS-0001-2025");
+        signResponse.put("status", "SIGNED");
         signResponse.put("signedAt", LocalDateTime.now().toString());
-        signResponse.put("signedBy", "Admin User");
-        signResponse.put("message", "Contract signed successfully by Admin Group on behalf of all members");
+        signResponse.put("message", "Contract has been signed successfully");
 
         when(ownershipGroupService.isGroupAdmin("admin@test.com", TEST_GROUP_ID)).thenReturn(true);
-        when(contractService.signContract(TEST_GROUP_ID, signRequest)).thenReturn(signResponse);
+        when(contractService.signContractWithData(TEST_GROUP_ID, contractData)).thenReturn(signResponse);
 
         // When & Then
         mockMvc.perform(post("/api/contracts/{groupId}/sign", TEST_GROUP_ID)
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(signRequest)))
+                        .content(objectMapper.writeValueAsString(contractData)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.contractId").value(1L))
+                .andExpect(jsonPath("$.status").value("SIGNED"))
                 .andExpect(jsonPath("$.message").exists());
     }
 
@@ -185,7 +190,7 @@ class ContractControllerTest {
         signResponse.put("message", "Contract signed successfully");
 
         when(ownershipGroupService.isGroupAdmin("admin@test.com", TEST_GROUP_ID)).thenReturn(true);
-        when(contractService.signContract(TEST_GROUP_ID, emptyRequest)).thenReturn(signResponse);
+        when(contractService.signContractWithData(TEST_GROUP_ID, emptyRequest)).thenReturn(signResponse);
 
         // When & Then
         mockMvc.perform(post("/api/contracts/{groupId}/sign", TEST_GROUP_ID)
