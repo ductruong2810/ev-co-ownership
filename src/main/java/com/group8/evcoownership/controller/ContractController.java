@@ -27,7 +27,7 @@ public class ContractController {
      * Dành cho:
      *   - Group Admin
      *   - Các thành viên trong nhóm
-     *
+     * <p>
      * Mục đích:
      *   Khi người dùng bấm "Xem hợp đồng" ở giao diện FE,
      *   API này sẽ trả về thông tin chi tiết gồm:
@@ -67,7 +67,7 @@ public class ContractController {
     /**
      * Generate contract data (chỉ tạo nội dung, không save DB)
      */
-    @PostMapping("/{groupId}/generate")
+    @GetMapping("/{groupId}/generate")
     @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
     @Operation(summary = "Tạo nội dung hợp đồng", description = "Tạo nội dung hợp đồng để preview, không lưu vào database")
     public ResponseEntity<Map<String, Object>> generateContractData(@PathVariable Long groupId) {
@@ -118,14 +118,14 @@ public class ContractController {
      * Dành cho:
      *   - Group Admin
      *   - System (tự động trigger)
-     *
+     * <p>
      * Điều kiện:
      *   - Group đã có đủ thành viên theo memberCapacity
      *   - Group đã có vehicle với vehicleValue
      *   - Contract chưa được ký
      */
     @PostMapping("/{groupId}/auto-sign")
-    @PreAuthorize("@authUtils.isGroupMember(#groupId)")
+    @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
     @Operation(summary = "Tự động ký contract", description = "Tự động ký contract khi đủ điều kiện")
     public ResponseEntity<Map<String, Object>> autoSignContract(@PathVariable Long groupId) {
         Map<String, Object> result = contractService.autoSignContract(groupId);
@@ -140,7 +140,7 @@ public class ContractController {
      *   - Các thành viên trong nhóm
      */
     @GetMapping("/{groupId}/auto-sign-conditions")
-    @PreAuthorize("@authUtils.isGroupMember(#groupId)")
+    @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
     @Operation(summary = "Kiểm tra điều kiện ký tự động", description = "Kiểm tra các điều kiện cần thiết để ký tự động contract")
     public ResponseEntity<Map<String, Object>> checkAutoSignConditions(@PathVariable Long groupId) {
         Map<String, Object> conditions = contractService.checkAutoSignConditions(groupId);
@@ -155,7 +155,7 @@ public class ContractController {
      *   - Group Admin
      */
     @PostMapping("/{groupId}/check-and-auto-sign")
-    @PreAuthorize("@authUtils.isGroupMember(#groupId)")
+    @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
     @Operation(summary = "Kiểm tra và ký tự động", description = "Tự động kiểm tra điều kiện và ký contract nếu đủ điều kiện")
     public ResponseEntity<Map<String, Object>> checkAndAutoSignContract(@PathVariable Long groupId) {
         Map<String, Object> result = contractService.checkAndAutoSignContract(groupId);

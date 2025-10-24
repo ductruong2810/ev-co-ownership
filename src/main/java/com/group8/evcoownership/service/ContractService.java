@@ -1,7 +1,6 @@
 package com.group8.evcoownership.service;
 
 import com.group8.evcoownership.dto.ContractDTO;
-import com.group8.evcoownership.dto.ContractGenerationRequest;
 import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.enums.ContractApprovalStatus;
 import com.group8.evcoownership.enums.NotificationType;
@@ -118,96 +117,8 @@ public class ContractService {
                 .orElseThrow(() -> new EntityNotFoundException("Contract not found for group: " + groupId));
     }
 
-    /**
-     * Tạo contract cho group với thời hạn mặc định 1 năm
-     */
-    @Transactional
-    public Contract createDefaultContract(Long groupId) {
-        OwnershipGroup group = getGroupById(groupId);
 
-        // Kiểm tra đã có contract chưa
-        if (contractRepository.findByGroup(group).isPresent()) {
-            throw new IllegalStateException("Group already has a contract");
-        }
 
-        // Kiểm tra điều kiện tạo contract
-        validateContractCreation(groupId);
-
-        LocalDate startDate = LocalDate.now();
-        LocalDate endDate = startDate.plusYears(1); // Mặc định 1 năm
-
-        // Tính requiredDepositAmount dựa trên group
-        BigDecimal calculatedDepositAmount = depositCalculationService.calculateRequiredDepositAmount(group);
-
-        Contract contract = Contract.builder()
-                .group(group)
-                .startDate(startDate)
-                .endDate(endDate)
-                .terms("Standard EV co-ownership contract for 1 year")
-                .requiredDepositAmount(calculatedDepositAmount)
-                .isActive(true)
-                .approvalStatus(ContractApprovalStatus.PENDING)
-                .build();
-
-        Contract savedContract = contractRepository.save(contract);
-
-        // Send notification to group members (skip in unit tests where orchestrator is not injected)
-        if (notificationOrchestrator != null) {
-            notificationOrchestrator.sendGroupNotification(
-                    groupId,
-                    NotificationType.CONTRACT_CREATED,
-                    "Contract Created",
-                    "A new co-ownership contract has been created for your group"
-            );
-        }
-
-        return savedContract;
-    }
-
-    /**
-     * Tạo contract với thông tin tùy chỉnh
-     */
-    @Transactional
-    public Contract createCustomContract(Long groupId, LocalDate startDate, LocalDate endDate,
-                                         String terms, BigDecimal requiredDepositAmount) {
-        OwnershipGroup group = groupRepository.findById(groupId)
-                .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
-
-        // Kiểm tra đã có contract chưa
-        if (contractRepository.findByGroup(group).isPresent()) {
-            throw new IllegalStateException("Group already has a contract");
-        }
-
-        Contract contract = Contract.builder()
-                .group(group)
-                .startDate(startDate)
-                .endDate(endDate)
-                .terms(terms)
-                .requiredDepositAmount(requiredDepositAmount)
-                .isActive(true)
-                .approvalStatus(ContractApprovalStatus.PENDING)
-                .build();
-
-        return contractRepository.save(contract);
-    }
-
-    /**
-     * Cập nhật contract
-     */
-    @Transactional
-    public Contract updateContract(Long groupId, LocalDate startDate, LocalDate endDate,
-                                   String terms, BigDecimal requiredDepositAmount, Boolean isActive) {
-        Contract contract = getContractByGroup(groupId);
-
-        contract.setStartDate(startDate);
-        contract.setEndDate(endDate);
-        contract.setTerms(terms);
-        contract.setRequiredDepositAmount(requiredDepositAmount);
-        contract.setIsActive(isActive);
-        contract.setUpdatedAt(LocalDateTime.now());
-
-        return contractRepository.save(contract);
-    }
 
     /**
      * Lấy requiredDepositAmount của group
@@ -227,32 +138,7 @@ public class ContractService {
         }
     }
 
-    /**
-     * Cập nhật requiredDepositAmount của contract
-     */
-    @Transactional
-    public Contract updateRequiredDepositAmount(Long groupId, BigDecimal newAmount) {
-        Contract contract = getContractByGroup(groupId);
-        contract.setRequiredDepositAmount(newAmount);
-        contract.setUpdatedAt(LocalDateTime.now());
-        return contractRepository.save(contract);
-    }
 
-    /**
-     * Tính lại requiredDepositAmount dựa trên Vehicle và memberCapacity
-     */
-    @Transactional
-    public Contract recalculateRequiredDepositAmount(Long groupId) {
-        OwnershipGroup group = getGroupById(groupId);
-
-        Contract contract = getContractByGroup(groupId);
-        BigDecimal newAmount = depositCalculationService.calculateRequiredDepositAmount(group);
-
-        contract.setRequiredDepositAmount(newAmount);
-        contract.setUpdatedAt(LocalDateTime.now());
-
-        return contractRepository.save(contract);
-    }
 
     /**
      * Hủy contract với lý do
@@ -476,22 +362,19 @@ public class ContractService {
     private String buildAutoSignatureInfo(Long groupId) {
         LocalDateTime now = LocalDateTime.now();
         String timestamp = now.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
-        
-        StringBuilder signature = new StringBuilder();
-        signature.append("[ĐÃ KÝ TỰ ĐỘNG] ").append(timestamp);
-        signature.append(" - Hệ thống EV Co-Ownership");
-        
-        // Thêm thông tin pháp lý
-        signature.append("\n\n[THÔNG TIN PHÁP LÝ]");
-        signature.append("\n- Contract được ký tự động khi đủ điều kiện");
-        signature.append("\n- Tất cả thành viên đã đồng ý với điều khoản hợp đồng");
-        signature.append("\n- Chữ ký này có giá trị pháp lý đầy đủ");
-        signature.append("\n- Thời gian ký: ").append(timestamp);
-        signature.append("\n- Contract ID: ").append(contractRepository.findByGroupGroupId(groupId)
+
+        return "[ĐÃ KÝ TỰ ĐỘNG] " + timestamp +
+                " - Hệ thống EV Co-Ownership" +
+
+                // Thêm thông tin pháp lý
+                "\n\n[THÔNG TIN PHÁP LÝ]" +
+                "\n- Contract được ký tự động khi đủ điều kiện" +
+                "\n- Tất cả thành viên đã đồng ý với điều khoản hợp đồng" +
+                "\n- Chữ ký này có giá trị pháp lý đầy đủ" +
+                "\n- Thời gian ký: " + timestamp +
+                "\n- Contract ID: " + contractRepository.findByGroupGroupId(groupId)
                 .map(Contract::getId)
-                .orElse(null));
-        
-        return signature.toString();
+                .orElse(null);
     }
 
     /**
@@ -568,7 +451,7 @@ public class ContractService {
         String terms = generateContractTerms(groupId);
 
         // Chuẩn bị response data (không save DB)
-        Map<String, Object> responseData = prepareContractData(groupId, null);
+        Map<String, Object> responseData = prepareContractData(groupId);
 
         // Thêm thông tin contract được generate
         responseData.put("terms", terms);
@@ -582,102 +465,13 @@ public class ContractService {
         return responseData;
     }
 
-    /**
-     * Tự động tạo và lưu contract (không cần input từ frontend)
-     */
-    @Transactional
-    public Map<String, Object> saveContractFromData(Long groupId) {
-        OwnershipGroup group = getGroupById(groupId);
-
-        // Tự động tính toán ngày hiệu lực và ngày kết thúc
-        LocalDate startDate = LocalDate.now(); // Ngày ký = hôm nay
-        LocalDate endDate = startDate.plusYears(1); // Ngày kết thúc = ngày ký + 1 năm
-        
-        // Tự động generate nội dung contract
-        String terms = generateContractTerms(groupId);
-
-        // Kiểm tra đã có contract chưa
-        Contract existingContract = contractRepository.findByGroup(group).orElse(null);
-        
-        Contract contract;
-        if (existingContract != null) {
-            // Cập nhật contract hiện có
-            existingContract.setStartDate(startDate);
-            existingContract.setEndDate(endDate);
-            existingContract.setTerms(terms);
-            existingContract.setUpdatedAt(LocalDateTime.now());
-            contract = contractRepository.save(existingContract);
-        } else {
-            // Tạo contract mới và lưu xuống database
-            ContractGenerationRequest req = new ContractGenerationRequest(
-                    startDate,
-                    endDate,
-                    "HCM",
-                    startDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
-                    null
-            );
-            contract = createOrUpdateContract(groupId, req);
-        }
-
-        // Chuẩn bị response data
-        Map<String, Object> responseData = prepareContractData(groupId, contract);
-        
-        String contractNumber = contract.getId() != null ?
-                generateContractNumber(contract.getId()) :
-                "EVS-" + groupId + "-" + System.currentTimeMillis();
-        
-        responseData.put("contractNumber", contractNumber);
-        responseData.put("contractId", contract.getId());
-        responseData.put("startDate", startDate);
-        responseData.put("endDate", endDate);
-        responseData.put("terms", terms);
-        responseData.put("savedAt", LocalDateTime.now());
-        responseData.put("status", "SAVED");
-        responseData.put("savedToDatabase", true);
-
-        return responseData;
-    }
 
 
-    /**
-     * Tạo hoặc cập nhật contract
-     */
-    private Contract createOrUpdateContract(Long groupId, ContractGenerationRequest request) {
-        OwnershipGroup group = getGroupById(groupId);
-
-        Contract existingContract = contractRepository.findByGroupGroupId(groupId).orElse(null);
-
-        if (existingContract != null) {
-            // Cập nhật contract hiện tại
-            existingContract.setStartDate(request.startDate());
-            existingContract.setEndDate(request.endDate());
-            return contractRepository.save(existingContract);
-        } else {
-            // Kiểm tra điều kiện tạo contract mới
-            validateContractCreation(groupId);
-
-            // Tạo contract mới
-            // Tính requiredDepositAmount
-            BigDecimal requiredDepositAmount = depositCalculationService.calculateRequiredDepositAmount(group);
-
-            Contract newContract = Contract.builder()
-                    .group(group)
-                    .startDate(request.startDate())
-                    .endDate(request.endDate())
-                    .terms("Standard EV co-ownership contract for 1 year")
-                    .requiredDepositAmount(requiredDepositAmount)
-                    .isActive(true)
-                    .approvalStatus(ContractApprovalStatus.PENDING) // Luôn bắt đầu với PENDING
-                    .build();
-
-            return contractRepository.save(newContract);
-        }
-    }
 
     /**
      * Chuẩn bị data cho template
      */
-    private Map<String, Object> prepareContractData(Long groupId, Contract contract) {
+    private Map<String, Object> prepareContractData(Long groupId) {
         OwnershipGroup group = getGroupById(groupId);
         Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group).orElse(null);
         List<OwnershipShare> shares = getSharesByGroupId(groupId);
@@ -686,21 +480,14 @@ public class ContractService {
 
         // Contract info
         Map<String, Object> contractInfo = new HashMap<>();
-        if (contract != null) {
-            contractInfo.put("number", generateContractNumber(contract.getId()));
-            contractInfo.put("effectiveDate", formatDate(contract.getStartDate()));
-            contractInfo.put("endDate", formatDate(contract.getEndDate()));
-            contractInfo.put("termLabel", calculateTermLabel(contract.getStartDate(), contract.getEndDate()));
-        } else {
-            // For generate contract data (no contract exists yet)
-            contractInfo.put("number", "TBD");
-            contractInfo.put("effectiveDate", formatDate(LocalDate.now()));
-            contractInfo.put("endDate", formatDate(LocalDate.now().plusYears(1)));
-            contractInfo.put("termLabel", "1 năm");
-        }
-        contractInfo.put("location", "Hà Nội"); // Default
+        // For generate contract data (no contract exists yet)
+        contractInfo.put("number", "TBD");
+        contractInfo.put("effectiveDate", formatDate(LocalDate.now()));
+        contractInfo.put("endDate", formatDate(LocalDate.now().plusYears(1)));
+        contractInfo.put("termLabel", "1 năm");
+        contractInfo.put("location", "HCM"); // Default
         contractInfo.put("signDate", formatDate(LocalDate.now()));
-        contractInfo.put("status", contract != null ? "DRAFT" : "GENERATED");
+        contractInfo.put("status", "GENERATED");
         data.put("contract", contractInfo);
 
         // Group info
@@ -727,12 +514,8 @@ public class ContractService {
         
         // Tính deposit amount: nếu có contract thì lấy từ contract, nếu không thì tính từ group
         BigDecimal depositAmount;
-        if (contract != null) {
-            depositAmount = contract.getRequiredDepositAmount();
-        } else {
-            // Tính deposit amount cho group khi chưa có contract
-            depositAmount = depositCalculationService.calculateRequiredDepositAmount(group);
-        }
+        // Tính deposit amount cho group khi chưa có contract
+        depositAmount = depositCalculationService.calculateRequiredDepositAmount(group);
         financeInfo.put("depositAmount", depositAmount);
         
         financeInfo.put("targetAmount", BigDecimal.valueOf(50000000)); // Default target
@@ -788,18 +571,6 @@ public class ContractService {
     }
 
     /**
-     * Calculate term label
-     */
-    private String calculateTermLabel(LocalDate startDate, LocalDate endDate) {
-        if (startDate == null || endDate == null) return "—";
-
-        long months = java.time.temporal.ChronoUnit.MONTHS.between(startDate, endDate);
-        if (months == 12) return "12 tháng";
-        if (months == 6) return "6 tháng";
-        return months + " tháng";
-    }
-
-    /**
      * Generate contract number
      */
     private String generateContractNumber(Long contractId) {
@@ -808,7 +579,7 @@ public class ContractService {
     }
 
     /**
-     * Tự động generate nội dung contract
+     * Tự động generate nội dung contract dựa trên template HTML
      */
     private String generateContractTerms(Long groupId) {
         OwnershipGroup group = getGroupById(groupId);
@@ -819,66 +590,62 @@ public class ContractService {
         
         // Header
         terms.append("HỢP ĐỒNG SỞ HỮU XE CHUNG\n");
-        terms.append("Nhóm: ").append(group.getGroupName()).append("\n\n");
+        terms.append("Căn cứ theo thỏa thuận giữa các Bên thuộc Nhóm sở hữu ").append(group.getGroupName()).append(".\n\n");
         
-        // Contract info
-        terms.append("ĐIỀU 1: THÔNG TIN HỢP ĐỒNG\n");
-        terms.append("- Số hợp đồng: ").append("EVS-" + groupId + "-" + System.currentTimeMillis()).append("\n");
-        terms.append("- Ngày hiệu lực: ").append(formatDate(LocalDate.now())).append("\n");
-        terms.append("- Ngày kết thúc: ").append(formatDate(LocalDate.now().plusYears(1))).append("\n");
-        terms.append("- Thời hạn: 12 tháng\n\n");
+        // 1. Các Bên đồng sở hữu
+        terms.append("1. CÁC BÊN ĐỒNG SỞ HỮU\n");
+        terms.append("Nhóm sở hữu: ").append(group.getGroupName()).append("\n");
+        terms.append("Số thành viên: ").append(shares.size()).append("/").append(group.getMemberCapacity()).append("\n");
+        terms.append("Danh sách thành viên:\n");
         
-        // Vehicle info
-        terms.append("ĐIỀU 2: THÔNG TIN XE\n");
-        if (vehicle != null) {
-            terms.append("- Loại xe: ").append(vehicle.getBrand()).append(" ").append(vehicle.getModel()).append("\n");
-            terms.append("- Biển số: ").append(vehicle.getLicensePlate()).append("\n");
-            terms.append("- Số khung: ").append(vehicle.getChassisNumber()).append("\n");
-            terms.append("- Giá trị xe: ").append(formatCurrency(vehicle.getVehicleValue())).append("\n");
-        } else {
-            terms.append("- Thông tin xe sẽ được cập nhật sau\n");
-        }
-        terms.append("\n");
-        
-        // Members info
-        terms.append("ĐIỀU 3: THÀNH VIÊN NHÓM\n");
-        terms.append("- Số thành viên: ").append(shares.size()).append("\n");
-        terms.append("- Sức chứa tối đa: ").append(group.getMemberCapacity()).append("\n");
-        for (OwnershipShare share : shares) {
-            terms.append("- ").append(share.getUser().getFullName())
+        int totalPercentage = 0;
+        for (int i = 0; i < shares.size(); i++) {
+            OwnershipShare share = shares.get(i);
+            totalPercentage += share.getOwnershipPercentage().intValue();
+            terms.append("- ").append(i + 1).append(". ").append(share.getUser().getFullName())
                  .append(" (").append(share.getOwnershipPercentage()).append("%)\n");
         }
-        terms.append("\n");
+        terms.append("Tổng tỷ lệ sở hữu: ").append(totalPercentage).append("%\n\n");
         
-        // Financial terms
-        terms.append("ĐIỀU 4: ĐIỀU KHOẢN TÀI CHÍNH\n");
-        terms.append("- Tiền cọc yêu cầu: ").append(formatCurrency(calculateDepositAmount(group))).append("\n");
-        terms.append("- Quỹ chung mục tiêu: 50,000,000 VND\n");
-        terms.append("- Quy tắc đóng góp: Theo tỷ lệ sở hữu\n");
-        terms.append("- Tài khoản quỹ: MB Bank 0123456789\n\n");
+        // 2. Góp vốn & Quỹ vận hành
+        terms.append("2. GÓP VỐN & QUỸ VẬN HÀNH\n");
+        if (vehicle != null) {
+            terms.append("- Giá trị xe: ").append(formatCurrency(vehicle.getVehicleValue())).append("\n");
+        } else {
+            terms.append("- Giá trị xe: Sẽ được cập nhật sau\n");
+        }
+        terms.append("- Tiền cọc: ").append(formatCurrency(calculateDepositAmount(group))).append("\n");
+        terms.append("- Mục tiêu quỹ: 50,000,000 VND\n");
+        terms.append("- Nguyên tắc góp: Theo tỷ lệ sở hữu\n");
+        terms.append("- Tài khoản quỹ: MB Bank 0123456789\n");
+        terms.append("\nCác khoản chi bảo dưỡng, sạc, vệ sinh… được thanh toán từ Quỹ chung; khoản cá nhân (nếu có) do cá nhân chi trả theo bút toán bù trừ.\n");
+        terms.append("\nLưu ý: Tiền cọc phải được đóng đầy đủ trước khi hợp đồng được kích hoạt và có hiệu lực.\n\n");
         
-        // Usage terms
-        terms.append("ĐIỀU 5: QUY TẮC SỬ DỤNG\n");
-        terms.append("- Phương thức phân bổ: Điểm tín dụng lịch sử & phiên bốc thăm tuần\n");
-        terms.append("- Ưu tiên: Theo điểm tín dụng và lịch sử sử dụng\n\n");
+        // 3. Quyền sử dụng & Lịch đặt
+        terms.append("3. QUYỀN SỬ DỤNG & LỊCH ĐẶT\n");
+        terms.append("Việc sử dụng xe được thực hiện thông qua hệ thống đặt lịch. Quy tắc ưu tiên: Điểm tín dụng lịch sử & phiên bốc thăm tuần. Mỗi Bên cam kết tuân thủ lịch đặt và hoàn trả đúng hẹn.\n\n");
         
-        // Maintenance terms
-        terms.append("ĐIỀU 6: BẢO DƯỠNG VÀ SỬA CHỮA\n");
-        terms.append("- Phê duyệt: Biểu quyết > 50% theo tỷ lệ sở hữu cho chi phí > 5 triệu\n");
-        terms.append("- Bảo hiểm: PVI – Gói vật chất toàn diện\n");
-        terms.append("- Chi phí: Chia theo tỷ lệ sở hữu\n\n");
+        // 4. Bảo dưỡng, Sửa chữa & Bảo hiểm
+        terms.append("4. BẢO DƯỠNG, SỬA CHỮA & BẢO HIỂM\n");
+        terms.append("Xe được bảo dưỡng định kỳ theo khuyến nghị của hãng. Trách nhiệm phê duyệt chi phí: Biểu quyết > 50% theo tỷ lệ sở hữu cho chi > 5 triệu. Hợp đồng bảo hiểm: PVI – Gói vật chất toàn diện.\n\n");
         
-        // Dispute resolution
-        terms.append("ĐIỀU 7: GIẢI QUYẾT TRANH CHẤP\n");
-        terms.append("- Phương thức: Biểu quyết đa số\n");
-        terms.append("- Trọng tài: Theo tỷ lệ sở hữu\n");
-        terms.append("- Luật áp dụng: Pháp luật Việt Nam\n\n");
+        // 5. Giải quyết tranh chấp
+        terms.append("5. GIẢI QUYẾT TRANH CHẤP\n");
+        terms.append("Tranh chấp phát sinh được ghi nhận trên hệ thống và ưu tiên hòa giải trong Nhóm. Cơ chế biểu quyết: Đa số theo tỷ lệ sở hữu; nếu hoà 50/50, ưu tiên lịch sử đóng góp. Thẩm quyền cuối cùng theo pháp luật hiện hành.\n\n");
         
-        // Signatures
-        terms.append("ĐIỀU 8: CHỮ KÝ\n");
-        terms.append("- Đại diện nhóm: Admin Group\n");
-        terms.append("- Ngày ký: ").append(formatDate(LocalDate.now())).append("\n");
-        terms.append("- Địa điểm: Hà Nội\n\n");
+        // 6. Điều khoản chung
+        terms.append("6. ĐIỀU KHOẢN CHUNG\n");
+        terms.append("- Hợp đồng có hiệu lực khi tất cả Bên đồng sở hữu đồng ý và ký.\n");
+        terms.append("- Kích hoạt hợp đồng: Sau khi ký, hợp đồng chỉ được kích hoạt khi tất cả thành viên đã đóng đủ tiền cọc theo quy định.\n");
+        terms.append("- Duyệt hợp đồng: Hệ thống sẽ duyệt lại hợp đồng sau khi nhận đủ tiền cọc từ tất cả thành viên.\n");
+        terms.append("- Các phụ lục (nếu có) là bộ phận không tách rời của Hợp đồng.\n");
+        terms.append("- Hệ thống lưu vết phiên bản, thời điểm ký và danh tính người ký.\n\n");
+        
+        // 7. Chữ ký các Bên
+        terms.append("7. CHỮ KÝ CÁC BÊN\n");
+        terms.append("Đại diện nhóm: Admin Group\n");
+        terms.append("Ngày ký: ").append(formatDate(LocalDate.now())).append("\n");
+        terms.append("Địa điểm: Hà Nội\n\n");
         
         terms.append("Hợp đồng này có hiệu lực từ ngày ký và được tất cả thành viên nhóm đồng ý.\n");
         
