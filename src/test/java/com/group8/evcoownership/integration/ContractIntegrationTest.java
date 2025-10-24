@@ -75,7 +75,7 @@ class ContractIntegrationTest {
         }
 
         // When
-        Map<String, Object> contractData = contractService.generateContractData(testGroup.getGroupId());
+        Map<String, Object> contractData = contractService.generateContractData(testGroup.getGroupId(), 1L);
         
         // Then
         assertNotNull(contractData);
@@ -105,18 +105,11 @@ class ContractIntegrationTest {
         }
 
         // Generate contract data first
-        Map<String, Object> contractData = contractService.generateContractData(testGroup.getGroupId());
+        Map<String, Object> contractData = contractService.generateContractData(testGroup.getGroupId(), 1L);
         assertNotNull(contractData);
 
-        // When - Sign contract with data
-        Map<String, Object> signData = new HashMap<>();
-        signData.put("terms", contractData.get("terms"));
-        signData.put("startDate", contractData.get("startDate").toString());
-        signData.put("endDate", contractData.get("endDate").toString());
-        signData.put("adminName", "Test Admin");
-        signData.put("signatureType", "ADMIN_PROXY");
-        
-        var result = contractService.signContractWithData(testGroup.getGroupId(), signData);
+        // When - Auto sign contract
+        var result = contractService.autoSignContract(testGroup.getGroupId());
 
         // Then
         assertNotNull(result);
@@ -153,23 +146,16 @@ class ContractIntegrationTest {
                 .thenReturn(new BigDecimal("2000000"));
 
         // Step 1: Generate contract data
-        Map<String, Object> contractData = contractService.generateContractData(testGroup.getGroupId());
+        Map<String, Object> contractData = contractService.generateContractData(testGroup.getGroupId(), 1L);
         assertNotNull(contractData);
 
-        // Step 2: Sign contract with data
-        Map<String, Object> signRequest = Map.of(
-                "terms", contractData.get("terms"),
-                "startDate", contractData.get("startDate").toString(),
-                "endDate", contractData.get("endDate").toString(),
-                "adminName", "Test Admin",
-                "signatureType", "ADMIN_PROXY"
-        );
-        var signResult = contractService.signContractWithData(testGroup.getGroupId(), signRequest);
+        // Step 2: Auto sign contract
+        var signResult = contractService.autoSignContract(testGroup.getGroupId());
         assertTrue((Boolean) signResult.get("success"));
 
         // Verify final state
         Contract finalContract = contractRepository.findByGroupGroupId(testGroup.getGroupId()).orElse(null);
         assertNotNull(finalContract);
-        assertTrue(finalContract.getTerms().contains("[ĐÃ KÝ]"));
+        assertTrue(finalContract.getTerms().contains("[ĐÃ KÝ TỰ ĐỘNG]"));
     }
 }

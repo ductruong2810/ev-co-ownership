@@ -288,7 +288,18 @@ public class OwnershipShareService {
         BigDecimal totalAllocated = calculateTotalAllocatedPercentage(groupId);
         BigDecimal remainingPercentage = new BigDecimal("100").subtract(totalAllocated);
         boolean isFullyAllocated = totalAllocated.compareTo(new BigDecimal("100")) == 0;
-        
+
+        // Lấy vai trò của user hiện tại trong nhóm
+        var currentUserShare = shares.stream()
+                .filter(s -> s.getUser().getUserId().equals(currentUserId))
+                .findFirst()
+                .orElse(null);
+
+        String currentUserRole = currentUserShare != null
+                ? currentUserShare.getGroupRole().name()
+                : "UNKNOWN";
+
+        // Danh sach thanh vien
         var members = shares.stream()
                 .map(share -> {
                     BigDecimal investmentAmount = calculateInvestmentAmount(vehicle.getVehicleValue(), share.getOwnershipPercentage());
@@ -312,6 +323,7 @@ public class OwnershipShareService {
                             .investmentAmount(investmentAmount)
                             .status(memberStatus)
                             .isCurrentUser(isCurrentUser)
+                            .groupRole(share.getGroupRole().name())
                             .build();
                 })
                 .toList();
@@ -325,6 +337,7 @@ public class OwnershipShareService {
                 .totalAllocatedPercentage(totalAllocated)
                 .isFullyAllocated(isFullyAllocated)
                 .remainingPercentage(remainingPercentage)
+                .currentUserRole(currentUserRole)
                 .members(members)
                 .build();
     }

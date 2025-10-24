@@ -17,6 +17,7 @@ public class GroupOwnershipSummaryResponse {
     private BigDecimal totalAllocatedPercentage;
     private boolean isFullyAllocated;
     private BigDecimal remainingPercentage;
+    private String currentUserRole;
     private List<MemberOwnershipInfo> members;
     
     @Data
@@ -29,5 +30,6 @@ public class GroupOwnershipSummaryResponse {
         private BigDecimal investmentAmount;
         private String status; // PENDING, CONFIRMED, LOCKED
         private boolean isCurrentUser;
+        private String groupRole;// Them vai tro cua user
     }
 }

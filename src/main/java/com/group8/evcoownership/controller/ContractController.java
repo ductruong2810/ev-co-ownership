@@ -7,6 +7,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -70,25 +72,18 @@ public class ContractController {
     @GetMapping("/{groupId}/generate")
     @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
     @Operation(summary = "Tạo nội dung hợp đồng", description = "Tạo nội dung hợp đồng để preview, không lưu vào database")
-    public ResponseEntity<Map<String, Object>> generateContractData(@PathVariable Long groupId) {
-        Map<String, Object> contractData = contractService.generateContractData(groupId);
+    public ResponseEntity<Map<String, Object>> generateContractData(
+            @PathVariable Long groupId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        
+        // Lấy userId từ authentication
+        Long userId = Long.parseLong(userDetails.getUsername());
+        
+        Map<String, Object> contractData = contractService.generateContractData(groupId, userId);
         return ResponseEntity.ok(contractData);
     }
 
 
-    /**
-     * Ký hợp đồng (save + ký trong 1 lần)
-     */
-    @PostMapping("/{groupId}/sign")
-    @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
-    @Operation(summary = "Ký hợp đồng", description = "Lưu và ký hợp đồng với dữ liệu từ frontend")
-    public ResponseEntity<Map<String, Object>> signContract(
-            @PathVariable Long groupId,
-            @RequestBody Map<String, Object> contractData) {
-
-        Map<String, Object> result = contractService.signContractWithData(groupId, contractData);
-        return ResponseEntity.ok(result);
-    }
 
     /**
      * Hủy contract (chỉ admin group)
