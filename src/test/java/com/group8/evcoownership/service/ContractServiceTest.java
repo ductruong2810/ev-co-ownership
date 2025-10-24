@@ -3,6 +3,9 @@ package com.group8.evcoownership.service;
 import com.group8.evcoownership.entity.Contract;
 import com.group8.evcoownership.entity.OwnershipGroup;
 import com.group8.evcoownership.entity.OwnershipShare;
+import com.group8.evcoownership.entity.User;
+import com.group8.evcoownership.enums.DepositStatus;
+import com.group8.evcoownership.enums.GroupRole;
 import com.group8.evcoownership.repository.ContractRepository;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
 import com.group8.evcoownership.repository.OwnershipShareRepository;
@@ -46,6 +49,7 @@ class ContractServiceTest {
 
     private OwnershipGroup testGroup;
     private Contract testContract;
+    private OwnershipShare testShare;
     private final Long TEST_GROUP_ID = 1L;
     private final Long TEST_CONTRACT_ID = 1L;
 
@@ -69,6 +73,17 @@ class ContractServiceTest {
                 .requiredDepositAmount(new BigDecimal("2000000"))
                 .isActive(true)
                 .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        // Setup test share
+        testShare = OwnershipShare.builder()
+                .group(testGroup)
+                .user(User.builder().userId(1L).build())
+                .ownershipPercentage(new BigDecimal("20.00"))
+                .groupRole(GroupRole.ADMIN)
+                .depositStatus(DepositStatus.PENDING)
+                .joinDate(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
     }
@@ -281,12 +296,13 @@ class ContractServiceTest {
     @Test
     void cancelContract_Success() {
         // Given
+        String reason = "Group members decided to cancel";
         when(contractRepository.findByGroupGroupId(TEST_GROUP_ID))
                 .thenReturn(Optional.of(testContract));
         when(contractRepository.save(any(Contract.class))).thenReturn(testContract);
 
         // When
-        contractService.cancelContract(TEST_GROUP_ID);
+        contractService.cancelContract(TEST_GROUP_ID, reason);
 
         // Then
         verify(contractRepository).findByGroupGroupId(TEST_GROUP_ID);
@@ -321,46 +337,65 @@ class ContractServiceTest {
     @Test
     void signContract_Success() {
         // Given
-        Map<String, Object> signRequest = new HashMap<>();
-        signRequest.put("signer", "admin@test.com");
+        Map<String, Object> contractData = new HashMap<>();
+        contractData.put("terms", "Test contract terms");
+        contractData.put("startDate", "2025-01-01");
+        contractData.put("endDate", "2026-01-01");
+        contractData.put("adminName", "Admin User");
+        contractData.put("signatureType", "ADMIN_PROXY");
 
-        when(contractRepository.findByGroupGroupId(TEST_GROUP_ID))
+        when(groupRepository.findById(TEST_GROUP_ID))
+                .thenReturn(Optional.of(testGroup));
+        when(contractRepository.findByGroup(testGroup))
                 .thenReturn(Optional.of(testContract));
         when(contractRepository.save(any(Contract.class))).thenReturn(testContract);
 
         // When
-        Map<String, Object> result = contractService.signContract(TEST_GROUP_ID, signRequest);
+        Map<String, Object> result = contractService.signContractWithData(TEST_GROUP_ID, contractData);
 
         // Then
         assertNotNull(result);
         assertTrue((Boolean) result.get("success"));
         assertEquals(TEST_CONTRACT_ID, result.get("contractId"));
-        assertEquals("Contract signed successfully by Admin Group on behalf of all members", result.get("message"));
+        assertEquals("SIGNED", result.get("status"));
+        assertEquals("Contract has been signed successfully", result.get("message"));
         assertNotNull(result.get("signedAt"));
 
-        verify(contractRepository, times(2)).findByGroupGroupId(TEST_GROUP_ID);
+        verify(groupRepository).findById(TEST_GROUP_ID);
+        verify(contractRepository).findByGroup(testGroup);
         verify(contractRepository).save(any(Contract.class));
     }
 
     @Test
-    void signContract_ContractNotActive() {
+    void signContractWithData_ContractNotActive() {
         // Given
-        testContract.setIsActive(false);
-        Map<String, Object> signRequest = new HashMap<>();
-        signRequest.put("signer", "admin@test.com");
+        Map<String, Object> contractData = new HashMap<>();
+        contractData.put("terms", "Test contract terms");
+        contractData.put("startDate", "2025-01-01");
+        contractData.put("endDate", "2026-01-01");
+        contractData.put("adminName", "Admin User");
+        contractData.put("signatureType", "ADMIN_PROXY");
 
-        when(contractRepository.findByGroupGroupId(TEST_GROUP_ID))
-                .thenReturn(Optional.of(testContract));
+        when(groupRepository.findById(TEST_GROUP_ID))
+                .thenReturn(Optional.of(testGroup));
+        when(contractRepository.findByGroup(testGroup))
+                .thenReturn(Optional.empty()); // No existing contract
+        when(ownershipShareRepository.findByGroupGroupId(TEST_GROUP_ID))
+                .thenReturn(List.of(testShare, testShare, testShare, testShare, testShare)); // Mock 5 shares to pass validation
+        when(contractRepository.save(any(Contract.class))).thenReturn(testContract);
 
         // When
-        Map<String, Object> result = contractService.signContract(TEST_GROUP_ID, signRequest);
+        Map<String, Object> result = contractService.signContractWithData(TEST_GROUP_ID, contractData);
 
         // Then
         assertNotNull(result);
-        assertFalse((Boolean) result.get("success"));
-        assertEquals("Contract is not active", result.get("message"));
+        assertTrue((Boolean) result.get("success"));
+        assertEquals(TEST_CONTRACT_ID, result.get("contractId"));
+        assertEquals("SIGNED", result.get("status"));
+        assertEquals("Contract has been signed successfully", result.get("message"));
 
-        verify(contractRepository).findByGroupGroupId(TEST_GROUP_ID);
-        verify(contractRepository, never()).save(any(Contract.class));
+        verify(groupRepository, times(2)).findById(TEST_GROUP_ID);
+        verify(contractRepository).findByGroup(testGroup);
+        verify(contractRepository).save(any(Contract.class));
     }
 }

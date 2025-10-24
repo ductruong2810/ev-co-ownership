@@ -9,6 +9,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -32,28 +34,50 @@ public class ContractController {
     }
 
     /**
-     * Lưu contract data xuống database (tự động generate nội dung)
+     * Generate contract data (chỉ tạo nội dung, không save DB)
      */
-    @PostMapping("/{groupId}/save")
+    @PostMapping("/{groupId}/generate")
     @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
-    @Operation(summary = "Lưu dữ liệu hợp đồng", description = "Tự động tạo và lưu hợp đồng xuống cơ sở dữ liệu")
-    public ResponseEntity<Map<String, Object>> saveContractData(@PathVariable Long groupId) {
-        Map<String, Object> savedContract = contractService.saveContractFromData(groupId);
-        return ResponseEntity.ok(savedContract);
+    @Operation(summary = "Tạo nội dung hợp đồng", description = "Tạo nội dung hợp đồng để preview, không lưu vào database")
+    public ResponseEntity<Map<String, Object>> generateContractData(@PathVariable Long groupId) {
+        Map<String, Object> contractData = contractService.generateContractData(groupId);
+        return ResponseEntity.ok(contractData);
     }
 
 
     /**
-     * Ký hợp đồng (chỉ admin group)
+     * Ký hợp đồng (save + ký trong 1 lần)
      */
     @PostMapping("/{groupId}/sign")
     @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
-    @Operation(summary = "Ký hợp đồng", description = "Chỉ admin của nhóm được phép ký")
+    @Operation(summary = "Ký hợp đồng", description = "Lưu và ký hợp đồng với dữ liệu từ frontend")
     public ResponseEntity<Map<String, Object>> signContract(
             @PathVariable Long groupId,
-            @RequestBody Map<String, Object> signRequest) {
+            @RequestBody Map<String, Object> contractData) {
 
-        Map<String, Object> result = contractService.signContract(groupId, signRequest);
+        Map<String, Object> result = contractService.signContractWithData(groupId, contractData);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Hủy contract (chỉ admin group)
+     */
+    @PostMapping("/{groupId}/cancel")
+    @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
+    @Operation(summary = "Hủy hợp đồng", description = "Chỉ admin của nhóm được phép hủy hợp đồng với lý do")
+    public ResponseEntity<Map<String, Object>> cancelContract(
+            @PathVariable Long groupId,
+            @RequestBody Map<String, Object> cancelRequest) {
+        
+        String reason = (String) cancelRequest.getOrDefault("reason", "Contract cancelled by group admin");
+        contractService.cancelContract(groupId, reason);
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", true);
+        result.put("message", "Contract has been cancelled successfully");
+        result.put("reason", reason);
+        result.put("cancelledAt", LocalDateTime.now());
+        
         return ResponseEntity.ok(result);
     }
 

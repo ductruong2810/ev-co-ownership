@@ -171,12 +171,20 @@ public class ContractService {
     }
 
     /**
-     * Hủy contract
+     * Hủy contract với lý do
      */
     @Transactional
-    public void cancelContract(Long groupId) {
+    public void cancelContract(Long groupId, String reason) {
         Contract contract = getContractByGroup(groupId);
+        
+        // Kiểm tra contract có thể hủy không
+        if (contract.getApprovalStatus() == ContractApprovalStatus.APPROVED) {
+            throw new IllegalStateException("Cannot cancel an approved contract");
+        }
+        
         contract.setIsActive(false);
+        contract.setApprovalStatus(ContractApprovalStatus.REJECTED);
+        contract.setRejectionReason(reason);
         contract.setUpdatedAt(LocalDateTime.now());
         contractRepository.save(contract);
     }
@@ -205,33 +213,49 @@ public class ContractService {
     }
 
     /**
-     * Ký hợp đồng (Admin Group ký thay tất cả Members)
+     * Ký hợp đồng với dữ liệu từ frontend (save + ký trong 1 lần)
      */
     @Transactional
-    public Map<String, Object> signContract(Long groupId, Map<String, Object> signRequest) {
-        Contract contract = getContractByGroup(groupId);
+    public Map<String, Object> signContractWithData(Long groupId, Map<String, Object> contractData) {
+        OwnershipGroup group = getGroupById(groupId);
 
-        // Kiểm tra contract đã được ký chưa
-        if (contract.getIsActive() == null || !contract.getIsActive()) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("success", false);
-            error.put("message", "Contract is not active");
-            return error;
+        // Lấy dữ liệu từ frontend
+        String terms = (String) contractData.get("terms");
+        LocalDate startDate = LocalDate.parse((String) contractData.get("startDate"));
+        LocalDate endDate = LocalDate.parse((String) contractData.get("endDate"));
+        String adminName = (String) contractData.getOrDefault("adminName", "Admin Group");
+        String signatureType = (String) contractData.getOrDefault("signatureType", "ADMIN_PROXY");
+
+        // Kiểm tra đã có contract chưa
+        Contract existingContract = contractRepository.findByGroup(group).orElse(null);
+        
+        Contract contract;
+        if (existingContract != null) {
+            // Cập nhật contract hiện có
+            existingContract.setStartDate(startDate);
+            existingContract.setEndDate(endDate);
+            existingContract.setTerms(terms);
+            existingContract.setUpdatedAt(LocalDateTime.now());
+            contract = existingContract;
+        } else {
+            // Kiểm tra điều kiện tạo contract mới
+            validateContractCreation(groupId);
+
+            // Tạo contract mới
+            BigDecimal requiredDepositAmount = depositCalculationService.calculateRequiredDepositAmount(group);
+
+            contract = Contract.builder()
+                    .group(group)
+                    .startDate(startDate)
+                    .endDate(endDate)
+                    .terms(terms)
+                    .requiredDepositAmount(requiredDepositAmount)
+                    .isActive(true)
+                    .approvalStatus(ContractApprovalStatus.PENDING)
+                    .build();
         }
 
-        // Kiểm tra contract đã được ký chưa (tránh ký nhiều lần)
-        if (contract.getTerms() != null && contract.getTerms().contains("[ĐÃ KÝ]")) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("success", false);
-            error.put("message", "Contract has already been signed");
-            return error;
-        }
-
-        // Lấy thông tin Admin Group
-        String adminName = (String) signRequest.getOrDefault("adminName", "Admin Group");
-        String signatureType = (String) signRequest.getOrDefault("signatureType", "ADMIN_PROXY");
-
-        // Cập nhật thông tin ký với đại diện
+        // Thêm thông tin ký
         String signatureInfo = buildSignatureInfo(adminName, signatureType, groupId);
         contract.setTerms(contract.getTerms() + "\n\n" + signatureInfo);
         contract.setUpdatedAt(LocalDateTime.now());
@@ -241,17 +265,13 @@ public class ContractService {
 
         Contract savedContract = contractRepository.save(contract);
 
-        // Không tự động duyệt ngay sau khi ký
-        // Contract sẽ được auto-approve khi tất cả deposit đã được thanh toán
-        // Logic này được xử lý trong DepositPaymentService.checkAndActivateContractIfAllDepositsPaid()
-
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);
         result.put("contractId", savedContract.getId());
+        result.put("contractNumber", generateContractNumber(savedContract.getId()));
+        result.put("status", "SIGNED");
         result.put("signedAt", LocalDateTime.now());
-        result.put("signedBy", adminName);
-        result.put("signatureType", signatureType);
-        result.put("message", "Contract signed successfully by Admin Group on behalf of all members");
+        result.put("message", "Contract has been signed successfully");
 
         return result;
     }
@@ -286,6 +306,34 @@ public class ContractService {
     // Removed manual approval methods - contracts are now auto-approved after signing
 
     // ========== CONTRACT GENERATION METHODS ==========
+
+    /**
+     * Generate contract data (chỉ tạo nội dung, không save DB)
+     */
+    public Map<String, Object> generateContractData(Long groupId) {
+        getGroupById(groupId);
+
+        // Tự động tính toán ngày hiệu lực và ngày kết thúc
+        LocalDate startDate = LocalDate.now();
+        LocalDate endDate = startDate.plusYears(1);
+        
+        // Tự động generate nội dung contract
+        String terms = generateContractTerms(groupId);
+
+        // Chuẩn bị response data (không save DB)
+        Map<String, Object> responseData = prepareContractData(groupId, null);
+        
+        // Thêm thông tin contract được generate
+        responseData.put("terms", terms);
+        responseData.put("startDate", startDate);
+        responseData.put("endDate", endDate);
+        responseData.put("contractNumber", "EVS-" + groupId + "-" + System.currentTimeMillis());
+        responseData.put("generatedAt", LocalDateTime.now());
+        responseData.put("status", "GENERATED");
+        responseData.put("savedToDatabase", false);
+
+        return responseData;
+    }
 
     /**
      * Tự động tạo và lưu contract (không cần input từ frontend)
@@ -333,6 +381,9 @@ public class ContractService {
         
         responseData.put("contractNumber", contractNumber);
         responseData.put("contractId", contract.getId());
+        responseData.put("startDate", startDate);
+        responseData.put("endDate", endDate);
+        responseData.put("terms", terms);
         responseData.put("savedAt", LocalDateTime.now());
         responseData.put("status", "SAVED");
         responseData.put("savedToDatabase", true);
@@ -380,7 +431,7 @@ public class ContractService {
      * Chuẩn bị data cho template
      */
     private Map<String, Object> prepareContractData(Long groupId, Contract contract) {
-        OwnershipGroup group = contract.getGroup();
+        OwnershipGroup group = getGroupById(groupId);
         Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group).orElse(null);
         List<OwnershipShare> shares = getSharesByGroupId(groupId);
 
@@ -388,13 +439,21 @@ public class ContractService {
 
         // Contract info
         Map<String, Object> contractInfo = new HashMap<>();
-        contractInfo.put("number", generateContractNumber(contract.getId()));
-        contractInfo.put("effectiveDate", formatDate(contract.getStartDate()));
-        contractInfo.put("endDate", formatDate(contract.getEndDate()));
-        contractInfo.put("termLabel", calculateTermLabel(contract.getStartDate(), contract.getEndDate()));
+        if (contract != null) {
+            contractInfo.put("number", generateContractNumber(contract.getId()));
+            contractInfo.put("effectiveDate", formatDate(contract.getStartDate()));
+            contractInfo.put("endDate", formatDate(contract.getEndDate()));
+            contractInfo.put("termLabel", calculateTermLabel(contract.getStartDate(), contract.getEndDate()));
+        } else {
+            // For generate contract data (no contract exists yet)
+            contractInfo.put("number", "TBD");
+            contractInfo.put("effectiveDate", formatDate(LocalDate.now()));
+            contractInfo.put("endDate", formatDate(LocalDate.now().plusYears(1)));
+            contractInfo.put("termLabel", "1 năm");
+        }
         contractInfo.put("location", "Hà Nội"); // Default
         contractInfo.put("signDate", formatDate(LocalDate.now()));
-        contractInfo.put("status", "DRAFT");
+        contractInfo.put("status", contract != null ? "DRAFT" : "GENERATED");
         data.put("contract", contractInfo);
 
         // Group info
@@ -418,7 +477,7 @@ public class ContractService {
         // Finance info
         Map<String, Object> financeInfo = new HashMap<>();
         financeInfo.put("vehiclePrice", vehicle != null ? vehicle.getVehicleValue() : BigDecimal.ZERO);
-        financeInfo.put("depositAmount", contract.getRequiredDepositAmount());
+        financeInfo.put("depositAmount", contract != null ? contract.getRequiredDepositAmount() : BigDecimal.ZERO);
         financeInfo.put("targetAmount", BigDecimal.valueOf(50000000)); // Default target
         financeInfo.put("contributionRule", "Theo tỷ lệ sở hữu");
         data.put("finance", financeInfo);
