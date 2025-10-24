@@ -49,7 +49,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = authHeader.substring(7);
 
-        if (token == null || token.trim().isEmpty()) {
+        if (token.trim().isEmpty()) {
             log.warn("Empty token detected");
             request.setAttribute("jwt_error", "Token không được để trống");
             filterChain.doFilter(request, response);
@@ -75,7 +75,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     );
 
                     UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                            user,
+                            user.getEmail(),
                             null,
                             Collections.singletonList(authority)
                     );

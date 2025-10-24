@@ -394,7 +394,11 @@ public class OwnershipGroupService {
     public boolean isGroupAdmin(String userEmail, Long groupId) {
         try {
             var user = userRepository.findByEmail(userEmail)
-                    .orElseThrow(() -> new EntityNotFoundException("User not found: " + userEmail));
+                    .orElse(null);
+            
+            if (user == null) {
+                return false;
+            }
 
             var ownershipShare = ownershipShareRepository.findById_UserIdAndGroup_GroupId((user.getUserId()), groupId)
                     .orElse(null);
@@ -411,7 +415,11 @@ public class OwnershipGroupService {
     public boolean isGroupMember(String userEmail, Long groupId) {
         try {
             var user = userRepository.findByEmail(userEmail)
-                    .orElseThrow(() -> new EntityNotFoundException("User not found: " + userEmail));
+                    .orElse(null);
+            
+            if (user == null) {
+                return false;
+            }
 
             var ownershipShare = ownershipShareRepository.findById_UserIdAndGroup_GroupId(user.getUserId(), groupId)
                     .orElse(null);
