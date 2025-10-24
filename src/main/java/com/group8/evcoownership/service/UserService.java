@@ -1,6 +1,7 @@
 package com.group8.evcoownership.service;
 
 import com.group8.evcoownership.entity.User;
+import com.group8.evcoownership.exception.ResourceNotFoundException;
 import com.group8.evcoownership.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +22,10 @@ public class UserService {
 
     public User createUser(User user) {
         return userRepository.save(user);
+    }
+    public User findByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
     }
 }
 

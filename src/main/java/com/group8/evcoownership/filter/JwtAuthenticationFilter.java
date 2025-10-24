@@ -24,7 +24,7 @@ import java.io.IOException;
 import java.util.Collections;
 
 @Component
-@Slf4j //slf4j nay de hien thi log errors
+@Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Autowired
@@ -49,7 +49,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = authHeader.substring(7);
 
-        //kiem tra token trống
         if (token == null || token.trim().isEmpty()) {
             log.warn("Empty token detected");
             request.setAttribute("jwt_error", "Token không được để trống");
@@ -57,14 +56,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // ========== CHECK BLACKLIST ==========
         if (logoutService.isTokenBlacklisted(token)) {
             request.setAttribute("jwt_error", "Token đã bị thu hồi. Vui lòng đăng nhập lại");
             filterChain.doFilter(request, response);
             return;
         }
 
-        // ========== VALIDATE TOKEN VỚI TRY-CATCH ==========
         try {
             if (jwtUtil.validateToken(token)) {
                 String email = jwtUtil.extractEmail(token);
@@ -78,7 +75,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     );
 
                     UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                            user.getEmail(),
+                            user,
                             null,
                             Collections.singletonList(authority)
                     );
