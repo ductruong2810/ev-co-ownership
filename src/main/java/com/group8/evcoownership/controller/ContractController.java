@@ -1,17 +1,14 @@
 package com.group8.evcoownership.controller;
 
-import com.group8.evcoownership.dto.*;
-import com.group8.evcoownership.service.ContractGenerationService;
 import com.group8.evcoownership.service.ContractService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -55,6 +52,7 @@ public class ContractController {
     }
 
 
+
     /**
      * Get contract info of group (for members)
      */
@@ -91,32 +89,5 @@ public class ContractController {
         return ResponseEntity.ok(result);
     }
 
-    /**
-     * Staff duyệt hợp đồng
-     */
-    @PatchMapping("/{contractId}/approve")
-    @PreAuthorize("hasRole('STAFF') or hasRole('ADMIN')")
-    @Operation(summary = "Duyệt hợp đồng", description = "Staff/Admin phê duyệt hợp đồng")
-    public ResponseEntity<Map<String, Object>> approveContract(
-            @PathVariable Long contractId,
-            @Valid @RequestBody ContractApprovalRequest request,
-            @AuthenticationPrincipal String staffEmail) {
-
-        Map<String, Object> result = contractService.approveContract(contractId, request, staffEmail);
-        return ResponseEntity.ok(result);
-    }
-
-    /**
-     * Lấy danh sách hợp đồng chờ duyệt (cho staff)
-     */
-    @GetMapping("/pending")
-    @PreAuthorize("hasRole('STAFF') or hasRole('ADMIN')")
-    @Operation(summary = "Danh sách hợp đồng chờ duyệt", description = "Dành cho Staff/Admin, có phân trang")
-    public ResponseEntity<Map<String, Object>> getPendingContracts(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-
-        Map<String, Object> result = contractService.getPendingContracts(page, size);
-        return ResponseEntity.ok(result);
-    }
+    // Removed manual approval endpoints - contracts are now auto-approved
 }

@@ -21,6 +21,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -73,6 +74,8 @@ class ContractControllerTest {
                 .andExpect(jsonPath("$.contractNumber").value("EVS-0001-2025"))
                 .andExpect(jsonPath("$.status").value("SAVED"))
                 .andExpect(jsonPath("$.savedToDatabase").value(true));
+
+        verify(contractService).saveContractFromData(TEST_GROUP_ID);
     }
 
     @Test

@@ -1,6 +1,5 @@
 package com.group8.evcoownership.integration;
 
-import com.group8.evcoownership.dto.SaveContractDataRequest;
 import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.repository.*;
 import com.group8.evcoownership.service.ContractService;
@@ -106,10 +105,8 @@ class ContractIntegrationTest {
         Contract contract = contractService.createDefaultContract(testGroup.getGroupId());
         assertNotNull(contract);
 
-        SaveContractDataRequest request = new SaveContractDataRequest("Test contract terms");
-
         // When
-        var result = contractService.saveContractFromData(testGroup.getGroupId(), request);
+        var result = contractService.saveContractFromData(testGroup.getGroupId());
 
         // Then
         assertNotNull(result);
@@ -149,8 +146,7 @@ class ContractIntegrationTest {
         assertNotNull(contract);
 
         // Step 2: Save contract with data
-        SaveContractDataRequest request = new SaveContractDataRequest("Test contract terms");
-        var generationResult = contractService.saveContractFromData(testGroup.getGroupId(), request);
+        var generationResult = contractService.saveContractFromData(testGroup.getGroupId());
         assertNotNull(generationResult);
 
         // Step 3: Sign contract
