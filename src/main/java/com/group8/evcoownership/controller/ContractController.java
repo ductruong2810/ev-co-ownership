@@ -26,6 +26,37 @@ public class ContractController {
     private final ContractGenerationService contractGenerationService;
 
     /**
+     * API: Xem chi tiết hợp đồng của một nhóm
+     * ------------------------------------------------------------
+     * Dành cho:
+     *   - Group Admin
+     *   - Các thành viên trong nhóm
+     *
+     * Mục đích:
+     *   Khi người dùng bấm "Xem hợp đồng" ở giao diện FE,
+     *   API này sẽ trả về thông tin chi tiết gồm:
+     *     1. Hợp đồng (terms, deposit, startDate, endDate, ...)
+     *     2. Nhóm (tên, trạng thái, ngày tạo, ...)
+     *     3. Danh sách thành viên (tên, email, vai trò, % sở hữu, trạng thái cọc, ...)
+     */
+    @GetMapping("/{groupId}/details")
+    @PreAuthorize("@ownershipGroupService.isGroupMember(authentication.name, #groupId)")
+    @Operation(
+            summary = "Xem chi tiết hợp đồng",
+            description = "Trả về thông tin hợp đồng, nhóm và danh sách thành viên trong nhóm"
+    )
+    public ResponseEntity<Map<String, Object>> getContractInfoDetail(
+            @PathVariable Long groupId) {
+
+        // Gọi service xử lý logic lấy thông tin chi tiết
+        Map<String, Object> contractDetail = contractService.getContractInfoDetail(groupId);
+
+        // Trả kết quả về client với HTTP 200 OK
+        return ResponseEntity.ok(contractDetail);
+    }
+
+
+    /**
      * Generate contract automatically from React TSX template (Frontend provides templateContent)
      * - startDate = today
      * - endDate = today + 1 year
