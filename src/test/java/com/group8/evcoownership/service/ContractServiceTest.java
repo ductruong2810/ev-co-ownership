@@ -243,6 +243,7 @@ class ContractServiceTest {
     void getRequiredDepositAmount_Success() {
         // Given
         BigDecimal expectedAmount = new BigDecimal("2000000");
+        when(groupRepository.findById(TEST_GROUP_ID)).thenReturn(Optional.of(testGroup));
         when(contractRepository.findByGroupGroupId(TEST_GROUP_ID))
                 .thenReturn(Optional.of(testContract));
 
@@ -251,6 +252,7 @@ class ContractServiceTest {
 
         // Then
         assertEquals(expectedAmount, result);
+        verify(groupRepository).findById(TEST_GROUP_ID);
         verify(contractRepository).findByGroupGroupId(TEST_GROUP_ID);
     }
 
@@ -312,6 +314,7 @@ class ContractServiceTest {
     @Test
     void getContractInfo_Success() {
         // Given
+        when(groupRepository.findById(TEST_GROUP_ID)).thenReturn(Optional.of(testGroup));
         when(contractRepository.findByGroupGroupId(TEST_GROUP_ID))
                 .thenReturn(Optional.of(testContract));
 
@@ -331,6 +334,7 @@ class ContractServiceTest {
         assertEquals(testContract.getCreatedAt(), result.get("createdAt"));
         assertEquals(testContract.getUpdatedAt(), result.get("updatedAt"));
 
+        verify(groupRepository).findById(TEST_GROUP_ID);
         verify(contractRepository).findByGroupGroupId(TEST_GROUP_ID);
     }
 
