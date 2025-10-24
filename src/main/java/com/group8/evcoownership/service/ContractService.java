@@ -670,7 +670,7 @@ public class ContractService {
         
         // Financial terms
         terms.append("ĐIỀU 4: ĐIỀU KHOẢN TÀI CHÍNH\n");
-        terms.append("- Tiền cọc yêu cầu: ").append(formatCurrency(getRequiredDepositAmount(groupId))).append("\n");
+        terms.append("- Tiền cọc yêu cầu: ").append(formatCurrency(calculateDepositAmount(group))).append("\n");
         terms.append("- Quỹ chung mục tiêu: 50,000,000 VND\n");
         terms.append("- Quy tắc đóng góp: Theo tỷ lệ sở hữu\n");
         terms.append("- Tài khoản quỹ: MB Bank 0123456789\n\n");
@@ -762,6 +762,13 @@ public class ContractService {
                     memberCapacity, shares.size())
             );
         }
+    }
+
+    /**
+     * Tính toán deposit amount cho group mà không cần contract tồn tại
+     */
+    private BigDecimal calculateDepositAmount(OwnershipGroup group) {
+        return depositCalculationService.calculateRequiredDepositAmount(group);
     }
 
     @Transactional
