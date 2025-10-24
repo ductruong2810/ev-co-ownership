@@ -151,10 +151,13 @@ class ContractIntegrationTest {
 
         // Step 3: Sign contract
         Map<String, Object> signRequest = Map.of(
+                "terms", generationResult.get("terms"),
+                "startDate", generationResult.get("startDate").toString(),
+                "endDate", generationResult.get("endDate").toString(),
                 "adminName", "Test Admin",
                 "signatureType", "ADMIN_PROXY"
         );
-        var signResult = contractService.signContract(testGroup.getGroupId(), signRequest);
+        var signResult = contractService.signContractWithData(testGroup.getGroupId(), signRequest);
         assertTrue((Boolean) signResult.get("success"));
 
         // Verify final state

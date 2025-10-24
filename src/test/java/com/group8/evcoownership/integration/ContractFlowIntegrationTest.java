@@ -92,27 +92,26 @@ class ContractFlowIntegrationTest {
         Map<String, Object> expectedResponse = Map.of(
                 "success", true,
                 "contractId", 1L,
+                "contractNumber", "EVS-0001-2025",
+                "status", "SIGNED",
                 "signedAt", LocalDateTime.now(),
-                "signedBy", "Nguyễn Văn Test",
-                "signatureType", "ADMIN_PROXY",
-                "message", "Contract signed successfully by Admin Group on behalf of all members"
+                "message", "Contract has been signed successfully"
         );
 
-        when(contractService.signContract(1L, signRequest))
+        when(contractService.signContractWithData(1L, signRequest))
                 .thenReturn(expectedResponse);
 
         // Act
-        Map<String, Object> response = contractService.signContract(1L, signRequest);
+        Map<String, Object> response = contractService.signContractWithData(1L, signRequest);
 
         // Assert
         assertNotNull(response);
         assertTrue((Boolean) response.get("success"));
         assertEquals(1L, response.get("contractId"));
-        assertEquals("Nguyễn Văn Test", response.get("signedBy"));
-        assertEquals("ADMIN_PROXY", response.get("signatureType"));
-        assertTrue(response.get("message").toString().contains("Contract signed successfully"));
+        assertEquals("SIGNED", response.get("status"));
+        assertTrue(response.get("message").toString().contains("Contract has been signed successfully"));
 
-        verify(contractService).signContract(1L, signRequest);
+        verify(contractService).signContractWithData(1L, signRequest);
     }
 
     @Test
