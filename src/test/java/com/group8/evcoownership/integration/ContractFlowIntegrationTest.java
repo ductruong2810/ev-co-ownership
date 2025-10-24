@@ -57,19 +57,17 @@ class ContractFlowIntegrationTest {
     @Test
     void testContractGeneration() {
         // Arrange
-        SaveContractDataRequest request = new SaveContractDataRequest("Test contract terms");
-
         Map<String, Object> expectedResponse = new HashMap<>();
         expectedResponse.put("contractId", 1L);
         expectedResponse.put("contractNumber", "EVS-2025-001");
         expectedResponse.put("status", "SAVED");
         expectedResponse.put("savedToDatabase", true);
 
-        when(contractService.saveContractFromData(1L, request))
+        when(contractService.saveContractFromData(1L))
                 .thenReturn(expectedResponse);
 
         // Act
-        Map<String, Object> response = contractService.saveContractFromData(1L, request);
+        Map<String, Object> response = contractService.saveContractFromData(1L);
 
         // Assert
         assertNotNull(response);
@@ -77,7 +75,7 @@ class ContractFlowIntegrationTest {
         assertEquals("EVS-2025-001", response.get("contractNumber"));
         assertEquals("SAVED", response.get("status"));
 
-        verify(contractService).saveContractFromData(1L, request);
+        verify(contractService).saveContractFromData(1L);
     }
 
     @Test
