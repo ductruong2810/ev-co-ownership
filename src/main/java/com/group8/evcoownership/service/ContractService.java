@@ -5,15 +5,23 @@ import com.group8.evcoownership.entity.Contract;
 import com.group8.evcoownership.entity.OwnershipGroup;
 import com.group8.evcoownership.entity.OwnershipShare;
 import com.group8.evcoownership.entity.Vehicle;
+import com.group8.evcoownership.entity.OwnershipShare;
+import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.enums.ContractApprovalStatus;
 import com.group8.evcoownership.enums.NotificationType;
+import com.group8.evcoownership.enums.RoleName;
 import com.group8.evcoownership.repository.ContractRepository;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
 import com.group8.evcoownership.repository.OwnershipShareRepository;
 import com.group8.evcoownership.repository.VehicleRepository;
+import com.group8.evcoownership.repository.OwnershipShareRepository;
+import com.group8.evcoownership.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -21,6 +29,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -33,7 +43,84 @@ public class ContractService {
     private final OwnershipGroupRepository groupRepository;
     private final OwnershipShareRepository ownershipShareRepository;
     private final DepositCalculationService depositCalculationService;
+    private final UserRepository userRepository;
     private final NotificationOrchestrator notificationOrchestrator;
+    private final OwnershipShareRepository shareRepository;
+
+    /**
+     * Lấy thông tin hợp đồng chi tiết cho một Group
+     * ------------------------------------------------------------
+     * Bao gồm:
+     *  - Thông tin hợp đồng (terms, ngày bắt đầu, ngày kết thúc,...)
+     *  - Thông tin nhóm (tên nhóm, trạng thái, ngày tạo)
+     *  - Danh sách thành viên (userId, họ tên, email, vai trò, % sở hữu,...)
+     */
+    public Map<String, Object> getContractInfoDetail(Long groupId) {
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        // 1️⃣ Lấy hợp đồng của group
+        // ------------------------------------------------------------
+        // Mỗi nhóm chỉ có 1 hợp đồng đang hoạt động.
+        // Nếu không tìm thấy -> ném lỗi để controller trả HTTP 404.
+        Contract contract = contractRepository.findByGroupGroupId(groupId)
+                .orElseThrow(() ->
+                        new RuntimeException("Không tìm thấy hợp đồng cho groupId " + groupId));
+
+        // 2️⃣ Lấy thông tin nhóm sở hữu
+        // ------------------------------------------------------------
+        OwnershipGroup group = groupRepository.findById(groupId)
+                .orElseThrow(() ->
+                        new RuntimeException("Không tìm thấy nhóm sở hữu " + groupId));
+
+        // 3️⃣ Lấy danh sách thành viên trong nhóm
+        // ------------------------------------------------------------
+        // Mỗi bản ghi OwnershipShare đại diện cho 1 thành viên và phần sở hữu của họ trong group.
+        List<OwnershipShare> shares = shareRepository.findByGroup_GroupId(groupId);
+
+        // 4️⃣ Chuẩn bị danh sách thành viên (gọn gàng, không trả entity thô)
+        List<Map<String, Object>> members = shares.stream()
+                .map(share -> {
+                    User user = userRepository.findById(share.getUser().getUserId())
+                            .orElse(null);
+
+                    Map<String, Object> memberInfo = new LinkedHashMap<>();
+                    memberInfo.put("userId", share.getUser().getUserId());
+                    memberInfo.put("fullName", user != null ? user.getFullName() : null);
+                    memberInfo.put("email", user != null ? user.getEmail() : null);
+                    memberInfo.put("groupRole", share.getGroupRole().name());
+                    memberInfo.put("ownershipPercentage", share.getOwnershipPercentage());
+                    memberInfo.put("depositStatus", share.getDepositStatus().name());
+                    memberInfo.put("joinDate", share.getJoinDate());
+                    return memberInfo;
+                })
+                .toList();
+
+        // 5️⃣ Gộp toàn bộ dữ liệu trả về client
+        // ------------------------------------------------------------
+        result.put("contract", Map.of(
+                "contractId", contract.getId(),
+                "terms", contract.getTerms(),
+                "requiredDepositAmount", contract.getRequiredDepositAmount(),
+                "startDate", contract.getStartDate(),
+                "endDate", contract.getEndDate(),
+                "isActive", contract.getIsActive(),
+                "createdAt", contract.getCreatedAt(),
+                "updatedAt", contract.getUpdatedAt()
+        ));
+
+        result.put("group", Map.of(
+                "groupId", group.getGroupId(),
+                "groupName", group.getGroupName(),
+                "status", group.getStatus(),
+                "createdAt", group.getCreatedAt(),
+                "updatedAt", group.getUpdatedAt()
+        ));
+
+        result.put("members", members);
+
+        return result;
+    }
+
     private final VehicleRepository vehicleRepository;
 
     /**
