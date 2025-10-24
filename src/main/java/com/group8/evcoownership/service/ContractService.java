@@ -385,7 +385,8 @@ public class ContractService {
      * Generate contract data (chỉ tạo nội dung, không save DB)
      */
     public Map<String, Object> generateContractData(Long groupId) {
-        getGroupById(groupId);
+        // Kiểm tra điều kiện generate contract
+        validateContractGeneration(groupId);
 
         // Tự động tính toán ngày hiệu lực và ngày kết thúc
         LocalDate startDate = LocalDate.now();
@@ -640,7 +641,7 @@ public class ContractService {
         
         // Contract info
         terms.append("ĐIỀU 1: THÔNG TIN HỢP ĐỒNG\n");
-        terms.append("- Số hợp đồng: ").append(generateContractNumber(groupId)).append("\n");
+        terms.append("- Số hợp đồng: ").append("EVS-" + groupId + "-" + System.currentTimeMillis()).append("\n");
         terms.append("- Ngày hiệu lực: ").append(formatDate(LocalDate.now())).append("\n");
         terms.append("- Ngày kết thúc: ").append(formatDate(LocalDate.now().plusYears(1))).append("\n");
         terms.append("- Thời hạn: 12 tháng\n\n");
@@ -669,7 +670,7 @@ public class ContractService {
         
         // Financial terms
         terms.append("ĐIỀU 4: ĐIỀU KHOẢN TÀI CHÍNH\n");
-        terms.append("- Tiền cọc yêu cầu: ").append(formatCurrency(getRequiredDepositAmount(groupId))).append("\n");
+        terms.append("- Tiền cọc yêu cầu: ").append(formatCurrency(calculateDepositAmount(group))).append("\n");
         terms.append("- Quỹ chung mục tiêu: 50,000,000 VND\n");
         terms.append("- Quy tắc đóng góp: Theo tỷ lệ sở hữu\n");
         terms.append("- Tài khoản quỹ: MB Bank 0123456789\n\n");
@@ -739,6 +740,35 @@ public class ContractService {
                     memberCapacity, shares.size())
             );
         }
+    }
+
+    /**
+     * Kiểm tra điều kiện generate contract
+     * Business rule: Số thành viên thực tế phải bằng memberCapacity
+     */
+    private void validateContractGeneration(Long groupId) {
+        OwnershipGroup group = getGroupById(groupId);
+
+        List<OwnershipShare> shares = getSharesByGroupId(groupId);
+        Integer memberCapacity = group.getMemberCapacity();
+
+        if (memberCapacity == null) {
+            throw new IllegalStateException("Group memberCapacity is not set");
+        }
+
+        if (shares.size() != memberCapacity) {
+            throw new IllegalStateException(
+                String.format("Cannot generate contract: Expected %d members, but found %d members. Please add more members to the group.",
+                    memberCapacity, shares.size())
+            );
+        }
+    }
+
+    /**
+     * Tính toán deposit amount cho group mà không cần contract tồn tại
+     */
+    private BigDecimal calculateDepositAmount(OwnershipGroup group) {
+        return depositCalculationService.calculateRequiredDepositAmount(group);
     }
 
     @Transactional
