@@ -17,7 +17,6 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
 
     Optional<Contract> findByGroup(OwnershipGroup group);
 
-    Page<Contract> findByApprovalStatus(ContractApprovalStatus approvalStatus, Pageable pageable);
     List<Contract> findByApprovalStatus(ContractApprovalStatus status);
 
 }

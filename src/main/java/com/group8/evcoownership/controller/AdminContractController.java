@@ -24,7 +24,6 @@ import java.util.List;
 public class AdminContractController {
 
     private final ContractService contractService;
-    private final UserService userService;
 
 //    @PutMapping("/{contractId}/approve")
 //    @PreAuthorize("hasRole('ADMIN')")
