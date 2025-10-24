@@ -1,27 +1,18 @@
 package com.group8.evcoownership.service;
 
+import com.group8.evcoownership.dto.ContractDTO;
 import com.group8.evcoownership.dto.ContractGenerationRequest;
-import com.group8.evcoownership.entity.Contract;
-import com.group8.evcoownership.entity.OwnershipGroup;
-import com.group8.evcoownership.entity.OwnershipShare;
-import com.group8.evcoownership.entity.Vehicle;
-import com.group8.evcoownership.entity.OwnershipShare;
-import com.group8.evcoownership.entity.User;
+import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.enums.ContractApprovalStatus;
 import com.group8.evcoownership.enums.NotificationType;
-import com.group8.evcoownership.enums.RoleName;
+import com.group8.evcoownership.exception.ResourceNotFoundException;
 import com.group8.evcoownership.repository.ContractRepository;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
 import com.group8.evcoownership.repository.OwnershipShareRepository;
 import com.group8.evcoownership.repository.VehicleRepository;
-import com.group8.evcoownership.repository.OwnershipShareRepository;
-import com.group8.evcoownership.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -29,8 +20,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
-import java.util.List;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -263,12 +252,12 @@ public class ContractService {
     @Transactional
     public void cancelContract(Long groupId, String reason) {
         Contract contract = getContractByGroup(groupId);
-        
+
         // Kiểm tra contract có thể hủy không
         if (contract.getApprovalStatus() == ContractApprovalStatus.APPROVED) {
             throw new IllegalStateException("Cannot cancel an approved contract");
         }
-        
+
         contract.setIsActive(false);
         contract.setApprovalStatus(ContractApprovalStatus.REJECTED);
         contract.setRejectionReason(reason);
@@ -315,7 +304,7 @@ public class ContractService {
 
         // Kiểm tra đã có contract chưa
         Contract existingContract = contractRepository.findByGroup(group).orElse(null);
-        
+
         Contract contract;
         if (existingContract != null) {
             // Cập nhật contract hiện có
@@ -403,13 +392,13 @@ public class ContractService {
         // Tự động tính toán ngày hiệu lực và ngày kết thúc
         LocalDate startDate = LocalDate.now();
         LocalDate endDate = startDate.plusYears(1);
-        
+
         // Tự động generate nội dung contract
         String terms = generateContractTerms(groupId);
 
         // Chuẩn bị response data (không save DB)
         Map<String, Object> responseData = prepareContractData(groupId, null);
-        
+
         // Thêm thông tin contract được generate
         responseData.put("terms", terms);
         responseData.put("startDate", startDate);
@@ -753,5 +742,84 @@ public class ContractService {
             );
         }
     }
+
+    @Transactional
+    public ContractDTO approveContract(Long contractId, User admin) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
+
+        if (contract.getApprovalStatus() != ContractApprovalStatus.PENDING) {
+            throw new IllegalStateException("Only pending contracts can be approved");
+        }
+
+        contract.setApprovalStatus(ContractApprovalStatus.APPROVED);
+        contract.setApprovedBy(admin);
+        contract.setApprovedAt(LocalDateTime.now());
+        contract.setIsActive(true);
+
+        return convertToDTO(contractRepository.save(contract));
+    }
+
+    @Transactional
+    public ContractDTO rejectContract(Long contractId, String reason, User admin) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
+
+        if (contract.getApprovalStatus() != ContractApprovalStatus.PENDING) {
+            throw new IllegalStateException("Only pending contracts can be rejected");
+        }
+
+        contract.setApprovalStatus(ContractApprovalStatus.REJECTED);
+        contract.setApprovedBy(admin);
+        contract.setApprovedAt(LocalDateTime.now());
+        contract.setRejectionReason(reason);
+        contract.setIsActive(false);
+
+        return convertToDTO(contractRepository.save(contract));
+
+    }
+
+    private ContractDTO convertToDTO(Contract contract) {
+        ContractDTO dto = new ContractDTO();
+        dto.setId(contract.getId());
+        dto.setGroupId(contract.getGroup().getGroupId());
+        dto.setStartDate(contract.getStartDate());
+        dto.setEndDate(contract.getEndDate());
+        dto.setRequiredDepositAmount(contract.getRequiredDepositAmount());
+        dto.setIsActive(contract.getIsActive());
+        dto.setApprovalStatus(contract.getApprovalStatus());
+        dto.setApprovedById(contract.getApprovedBy() != null ? contract.getApprovedBy().getUserId() : null);
+        dto.setApprovedAt(contract.getApprovedAt());
+        dto.setRejectionReason(contract.getRejectionReason());
+        dto.setCreatedAt(contract.getCreatedAt());
+        dto.setUpdatedAt(contract.getUpdatedAt());
+        return dto;
+    }
+
+    public List<ContractDTO> getAllContracts() {
+        return contractRepository.findAll().stream()
+                .map(this::convertToDTO)
+                .toList();
+    }
+
+    public ContractDTO getContractById(Long contractId) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
+        return convertToDTO(contract);
+    }
+
+    public List<ContractDTO> getContractsByStatus(ContractApprovalStatus status) {
+        return contractRepository.findByApprovalStatus(status).stream()
+                .map(this::convertToDTO)
+                .toList();
+    }
+
+    public boolean contractExists(Long contractId) {
+        return contractRepository.existsById(contractId);
+    }
+
+
+
+
 
 }
