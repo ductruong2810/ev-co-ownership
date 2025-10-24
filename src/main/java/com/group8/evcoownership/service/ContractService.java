@@ -1,7 +1,6 @@
 package com.group8.evcoownership.service;
 
 import com.group8.evcoownership.dto.ContractGenerationRequest;
-import com.group8.evcoownership.dto.SaveContractDataRequest;
 import com.group8.evcoownership.entity.Contract;
 import com.group8.evcoownership.entity.OwnershipGroup;
 import com.group8.evcoownership.entity.OwnershipShare;
