@@ -19,11 +19,10 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/contracts")
 @RequiredArgsConstructor
-@Tag(name = "Contracts", description = "Tạo, xuất PDF, ký và duyệt hợp đồng")
+@Tag(name = "Contracts", description = "Create, export PDF, sign and approve contracts")
 public class ContractController {
 
     private final ContractService contractService;
-    private final ContractGenerationService contractGenerationService;
 
     /**
      * API: Xem chi tiết hợp đồng của một nhóm
@@ -57,72 +56,33 @@ public class ContractController {
 
 
     /**
-     * Generate contract automatically from React TSX template (Frontend provides templateContent)
-     * - startDate = today
-     * - endDate = today + 1 year
-     * - terms extracted from TSX content
-     */
-    @PostMapping("/generate/{groupId}/auto")
-    @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
-    @Operation(summary = "Tạo hợp đồng tự động", description = "Sinh hợp đồng từ React TSX template do FE gửi lên")
-    public ResponseEntity<ContractGenerationResponse> generateContractAuto(
-            @PathVariable Long groupId,
-            @RequestBody Map<String, String> request
-    ) {
-        String templateContent = request == null ? null : request.get("templateContent");
-        ContractGenerationResponse response = contractGenerationService.generateContractAuto(
-                groupId,
-                "REACT_TSX",
-                templateContent
-        );
-        return ResponseEntity.ok(response);
-    }
-
-    // Removed legacy flexible/preview/with-template: TSX-only flow below
-
-    /**
-     * Export hợp đồng thành PDF từ React TSX template (Frontend gửi templateContent)
-     */
-    @PostMapping("/export/{groupId}/pdf")
-    @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
-    @Operation(summary = "Xuất hợp đồng PDF", description = "Xuất PDF từ nội dung TSX template do FE gửi lên")
-    public ResponseEntity<byte[]> exportContractPdf(
-            @PathVariable Long groupId,
-            @RequestBody Map<String, String> request) {
-
-        String templateContent = request.get("templateContent");
-        if (templateContent == null || templateContent.trim().isEmpty()) {
-            throw new IllegalArgumentException("Template content is required from Frontend");
-        }
-
-        byte[] pdfBytes = contractGenerationService.exportToPdf(groupId, templateContent);
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_PDF);
-        headers.setContentDispositionFormData("attachment", "contract-" + groupId + ".pdf");
-
-        return ResponseEntity.ok()
-                .headers(headers)
-                .body(pdfBytes);
-    }
-
-    /**
-     * Lấy thông tin contract của group
+     * Get contract info of group (for members)
      */
     @GetMapping("/{groupId}")
     @PreAuthorize("@ownershipGroupService.isGroupMember(authentication.name, #groupId)")
-    @Operation(summary = "Lấy thông tin hợp đồng", description = "Thông tin hợp đồng của một group")
+    @Operation(summary = "Get contract information", description = "Get contract information of the group")
     public ResponseEntity<Map<String, Object>> getContractInfo(@PathVariable Long groupId) {
         Map<String, Object> contractInfo = contractService.getContractInfo(groupId);
         return ResponseEntity.ok(contractInfo);
     }
 
     /**
-     * Ký hợp đồng (chỉ admin group)
+     * Save contract data to database
+     */
+    @PostMapping("/{groupId}/save")
+    @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
+    @Operation(summary = "Save contract data", description = "Save contract data to database")
+    public ResponseEntity<Map<String, Object>> saveContractData(@PathVariable Long groupId) {
+        Map<String, Object> savedContract = contractService.saveContractFromData(groupId);
+        return ResponseEntity.ok(savedContract);
+    }
+
+    /**
+     * Sign contract (admin only)
      */
     @PostMapping("/{groupId}/sign")
     @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
-    @Operation(summary = "Ký hợp đồng", description = "Chỉ admin của nhóm được phép ký")
+    @Operation(summary = "Sign contract", description = "Only group admin can sign the contract")
     public ResponseEntity<Map<String, Object>> signContract(
             @PathVariable Long groupId,
             @RequestBody Map<String, Object> signRequest) {

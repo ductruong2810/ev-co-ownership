@@ -1,8 +1,10 @@
 package com.group8.evcoownership.service;
 
-import com.group8.evcoownership.dto.ContractApprovalRequest;
+import com.group8.evcoownership.dto.ContractGenerationRequest;
 import com.group8.evcoownership.entity.Contract;
 import com.group8.evcoownership.entity.OwnershipGroup;
+import com.group8.evcoownership.entity.OwnershipShare;
+import com.group8.evcoownership.entity.Vehicle;
 import com.group8.evcoownership.entity.OwnershipShare;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.enums.ContractApprovalStatus;
@@ -10,6 +12,8 @@ import com.group8.evcoownership.enums.NotificationType;
 import com.group8.evcoownership.enums.RoleName;
 import com.group8.evcoownership.repository.ContractRepository;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
+import com.group8.evcoownership.repository.OwnershipShareRepository;
+import com.group8.evcoownership.repository.VehicleRepository;
 import com.group8.evcoownership.repository.OwnershipShareRepository;
 import com.group8.evcoownership.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -25,9 +29,11 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +41,7 @@ public class ContractService {
 
     private final ContractRepository contractRepository;
     private final OwnershipGroupRepository groupRepository;
+    private final OwnershipShareRepository ownershipShareRepository;
     private final DepositCalculationService depositCalculationService;
     private final UserRepository userRepository;
     private final NotificationOrchestrator notificationOrchestrator;
@@ -114,6 +121,7 @@ public class ContractService {
         return result;
     }
 
+    private final VehicleRepository vehicleRepository;
 
     /**
      * Lấy contract của group
@@ -128,13 +136,15 @@ public class ContractService {
      */
     @Transactional
     public Contract createDefaultContract(Long groupId) {
-        OwnershipGroup group = groupRepository.findById(groupId)
-                .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
+        OwnershipGroup group = getGroupById(groupId);
 
         // Kiểm tra đã có contract chưa
         if (contractRepository.findByGroup(group).isPresent()) {
             throw new IllegalStateException("Group already has a contract");
         }
+
+        // Kiểm tra điều kiện tạo contract
+        validateContractCreation(groupId);
 
         LocalDate startDate = LocalDate.now();
         LocalDate endDate = startDate.plusYears(1); // Mặc định 1 năm
@@ -236,8 +246,7 @@ public class ContractService {
      */
     @Transactional
     public Contract recalculateRequiredDepositAmount(Long groupId) {
-        OwnershipGroup group = groupRepository.findById(groupId)
-                .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
+        OwnershipGroup group = getGroupById(groupId);
 
         Contract contract = getContractByGroup(groupId);
         BigDecimal newAmount = depositCalculationService.calculateRequiredDepositAmount(group);
@@ -314,7 +323,14 @@ public class ContractService {
         contract.setTerms(contract.getTerms() + "\n\n" + signatureInfo);
         contract.setUpdatedAt(LocalDateTime.now());
 
+        // Chuyển status từ PENDING → SIGNED
+        contract.setApprovalStatus(ContractApprovalStatus.SIGNED);
+
         Contract savedContract = contractRepository.save(contract);
+
+        // Không tự động duyệt ngay sau khi ký
+        // Contract sẽ được auto-approve khi tất cả deposit đã được thanh toán
+        // Logic này được xử lý trong DepositPaymentService.checkAndActivateContractIfAllDepositsPaid()
 
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);
@@ -354,103 +370,240 @@ public class ContractService {
         return signature.toString();
     }
 
+    // Removed manual approval methods - contracts are now auto-approved after signing
+
+    // ========== CONTRACT GENERATION METHODS ==========
+
     /**
-     * Staff duyệt hợp đồng
+     * Lưu contract từ dữ liệu Frontend gửi lên
+     */
+    /**
+     * Lưu contract từ dữ liệu Frontend gửi lên
      */
     @Transactional
-    public Map<String, Object> approveContract(Long contractId, ContractApprovalRequest request, String staffEmail) {
-        // Kiểm tra quyền staff
-        User staff = userRepository.findByEmail(staffEmail)
-                .orElseThrow(() -> new EntityNotFoundException("Staff not found"));
+    public Map<String, Object> saveContractFromData(Long groupId) {  // Removed SaveContractDataRequest
+        OwnershipGroup group = getGroupById(groupId);
 
-        if (staff.getRole().getRoleName() != RoleName.STAFF &&
-                staff.getRole().getRoleName() != RoleName.ADMIN) {
-            throw new IllegalStateException("Only staff can approve contracts");
-        }
+        // Tự động tính toán ngày hiệu lực và ngày kết thúc
+        LocalDate startDate = LocalDate.now(); // Ngày ký = hôm nay
+        LocalDate endDate = startDate.plusYears(1); // Ngày kết thúc = ngày ký + 1 năm
 
-        // Lấy contract
-        Contract contract = contractRepository.findById(contractId)
-                .orElseThrow(() -> new EntityNotFoundException("Contract not found"));
+        // Kiểm tra đã có contract chưa
+        Contract existingContract = contractRepository.findByGroup(group).orElse(null);
 
-        // Cập nhật trạng thái duyệt
-        contract.setApprovalStatus(request.status());
-        contract.setApprovedBy(staff);
-        contract.setApprovedAt(LocalDateTime.now());
-
-        if (request.status() == ContractApprovalStatus.REJECTED) {
-            contract.setRejectionReason(request.rejectionReason());
+        Contract contract;
+        if (existingContract != null) {
+            // Cập nhật contract hiện có
+            existingContract.setStartDate(startDate);
+            existingContract.setEndDate(endDate);
+            existingContract.setUpdatedAt(LocalDateTime.now());
+            contract = contractRepository.save(existingContract);
         } else {
-            contract.setRejectionReason(null);
+            // Tạo contract mới và lưu xuống database
+            ContractGenerationRequest req = new ContractGenerationRequest(
+                    startDate,
+                    endDate,
+                    "HCM",
+                    startDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
+                    null
+            );
+            contract = createOrUpdateContract(groupId, req);
         }
 
-        Contract savedContract = contractRepository.save(contract);
+        // Chuẩn bị response data
+        Map<String, Object> responseData = prepareContractData(groupId, contract);
 
-        // Send notification to group members
-        NotificationType notificationType = request.status() == ContractApprovalStatus.APPROVED
-                ? NotificationType.CONTRACT_APPROVED
-                : NotificationType.CONTRACT_REJECTED;
+        String contractNumber = contract.getId() != null ?
+                generateContractNumber(contract.getId()) :
+                "EVS-" + groupId + "-" + System.currentTimeMillis();
 
-        String title = request.status() == ContractApprovalStatus.APPROVED
-                ? "Contract Approved"
-                : "Contract Rejected";
+        responseData.put("contractNumber", contractNumber);
+        responseData.put("contractId", contract.getId());
+        responseData.put("savedAt", LocalDateTime.now());
+        responseData.put("status", "SAVED");
+        responseData.put("savedToDatabase", true);
 
-        String message = request.status() == ContractApprovalStatus.APPROVED
-                ? "Your co-ownership contract has been approved"
-                : "Your contract has been rejected: " + request.rejectionReason();
-
-        notificationOrchestrator.sendGroupNotification(
-                savedContract.getGroup().getGroupId(),
-                notificationType,
-                title,
-                message
-        );
-
-        Map<String, Object> result = new HashMap<>();
-        result.put("success", true);
-        result.put("contractId", savedContract.getId());
-        result.put("groupId", savedContract.getGroup().getGroupId());
-        result.put("approvalStatus", savedContract.getApprovalStatus());
-        result.put("approvedBy", staff.getEmail());
-        result.put("approvedAt", savedContract.getApprovedAt());
-        result.put("rejectionReason", savedContract.getRejectionReason());
-        result.put("message", "Contract " + request.status().name().toLowerCase() + " successfully");
-
-        return result;
+        return responseData;
     }
 
     /**
-     * Lấy danh sách hợp đồng chờ duyệt (cho staff)
+     * Tạo hoặc cập nhật contract
      */
-    public Map<String, Object> getPendingContracts(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        Page<Contract> contracts = contractRepository.findByApprovalStatus(ContractApprovalStatus.PENDING, pageable);
+    private Contract createOrUpdateContract(Long groupId, ContractGenerationRequest request) {
+        OwnershipGroup group = getGroupById(groupId);
 
-        Map<String, Object> result = new HashMap<>();
-        result.put("contracts", contracts.getContent().stream().map(this::toContractSummary).toList());
-        result.put("totalElements", contracts.getTotalElements());
-        result.put("totalPages", contracts.getTotalPages());
-        result.put("currentPage", contracts.getNumber());
-        result.put("size", contracts.getSize());
-        result.put("hasNext", contracts.hasNext());
-        result.put("hasPrevious", contracts.hasPrevious());
+        Contract existingContract = contractRepository.findByGroupGroupId(groupId).orElse(null);
 
-        return result;
+        if (existingContract != null) {
+            // Cập nhật contract hiện tại
+            existingContract.setStartDate(request.startDate());
+            existingContract.setEndDate(request.endDate());
+            return contractRepository.save(existingContract);
+        } else {
+            // Kiểm tra điều kiện tạo contract mới
+            validateContractCreation(groupId);
+
+            // Tạo contract mới
+            // Tính requiredDepositAmount
+            BigDecimal requiredDepositAmount = getRequiredDepositAmount(groupId);
+
+            Contract newContract = Contract.builder()
+                    .group(group)
+                    .startDate(request.startDate())
+                    .endDate(request.endDate())
+                    .requiredDepositAmount(requiredDepositAmount)
+                    .isActive(true)
+                    .approvalStatus(ContractApprovalStatus.PENDING) // Luôn bắt đầu với PENDING
+                    .build();
+
+            return contractRepository.save(newContract);
+        }
     }
 
     /**
-     * Convert Contract to summary format
+     * Chuẩn bị data cho template
      */
-    private Map<String, Object> toContractSummary(Contract contract) {
-        Map<String, Object> summary = new HashMap<>();
-        summary.put("contractId", contract.getId());
-        summary.put("groupId", contract.getGroup().getGroupId());
-        summary.put("groupName", contract.getGroup().getGroupName());
-        summary.put("startDate", contract.getStartDate());
-        summary.put("endDate", contract.getEndDate());
-        summary.put("requiredDepositAmount", contract.getRequiredDepositAmount());
-        summary.put("approvalStatus", contract.getApprovalStatus());
-        summary.put("createdAt", contract.getCreatedAt());
-        summary.put("updatedAt", contract.getUpdatedAt());
-        return summary;
+    private Map<String, Object> prepareContractData(Long groupId, Contract contract) {
+        OwnershipGroup group = contract.getGroup();
+        Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group).orElse(null);
+        List<OwnershipShare> shares = getSharesByGroupId(groupId);
+
+        Map<String, Object> data = new HashMap<>();
+
+        // Contract info
+        Map<String, Object> contractInfo = new HashMap<>();
+        contractInfo.put("number", generateContractNumber(contract.getId()));
+        contractInfo.put("effectiveDate", formatDate(contract.getStartDate()));
+        contractInfo.put("endDate", formatDate(contract.getEndDate()));
+        contractInfo.put("termLabel", calculateTermLabel(contract.getStartDate(), contract.getEndDate()));
+        contractInfo.put("location", "Hà Nội"); // Default
+        contractInfo.put("signDate", formatDate(LocalDate.now()));
+        contractInfo.put("status", "DRAFT");
+        data.put("contract", contractInfo);
+
+        // Group info
+        Map<String, Object> groupInfo = new HashMap<>();
+        groupInfo.put("name", group.getGroupName());
+        data.put("group", groupInfo);
+
+        // Vehicle info
+        Map<String, Object> vehicleInfo = new HashMap<>();
+        if (vehicle != null) {
+            vehicleInfo.put("model", vehicle.getBrand() + " " + vehicle.getModel());
+            vehicleInfo.put("plate", vehicle.getLicensePlate());
+            vehicleInfo.put("vin", vehicle.getChassisNumber());
+        } else {
+            vehicleInfo.put("model", "—");
+            vehicleInfo.put("plate", "—");
+            vehicleInfo.put("vin", "—");
+        }
+        data.put("vehicle", vehicleInfo);
+
+        // Finance info
+        Map<String, Object> financeInfo = new HashMap<>();
+        financeInfo.put("vehiclePrice", vehicle != null ? vehicle.getVehicleValue() : BigDecimal.ZERO);
+        financeInfo.put("depositAmount", contract.getRequiredDepositAmount());
+        financeInfo.put("targetAmount", BigDecimal.valueOf(50000000)); // Default target
+        financeInfo.put("contributionRule", "Theo tỷ lệ sở hữu");
+        data.put("finance", financeInfo);
+
+        // Usage info
+        Map<String, Object> usageInfo = new HashMap<>();
+        usageInfo.put("rule", "Điểm tín dụng lịch sử & phiên bốc thăm tuần");
+        data.put("usage", usageInfo);
+
+        // Maintenance info
+        Map<String, Object> maintenanceInfo = new HashMap<>();
+        maintenanceInfo.put("approval", "Biểu quyết > 50% theo tỷ lệ sở hữu cho chi > 5 triệu");
+        maintenanceInfo.put("insurance", "PVI – Gói vật chất toàn diện");
+        data.put("maintenance", maintenanceInfo);
+
+        // Dispute info
+        Map<String, Object> disputeInfo = new HashMap<>();
+        disputeInfo.put("voting", "Đa số theo tỷ lệ sở hữu; nếu hoà 50/50, ưu tiên lịch sử đóng góp");
+        data.put("dispute", disputeInfo);
+
+        // Owners info
+        List<Map<String, Object>> owners = shares.stream().map(share -> {
+            Map<String, Object> owner = new HashMap<>();
+            owner.put("name", share.getUser().getFullName());
+            owner.put("phone", share.getUser().getPhoneNumber());
+            owner.put("email", share.getUser().getEmail());
+            owner.put("idType", "CCCD");
+            owner.put("idNo", "—"); // Placeholder
+            owner.put("share", share.getOwnershipPercentage());
+            return owner;
+        }).collect(Collectors.toList());
+        data.put("owners", owners);
+
+        return data;
     }
+
+    /**
+     * Format date
+     */
+    private String formatDate(LocalDate date) {
+        if (date == null) return "—";
+        return date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+    }
+
+    /**
+     * Calculate term label
+     */
+    private String calculateTermLabel(LocalDate startDate, LocalDate endDate) {
+        if (startDate == null || endDate == null) return "—";
+
+        long months = java.time.temporal.ChronoUnit.MONTHS.between(startDate, endDate);
+        if (months == 12) return "12 tháng";
+        if (months == 6) return "6 tháng";
+        return months + " tháng";
+    }
+
+    /**
+     * Generate contract number
+     */
+    private String generateContractNumber(Long contractId) {
+        return "EVS-" + String.format("%04d", contractId) + "-" +
+                LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy"));
+    }
+
+    // ========== HELPER METHODS (từ ContractServiceHelper) ==========
+
+    /**
+     * Helper method để lấy group by ID với error handling
+     */
+    private OwnershipGroup getGroupById(Long groupId) {
+        return groupRepository.findById(groupId)
+                .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
+    }
+
+    /**
+     * Helper method để lấy danh sách shares của group
+     */
+    private List<OwnershipShare> getSharesByGroupId(Long groupId) {
+        return ownershipShareRepository.findByGroupGroupId(groupId);
+    }
+
+    /**
+     * Kiểm tra điều kiện tạo contract
+     * Business rule: Số thành viên thực tế phải bằng memberCapacity
+     */
+    private void validateContractCreation(Long groupId) {
+        OwnershipGroup group = getGroupById(groupId);
+
+        List<OwnershipShare> shares = getSharesByGroupId(groupId);
+        Integer memberCapacity = group.getMemberCapacity();
+
+        if (memberCapacity == null) {
+            throw new IllegalStateException("Group memberCapacity is not set");
+        }
+
+        if (shares.size() != memberCapacity) {
+            throw new IllegalStateException(
+                String.format("Cannot create contract: Expected %d members, but found %d members",
+                    memberCapacity, shares.size())
+            );
+        }
+    }
+
 }

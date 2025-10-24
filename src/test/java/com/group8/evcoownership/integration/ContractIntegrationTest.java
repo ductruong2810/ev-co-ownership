@@ -1,8 +1,8 @@
 package com.group8.evcoownership.integration;
 
+import com.group8.evcoownership.dto.SaveContractDataRequest;
 import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.repository.*;
-import com.group8.evcoownership.service.ContractGenerationService;
 import com.group8.evcoownership.service.ContractService;
 import com.group8.evcoownership.service.DepositCalculationService;
 import com.group8.evcoownership.testconfig.TestConfig;
@@ -19,6 +19,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -34,9 +35,6 @@ class ContractIntegrationTest {
 
     @Autowired
     private ContractService contractService;
-
-    @Autowired
-    private ContractGenerationService contractGenerationService;
 
     @Autowired
     private ContractRepository contractRepository;
@@ -64,6 +62,17 @@ class ContractIntegrationTest {
         testGroup.setGroupId(null);
         testGroup = groupRepository.save(testGroup);
 
+        // Create enough members to match memberCapacity (5)
+        for (int i = 1; i <= 5; i++) {
+            User testUser = ContractTestDataBuilder.TestScenarios.createBasicUser();
+            testUser.setUserId(null);
+            testUser.setEmail("user" + i + "@test.com");
+            testUser = userRepository.save(testUser);
+
+            OwnershipShare testShare = ContractTestDataBuilder.TestScenarios.createBasicShare(testGroup, testUser);
+            shareRepository.save(testShare);
+        }
+
         // When
         Contract result = contractService.createDefaultContract(testGroup.getGroupId());
 
@@ -82,19 +91,30 @@ class ContractIntegrationTest {
         testGroup.setGroupId(null);
         testGroup = groupRepository.save(testGroup);
 
+        // Create enough members to match memberCapacity (5)
+        for (int i = 1; i <= 5; i++) {
+            User testUser = ContractTestDataBuilder.TestScenarios.createBasicUser();
+            testUser.setUserId(null);
+            testUser.setEmail("user" + i + "@test.com");
+            testUser = userRepository.save(testUser);
+
+            OwnershipShare testShare = ContractTestDataBuilder.TestScenarios.createBasicShare(testGroup, testUser);
+            shareRepository.save(testShare);
+        }
+
         // Create contract first
         Contract contract = contractService.createDefaultContract(testGroup.getGroupId());
         assertNotNull(contract);
 
-        String tsxTemplate = "<Component>{{data.contract.terms}}</Component>";
+        SaveContractDataRequest request = new SaveContractDataRequest("Test contract terms");
 
         // When
-        var result = contractGenerationService.generateContractAuto(testGroup.getGroupId(), "REACT_TSX", tsxTemplate);
+        var result = contractService.saveContractFromData(testGroup.getGroupId(), request);
 
         // Then
         assertNotNull(result);
-        assertNotNull(result.contractId());
-        assertNotNull(result.props());
+        assertNotNull(result.get("contractId"));
+        assertNotNull(result.get("status"));
     }
 
     @Test
@@ -105,16 +125,20 @@ class ContractIntegrationTest {
         testGroup.setGroupId(null);
         testGroup = groupRepository.save(testGroup);
 
-        User testUser = ContractTestDataBuilder.TestScenarios.createBasicUser();
-        testUser.setUserId(null);
-        testUser = userRepository.save(testUser);
+        // Create enough members to match memberCapacity (5)
+        for (int i = 1; i <= 5; i++) {
+            User testUser = ContractTestDataBuilder.TestScenarios.createBasicUser();
+            testUser.setUserId(null);
+            testUser.setEmail("user" + i + "@test.com");
+            testUser = userRepository.save(testUser);
+
+            OwnershipShare testShare = ContractTestDataBuilder.TestScenarios.createBasicShare(testGroup, testUser);
+            shareRepository.save(testShare);
+        }
 
         Vehicle testVehicle = ContractTestDataBuilder.TestScenarios.createBasicVehicle(testGroup);
         testVehicle.setId(null);
         vehicleRepository.save(testVehicle);
-
-        OwnershipShare testShare = ContractTestDataBuilder.TestScenarios.createBasicShare(testGroup, testUser);
-        shareRepository.save(testShare);
 
         // Mock deposit calculation
         when(depositCalculationService.calculateRequiredDepositAmount(any(OwnershipGroup.class)))
@@ -124,9 +148,9 @@ class ContractIntegrationTest {
         Contract contract = contractService.createDefaultContract(testGroup.getGroupId());
         assertNotNull(contract);
 
-        // Step 2: Generate contract with template
-        String tsxTemplate = "<Component>{{data.contract.terms}}</Component>";
-        var generationResult = contractGenerationService.generateContractAuto(testGroup.getGroupId(), "REACT_TSX", tsxTemplate);
+        // Step 2: Save contract with data
+        SaveContractDataRequest request = new SaveContractDataRequest("Test contract terms");
+        var generationResult = contractService.saveContractFromData(testGroup.getGroupId(), request);
         assertNotNull(generationResult);
 
         // Step 3: Sign contract

@@ -9,7 +9,6 @@ import java.time.LocalDate;
 public record ContractGenerationRequest(
         @NotNull LocalDate startDate,
         @NotNull LocalDate endDate,
-        @NotBlank @Size(max = 4000) String terms,
         @NotBlank @Size(max = 100) String location,
         @NotBlank @Size(max = 100) String signDate,
         @Size(max = 100) String contractNumber // Optional, sẽ tự generate nếu null
