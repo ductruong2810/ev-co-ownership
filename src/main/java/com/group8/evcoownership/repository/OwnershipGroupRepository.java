@@ -14,6 +14,45 @@ import java.util.List;
 import java.util.Optional;
 
 public interface OwnershipGroupRepository extends JpaRepository<OwnershipGroup, Long> {
+    /**
+     * Lọc và sắp xếp OwnershipGroup theo keyword, status, thời gian tạo
+     * - keyword: tìm trong GroupName (ignore case)
+     * - status: nếu null thì bỏ qua
+     * - fromDate/toDate: lọc theo CreatedAt
+     * - sort: PENDING → ACTIVE → CLOSED → khác, sau đó theo CreatedAt DESC
+     */
+    @Query(
+            value = """
+        SELECT * FROM dbo.OwnershipGroup g
+        WHERE (:keyword IS NULL OR LOWER(g.GroupName) LIKE LOWER(CONCAT('%', :keyword, '%')))
+          AND (:status IS NULL OR g.Status = :status)
+          AND (g.CreatedAt BETWEEN :start AND :end)
+        ORDER BY
+          CASE
+            WHEN g.Status = 'PENDING' THEN 0
+            WHEN g.Status = 'ACTIVE' THEN 1
+            WHEN g.Status = 'CLOSED' THEN 2
+            ELSE 3
+          END ASC,
+          g.CreatedAt DESC
+        """,
+            countQuery = """
+        SELECT COUNT(*) FROM dbo.OwnershipGroup g
+        WHERE (:keyword IS NULL OR LOWER(g.GroupName) LIKE LOWER(CONCAT('%', :keyword, '%')))
+          AND (:status IS NULL OR g.Status = :status)
+          AND (g.CreatedAt BETWEEN :start AND :end)
+        """,
+            nativeQuery = true
+    )
+    Page<OwnershipGroup> findSortedGroups(
+            @Param("keyword") String keyword,
+            @Param("status") String status,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end,
+            Pageable pageable
+    );
+
+
 
     // đã có
     boolean existsByGroupNameIgnoreCase(String groupName);
@@ -23,6 +62,9 @@ public interface OwnershipGroupRepository extends JpaRepository<OwnershipGroup, 
     Page<OwnershipGroup> findByStatus(GroupStatus status, Pageable pageable);
 
     Page<OwnershipGroup> findByGroupNameContainingIgnoreCaseAndStatus(String keyword, GroupStatus status, Pageable pageable);
+
+
+
 
     // ====== Theo thời gian ======
     Page<OwnershipGroup> findByCreatedAtBetween(
