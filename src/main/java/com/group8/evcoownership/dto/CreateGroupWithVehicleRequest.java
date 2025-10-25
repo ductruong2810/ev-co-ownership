@@ -55,6 +55,13 @@ public record CreateGroupWithVehicleRequest(
 
         @NotNull(message = "Image types are required")
         @Size(min = 1, max = 10, message = "Must have 1-10 image types")
-        String[] imageTypes
+        String[] imageTypes,
+
+        // Optional fields for auto-fill from OCR
+        String brand,
+        String model,
+        
+        // Flag to enable OCR processing (default true)
+        Boolean enableAutoFill
 ) {
 }
