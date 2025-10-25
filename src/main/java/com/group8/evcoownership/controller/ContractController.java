@@ -8,7 +8,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -74,10 +73,10 @@ public class ContractController {
     @Operation(summary = "Tạo nội dung hợp đồng", description = "Tạo nội dung hợp đồng để preview, không lưu vào database")
     public ResponseEntity<Map<String, Object>> generateContractData(
             @PathVariable Long groupId,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal String userEmail) {
         
-        // Lấy userId từ authentication
-        Long userId = Long.parseLong(userDetails.getUsername());
+        // Lấy userId từ email
+        Long userId = contractService.getUserIdByEmail(userEmail);
         
         Map<String, Object> contractData = contractService.generateContractData(groupId, userId);
         return ResponseEntity.ok(contractData);
