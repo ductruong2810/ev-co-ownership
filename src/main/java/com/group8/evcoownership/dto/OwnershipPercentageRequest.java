@@ -11,7 +11,7 @@ import java.math.BigDecimal;
 @Data
 public class OwnershipPercentageRequest {
     @NotNull(message = "Ownership percentage is required")
-    @DecimalMin(value = "0.0", message = "Ownership percentage must be at least 0%")
+    @DecimalMin(value = "0.01", message = "Ownership percentage must be greater than 0%")
     @DecimalMax(value = "100.0", message = "Ownership percentage cannot exceed 100%")
     private BigDecimal ownershipPercentage;
 
