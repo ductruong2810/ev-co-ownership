@@ -63,9 +63,9 @@ public class OwnershipGroupController {
      * Lấy danh sách tất cả groups trong hệ thống (chỉ dành cho Staff và Admin)
      */
     @GetMapping("/staff/all")
-    @Operation(summary = "Danh sách tất cả nhóm (staff)", description = "Chỉ STAFF/ADMIN có thể xem, hỗ trợ lọc và phân trang")
+    @Operation(summary = "Danh sách tất cả nhóm (staff)", description = "Chỉ STAFF/ADMIN có thể xem, hỗ trợ lọc và phân trang với custom vehicle description")
     @PreAuthorize("hasRole('STAFF') or hasRole('ADMIN')")
-    public Page<OwnershipGroupResponse> listAllGroups(
+    public Page<StaffOwnershipGroupResponse> listAllGroups(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) GroupStatus status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
@@ -74,7 +74,7 @@ public class OwnershipGroupController {
             @RequestParam(defaultValue = "30") int size
     ) {
 
-        return service.list(keyword, status, fromDate, toDate, PageRequest.of(page, size));
+        return service.listForStaff(keyword, status, fromDate, toDate, PageRequest.of(page, size));
     }
 
     /**
