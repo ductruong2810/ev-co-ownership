@@ -427,8 +427,8 @@ public class OwnershipShareService {
      * Validate tỷ lệ sở hữu
      */
     private void validateOwnershipPercentage(Long groupId, Long userId, BigDecimal newPercentage) {
-        if (newPercentage.compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalArgumentException("Ownership percentage cannot be negative");
+        if (newPercentage.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Ownership percentage must be greater than 0%");
         }
         
         if (newPercentage.compareTo(new BigDecimal("100")) > 0) {

@@ -1,12 +1,12 @@
 package com.group8.evcoownership.dto;
 
-import com.group8.evcoownership.validation.ValidCreateGroupWithVehicle;
+import com.group8.evcoownership.validation.ValidCreateGroupWithVehicleDynamic;
 import jakarta.validation.constraints.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 
-@ValidCreateGroupWithVehicle
+@ValidCreateGroupWithVehicleDynamic
 public record CreateGroupWithVehicleRequest(
         @NotBlank(message = "Group name is required")
         @Pattern(
@@ -33,19 +33,11 @@ public record CreateGroupWithVehicleRequest(
 
         @NotBlank(message = "License plate is required")
         @Size(max = 20, message = "License plate must not exceed 20 characters")
-        @Pattern(
-                regexp = "^[0-9]{2}[A-Z]-[0-9]{3}\\.[0-9]{2}$",
-                message = "License plate format must be like '29A-123.45'"
-        )
         String licensePlate,
 
 
         // @NotBlank(message = "Chassis number is required") // Removed - OCR can fill
-        @Size(min = 10, max = 17, message = "Chassis number must be 10-17 characters")
-        @Pattern(
-                regexp = "^[A-Z0-9]{10,17}$",
-                message = "Chassis number must contain 10-17 uppercase letters or digits"
-        )
+        // Validation moved to dynamic validator
         String chassisNumber,
 
 
@@ -62,6 +54,9 @@ public record CreateGroupWithVehicleRequest(
         String model,
         
         // Flag to enable OCR processing (default true)
-        Boolean enableAutoFill
+        Boolean enableAutoFill,
+        
+        // Optional vehicle type - auto-detect if not provided
+        String vehicleType
 ) {
 }

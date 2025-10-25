@@ -802,8 +802,12 @@ public class ContractService {
         return contractRepository.existsById(contractId);
     }
 
-
-
-
-
+    /**
+     * Lấy userId từ email
+     */
+    public Long getUserIdByEmail(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new EntityNotFoundException("User not found with email: " + email));
+        return user.getUserId();
+    }
 }
