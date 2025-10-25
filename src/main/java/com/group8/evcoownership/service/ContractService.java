@@ -73,7 +73,7 @@ public class ContractService {
                     memberInfo.put("userId", share.getUser().getUserId());
                     memberInfo.put("fullName", user != null ? user.getFullName() : null);
                     memberInfo.put("email", user != null ? user.getEmail() : null);
-                    memberInfo.put("groupRole", share.getGroupRole().name());
+                    memberInfo.put("userRole", share.getGroupRole().name());
                     memberInfo.put("ownershipPercentage", share.getOwnershipPercentage());
                     memberInfo.put("depositStatus", share.getDepositStatus().name());
                     memberInfo.put("joinDate", share.getJoinDate());
@@ -317,16 +317,32 @@ public class ContractService {
         
         // Kiểm tra tổng tỷ lệ sở hữu
         BigDecimal totalOwnershipPercentage = BigDecimal.ZERO;
+        boolean hasValidOwnershipPercentages = true;
+        int membersWithZeroOrNullPercentage = 0;
+        BigDecimal minimumOwnership = new BigDecimal("1.00"); // Tối thiểu 1%
+        
         for (OwnershipShare share : shares) {
-            if (share.getOwnershipPercentage() != null) {
+            if (share.getOwnershipPercentage() == null) {
+                hasValidOwnershipPercentages = false;
+                membersWithZeroOrNullPercentage++;
+            } else if (share.getOwnershipPercentage().compareTo(BigDecimal.ZERO) == 0) {
+                hasValidOwnershipPercentages = false;
+                membersWithZeroOrNullPercentage++;
+            } else if (share.getOwnershipPercentage().compareTo(minimumOwnership) < 0) {
+                hasValidOwnershipPercentages = false;
+            } else {
                 totalOwnershipPercentage = totalOwnershipPercentage.add(share.getOwnershipPercentage());
             }
         }
+        
         BigDecimal expectedTotal = new BigDecimal("100.00");
-        boolean hasCorrectOwnershipPercentage = totalOwnershipPercentage.compareTo(expectedTotal) == 0;
+        boolean hasCorrectOwnershipPercentage = hasValidOwnershipPercentages && 
+                                               totalOwnershipPercentage.compareTo(expectedTotal) == 0;
         conditions.put("hasCorrectOwnershipPercentage", hasCorrectOwnershipPercentage);
         conditions.put("totalOwnershipPercentage", totalOwnershipPercentage);
         conditions.put("expectedOwnershipPercentage", expectedTotal);
+        conditions.put("hasValidOwnershipPercentages", hasValidOwnershipPercentages);
+        conditions.put("membersWithZeroOrNullPercentage", membersWithZeroOrNullPercentage);
         
         // Kiểm tra có vehicle không
         Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group).orElse(null);
@@ -482,9 +498,9 @@ public class ContractService {
             owner.put("name", share.getUser().getFullName());
             owner.put("phone", share.getUser().getPhoneNumber());
             owner.put("email", share.getUser().getEmail());
-            owner.put("idType", "CCCD");
             owner.put("idNo", "—"); // Placeholder
             owner.put("share", share.getOwnershipPercentage());
+            owner.put("userRole", share.getGroupRole().name()); // Thêm userRole
             return owner;
         }).collect(Collectors.toList());
         data.put("owners", owners);
@@ -522,12 +538,11 @@ public class ContractService {
     private String generateContractTerms(Long groupId) {
         OwnershipGroup group = getGroupById(groupId);
         Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group).orElse(null);
-        List<OwnershipShare> shares = getSharesByGroupId(groupId);
         
         StringBuilder terms = new StringBuilder();
         
         // Bắt đầu từ phần 2. GÓP VỐN & QUỸ VẬN HÀNH
-        terms.append("2. GÓP VỐN & QUỸ VẬN HÀNH\n");
+        terms.append("1. GÓP VỐN & QUỸ VẬN HÀNH\n");
         if (vehicle != null) {
             terms.append("- Giá trị xe: ").append(formatCurrency(vehicle.getVehicleValue())).append("\n");
         } else {
@@ -541,19 +556,19 @@ public class ContractService {
         terms.append("\nLưu ý: Tiền cọc phải được đóng đầy đủ trước khi hợp đồng được kích hoạt và có hiệu lực.\n\n");
         
         // 1. Quyền sử dụng & Lịch đặt
-        terms.append("1. QUYỀN SỬ DỤNG & LỊCH ĐẶT\n");
+        terms.append("2. QUYỀN SỬ DỤNG & LỊCH ĐẶT\n");
         terms.append("Việc sử dụng xe được thực hiện thông qua hệ thống đặt lịch. Quy tắc ưu tiên: Điểm tín dụng lịch sử & phiên bốc thăm tuần. Mỗi Bên cam kết tuân thủ lịch đặt và hoàn trả đúng hẹn.\n\n");
         
         // 2. Bảo dưỡng, Sửa chữa & Bảo hiểm
-        terms.append("2. BẢO DƯỠNG, SỬA CHỮA & BẢO HIỂM\n");
+        terms.append("3. BẢO DƯỠNG, SỬA CHỮA & BẢO HIỂM\n");
         terms.append("Xe được bảo dưỡng định kỳ theo khuyến nghị của hãng. Trách nhiệm phê duyệt chi phí: Biểu quyết > 50% theo tỷ lệ sở hữu cho chi > 5 triệu. Hợp đồng bảo hiểm: PVI – Gói vật chất toàn diện.\n\n");
         
         // 3. Giải quyết tranh chấp
-        terms.append("3. GIẢI QUYẾT TRANH CHẤP\n");
+        terms.append("4. GIẢI QUYẾT TRANH CHẤP\n");
         terms.append("Tranh chấp phát sinh được ghi nhận trên hệ thống và ưu tiên hòa giải trong Nhóm. Cơ chế biểu quyết: Đa số theo tỷ lệ sở hữu; nếu hoà 50/50, ưu tiên lịch sử đóng góp. Thẩm quyền cuối cùng theo pháp luật hiện hành.\n\n");
         
         // 4. Điều khoản chung
-        terms.append("4. ĐIỀU KHOẢN CHUNG\n");
+        terms.append("5. ĐIỀU KHOẢN CHUNG\n");
         terms.append("- Hợp đồng có hiệu lực khi tất cả Bên đồng sở hữu đồng ý và ký.\n");
         terms.append("- Kích hoạt hợp đồng: Sau khi ký, hợp đồng chỉ được kích hoạt khi tất cả thành viên đã đóng đủ tiền cọc theo quy định.\n");
         terms.append("- Duyệt hợp đồng: Hệ thống sẽ duyệt lại hợp đồng sau khi nhận đủ tiền cọc từ tất cả thành viên.\n");
@@ -561,11 +576,10 @@ public class ContractService {
         terms.append("- Hệ thống lưu vết phiên bản, thời điểm ký và danh tính người ký.\n\n");
         
         // 5. Chữ ký các Bên
-        terms.append("5. CHỮ KÝ CÁC BÊN\n");
+        terms.append("6. CHỮ KÝ CÁC BÊN\n");
         terms.append("Đại diện nhóm: Admin Group\n");
         terms.append("Ngày ký: ").append(formatDate(LocalDate.now())).append("\n");
-        terms.append("Địa điểm: Hà Nội\n\n");
-        
+
         terms.append("Hợp đồng này có hiệu lực từ ngày ký và được tất cả thành viên nhóm đồng ý.\n");
         
         return terms.toString();
@@ -588,33 +602,14 @@ public class ContractService {
         return ownershipShareRepository.findByGroupGroupId(groupId);
     }
 
-    /**
-     * Kiểm tra điều kiện tạo contract
-     * Business rule: Số thành viên thực tế phải bằng memberCapacity
-     */
-    private void validateContractCreation(Long groupId) {
-        OwnershipGroup group = getGroupById(groupId);
-
-        List<OwnershipShare> shares = getSharesByGroupId(groupId);
-        Integer memberCapacity = group.getMemberCapacity();
-
-        if (memberCapacity == null) {
-            throw new IllegalStateException("Group memberCapacity is not set");
-        }
-
-        if (shares.size() != memberCapacity) {
-            throw new IllegalStateException(
-                String.format("Cannot create contract: Expected %d members, but found %d members",
-                    memberCapacity, shares.size())
-            );
-        }
-    }
 
     /**
      * Kiểm tra điều kiện generate contract
      * Business rule: 
      * 1. Số thành viên thực tế phải bằng memberCapacity
      * 2. Tổng tỷ lệ sở hữu phải bằng 100%
+     * 3. Không có thành viên nào có tỷ lệ sở hữu 0% hoặc null
+     * 4. Mỗi thành viên phải có tỷ lệ sở hữu tối thiểu 1%
      */
     private void validateContractGeneration(Long groupId) {
         OwnershipGroup group = getGroupById(groupId);
@@ -633,21 +628,45 @@ public class ContractService {
             );
         }
 
-        // Kiểm tra tổng tỷ lệ sở hữu phải bằng 100%
-        BigDecimal totalOwnershipPercentage = BigDecimal.ZERO;
-        for (OwnershipShare share : shares) {
-            if (share.getOwnershipPercentage() != null) {
-                totalOwnershipPercentage = totalOwnershipPercentage.add(share.getOwnershipPercentage());
-            }
-        }
+        // Kiểm tra tổng tỷ lệ sở hữu phải bằng 100% và không có thành viên nào có 0% hoặc null
+        BigDecimal totalOwnershipPercentage = getBigDecimal(shares);
 
         BigDecimal expectedTotal = new BigDecimal("100.00");
         if (totalOwnershipPercentage.compareTo(expectedTotal) != 0) {
             throw new IllegalStateException(
                 String.format("Cannot generate contract: Total ownership percentage must be exactly 100%%, but found %s%%. Please adjust ownership percentages.",
-                    totalOwnershipPercentage.toString())
+                        totalOwnershipPercentage)
             );
         }
+    }
+
+    private static BigDecimal getBigDecimal(List<OwnershipShare> shares) {
+        BigDecimal totalOwnershipPercentage = BigDecimal.ZERO;
+        BigDecimal minimumOwnership = new BigDecimal("1.00"); // Tối thiểu 1%
+
+        for (OwnershipShare share : shares) {
+            if (share.getOwnershipPercentage() == null) {
+                throw new IllegalStateException(
+                    "Cannot generate contract: Member " + share.getUser().getFullName() + 
+                    " has null ownership percentage. All members must have ownership percentage set.");
+            }
+            
+            if (share.getOwnershipPercentage().compareTo(BigDecimal.ZERO) == 0) {
+                throw new IllegalStateException(
+                    "Cannot generate contract: Member " + share.getUser().getFullName() + 
+                    " has 0% ownership. All members must have ownership percentage > 0%.");
+            }
+            
+            if (share.getOwnershipPercentage().compareTo(minimumOwnership) < 0) {
+                throw new IllegalStateException(
+                    "Cannot generate contract: Member " + share.getUser().getFullName() + 
+                    " has ownership percentage " + share.getOwnershipPercentage() + 
+                    "% which is below minimum 1%. Each member must own at least 1%.");
+            }
+            
+            totalOwnershipPercentage = totalOwnershipPercentage.add(share.getOwnershipPercentage());
+        }
+        return totalOwnershipPercentage;
     }
 
     /**

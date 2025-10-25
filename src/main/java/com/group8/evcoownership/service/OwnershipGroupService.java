@@ -21,10 +21,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.JpaSort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -62,6 +59,42 @@ public class OwnershipGroupService {
                 e.getCreatedAt(),
                 e.getUpdatedAt()
         );
+    }
+
+    /**
+     * Convert OwnershipGroup thành StaffOwnershipGroupResponse với custom vehicle description
+     */
+    private StaffOwnershipGroupResponse toStaffDto(OwnershipGroup e) {
+        String vehicleDescription = getCustomVehicleDescription(e.getStatus());
+        String rejectionReason = null;
+        
+        // Nếu status là INACTIVE, lấy lý do từ chối từ field rejectionReason
+        if (e.getStatus() == GroupStatus.INACTIVE) {
+            rejectionReason = e.getRejectionReason();
+        }
+        
+        return new StaffOwnershipGroupResponse(
+                e.getGroupId(),
+                e.getGroupName(),
+                e.getDescription(),
+                e.getMemberCapacity(),
+                e.getStatus(),
+                e.getCreatedAt(),
+                e.getUpdatedAt(),
+                vehicleDescription,
+                rejectionReason
+        );
+    }
+
+    /**
+     * Tạo custom vehicle description theo status
+     */
+    private String getCustomVehicleDescription(GroupStatus status) {
+        return switch (status) {
+            case PENDING -> "Nhóm đăng ký và đang chờ duyệt bởi staff";
+            case ACTIVE -> "Nhóm đã được duyệt và có thể sử dụng các chức năng trong group";
+            case INACTIVE -> "Nhóm đã bị từ chối bởi staff";
+        };
     }
 
     private void applyMutableFields(OwnershipGroup e, String name, String desc, Integer capacity) {
@@ -474,6 +507,15 @@ public class OwnershipGroupService {
         if (e.getStatus() == target) return toDto(e);
 
         e.setStatus(target);
+        
+        // Lưu lý do từ chối nếu status = INACTIVE
+        if (target == GroupStatus.INACTIVE) {
+            e.setRejectionReason(req.rejectionReason());
+        } else {
+            // Xóa lý do từ chối nếu status không phải INACTIVE
+            e.setRejectionReason(null);
+        }
+        
         return toDto(repo.save(e));
     }
 
@@ -563,7 +605,6 @@ public class OwnershipGroupService {
 
         boolean hasKeyword = keyword != null && !keyword.isBlank();
         boolean hasStatus = status != null;
-        boolean hasDate = (fromDate != null || toDate != null);
 
         // ✅ Giới hạn thời gian trong phạm vi hợp lệ của SQL Server
         LocalDateTime SQLSERVER_MIN = LocalDateTime.of(1753, 1, 1, 0, 0);
@@ -578,13 +619,47 @@ public class OwnershipGroupService {
         // ✅ Gọi native query trong repository
         Page<OwnershipGroup> page = repo.findSortedGroups(
                 hasKeyword ? keyword : null,
-                hasStatus ? status.name() : null,
+                hasStatus && status != null ? status.name() : null,
                 start,
                 end,
                 pageable
         );
 
         return page.map(this::toDto);
+    }
+
+    /**
+     * listForStaff: API dành cho staff với custom vehicle description
+     */
+    public Page<StaffOwnershipGroupResponse> listForStaff(String keyword,
+                                                         GroupStatus status,
+                                                         LocalDate fromDate,
+                                                         LocalDate toDate,
+                                                         Pageable pageable) {
+
+        boolean hasKeyword = keyword != null && !keyword.isBlank();
+        boolean hasStatus = status != null;
+
+        // ✅ Giới hạn thời gian trong phạm vi hợp lệ của SQL Server
+        LocalDateTime SQLSERVER_MIN = LocalDateTime.of(1753, 1, 1, 0, 0);
+        LocalDateTime SQLSERVER_MAX = LocalDateTime.of(9999, 12, 31, 23, 59, 59, 999_000_000);
+
+        // ✅ Chuẩn hóa mốc thời gian (bao phủ trọn ngày)
+        LocalDateTime start = (fromDate != null) ? fromDate.atStartOfDay() : SQLSERVER_MIN;
+        LocalDateTime end = (toDate != null)
+                ? toDate.plusDays(1).atStartOfDay().minusNanos(1)
+                : SQLSERVER_MAX;
+
+        // ✅ Gọi native query trong repository
+        Page<OwnershipGroup> page = repo.findSortedGroups(
+                hasKeyword ? keyword : null,
+                hasStatus && status != null ? status.name() : null,
+                start,
+                end,
+                pageable
+        );
+
+        return page.map(this::toStaffDto);
     }
 
 
