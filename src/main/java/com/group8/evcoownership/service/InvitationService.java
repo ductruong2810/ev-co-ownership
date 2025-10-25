@@ -1,6 +1,5 @@
 package com.group8.evcoownership.service;
 
-
 import com.group8.evcoownership.dto.InvitationAcceptRequest;
 import com.group8.evcoownership.dto.InvitationCreateRequest;
 import com.group8.evcoownership.dto.InvitationResponse;
@@ -43,38 +42,73 @@ public class InvitationService {
     private final UserDocumentValidationService userDocumentValidationService;
     private final OwnershipShareService shareService;
 
-    // ===================== CREATE =====================
+    // =========================================================
+    // =============== CREATE (Tạo hoặc Resend) ================
+    // =========================================================
 
     /**
-     * Tạo invitation cho groupId (từ path). inviter lấy từ token.
+     * Gửi lời mời cho 1 email trong group:
+     * - Nếu chưa có lời mời PENDING → tạo mới và gửi mail
+     * - Nếu đã có lời mời PENDING → cập nhật resendCount, OTP, expiresAt, rồi gửi lại mail
      */
     @Transactional
     public InvitationResponse create(Long groupId,
                                      InvitationCreateRequest req,
                                      Authentication auth) {
+
+        // 1️⃣ Lấy group + kiểm tra tồn tại và trạng thái ACTIVE
         OwnershipGroup group = groupRepo.findById(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Group not found"));
-
         ensureGroupActive(group);
 
+        // 2️⃣ Lấy inviter từ token (email trong Authentication)
         User inviter = userRepo.findByEmail(auth.getName())
                 .orElseThrow(() -> new EntityNotFoundException("Inviter not found"));
 
-        // kiểm tra inviter là member của group (tuỳ bạn có bắt buộc ADMIN/OWNER không)
+        // 3️⃣ Kiểm tra inviter có thuộc group không
         boolean isMember = shareRepo.existsByGroup_GroupIdAndUser_UserId(groupId, inviter.getUserId());
         if (!isMember) throw new AccessDeniedException("Not a member of this group");
 
-        // chặn trùng pending invitation theo email trong cùng group
-        if (invitationRepo.existsByGroup_GroupIdAndInviteeEmailIgnoreCaseAndStatus(
-                groupId, req.inviteeEmail(), InvitationStatus.PENDING)) {
-            throw new IllegalStateException("A pending invitation already exists for this email in the group");
-        }
+        // 4️⃣ Kiểm tra có invitation PENDING nào đã tồn tại cho email này trong group
+        Invitation existing = invitationRepo
+                .findByGroup_GroupIdAndInviteeEmailIgnoreCaseAndStatus(
+                        groupId, req.inviteeEmail(), InvitationStatus.PENDING)
+                .orElse(null);
 
-        String token = genToken();
+        // 5️⃣ Tạo token/OTP mới và thời hạn mới
         String otp = genOtp();
+        String token = genToken();
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime expiresAt = now.plusHours(DEFAULT_INVITE_TTL_HOURS);
 
+        // 6️⃣ Nếu có invitation PENDING → resend (update lại)
+        if (existing != null) {
+            existing.setOtpCode(otp);
+            existing.setExpiresAt(expiresAt);
+            existing.setLastSentAt(now);
+            existing.setResendCount(existing.getResendCount() == null ? 1 : existing.getResendCount() + 1);
+
+            invitationRepo.save(existing);
+
+            emailService.sendInvitationEmail(
+                    existing.getInviteeEmail(),
+                    group.getGroupName(),
+                    inviter.getFullName(),
+                    existing.getToken(), // giữ token cũ để user cũ vẫn valid link
+                    otp,
+                    expiresAt,
+                    existing.getSuggestedPercentage(),
+                    null
+            );
+
+            // Ghi log cho dễ debug
+            System.out.printf("📨 Resent invitation to %s (group %s)%n",
+                    existing.getInviteeEmail(), group.getGroupName());
+
+            return toDto(existing);
+        }
+
+        // 7️⃣ Nếu chưa có invitation PENDING → tạo mới
         Invitation inv = Invitation.builder()
                 .group(group)
                 .inviter(inviter)
@@ -91,7 +125,6 @@ public class InvitationService {
 
         Invitation saved = invitationRepo.save(inv);
 
-        // Gửi email mời
         emailService.sendInvitationEmail(
                 req.inviteeEmail(),
                 group.getGroupName(),
@@ -100,13 +133,18 @@ public class InvitationService {
                 otp,
                 expiresAt,
                 req.suggestedPercentage(),
-                null // Không cần acceptUrl nữa
+                null
         );
+
+        System.out.printf("✅ Sent new invitation to %s (group %s)%n",
+                req.inviteeEmail(), group.getGroupName());
 
         return toDto(saved);
     }
 
-    // ===================== LIST/VIEW =====================
+    // =========================================================
+    // =================== LIST & VALIDATE =====================
+    // =========================================================
 
     /**
      * Chỉ member group (hoặc staff/admin) được xem danh sách lời mời của group.
@@ -127,37 +165,39 @@ public class InvitationService {
     }
 
     /**
-     * Kiểm tra token còn hợp lệ để FE preload form accept.
+     * Kiểm tra token còn hợp lệ (FE gọi để preload form accept).
      */
     public InvitationResponse validateToken(String token) {
         Invitation inv = invitationRepo.findByToken(token)
                 .orElseThrow(() -> new EntityNotFoundException("Invitation not found"));
-        if (inv.getStatus() != InvitationStatus.PENDING) {
+        if (inv.getStatus() != InvitationStatus.PENDING)
             throw new IllegalStateException("Invitation is not PENDING");
-        }
-        if (isExpired(inv)) throw new IllegalStateException("Invitation expired");
+        if (isExpired(inv))
+            throw new IllegalStateException("Invitation expired");
         return toDto(inv);
     }
 
-    // ===================== RESEND / EXPIRE =====================
+    // =========================================================
+    // =================== RESEND / EXPIRE =====================
+    // =========================================================
 
     /**
-     * Resend OTP/email cho invitation (giới hạn quyền: inviter hoặc admin group).
+     * Dùng cho backend hoặc admin gửi lại mail thủ công (nếu cần)
      */
     @Transactional
     public void resend(Long invitationId, Authentication auth) {
         Invitation inv = invitationRepo.findById(invitationId)
                 .orElseThrow(() -> new EntityNotFoundException("Invitation not found"));
 
-        if (inv.getStatus() != InvitationStatus.PENDING) {
+        if (inv.getStatus() != InvitationStatus.PENDING)
             throw new IllegalStateException("Only PENDING invitation can be resent");
-        }
-        if (isExpired(inv)) throw new IllegalStateException("Invitation expired");
+        if (isExpired(inv))
+            throw new IllegalStateException("Invitation expired");
 
-        // Kiểm tra quyền: inviter, admin group, hoặc staff/admin
+        // Kiểm tra quyền
         validateResendPermission(inv, auth);
 
-        // phát sinh OTP mới, cập nhật thời điểm gửi + tăng resendCount (token giữ nguyên)
+        // Cập nhật OTP mới và resendCount
         String newOtp = genOtp();
         inv.setOtpCode(newOtp);
         inv.setLastSentAt(LocalDateTime.now());
@@ -173,35 +213,67 @@ public class InvitationService {
                 newOtp,
                 inv.getExpiresAt(),
                 inv.getSuggestedPercentage(),
-                null // Không cần acceptUrl nữa
+                null
         );
 
-        // No return needed; controller responds 200 OK
+        System.out.printf("📨 Manual resend invitation #%d to %s%n", inv.getInvitationId(), inv.getInviteeEmail());
     }
 
     /**
-     * Hết hạn ngay (inviter, admin group, hoặc staff/admin).
+     * Hết hạn ngay lập tức (inviter, admin group, hoặc staff/admin)
      */
     @Transactional
     public void expireNow(Long invitationId, Authentication auth) {
         Invitation inv = invitationRepo.findById(invitationId)
                 .orElseThrow(() -> new EntityNotFoundException("Invitation not found"));
-
         validateExpirePermission(inv, auth);
 
-        if (inv.getStatus() != InvitationStatus.PENDING) {
+        if (inv.getStatus() != InvitationStatus.PENDING)
             throw new IllegalStateException("Only PENDING invitation can be expired");
-        }
 
         inv.setStatus(InvitationStatus.EXPIRED);
-//        inv.setUpdatedAt(LocalDateTime.now());
         invitationRepo.save(inv);
+
+        System.out.printf("⏳ Expired invitation #%d manually%n", inv.getInvitationId());
     }
 
-    // ===================== ACCEPT =====================
+    // --- lay danh sach invitation theo groupId
+    @Transactional
+    public Page<InvitationResponse> listByGroup(Long groupId, int page, int size, Authentication auth) {
+        // Kiểm tra quyền xem danh sách
+        validateListPermission(groupId, auth);
+
+        // Tạo đối tượng Pageable
+        var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        // Gọi repo để lấy danh sách Invitation, sau đó map sang DTO
+        return invitationRepo.findByGroup_GroupId(groupId, pageable)
+                .map(this::toDto);
+    }
 
     /**
-     * Accept lời mời bằng OTP - user đã login và được xác thực.
+     * 🔍 Lấy chi tiết 1 lời mời (Invitation) theo ID.
+     * - Chỉ cho phép người có quyền xem: người mời (inviter), admin group, hoặc staff/admin.
+     */
+    public InvitationResponse getOne(Long invitationId, Authentication auth) {
+        // 1️⃣ Tìm lời mời trong DB
+        Invitation inv = invitationRepo.findById(invitationId)
+                .orElseThrow(() -> new EntityNotFoundException("Invitation not found"));
+
+        // 2️⃣ Kiểm tra quyền xem (dùng helper validateViewPermission bên dưới)
+        validateViewPermission(inv, auth);
+
+        // 3️⃣ Trả về DTO (ẩn bớt thông tin nhạy cảm nếu cần)
+        return toDto(inv);
+    }
+
+
+    // =========================================================
+    // ======================= ACCEPT ==========================
+    // =========================================================
+
+    /**
+     * User nhập OTP để chấp nhận lời mời (đã login).
      */
     @Transactional
     public InvitationResponse accept(InvitationAcceptRequest req, Authentication auth) {
@@ -209,63 +281,57 @@ public class InvitationService {
                 req.otp(), InvitationStatus.PENDING
         ).orElseThrow(() -> new EntityNotFoundException("Invitation not found"));
 
-        if (isExpired(inv)) throw new IllegalStateException("Invitation expired");
+        if (isExpired(inv))
+            throw new IllegalStateException("Invitation expired");
 
         OwnershipGroup group = inv.getGroup();
         ensureGroupActive(group);
 
-        // Lấy user từ authentication (đã login)
+        // Lấy user hiện tại
         User user = userRepo.findByEmail(auth.getName())
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
-        // Kiểm tra email user khớp với email invitation (chống giả mạo)
-        String invited = inv.getInviteeEmail() == null ? "" : inv.getInviteeEmail().trim().toLowerCase();
-        String actual = user.getEmail() == null ? "" : user.getEmail().trim().toLowerCase();
-        if (!invited.equals(actual)) {
+        // Xác minh email trùng với người được mời
+        if (!inv.getInviteeEmail().trim().equalsIgnoreCase(user.getEmail().trim()))
             throw new AccessDeniedException("This invitation is not for your email address");
-        }
 
-        // không cho trùng membership
-        if (shareRepo.existsByGroup_GroupIdAndUser_UserId(group.getGroupId(), user.getUserId())) {
+        // Không cho trùng membership
+        if (shareRepo.existsByGroup_GroupIdAndUser_UserId(group.getGroupId(), user.getUserId()))
             throw new IllegalStateException("You are already a member of this group");
-        }
 
-        // capacity
+        // Kiểm tra capacity
         long members = shareRepo.countByGroup_GroupId(group.getGroupId());
-        if (group.getMemberCapacity() != null && members + 1 > group.getMemberCapacity()) {
+        if (group.getMemberCapacity() != null && members + 1 > group.getMemberCapacity())
             throw new IllegalStateException("Member capacity exceeded");
-        }
 
-        // % sở hữu - để user tự nhập sau khi vào group
-        // Sử dụng tỷ lệ tạm thời 0% để user vào group trước
-        var percent = java.math.BigDecimal.ZERO;
-
-        // Kiểm tra user có đầy đủ giấy tờ đã được duyệt không
+        // Kiểm tra giấy tờ user
         userDocumentValidationService.validateUserDocuments(user.getUserId());
 
-        // Dùng OwnershipShareService để add share + auto-activate
+        // Thêm user vào group với % sở hữu tạm = 0%
         var addReq = new com.group8.evcoownership.dto.OwnershipShareCreateRequest(
-                user.getUserId(),
-                group.getGroupId(),
-                percent
+                user.getUserId(), group.getGroupId(), java.math.BigDecimal.ZERO
         );
         shareService.addGroupShare(addReq);
 
-        // cập nhật invitation → ACCEPTED
+        // Cập nhật invitation -> ACCEPTED
         inv.setStatus(InvitationStatus.ACCEPTED);
         inv.setAcceptedAt(LocalDateTime.now());
         inv.setAcceptedBy(user);
-//        inv.setUpdatedAt(LocalDateTime.now());
         Invitation saved = invitationRepo.save(inv);
+
+        System.out.printf("🎉 User %s accepted invitation for group %s%n",
+                user.getEmail(), group.getGroupName());
 
         return toDto(saved);
     }
 
-    // ===================== HELPERS =====================
+    // =========================================================
+    // ===================== HELPERS ===========================
+    // =========================================================
+
     private void ensureGroupActive(OwnershipGroup g) {
-        if (g.getStatus() != GroupStatus.ACTIVE) {
+        if (g.getStatus() != GroupStatus.ACTIVE)
             throw new IllegalStateException("Group is not ACTIVE");
-        }
     }
 
     private boolean isExpired(Invitation inv) {
@@ -273,12 +339,11 @@ public class InvitationService {
     }
 
     private String genToken() {
-        // token ngẫu nhiên đủ dài
-        return UUID.randomUUID().toString().replace("-", "") + UUID.randomUUID().toString().replace("-", "");
+        return UUID.randomUUID().toString().replace("-", "")
+                + UUID.randomUUID().toString().replace("-", "");
     }
 
     private String genOtp() {
-        // OTP 6 chữ số
         var rnd = new SecureRandom();
         int x = rnd.nextInt(1_000_000);
         return String.format("%06d", x);
@@ -306,25 +371,10 @@ public class InvitationService {
         );
     }
 
-    @Transactional
-    public Page<InvitationResponse> listByGroup(Long groupId, int page, int size, Authentication auth) {
-        validateListPermission(groupId, auth);
+    // =========================================================
+    // ================ AUTHORIZATION HELPERS ==================
+    // =========================================================
 
-        var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        return invitationRepo.findByGroup_GroupId(groupId, pageable)
-                .map(this::toDto); // map trực tiếp trên Page
-    }
-
-    public InvitationResponse getOne(Long invitationId, Authentication auth) {
-        var inv = invitationRepo.findById(invitationId)
-                .orElseThrow(() -> new EntityNotFoundException("Invitation not found"));
-
-        validateViewPermission(inv, auth);
-
-        return toDto(inv);
-    }
-
-    // ===================== HELPER METHODS FOR AUTHORIZATION =====================
     private void validateResendPermission(Invitation inv, Authentication auth) {
         validateInvitationPermission(inv, auth);
     }
@@ -344,9 +394,8 @@ public class InvitationService {
                 groupId, actor.getUserId(), GroupRole.ADMIN);
         boolean isStaffAdmin = isStaffOrAdmin(actor);
 
-        if (!(isGroupAdmin || isStaffAdmin)) {
+        if (!(isGroupAdmin || isStaffAdmin))
             throw new AccessDeniedException("Forbidden");
-        }
     }
 
     private void validateInvitationPermission(Invitation inv, Authentication auth) {
@@ -355,9 +404,8 @@ public class InvitationService {
                 || isGroupAdminForInvitation(inv, actor)
                 || isStaffOrAdmin(actor);
 
-        if (!hasPermission) {
+        if (!hasPermission)
             throw new AccessDeniedException("Forbidden");
-        }
     }
 
     private User getCurrentUser(Authentication auth) {
@@ -377,7 +425,4 @@ public class InvitationService {
                 GroupRole.ADMIN
         );
     }
-
-    // Removed validateUserDocuments method - moved to UserDocumentValidationService
-
 }
