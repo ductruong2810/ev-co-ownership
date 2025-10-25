@@ -64,12 +64,6 @@ public class InvitationService {
         boolean isMember = shareRepo.existsByGroup_GroupIdAndUser_UserId(groupId, inviter.getUserId());
         if (!isMember) throw new AccessDeniedException("Not a member of this group");
 
-        // chặn trùng pending invitation theo email trong cùng group
-        if (invitationRepo.existsByGroup_GroupIdAndInviteeEmailIgnoreCaseAndStatus(
-                groupId, req.inviteeEmail(), InvitationStatus.PENDING)) {
-            throw new IllegalStateException("A pending invitation already exists for this email in the group");
-        }
-
         String token = genToken();
         String otp = genOtp();
         LocalDateTime now = LocalDateTime.now();
