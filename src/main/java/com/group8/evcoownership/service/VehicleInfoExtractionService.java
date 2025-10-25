@@ -37,13 +37,13 @@ public class VehicleInfoExtractionService {
         Pattern.CASE_INSENSITIVE
     );
 
-    private static final Pattern LICENSE_PLATE_PATTERN = Pattern.compile(
-        "([0-9]{2}[A-Z]-[0-9]{3}\\.[0-9]{2})",
+    private static final Pattern LICENSE_PATTERN = Pattern.compile(
+        "([0-9]{2}[A-Z][0-9]-[0-9]{3}\\.[0-9]{2})",
         Pattern.CASE_INSENSITIVE
     );
 
     private static final Pattern CHASSIS_PATTERN = Pattern.compile(
-        "([A-Z0-9]{17})",
+        "([A-Z0-9]{10,17})",
         Pattern.CASE_INSENSITIVE
     );
 
@@ -218,21 +218,24 @@ public class VehicleInfoExtractionService {
      * Extract biển số xe
      */
     private String extractLicensePlate(String text) {
-        Matcher matcher = LICENSE_PLATE_PATTERN.matcher(text);
+        Matcher matcher = LICENSE_PATTERN.matcher(text);
         if (matcher.find()) {
             return matcher.group(1).toUpperCase();
         }
         
         // Fallback: Tìm trong text có chứa "biển số" hoặc "plate"
         String[] lines = text.split("\n");
-        for (String line : lines) {
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
             if (line.toLowerCase().contains("biển số") || line.toLowerCase().contains("plate")) {
                 log.info("Found license plate line: {}", line);
-                // Tìm pattern license plate trong dòng
-                matcher = LICENSE_PLATE_PATTERN.matcher(line);
-                if (matcher.find()) {
-                    log.info("Extracted license plate from line: {}", matcher.group(1));
-                    return matcher.group(1).toUpperCase();
+                // Tìm pattern license plate trong dòng hiện tại và dòng tiếp theo
+                for (int j = i; j < Math.min(i + 2, lines.length); j++) {
+                    matcher = LICENSE_PATTERN.matcher(lines[j]);
+                    if (matcher.find()) {
+                        log.info("Extracted license plate from line {}: {}", j, matcher.group(1));
+                        return matcher.group(1).toUpperCase();
+                    }
                 }
             }
         }
@@ -251,14 +254,17 @@ public class VehicleInfoExtractionService {
         
         // Fallback: Tìm trong text có chứa "số khung" hoặc "chassis"
         String[] lines = text.split("\n");
-        for (String line : lines) {
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
             if (line.toLowerCase().contains("số khung") || line.toLowerCase().contains("chassis")) {
                 log.info("Found chassis line: {}", line);
-                // Tìm pattern chassis trong dòng
-                matcher = CHASSIS_PATTERN.matcher(line);
-                if (matcher.find()) {
-                    log.info("Extracted chassis from line: {}", matcher.group(1));
-                    return matcher.group(1).toUpperCase();
+                // Tìm pattern chassis trong dòng hiện tại và dòng tiếp theo
+                for (int j = i; j < Math.min(i + 2, lines.length); j++) {
+                    matcher = CHASSIS_PATTERN.matcher(lines[j]);
+                    if (matcher.find()) {
+                        log.info("Extracted chassis from line {}: {}", j, matcher.group(1));
+                        return matcher.group(1).toUpperCase();
+                    }
                 }
             }
         }
