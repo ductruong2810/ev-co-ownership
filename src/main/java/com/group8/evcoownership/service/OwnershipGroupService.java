@@ -18,9 +18,13 @@ import com.group8.evcoownership.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.JpaSort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -32,6 +36,7 @@ import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class OwnershipGroupService {
 
     private final OwnershipGroupRepository repo;
@@ -41,6 +46,7 @@ public class OwnershipGroupService {
     private final VehicleService vehicleService;
     private final NotificationOrchestrator notificationOrchestrator;
     private final FundService fundService;
+    private final OcrService ocrService;
 
     @Value("${app.validation.enabled:true}")
     private boolean validationEnabled;
@@ -175,22 +181,90 @@ public class OwnershipGroupService {
     public GroupWithVehicleResponse createGroupWithVehicle(
             String groupName, String description, Integer memberCapacity,
             java.math.BigDecimal vehicleValue, String licensePlate, String chassisNumber,
-            MultipartFile[] vehicleImages, String[] imageTypes, String userEmail) {
-        // Step 1: Create ownership group với userEmail (quỹ sẽ được tạo tự động)
+            MultipartFile[] vehicleImages, String[] imageTypes, String userEmail,
+            String brand, String model, Boolean enableAutoFill) {
+        
+        long startTime = System.currentTimeMillis();
+        GroupWithVehicleResponse.AutoFillInfo autoFillInfo = null;
+        
+        // Step 1: Process OCR if auto-fill is enabled (default true)
+        boolean shouldProcessOcr = enableAutoFill == null || enableAutoFill;
+        log.info("OCR processing enabled: {} (enableAutoFill: {})", shouldProcessOcr, enableAutoFill);
+        
+        if (shouldProcessOcr) {
+            log.info("Starting OCR processing for {} images", vehicleImages.length);
+            autoFillInfo = processOcrAutoFill(vehicleImages, imageTypes, startTime);
+            log.info("OCR processing completed. AutoFillInfo: {}", autoFillInfo);
+            
+            // Validate user input against OCR extracted information
+            validateUserInputAgainstOcr(brand, model, licensePlate, chassisNumber, autoFillInfo);
+            
+            // Use OCR extracted information if user input is empty or invalid
+            if (autoFillInfo.extractedBrand() != null && !autoFillInfo.extractedBrand().isEmpty()) {
+                if (brand == null || brand.trim().isEmpty() || brand.equals("Unknown")) {
+                    brand = autoFillInfo.extractedBrand();
+                    log.info("Using OCR extracted brand: {}", brand);
+                }
+            }
+            if (autoFillInfo.extractedModel() != null && !autoFillInfo.extractedModel().isEmpty()) {
+                if (model == null || model.trim().isEmpty() || model.equals("Unknown")) {
+                    model = autoFillInfo.extractedModel();
+                    log.info("Using OCR extracted model: {}", model);
+                }
+            }
+            if (autoFillInfo.extractedLicensePlate() != null && !autoFillInfo.extractedLicensePlate().isEmpty()) {
+                if (licensePlate == null || licensePlate.trim().isEmpty()) {
+                    licensePlate = autoFillInfo.extractedLicensePlate();
+                    log.info("Using OCR extracted license plate: {}", licensePlate);
+                }
+            }
+            if (autoFillInfo.extractedChassisNumber() != null && !autoFillInfo.extractedChassisNumber().isEmpty()) {
+                if (chassisNumber == null || chassisNumber.trim().isEmpty()) {
+                    chassisNumber = autoFillInfo.extractedChassisNumber();
+                    log.info("Using OCR extracted chassis number: {}", chassisNumber);
+                }
+            }
+        }
+        
+        // Step 2: Validate vehicle information and document quality
+        boolean hasLicensePlateInput = licensePlate != null && !licensePlate.trim().isEmpty();
+        boolean hasChassisInput = chassisNumber != null && !chassisNumber.trim().isEmpty();
+        boolean hasAnyUserInput = hasLicensePlateInput || hasChassisInput;
+        
+        if (!hasAnyUserInput) {
+            // No user input - must rely on OCR
+            if (autoFillInfo != null && isLikelyInvalidDocument(autoFillInfo)) {
+                throw new IllegalArgumentException(
+                    "Không thể trích xuất thông tin xe từ hình ảnh. Vui lòng kiểm tra lại hình ảnh có phải là giấy đăng ký xe hợp lệ không, hoặc nhập thông tin thủ công.");
+            }
+            
+            throw new IllegalArgumentException(
+                "Biển số xe và số khung xe là bắt buộc. Vui lòng nhập thông tin thủ công hoặc đảm bảo OCR có thể trích xuất từ giấy đăng ký xe.");
+        } else {
+            // User provided some input - STRICT VALIDATION: Must have valid document
+            if (autoFillInfo != null && isLikelyInvalidDocument(autoFillInfo)) {
+                throw new IllegalArgumentException(
+                    "Hình ảnh không phải là giấy đăng ký xe hợp lệ. Vui lòng upload đúng cà vẹt xe để xác minh thông tin.");
+            }
+        }
+        
+        // Step 3: Create ownership group với userEmail (quỹ sẽ được tạo tự động)
         OwnershipGroupCreateRequest groupRequest = new OwnershipGroupCreateRequest(
                 groupName, description, memberCapacity);
         OwnershipGroupResponse groupResponse = create(groupRequest, userEmail);
 
-        // Step 2: Create vehicle using VehicleService
+        // Step 4: Create vehicle using VehicleService with extracted or provided brand/model
         VehicleCreateRequest vehicleRequest = new VehicleCreateRequest(
-                "Unknown", "Unknown", licensePlate, chassisNumber, vehicleValue, groupResponse.groupId());
+                brand != null && !brand.isEmpty() ? brand : "Unknown", 
+                model != null && !model.isEmpty() ? model : "Unknown", 
+                licensePlate, chassisNumber, vehicleValue, groupResponse.groupId());
         VehicleResponse vehicleResponse = vehicleService.create(vehicleRequest);
 
-        // Step 3: Upload multiple vehicle images using VehicleService
+        // Step 5: Upload multiple vehicle images using VehicleService
         Map<String, Object> uploadedImages = vehicleService.uploadMultipleVehicleImages(
                 vehicleResponse.vehicleId(), vehicleImages, imageTypes);
 
-        // Step 4: Return combined response
+        // Step 6: Return combined response with auto-fill info
         return new GroupWithVehicleResponse(
                 groupResponse.groupId(),
                 groupResponse.groupName(),
@@ -206,8 +280,166 @@ public class OwnershipGroupService {
                 vehicleResponse.chassisNumber(),
                 vehicleResponse.qrCode(),
                 vehicleResponse.vehicleValue(),
-                uploadedImages
+                uploadedImages,
+                autoFillInfo
         );
+    }
+    
+    /**
+     * Check if uploaded document is likely invalid (not a vehicle registration document)
+     */
+    private boolean isLikelyInvalidDocument(GroupWithVehicleResponse.AutoFillInfo autoFillInfo) {
+        if (autoFillInfo == null) {
+            return true;
+        }
+        
+        // Check if OCR confidence is very low
+        String confidence = autoFillInfo.ocrConfidence();
+        if (confidence != null && (confidence.toLowerCase().contains("no text") || 
+                                  confidence.toLowerCase().contains("failed") ||
+                                  confidence.toLowerCase().contains("low"))) {
+            return true;
+        }
+        
+        // Check if no meaningful vehicle information was extracted
+        boolean hasLicensePlate = autoFillInfo.extractedLicensePlate() != null && !autoFillInfo.extractedLicensePlate().isEmpty();
+        boolean hasChassisNumber = autoFillInfo.extractedChassisNumber() != null && !autoFillInfo.extractedChassisNumber().isEmpty();
+        boolean hasValidBrand = autoFillInfo.extractedBrand() != null && !autoFillInfo.extractedBrand().isEmpty() && !autoFillInfo.extractedBrand().equals("Unknown");
+        
+        // If none of the critical fields were extracted, likely invalid
+        return !hasLicensePlate && !hasChassisNumber && !hasValidBrand;
+    }
+    
+    /**
+     * Validate user input against OCR extracted information
+     * Uses hybrid approach: strict validation for critical fields, flexible for others
+     */
+    private void validateUserInputAgainstOcr(String brand, String model, String licensePlate, String chassisNumber, 
+                                           GroupWithVehicleResponse.AutoFillInfo autoFillInfo) {
+        StringBuilder errors = new StringBuilder();
+        StringBuilder warnings = new StringBuilder();
+        
+        // CRITICAL VALIDATION: License plate - must match exactly (block creation)
+        if (licensePlate != null && !licensePlate.trim().isEmpty() && 
+            autoFillInfo.extractedLicensePlate() != null && !autoFillInfo.extractedLicensePlate().isEmpty()) {
+            
+            String userPlate = licensePlate.trim().toUpperCase();
+            String ocrPlate = autoFillInfo.extractedLicensePlate().trim().toUpperCase();
+            
+            if (!userPlate.equals(ocrPlate)) {
+                errors.append("Biển số xe không khớp với giấy tờ đăng ký. ");
+            }
+        }
+        
+        // CRITICAL VALIDATION: Chassis number - must match exactly (block creation)
+        if (chassisNumber != null && !chassisNumber.trim().isEmpty() && 
+            autoFillInfo.extractedChassisNumber() != null && !autoFillInfo.extractedChassisNumber().isEmpty()) {
+            
+            String userChassis = chassisNumber.trim().toUpperCase();
+            String ocrChassis = autoFillInfo.extractedChassisNumber().trim().toUpperCase();
+            
+            if (!userChassis.equals(ocrChassis)) {
+                errors.append("Số khung xe không khớp với giấy tờ đăng ký. ");
+            }
+        }
+        
+        // SOFT VALIDATION: Brand - only warn if user explicitly provided brand
+        if (brand != null && !brand.trim().isEmpty() && !brand.equals("Unknown") && 
+            autoFillInfo.extractedBrand() != null && !autoFillInfo.extractedBrand().isEmpty()) {
+            
+            String userBrand = brand.trim().toUpperCase();
+            String ocrBrand = autoFillInfo.extractedBrand().trim().toUpperCase();
+            
+            if (!userBrand.equals(ocrBrand)) {
+                warnings.append("Nhãn hiệu xe có thể không khớp với giấy tờ đăng ký. ");
+                log.warn("Brand mismatch: user='{}' vs OCR='{}'", brand, autoFillInfo.extractedBrand());
+            }
+        }
+        
+        // SOFT VALIDATION: Model - only warn if user explicitly provided model
+        if (model != null && !model.trim().isEmpty() && !model.equals("Unknown") && 
+            autoFillInfo.extractedModel() != null && !autoFillInfo.extractedModel().isEmpty()) {
+            
+            String userModel = model.trim().toUpperCase();
+            String ocrModel = autoFillInfo.extractedModel().trim().toUpperCase();
+            
+            if (!userModel.equals(ocrModel)) {
+                warnings.append("Dòng xe có thể không khớp với giấy tờ đăng ký. ");
+                log.warn("Model mismatch: user='{}' vs OCR='{}'", model, autoFillInfo.extractedModel());
+            }
+        }
+        
+        // Handle validation results
+        if (errors.length() > 0) {
+            // CRITICAL ERRORS: Block creation
+            String errorMessage = "Thông tin xe không khớp với giấy tờ đăng ký. " + errors.toString().trim();
+            log.warn("User input validation failed: {}", errorMessage);
+            throw new IllegalArgumentException(errorMessage);
+        }
+        
+        if (warnings.length() > 0) {
+            // SOFT WARNINGS: Log but allow creation
+            log.info("Soft validation warnings: {}", warnings.toString().trim());
+        }
+        
+        // Check if OCR detected this as a vehicle registration document
+        if (!autoFillInfo.isRegistrationDocument()) {
+            log.warn("OCR did not detect this as a vehicle registration document. Staff review recommended.");
+        }
+        
+        // Check if OCR extracted meaningful vehicle information
+        boolean hasValidVehicleInfo = (autoFillInfo.extractedLicensePlate() != null && !autoFillInfo.extractedLicensePlate().isEmpty()) ||
+                                     (autoFillInfo.extractedChassisNumber() != null && !autoFillInfo.extractedChassisNumber().isEmpty()) ||
+                                     (autoFillInfo.extractedBrand() != null && !autoFillInfo.extractedBrand().isEmpty() && !autoFillInfo.extractedBrand().equals("Unknown"));
+        
+        if (!hasValidVehicleInfo) {
+            log.warn("OCR did not extract meaningful vehicle information. Possible invalid document uploaded.");
+        }
+    }
+    
+    /**
+     * Process OCR auto-fill for vehicle information
+     */
+    private GroupWithVehicleResponse.AutoFillInfo processOcrAutoFill(
+            MultipartFile[] vehicleImages, String[] imageTypes, long startTime) {
+        
+        try {
+            // Find registration document image
+            MultipartFile registrationImage = findRegistrationImage(vehicleImages, imageTypes);
+            
+            if (registrationImage == null) {
+                return new GroupWithVehicleResponse.AutoFillInfo(
+                    true, "", "", "", "", "", false, "No registration document found", 
+                    String.valueOf(System.currentTimeMillis() - startTime) + "ms"
+                );
+            }
+            
+            // Use the shared OCR processing method
+            return ocrService.processVehicleInfoFromImage(registrationImage, startTime).get();
+            
+        } catch (Exception e) {
+            long processingTime = System.currentTimeMillis() - startTime;
+            return new GroupWithVehicleResponse.AutoFillInfo(
+                true, "", "", "", "", "", false, "OCR processing failed: " + e.getMessage(), 
+                processingTime + "ms"
+            );
+        }
+    }
+    
+    /**
+     * Find registration document image from uploaded images
+     */
+    private MultipartFile findRegistrationImage(MultipartFile[] vehicleImages, String[] imageTypes) {
+        for (int i = 0; i < vehicleImages.length; i++) {
+            if (i < imageTypes.length && 
+                ("LICENSE".equals(imageTypes[i]) || "REGISTRATION".equals(imageTypes[i]) || 
+                 "CA_VET".equals(imageTypes[i]) || "GIẤY_ĐĂNG_KÝ".equals(imageTypes[i]))) {
+                return vehicleImages[i];
+            }
+        }
+        
+        // If no specific registration image type found, return the first image
+        return vehicleImages.length > 0 ? vehicleImages[0] : null;
     }
 
     @Transactional
@@ -333,37 +565,28 @@ public class OwnershipGroupService {
         boolean hasStatus = status != null;
         boolean hasDate = (fromDate != null || toDate != null);
 
-        // Chuẩn hóa mốc thời gian (bao phủ trọn ngày)
-        LocalDateTime start = (fromDate != null) ? fromDate.atStartOfDay() : LocalDateTime.MIN;
+        // ✅ Giới hạn thời gian trong phạm vi hợp lệ của SQL Server
+        LocalDateTime SQLSERVER_MIN = LocalDateTime.of(1753, 1, 1, 0, 0);
+        LocalDateTime SQLSERVER_MAX = LocalDateTime.of(9999, 12, 31, 23, 59, 59, 999_000_000);
+
+        // ✅ Chuẩn hóa mốc thời gian (bao phủ trọn ngày)
+        LocalDateTime start = (fromDate != null) ? fromDate.atStartOfDay() : SQLSERVER_MIN;
         LocalDateTime end = (toDate != null)
-                ? toDate.plusDays(1).atStartOfDay().minusNanos(1) // inclusive style
-                : LocalDateTime.MAX;
+                ? toDate.plusDays(1).atStartOfDay().minusNanos(1)
+                : SQLSERVER_MAX;
 
-        Page<OwnershipGroup> page;
-
-        if (hasDate && hasKeyword && hasStatus) {
-            page = repo.findByGroupNameContainingIgnoreCaseAndStatusAndCreatedAtBetween(
-                    keyword, status, start, end, pageable);
-        } else if (hasDate && hasKeyword) {
-            page = repo.findByGroupNameContainingIgnoreCaseAndCreatedAtBetween(
-                    keyword, start, end, pageable);
-        } else if (hasDate && hasStatus) {
-            page = repo.findByStatusAndCreatedAtBetween(
-                    status, start, end, pageable);
-        } else if (hasDate) {
-            page = repo.findByCreatedAtBetween(start, end, pageable);
-        } else if (hasKeyword && hasStatus) {
-            page = repo.findByGroupNameContainingIgnoreCaseAndStatus(keyword, status, pageable);
-        } else if (hasKeyword) {
-            page = repo.findByGroupNameContainingIgnoreCase(keyword, pageable);
-        } else if (hasStatus) {
-            page = repo.findByStatus(status, pageable);
-        } else {
-            page = repo.findAll(pageable);
-        }
+        // ✅ Gọi native query trong repository
+        Page<OwnershipGroup> page = repo.findSortedGroups(
+                hasKeyword ? keyword : null,
+                hasStatus ? status.name() : null,
+                start,
+                end,
+                pageable
+        );
 
         return page.map(this::toDto);
     }
+
 
     @Transactional
     public void delete(Long groupId) {

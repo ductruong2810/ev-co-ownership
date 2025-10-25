@@ -166,6 +166,12 @@
             <version>0.11.5</version>
             <scope>runtime</scope>
         </dependency>
+        <!-- Azure Computer Vision -->
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-ai-vision-imageanalysis</artifactId>
+            <version>1.0.5</version>
+        </dependency>
     </dependencies>
 
     <dependencyManagement>

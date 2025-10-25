@@ -40,11 +40,11 @@ public record CreateGroupWithVehicleRequest(
         String licensePlate,
 
 
-        @NotBlank(message = "Chassis number is required")
-        @Size(min = 17, max = 17, message = "Chassis number must be exactly 17 characters")
+        // @NotBlank(message = "Chassis number is required") // Removed - OCR can fill
+        @Size(min = 10, max = 17, message = "Chassis number must be 10-17 characters")
         @Pattern(
-                regexp = "^[A-Z0-9]{17}$",
-                message = "Chassis number must contain exactly 17 uppercase letters or digits"
+                regexp = "^[A-Z0-9]{10,17}$",
+                message = "Chassis number must contain 10-17 uppercase letters or digits"
         )
         String chassisNumber,
 
@@ -55,6 +55,13 @@ public record CreateGroupWithVehicleRequest(
 
         @NotNull(message = "Image types are required")
         @Size(min = 1, max = 10, message = "Must have 1-10 image types")
-        String[] imageTypes
+        String[] imageTypes,
+
+        // Optional fields for auto-fill from OCR
+        String brand,
+        String model,
+        
+        // Flag to enable OCR processing (default true)
+        Boolean enableAutoFill
 ) {
 }
