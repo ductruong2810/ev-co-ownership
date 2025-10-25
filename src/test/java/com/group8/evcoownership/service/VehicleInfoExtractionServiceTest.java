@@ -67,5 +67,60 @@ public class VehicleInfoExtractionServiceTest {
         assertNotNull(result.licensePlate());
         assertTrue(result.licensePlate().contains("59X2-328.98"), 
             "License plate should contain 59X2-328.98, got: " + result.licensePlate());
+            
+        // Kiểm tra chassis (xe máy - ngắn)
+        assertNotNull(result.chassisNumber());
+        assertTrue(result.chassisNumber().length() >= 10 && result.chassisNumber().length() <= 12,
+            "Motorcycle chassis should be 10-12 characters, got: " + result.chassisNumber());
+    }
+    
+    @Test
+    public void testExtractCarInfo() {
+        // Test với text OCR xe ô tô
+        String carOcrText = """
+            Tên chủ xe (Owner's full name):
+            NGUYỄN VĂN A
+            Địa chỉ (Address):
+            Số khung (Chassis Nº):
+            123 Đường ABC, Quận 1, TP.HCM
+            JT2BG22K7V0123755
+            Nhãn hiệu (Brand): TOYOTA
+            Số loại(Model code): CAMRY
+            Màu sơn (Color): Đen
+            Biển số đăng ký (Nº plate)
+            51A-123.45
+            Đăng ký lần đầu ngày:
+            Date of first registration
+            15/03/2020
+            """;
+
+        VehicleInfoDto result = service.extractVehicleInfo(carOcrText);
+        
+        System.out.println("=== CAR EXTRACTION RESULT ===");
+        System.out.println("Brand: " + result.brand());
+        System.out.println("Model: " + result.model());
+        System.out.println("Year: " + result.year());
+        System.out.println("License Plate: " + result.licensePlate());
+        System.out.println("Chassis: " + result.chassisNumber());
+        
+        // Kiểm tra brand
+        assertNotNull(result.brand());
+        assertTrue(result.brand().toLowerCase().contains("toyota"), 
+            "Brand should contain TOYOTA, got: " + result.brand());
+        
+        // Kiểm tra model
+        assertNotNull(result.model());
+        assertTrue(result.model().toLowerCase().contains("camry"), 
+            "Model should contain CAMRY, got: " + result.model());
+        
+        // Kiểm tra license plate
+        assertNotNull(result.licensePlate());
+        assertTrue(result.licensePlate().contains("51A-123.45"), 
+            "License plate should contain 51A-123.45, got: " + result.licensePlate());
+            
+        // Kiểm tra chassis (xe ô tô - dài)
+        assertNotNull(result.chassisNumber());
+        assertTrue(result.chassisNumber().length() == 17,
+            "Car chassis should be exactly 17 characters, got: " + result.chassisNumber());
     }
 }

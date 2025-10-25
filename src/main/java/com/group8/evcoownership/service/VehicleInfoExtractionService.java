@@ -38,10 +38,23 @@ public class VehicleInfoExtractionService {
     );
 
     private static final Pattern LICENSE_PATTERN = Pattern.compile(
-        "([0-9]{2}[A-Z][0-9]-[0-9]{3}\\.[0-9]{2})",
+        "([0-9]{2}[A-Z][0-9]?-?[0-9]{3}\\.[0-9]{2})",
         Pattern.CASE_INSENSITIVE
     );
 
+    // Pattern cho chassis xe máy (10-12 ký tự)
+    private static final Pattern MOTORCYCLE_CHASSIS_PATTERN = Pattern.compile(
+        "([A-Z0-9]{10,12})",
+        Pattern.CASE_INSENSITIVE
+    );
+    
+    // Pattern cho chassis xe ô tô (17 ký tự)
+    private static final Pattern CAR_CHASSIS_PATTERN = Pattern.compile(
+        "([A-Z0-9]{17})",
+        Pattern.CASE_INSENSITIVE
+    );
+    
+    // Pattern chung cho cả hai loại
     private static final Pattern CHASSIS_PATTERN = Pattern.compile(
         "([A-Z0-9]{10,17})",
         Pattern.CASE_INSENSITIVE
@@ -244,15 +257,21 @@ public class VehicleInfoExtractionService {
     }
 
     /**
-     * Extract số khung xe
+     * Extract số khung xe - phân biệt xe máy và xe ô tô
      */
     private String extractChassisNumber(String text) {
-        Matcher matcher = CHASSIS_PATTERN.matcher(text);
-        if (matcher.find()) {
-            return matcher.group(1).toUpperCase();
+        // Bước 1: Xác định loại xe dựa trên brand và context
+        boolean isMotorcycle = isMotorcycleBrand(text);
+        
+        // Bước 2: Tìm chassis theo loại xe
+        String chassis = findChassisByVehicleType(text, isMotorcycle);
+        
+        if (!chassis.isEmpty()) {
+            log.info("Extracted {} chassis: {}", isMotorcycle ? "motorcycle" : "car", chassis);
+            return chassis;
         }
         
-        // Fallback: Tìm trong text có chứa "số khung" hoặc "chassis"
+        // Bước 3: Fallback - tìm trong text có chứa "số khung" hoặc "chassis"
         String[] lines = text.split("\n");
         for (int i = 0; i < lines.length; i++) {
             String line = lines[i];
@@ -260,13 +279,53 @@ public class VehicleInfoExtractionService {
                 log.info("Found chassis line: {}", line);
                 // Tìm pattern chassis trong dòng hiện tại và dòng tiếp theo
                 for (int j = i; j < Math.min(i + 2, lines.length); j++) {
-                    matcher = CHASSIS_PATTERN.matcher(lines[j]);
+                    Matcher matcher = CHASSIS_PATTERN.matcher(lines[j]);
                     if (matcher.find()) {
-                        log.info("Extracted chassis from line {}: {}", j, matcher.group(1));
-                        return matcher.group(1).toUpperCase();
+                        String foundChassis = matcher.group(1).toUpperCase();
+                        log.info("Extracted chassis from line {}: {}", j, foundChassis);
+                        return foundChassis;
                     }
                 }
             }
+        }
+        
+        return "";
+    }
+    
+    /**
+     * Xác định có phải xe máy không dựa trên brand
+     */
+    private boolean isMotorcycleBrand(String text) {
+        String lowerText = text.toLowerCase();
+        
+        // Các hãng xe máy phổ biến
+        String[] motorcycleBrands = {
+            "yamaha", "honda", "suzuki", "kawasaki", "ducati", "ktm", 
+            "piaggio", "vespa", "sym", "kymco", "benelli", "cfmoto", "qj motor"
+        };
+        
+        for (String brand : motorcycleBrands) {
+            if (lowerText.contains(brand)) {
+                return true;
+            }
+        }
+        
+        // Kiểm tra context - xe máy thường có "Số máy" và "Dung tích"
+        boolean hasEngineNumber = lowerText.contains("số máy") || lowerText.contains("engine");
+        boolean hasCapacity = lowerText.contains("dung tích") || lowerText.contains("capacity");
+        
+        return hasEngineNumber && hasCapacity;
+    }
+    
+    /**
+     * Tìm chassis theo loại xe
+     */
+    private String findChassisByVehicleType(String text, boolean isMotorcycle) {
+        Pattern pattern = isMotorcycle ? MOTORCYCLE_CHASSIS_PATTERN : CAR_CHASSIS_PATTERN;
+        Matcher matcher = pattern.matcher(text);
+        
+        if (matcher.find()) {
+            return matcher.group(1).toUpperCase();
         }
         
         return "";
