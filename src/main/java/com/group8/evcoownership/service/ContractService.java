@@ -780,10 +780,11 @@ public class ContractService {
 
 
     public List<ContractDTO> getAllContracts() {
-        return contractRepository.findAll().stream()
+        return contractRepository.findAllSortedByStatus().stream()
                 .map(this::convertToDTO)
                 .toList();
     }
+
 
     public ContractDTO getContractById(Long contractId) {
         Contract contract = contractRepository.findById(contractId)
