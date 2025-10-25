@@ -24,8 +24,20 @@ public record GroupWithVehicleResponse(
         String chassisNumber,
         String qrCode,
         BigDecimal vehicleValue,
-
-        // Vehicle images - có thể là String hoặc String[]
-        Map<String, Object> vehicleImages
+        Map<String, Object> uploadedImages,
+        // Thông tin OCR auto-fill (có thể null)
+        AutoFillInfo autoFillInfo
 ) {
+
+    public record AutoFillInfo(
+            Boolean enabled,
+            String extractedBrand,
+            String extractedModel,
+            String extractedYear,
+            String extractedLicensePlate,
+            String extractedChassisNumber,
+            Boolean isRegistrationDocument,
+            String ocrConfidence,
+            String processingTime
+    ) {}
 }
