@@ -21,7 +21,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.JpaSort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -562,37 +565,28 @@ public class OwnershipGroupService {
         boolean hasStatus = status != null;
         boolean hasDate = (fromDate != null || toDate != null);
 
-        // Chuẩn hóa mốc thời gian (bao phủ trọn ngày)
-        LocalDateTime start = (fromDate != null) ? fromDate.atStartOfDay() : LocalDateTime.MIN;
+        // ✅ Giới hạn thời gian trong phạm vi hợp lệ của SQL Server
+        LocalDateTime SQLSERVER_MIN = LocalDateTime.of(1753, 1, 1, 0, 0);
+        LocalDateTime SQLSERVER_MAX = LocalDateTime.of(9999, 12, 31, 23, 59, 59, 999_000_000);
+
+        // ✅ Chuẩn hóa mốc thời gian (bao phủ trọn ngày)
+        LocalDateTime start = (fromDate != null) ? fromDate.atStartOfDay() : SQLSERVER_MIN;
         LocalDateTime end = (toDate != null)
-                ? toDate.plusDays(1).atStartOfDay().minusNanos(1) // inclusive style
-                : LocalDateTime.MAX;
+                ? toDate.plusDays(1).atStartOfDay().minusNanos(1)
+                : SQLSERVER_MAX;
 
-        Page<OwnershipGroup> page;
-
-        if (hasDate && hasKeyword && hasStatus) {
-            page = repo.findByGroupNameContainingIgnoreCaseAndStatusAndCreatedAtBetween(
-                    keyword, status, start, end, pageable);
-        } else if (hasDate && hasKeyword) {
-            page = repo.findByGroupNameContainingIgnoreCaseAndCreatedAtBetween(
-                    keyword, start, end, pageable);
-        } else if (hasDate && hasStatus) {
-            page = repo.findByStatusAndCreatedAtBetween(
-                    status, start, end, pageable);
-        } else if (hasDate) {
-            page = repo.findByCreatedAtBetween(start, end, pageable);
-        } else if (hasKeyword && hasStatus) {
-            page = repo.findByGroupNameContainingIgnoreCaseAndStatus(keyword, status, pageable);
-        } else if (hasKeyword) {
-            page = repo.findByGroupNameContainingIgnoreCase(keyword, pageable);
-        } else if (hasStatus) {
-            page = repo.findByStatus(status, pageable);
-        } else {
-            page = repo.findAll(pageable);
-        }
+        // ✅ Gọi native query trong repository
+        Page<OwnershipGroup> page = repo.findSortedGroups(
+                hasKeyword ? keyword : null,
+                hasStatus ? status.name() : null,
+                start,
+                end,
+                pageable
+        );
 
         return page.map(this::toDto);
     }
+
 
     @Transactional
     public void delete(Long groupId) {

@@ -73,6 +73,7 @@ public class OwnershipGroupController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
+
         return service.list(keyword, status, fromDate, toDate, PageRequest.of(page, size));
     }
 
