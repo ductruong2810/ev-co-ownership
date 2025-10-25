@@ -49,6 +49,11 @@ public class OwnershipGroup {
     @Column(name = "MemberCapacity")
     private Integer memberCapacity;
 
+    @Nationalized
+    @Lob
+    @Column(name = "RejectionReason")
+    private String rejectionReason;
+
     @Column(name = "CreatedAt", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

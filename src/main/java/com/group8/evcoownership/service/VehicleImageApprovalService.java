@@ -171,15 +171,17 @@ public class VehicleImageApprovalService {
             // Nếu tất cả hình được duyệt, chuyển group thành ACTIVE
             if (group.getStatus() == GroupStatus.PENDING) {
                 group.setStatus(GroupStatus.ACTIVE);
+                group.setRejectionReason(null); // Xóa lý do từ chối khi duyệt
                 ownershipGroupRepository.save(group);
                 log.info("Group {} status updated to ACTIVE after all images approved", groupId);
             }
         } else if (request.status() == ImageApprovalStatus.REJECTED) {
-            // Nếu có hình bị từ chối, chuyển group thành INACTIVE để phản ánh việc cần upload lại
+            // Nếu có hình bị từ chối, chuyển group thành INACTIVE và lưu lý do từ chối
             if (group.getStatus() == GroupStatus.PENDING) {
                 group.setStatus(GroupStatus.INACTIVE);
+                group.setRejectionReason(request.rejectionReason()); // Lưu lý do từ chối hình ảnh làm lý do INACTIVE của group
                 ownershipGroupRepository.save(group);
-                log.info("Group {} status updated to INACTIVE after images rejected", groupId);
+                log.info("Group {} status updated to INACTIVE after images rejected. Reason: {}", groupId, request.rejectionReason());
             }
         }
 
@@ -253,14 +255,25 @@ public class VehicleImageApprovalService {
         // Nếu tất cả hình ảnh đã được duyệt và group đang ở trạng thái PENDING
         if (totalImages > 0 && totalImages == approvedImages && group.getStatus() == GroupStatus.PENDING) {
             group.setStatus(GroupStatus.ACTIVE);
+            group.setRejectionReason(null); // Xóa lý do từ chối khi duyệt
             ownershipGroupRepository.save(group);
             log.info("Group {} status updated to ACTIVE after all images approved", groupId);
         }
         // Nếu có hình ảnh bị từ chối và group đang ở trạng thái PENDING
         else if (rejectedImages > 0 && group.getStatus() == GroupStatus.PENDING) {
             group.setStatus(GroupStatus.INACTIVE);
+            
+            // Lấy lý do từ chối từ hình ảnh bị từ chối đầu tiên
+            List<VehicleImage> rejectedImagesList = vehicleImageRepository.findByVehicleIdAndApprovalStatus(vehicleId, ImageApprovalStatus.REJECTED);
+            if (!rejectedImagesList.isEmpty()) {
+                String rejectionReason = rejectedImagesList.get(0).getRejectionReason();
+                group.setRejectionReason(rejectionReason);
+                log.info("Group {} status updated to INACTIVE after images rejected. Reason: {}", groupId, rejectionReason);
+            } else {
+                log.info("Group {} status updated to INACTIVE after images rejected", groupId);
+            }
+            
             ownershipGroupRepository.save(group);
-            log.info("Group {} status updated to INACTIVE after images rejected", groupId);
         }
     }
 

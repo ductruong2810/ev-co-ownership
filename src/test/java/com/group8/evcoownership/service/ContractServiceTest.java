@@ -244,6 +244,106 @@ class ContractServiceTest {
     }
 
     @Test
+    void generateContractData_ZeroOwnershipPercentage_ShouldThrowException() {
+        // Given
+        when(groupRepository.findById(TEST_GROUP_ID))
+                .thenReturn(Optional.of(testGroup));
+        
+        // Mock shares với đủ số thành viên nhưng một thành viên có 0% ownership
+        OwnershipShare share1 = OwnershipShare.builder()
+                .group(testGroup)
+                .user(User.builder().userId(1L).fullName("John Doe").build())
+                .ownershipPercentage(new BigDecimal("50.00"))
+                .build();
+        
+        OwnershipShare share2 = OwnershipShare.builder()
+                .group(testGroup)
+                .user(User.builder().userId(2L).fullName("Jane Smith").build())
+                .ownershipPercentage(new BigDecimal("0.00")) // 0% ownership - should fail
+                .build();
+        
+        OwnershipShare share3 = OwnershipShare.builder()
+                .group(testGroup)
+                .user(User.builder().userId(3L).fullName("Bob Wilson").build())
+                .ownershipPercentage(new BigDecimal("25.00"))
+                .build();
+        
+        OwnershipShare share4 = OwnershipShare.builder()
+                .group(testGroup)
+                .user(User.builder().userId(4L).fullName("Alice Brown").build())
+                .ownershipPercentage(new BigDecimal("15.00"))
+                .build();
+        
+        OwnershipShare share5 = OwnershipShare.builder()
+                .group(testGroup)
+                .user(User.builder().userId(5L).fullName("Charlie Davis").build())
+                .ownershipPercentage(new BigDecimal("10.00"))
+                .build();
+        
+        when(ownershipShareRepository.findByGroupGroupId(TEST_GROUP_ID))
+                .thenReturn(List.of(share1, share2, share3, share4, share5));
+
+        // When & Then
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> {
+            contractService.generateContractData(TEST_GROUP_ID, 1L);
+        });
+
+        assertEquals("Cannot generate contract: Member Jane Smith has 0% ownership. All members must have ownership percentage > 0%.", exception.getMessage());
+        verify(groupRepository).findById(TEST_GROUP_ID);
+        verify(ownershipShareRepository).findByGroupGroupId(TEST_GROUP_ID);
+    }
+
+    @Test
+    void generateContractData_NullOwnershipPercentage_ShouldThrowException() {
+        // Given
+        when(groupRepository.findById(TEST_GROUP_ID))
+                .thenReturn(Optional.of(testGroup));
+        
+        // Mock shares với đủ số thành viên nhưng một thành viên có null ownership percentage
+        OwnershipShare share1 = OwnershipShare.builder()
+                .group(testGroup)
+                .user(User.builder().userId(1L).fullName("John Doe").build())
+                .ownershipPercentage(new BigDecimal("50.00"))
+                .build();
+        
+        OwnershipShare share2 = OwnershipShare.builder()
+                .group(testGroup)
+                .user(User.builder().userId(2L).fullName("Jane Smith").build())
+                .ownershipPercentage(null) // null ownership - should fail
+                .build();
+        
+        OwnershipShare share3 = OwnershipShare.builder()
+                .group(testGroup)
+                .user(User.builder().userId(3L).fullName("Bob Wilson").build())
+                .ownershipPercentage(new BigDecimal("25.00"))
+                .build();
+        
+        OwnershipShare share4 = OwnershipShare.builder()
+                .group(testGroup)
+                .user(User.builder().userId(4L).fullName("Alice Brown").build())
+                .ownershipPercentage(new BigDecimal("15.00"))
+                .build();
+        
+        OwnershipShare share5 = OwnershipShare.builder()
+                .group(testGroup)
+                .user(User.builder().userId(5L).fullName("Charlie Davis").build())
+                .ownershipPercentage(new BigDecimal("10.00"))
+                .build();
+        
+        when(ownershipShareRepository.findByGroupGroupId(TEST_GROUP_ID))
+                .thenReturn(List.of(share1, share2, share3, share4, share5));
+
+        // When & Then
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> {
+            contractService.generateContractData(TEST_GROUP_ID, 1L);
+        });
+
+        assertEquals("Cannot generate contract: Member Jane Smith has null ownership percentage. All members must have ownership percentage set.", exception.getMessage());
+        verify(groupRepository).findById(TEST_GROUP_ID);
+        verify(ownershipShareRepository).findByGroupGroupId(TEST_GROUP_ID);
+    }
+
+    @Test
     void checkAutoSignConditions_InvalidOwnershipPercentage_ShouldReturnFalse() {
         // Given
         when(groupRepository.findById(TEST_GROUP_ID))
