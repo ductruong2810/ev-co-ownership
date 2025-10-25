@@ -7,6 +7,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -27,7 +29,7 @@ public class ContractController {
      * Dành cho:
      *   - Group Admin
      *   - Các thành viên trong nhóm
-     *
+     * <p>
      * Mục đích:
      *   Khi người dùng bấm "Xem hợp đồng" ở giao diện FE,
      *   API này sẽ trả về thông tin chi tiết gồm:
@@ -67,28 +69,21 @@ public class ContractController {
     /**
      * Generate contract data (chỉ tạo nội dung, không save DB)
      */
-    @PostMapping("/{groupId}/generate")
+    @GetMapping("/{groupId}/generate")
     @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
     @Operation(summary = "Tạo nội dung hợp đồng", description = "Tạo nội dung hợp đồng để preview, không lưu vào database")
-    public ResponseEntity<Map<String, Object>> generateContractData(@PathVariable Long groupId) {
-        Map<String, Object> contractData = contractService.generateContractData(groupId);
+    public ResponseEntity<Map<String, Object>> generateContractData(
+            @PathVariable Long groupId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        
+        // Lấy userId từ authentication
+        Long userId = Long.parseLong(userDetails.getUsername());
+        
+        Map<String, Object> contractData = contractService.generateContractData(groupId, userId);
         return ResponseEntity.ok(contractData);
     }
 
 
-    /**
-     * Ký hợp đồng (save + ký trong 1 lần)
-     */
-    @PostMapping("/{groupId}/sign")
-    @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
-    @Operation(summary = "Ký hợp đồng", description = "Lưu và ký hợp đồng với dữ liệu từ frontend")
-    public ResponseEntity<Map<String, Object>> signContract(
-            @PathVariable Long groupId,
-            @RequestBody Map<String, Object> contractData) {
-
-        Map<String, Object> result = contractService.signContractWithData(groupId, contractData);
-        return ResponseEntity.ok(result);
-    }
 
     /**
      * Hủy contract (chỉ admin group)
@@ -109,6 +104,56 @@ public class ContractController {
         result.put("reason", reason);
         result.put("cancelledAt", LocalDateTime.now());
 
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * API: Tự động ký contract cho group
+     * ------------------------------------------------------------
+     * Dành cho:
+     *   - Group Admin
+     *   - System (tự động trigger)
+     * <p>
+     * Điều kiện:
+     *   - Group đã có đủ thành viên theo memberCapacity
+     *   - Group đã có vehicle với vehicleValue
+     *   - Contract chưa được ký
+     */
+    @PostMapping("/{groupId}/auto-sign")
+    @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
+    @Operation(summary = "Tự động ký contract", description = "Tự động ký contract khi đủ điều kiện")
+    public ResponseEntity<Map<String, Object>> autoSignContract(@PathVariable Long groupId) {
+        Map<String, Object> result = contractService.autoSignContract(groupId);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * API: Kiểm tra điều kiện ký tự động contract
+     * ------------------------------------------------------------
+     * Dành cho:
+     *   - Group Admin
+     *   - Các thành viên trong nhóm
+     */
+    @GetMapping("/{groupId}/auto-sign-conditions")
+    @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
+    @Operation(summary = "Kiểm tra điều kiện ký tự động", description = "Kiểm tra các điều kiện cần thiết để ký tự động contract")
+    public ResponseEntity<Map<String, Object>> checkAutoSignConditions(@PathVariable Long groupId) {
+        Map<String, Object> conditions = contractService.checkAutoSignConditions(groupId);
+        return ResponseEntity.ok(conditions);
+    }
+
+    /**
+     * API: Tự động kiểm tra và ký contract nếu đủ điều kiện
+     * ------------------------------------------------------------
+     * Dành cho:
+     *   - System (scheduler)
+     *   - Group Admin
+     */
+    @PostMapping("/{groupId}/check-and-auto-sign")
+    @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
+    @Operation(summary = "Kiểm tra và ký tự động", description = "Tự động kiểm tra điều kiện và ký contract nếu đủ điều kiện")
+    public ResponseEntity<Map<String, Object>> checkAndAutoSignContract(@PathVariable Long groupId) {
+        Map<String, Object> result = contractService.checkAndAutoSignContract(groupId);
         return ResponseEntity.ok(result);
     }
 
