@@ -71,7 +71,7 @@ public class OwnershipGroupController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(defaultValue = "30") int size
     ) {
 
         return service.listForStaff(keyword, status, fromDate, toDate, PageRequest.of(page, size));
