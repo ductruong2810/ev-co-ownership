@@ -93,7 +93,7 @@ public class DepositCalculationService {
         BigDecimal depositAmount = vehicleValue
                 .multiply(new BigDecimal("0.1")) // 10% giá trị xe
                 .multiply(ownershipPercentage)   // Nhân với tỷ lệ sở hữu (%)
-                .divide(new BigDecimal("100"), 2, RoundingMode.UP); // Chia 100 để chuyển % thành số thập phân
+                .divide(new BigDecimal("100"), 0, RoundingMode.UP); // Chia 100 để chuyển % thành số thập phân
 
         // Đảm bảo deposit tối thiểu là BASE_DEPOSIT_AMOUNT
         return depositAmount.max(BASE_DEPOSIT_AMOUNT);

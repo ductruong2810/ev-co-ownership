@@ -4,6 +4,7 @@ import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.repository.*;
 import com.group8.evcoownership.service.ContractService;
 import com.group8.evcoownership.service.DepositCalculationService;
+import com.group8.evcoownership.service.NotificationOrchestrator;
 import com.group8.evcoownership.testconfig.TestConfig;
 import com.group8.evcoownership.testdata.ContractTestDataBuilder;
 import org.junit.jupiter.api.MethodOrderer;
@@ -53,6 +54,9 @@ class ContractIntegrationTest {
 
     @MockitoBean
     private DepositCalculationService depositCalculationService;
+
+    @MockitoBean
+    private NotificationOrchestrator notificationOrchestrator;
 
     @Test
     @Order(1)

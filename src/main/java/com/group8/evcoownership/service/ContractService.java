@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -157,7 +158,7 @@ public class ContractService {
         contract.setApprovalStatus(ContractApprovalStatus.REJECTED);
         contract.setRejectionReason(reason);
         contract.setUpdatedAt(LocalDateTime.now());
-        contractRepository.save(contract);
+        contractRepository.saveAndFlush(contract);
     }
 
     /**
@@ -255,7 +256,7 @@ public class ContractService {
         contract.setApprovalStatus(ContractApprovalStatus.SIGNED);
         contract.setUpdatedAt(LocalDateTime.now());
         
-        Contract savedContract = contractRepository.save(contract);
+        Contract savedContract = contractRepository.saveAndFlush(contract);
         
         // Gửi notification cho tất cả thành viên
         if (notificationOrchestrator != null) {
@@ -394,6 +395,9 @@ public class ContractService {
         // Kiểm tra điều kiện generate contract
         validateContractGeneration(groupId);
 
+        // Kiểm tra xem contract đã tồn tại trong database chưa
+        Optional<Contract> existingContract = contractRepository.findByGroupGroupId(groupId);
+        
         // Tự động tính toán ngày hiệu lực và ngày kết thúc
         LocalDate startDate = LocalDate.now();
         LocalDate endDate = startDate.plusYears(1);
@@ -402,7 +406,7 @@ public class ContractService {
         String terms = generateContractTerms(groupId);
 
         // Chuẩn bị response data (không save DB)
-        Map<String, Object> responseData = prepareContractData(groupId);
+        Map<String, Object> responseData = prepareContractData(groupId, existingContract);
 
         // Thêm thông tin contract được generate
         responseData.put("groupId", groupId);
@@ -412,8 +416,27 @@ public class ContractService {
         responseData.put("endDate", endDate);
         responseData.put("contractNumber", "EVS-" + groupId + "-" + System.currentTimeMillis());
         responseData.put("generatedAt", LocalDateTime.now());
-        responseData.put("status", "GENERATED");
-        responseData.put("savedToDatabase", false);
+        
+        // Trả về status từ database nếu contract đã tồn tại
+        if (existingContract.isPresent()) {
+            Contract contract = existingContract.get();
+            responseData.put("contractId", contract.getId());
+            responseData.put("status", contract.getApprovalStatus());
+            responseData.put("isActive", contract.getIsActive());
+            responseData.put("savedToDatabase", true);
+            
+            // Nếu contract đã ký, thêm thông tin ký
+            if (contract.getApprovalStatus() == ContractApprovalStatus.SIGNED || 
+                contract.getApprovalStatus() == ContractApprovalStatus.APPROVED) {
+                responseData.put("signedAt", contract.getUpdatedAt());
+                responseData.put("signed", true);
+            }
+        } else {
+            // Contract chưa tồn tại, status mặc định là PENDING
+            responseData.put("status", ContractApprovalStatus.PENDING);
+            responseData.put("isActive", false);
+            responseData.put("savedToDatabase", false);
+        }
 
         return responseData;
     }
@@ -424,7 +447,7 @@ public class ContractService {
     /**
      * Chuẩn bị data cho template
      */
-    private Map<String, Object> prepareContractData(Long groupId) {
+    private Map<String, Object> prepareContractData(Long groupId, Optional<Contract> existingContract) {
         OwnershipGroup group = getGroupById(groupId);
         Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group).orElse(null);
         List<OwnershipShare> shares = getSharesByGroupId(groupId);
@@ -440,7 +463,14 @@ public class ContractService {
         contractInfo.put("termLabel", "1 năm");
         contractInfo.put("location", "HCM"); // Default
         contractInfo.put("signDate", formatDate(LocalDate.now()));
-        contractInfo.put("status", "GENERATED");
+        
+        // Set status từ contract nếu có, nếu không thì PENDING
+        if (existingContract.isPresent()) {
+            contractInfo.put("status", existingContract.get().getApprovalStatus());
+        } else {
+            contractInfo.put("status", ContractApprovalStatus.PENDING);
+        }
+        
         data.put("contract", contractInfo);
 
         // Group info
@@ -690,7 +720,9 @@ public class ContractService {
         contract.setApprovedAt(LocalDateTime.now());
         contract.setIsActive(true);
 
-        return convertToDTO(contractRepository.save(contract));
+        Contract savedContract = contractRepository.saveAndFlush(contract);
+        
+        return convertToDTO(savedContract);
     }
 
     @Transactional
@@ -708,7 +740,9 @@ public class ContractService {
         contract.setRejectionReason(reason);
         contract.setIsActive(false);
 
-        return convertToDTO(contractRepository.save(contract));
+        Contract savedContract = contractRepository.saveAndFlush(contract);
+        
+        return convertToDTO(savedContract);
 
     }
 
