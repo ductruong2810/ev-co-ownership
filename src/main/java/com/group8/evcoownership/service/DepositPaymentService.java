@@ -14,6 +14,8 @@ import com.group8.evcoownership.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,6 +56,12 @@ public class DepositPaymentService {
      */
     @Transactional
     public DepositPaymentResponse createDepositPayment(DepositPaymentRequest request, HttpServletRequest httpRequest) {
+        // Lấy user đã authenticated từ Security Context
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new DepositPaymentException("User must be authenticated to make deposit payment");
+        }
+        String authenticatedEmail = authentication.getName(); // Email từ JWT token
         // Parse String sang Long
         Long userId = parseId(request.userId(), "userId");
         Long groupId = parseId(request.groupId(), "groupId");
@@ -61,6 +69,11 @@ public class DepositPaymentService {
         // Kiểm tra user tồn tại
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + userId));
+
+        // Kiểm tra user request phải trùng với user đã login
+        if (!user.getEmail().equals(authenticatedEmail)) {
+            throw new DepositPaymentException("You can only create deposit payment for your own account");
+        }
 
         // Kiểm tra group tồn tại
         OwnershipGroup group = groupRepository.findById(groupId)
