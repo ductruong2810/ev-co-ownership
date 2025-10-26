@@ -56,97 +56,85 @@ public class DepositPaymentService {
      */
     @Transactional
     public DepositPaymentResponse createDepositPayment(DepositPaymentRequest request, HttpServletRequest httpRequest) {
-        // Lấy user đã authenticated từ Security Context
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new DepositPaymentException("User must be authenticated to make deposit payment");
         }
-        String authenticatedEmail = authentication.getName(); // Email từ JWT token
-        // Parse String sang Long
+
         Long userId = parseId(request.userId(), "userId");
         Long groupId = parseId(request.groupId(), "groupId");
 
-        // Kiểm tra user tồn tại
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + userId));
 
-        // Kiểm tra user request phải trùng với user đã login
+        String authenticatedEmail = authentication.getName();
         if (!user.getEmail().equals(authenticatedEmail)) {
             throw new DepositPaymentException("You can only create deposit payment for your own account");
         }
 
-        // Kiểm tra group tồn tại
         OwnershipGroup group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
 
-        // Kiểm tra user có trong group không
         OwnershipShare share = shareRepository.findById(new OwnershipShareId(userId, groupId))
                 .orElseThrow(() -> new EntityNotFoundException("User is not a member of this group"));
 
-        // Kiểm tra contract tồn tại
         Contract contract = contractRepository.findByGroupGroupId(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Contract not found for this group"));
 
-        // Kiểm tra contract đã được ký chưa
-//        if (contract.getTerms() == null || !contract.getTerms().contains("[ĐÃ KÝ]")) {
-//            throw new DepositPaymentException("Contract must be signed before making deposit payment");
-//        }
-
-        if(!contract.getApprovalStatus().equals(ContractApprovalStatus.SIGNED)) {
-            throw new DepositPaymentException("Contract must be signed before making deposit payment!!!");
-        }
-
-        // Kiểm tra user đã đóng tiền cọc chưa
-        if (share.getDepositStatus() == DepositStatus.PAID) {
-            throw new PaymentConflictException("User has already paid the deposit");
-        }
-
-        // Tính toán số tiền cọc dựa trên tỷ lệ sở hữu của user
-        BigDecimal requiredAmount = calculateDepositAmountForUser(group, share);
-        if (request.amount().compareTo(requiredAmount) != 0) {
-            throw new DepositPaymentException("Deposit amount must be exactly " + requiredAmount + " VND (based on ownership percentage: " + share.getOwnershipPercentage() + "%)");
-        }
-
-        // Lấy hoặc tạo SharedFund cho group
         SharedFund fund = fundRepository.findByGroup_GroupId(groupId)
-                .orElseGet(() -> {
-                    SharedFund newFund = SharedFund.builder()
-                            .group(group)
-                            .balance(BigDecimal.ZERO)
-                            .build();
-                    return fundRepository.save(newFund);
-                });
+                .orElseThrow(() -> new EntityNotFoundException("Fund not found for group: " + groupId));
 
+        // 🔹 Tính deposit amount
+        BigDecimal requiredAmount;
+        Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group).orElse(null);
 
-        // Tạo payment record
+        if (vehicle != null && vehicle.getVehicleValue() != null) {
+            requiredAmount = depositCalculationService.calculateRequiredDepositAmount(
+                    vehicle.getVehicleValue(),
+                    share.getOwnershipPercentage()
+            );
+        } else {
+            requiredAmount = depositCalculationService.calculateRequiredDepositAmount(
+                    group.getMemberCapacity()
+            );
+        }
+
+        // 🔹 Set cứng phương thức thanh toán = VNPAY
+        //PaymentMethod method = PaymentMethod.VNPAY;
+
+        // 🔹 Tạo Payment entity
         Payment payment = Payment.builder()
                 .payer(user)
                 .fund(fund)
-                .amount(request.amount())
-                .paymentMethod(request.paymentMethod())
-                .paymentType(PaymentType.DEPOSIT)
+                .amount(requiredAmount)
+                .paymentMethod("VNPAY") // mặc định
                 .status(PaymentStatus.PENDING)
-                .paymentCategory("GROUP")
+                .paymentType(PaymentType.DEPOSIT) // ✅ bắt buộc vì entity có @NotNull
+                .paymentCategory("GROUP") // ✅ tránh lỗi NULL
+                .paymentDate(LocalDateTime.now())
+                .version(0L) // ✅ khởi tạo version nếu Lombok Builder bỏ qua
                 .build();
 
-        Payment savedPayment = paymentRepository.save(payment);
+        paymentRepository.save(payment);
 
-        // Tạo VNPay URL cho deposit payment
-        String vnpayUrl = vnPayPaymentService.createDepositPaymentUrl(request.amount().longValue(), httpRequest);
+        // 8. Create VNPay URL using requiredAmount (longValue)
+        //    Use requiredAmount.longValue() as VNPay expects integer amount (đơn vị tùy config)
+        String vnpayUrl = vnPayPaymentService.createDepositPaymentUrl(requiredAmount.longValue(), httpRequest);
 
+        // 🔹 Tạo response
         return DepositPaymentResponse.builder()
-                .paymentId(savedPayment.getId())
+                .paymentId(payment.getId())
                 .userId(user.getUserId())
                 .groupId(group.getGroupId())
-                .amount(request.amount())
+                .amount(requiredAmount)
                 .requiredAmount(requiredAmount)
-                .paymentMethod(request.paymentMethod())
+                .paymentMethod("VNPAY")
                 .status(PaymentStatus.PENDING)
-                .createdAt(LocalDateTime.now())
-                .vnpayUrl(vnpayUrl)
                 .message("Deposit payment created successfully. Please complete the payment via VNPay.")
+                .vnpayUrl(vnpayUrl)
                 .build();
     }
+
 
     /**
      * Xác nhận payment thành công (callback từ payment gateway)

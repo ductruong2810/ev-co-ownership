@@ -581,13 +581,12 @@ public class ContractService {
         terms.append("- Tiền cọc: ").append(formatCurrency(calculateDepositAmount(group))).append("\n");
         terms.append("- Mục tiêu quỹ: 50,000,000 VND\n");
         terms.append("- Nguyên tắc góp: Theo tỷ lệ sở hữu\n");
-        terms.append("- Tài khoản quỹ: MB Bank 0123456789\n");
         terms.append("\nCác khoản chi bảo dưỡng, sạc, vệ sinh… được thanh toán từ Quỹ chung; khoản cá nhân (nếu có) do cá nhân chi trả theo bút toán bù trừ.\n");
         terms.append("\nLưu ý: Tiền cọc phải được đóng đầy đủ trước khi hợp đồng được kích hoạt và có hiệu lực.\n\n");
         
         // 1. Quyền sử dụng & Lịch đặt
         terms.append("2. QUYỀN SỬ DỤNG & LỊCH ĐẶT\n");
-        terms.append("Việc sử dụng xe được thực hiện thông qua hệ thống đặt lịch. Quy tắc ưu tiên: Điểm tín dụng lịch sử & phiên bốc thăm tuần. Mỗi Bên cam kết tuân thủ lịch đặt và hoàn trả đúng hẹn.\n\n");
+        terms.append("Việc sử dụng xe được thực hiện thông qua hệ thống đặt lịch. Mỗi Bên cam kết tuân thủ lịch đặt và hoàn trả đúng hẹn.\n\n");
         
         // 2. Bảo dưỡng, Sửa chữa & Bảo hiểm
         terms.append("3. BẢO DƯỠNG, SỬA CHỮA & BẢO HIỂM\n");

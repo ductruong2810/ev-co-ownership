@@ -21,15 +21,15 @@ public record DepositPaymentRequest(
         @NotNull(message = "groupId is required")
         @Pattern(regexp = "\\d+", message = "groupId must be a valid number")
         @Schema(description = "ID của group", example = "5")
-        String groupId,
-
-        @NotNull(message = "amount is required")
-        @DecimalMin(value = "0.01", message = "amount must be greater than 0")
-        @Schema(description = "Số tiền cọc", example = "5000000")
-        BigDecimal amount,
-
-        @NotNull(message = "paymentMethod is required")
-        @Schema(description = "Phương thức thanh toán", example = "VNPAY")
-        String paymentMethod
+        String groupId
+//
+//        @NotNull(message = "amount is required")
+//        @DecimalMin(value = "0.01", message = "amount must be greater than 0")
+//        @Schema(description = "Số tiền cọc", example = "5000000")
+//        BigDecimal amount,
+//
+//        @NotNull(message = "paymentMethod is required")
+//        @Schema(description = "Phương thức thanh toán", example = "VNPAY")
+//        String paymentMethod
 ) {
 }
