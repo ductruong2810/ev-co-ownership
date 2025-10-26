@@ -4,10 +4,7 @@ import com.group8.evcoownership.entity.Contract;
 import com.group8.evcoownership.entity.OwnershipGroup;
 import com.group8.evcoownership.entity.OwnershipShare;
 import com.group8.evcoownership.entity.User;
-import com.group8.evcoownership.entity.Vehicle;
 import com.group8.evcoownership.enums.ContractApprovalStatus;
-import com.group8.evcoownership.enums.DepositStatus;
-import com.group8.evcoownership.enums.GroupRole;
 import com.group8.evcoownership.repository.ContractRepository;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
 import com.group8.evcoownership.repository.OwnershipShareRepository;
@@ -47,6 +44,9 @@ class ContractServiceTest {
 
     @Mock
     private DepositCalculationService depositCalculationService;
+
+    @Mock
+    private NotificationOrchestrator notificationOrchestrator;
 
     @InjectMocks
     private ContractService contractService;
