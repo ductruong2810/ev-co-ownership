@@ -4,10 +4,7 @@ import com.group8.evcoownership.entity.Contract;
 import com.group8.evcoownership.entity.OwnershipGroup;
 import com.group8.evcoownership.entity.OwnershipShare;
 import com.group8.evcoownership.entity.User;
-import com.group8.evcoownership.entity.Vehicle;
 import com.group8.evcoownership.enums.ContractApprovalStatus;
-import com.group8.evcoownership.enums.DepositStatus;
-import com.group8.evcoownership.enums.GroupRole;
 import com.group8.evcoownership.repository.ContractRepository;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
 import com.group8.evcoownership.repository.OwnershipShareRepository;
@@ -47,6 +44,9 @@ class ContractServiceTest {
 
     @Mock
     private DepositCalculationService depositCalculationService;
+
+    @Mock
+    private NotificationOrchestrator notificationOrchestrator;
 
     @InjectMocks
     private ContractService contractService;
@@ -110,14 +110,14 @@ class ContractServiceTest {
         String reason = "Group members decided to cancel";
         when(contractRepository.findByGroupGroupId(TEST_GROUP_ID))
                 .thenReturn(Optional.of(testContract));
-        when(contractRepository.save(any(Contract.class))).thenReturn(testContract);
+        when(contractRepository.saveAndFlush(any(Contract.class))).thenReturn(testContract);
 
         // When
         contractService.cancelContract(TEST_GROUP_ID, reason);
 
         // Then
         verify(contractRepository).findByGroupGroupId(TEST_GROUP_ID);
-        verify(contractRepository).save(any(Contract.class));
+        verify(contractRepository).saveAndFlush(any(Contract.class));
     }
 
     @Test
@@ -167,7 +167,7 @@ class ContractServiceTest {
         assertEquals("Contract has already been signed and cannot be auto-signed again", exception.getMessage());
         verify(groupRepository).findById(TEST_GROUP_ID);
         verify(contractRepository).findByGroup(testGroup);
-        verify(contractRepository, never()).save(any(Contract.class));
+        verify(contractRepository, never()).saveAndFlush(any(Contract.class));
     }
 
     @Test
@@ -189,7 +189,7 @@ class ContractServiceTest {
         assertEquals("Contract has already been signed and cannot be auto-signed again", exception.getMessage());
         verify(groupRepository).findById(TEST_GROUP_ID);
         verify(contractRepository).findByGroup(testGroup);
-        verify(contractRepository, never()).save(any(Contract.class));
+        verify(contractRepository, never()).saveAndFlush(any(Contract.class));
     }
 
     @Test

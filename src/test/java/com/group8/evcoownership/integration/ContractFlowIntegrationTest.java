@@ -7,6 +7,7 @@ import com.group8.evcoownership.enums.DepositStatus;
 import com.group8.evcoownership.enums.PaymentStatus;
 import com.group8.evcoownership.service.ContractService;
 import com.group8.evcoownership.service.DepositPaymentService;
+import com.group8.evcoownership.service.NotificationOrchestrator;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,6 +33,8 @@ class ContractFlowIntegrationTest {
     @Mock
     private DepositPaymentService depositPaymentService;
 
+    @Mock
+    private NotificationOrchestrator notificationOrchestrator;
 
     @Mock
     private HttpServletRequest httpRequest;

@@ -9,10 +9,6 @@ import java.math.BigDecimal;
 @ValidCreateGroupWithVehicleDynamic
 public record CreateGroupWithVehicleRequest(
         @NotBlank(message = "Group name is required")
-        @Pattern(
-                regexp = "^[a-zA-Z0-9\\s]+$",
-                message = "Group name must not contain special characters"
-        )
                 @Size(max = 100, message = "Group name must not exceed 100 characters")
         String groupName,
 
