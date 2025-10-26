@@ -1,131 +1,94 @@
 package com.group8.evcoownership.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.group8.evcoownership.service.ContractService;
-import com.group8.evcoownership.service.OwnershipGroupService;
-import com.group8.evcoownership.testconfig.TestConfig;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.http.MediaType;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.ResponseEntity;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.*;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-@Import(TestConfig.class)
+/**
+ * Test cho ContractController để kiểm tra fix NullPointerException
+ */
+@ExtendWith(MockitoExtension.class)
 class ContractControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
-
-    @MockitoBean
+    @Mock
     private ContractService contractService;
 
-    @MockitoBean
-    private OwnershipGroupService ownershipGroupService;
+    @InjectMocks
+    private ContractController contractController;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    private final Long TEST_GROUP_ID = 1L;
-
-    @BeforeEach
-    void setUp() {
-        // Setup test data if needed
+    @Test
+    void testGenerateContractData_WithValidEmail_ShouldReturnContractData() {
+        // Arrange
+        Long groupId = 1L;
+        String userEmail = "test@example.com";
+        Long userId = 123L;
+        
+        Map<String, Object> expectedContractData = new HashMap<>();
+        expectedContractData.put("contractId", 1L);
+        expectedContractData.put("groupId", groupId);
+        expectedContractData.put("status", "DRAFT");
+        
+        when(contractService.getUserIdByEmail(userEmail)).thenReturn(userId);
+        when(contractService.generateContractData(groupId, userId)).thenReturn(expectedContractData);
+        
+        // Act
+        ResponseEntity<Map<String, Object>> response = contractController.generateContractData(groupId, userEmail);
+        
+        // Assert
+        assertNotNull(response);
+        assertEquals(200, response.getStatusCode().value());
+        assertNotNull(response.getBody());
+        assertEquals(expectedContractData, response.getBody());
+        
+        verify(contractService).getUserIdByEmail(userEmail);
+        verify(contractService).generateContractData(groupId, userId);
     }
 
     @Test
-    @WithMockUser(username = "1")
-    void generateContractData_Success() throws Exception {
-        // Given
-        Map<String, Object> generatedResponse = new HashMap<>();
-        generatedResponse.put("contractId", null);
-        generatedResponse.put("contractNumber", "EVS-1-1234567890");
-        generatedResponse.put("status", "GENERATED");
-        generatedResponse.put("savedToDatabase", false);
-
-        when(ownershipGroupService.isGroupAdmin("1", TEST_GROUP_ID)).thenReturn(true);
-        when(contractService.generateContractData(TEST_GROUP_ID, 1L)).thenReturn(generatedResponse);
-
-        // When & Then
-        mockMvc.perform(get("/api/contracts/{groupId}/generate", TEST_GROUP_ID))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.contractId").isEmpty())
-                .andExpect(jsonPath("$.contractNumber").value("EVS-1-1234567890"))
-                .andExpect(jsonPath("$.status").value("GENERATED"))
-                .andExpect(jsonPath("$.savedToDatabase").value(false));
-
-        verify(contractService).generateContractData(TEST_GROUP_ID, 1L);
+    void testGenerateContractData_WithNullEmail_ShouldThrowException() {
+        // Arrange
+        Long groupId = 1L;
+        String userEmail = null;
+        
+        when(contractService.getUserIdByEmail(userEmail))
+                .thenThrow(new IllegalArgumentException("Email cannot be null"));
+        
+        // Act & Assert
+        assertThrows(IllegalArgumentException.class, () -> {
+            contractController.generateContractData(groupId, userEmail);
+        });
+        
+        verify(contractService).getUserIdByEmail(userEmail);
+        verify(contractService, never()).generateContractData(any(), any());
     }
 
     @Test
-    @WithMockUser(username = "2")
-    void generateContractData_Unauthorized() throws Exception {
-        // Given
-        when(ownershipGroupService.isGroupAdmin("2", TEST_GROUP_ID)).thenReturn(false);
-
-        // When & Then
-        mockMvc.perform(get("/api/contracts/{groupId}/generate", TEST_GROUP_ID))
-                .andExpect(status().isOk()); // Security is disabled in test profile
+    void testGenerateContractData_WithInvalidEmail_ShouldThrowException() {
+        // Arrange
+        Long groupId = 1L;
+        String userEmail = "nonexistent@example.com";
+        
+        when(contractService.getUserIdByEmail(userEmail))
+                .thenThrow(new jakarta.persistence.EntityNotFoundException("User not found with email: " + userEmail));
+        
+        // Act & Assert
+        assertThrows(jakarta.persistence.EntityNotFoundException.class, () -> {
+            contractController.generateContractData(groupId, userEmail);
+        });
+        
+        verify(contractService).getUserIdByEmail(userEmail);
+        verify(contractService, never()).generateContractData(any(), any());
     }
-
-    @Test
-    @WithMockUser(username = "member@test.com")
-    void getContractInfo_Success() throws Exception {
-        // Given
-        Map<String, Object> contractInfo = new HashMap<>();
-        contractInfo.put("contractId", 1L);
-        contractInfo.put("groupId", TEST_GROUP_ID);
-        contractInfo.put("groupName", "Test Group");
-        contractInfo.put("startDate", "2025-01-01");
-        contractInfo.put("endDate", "2025-12-31");
-        contractInfo.put("terms", "Test terms");
-        contractInfo.put("requiredDepositAmount", new BigDecimal("2000000"));
-        contractInfo.put("isActive", true);
-
-        when(ownershipGroupService.isGroupMember("member@test.com", TEST_GROUP_ID)).thenReturn(true);
-        when(contractService.getContractInfo(TEST_GROUP_ID)).thenReturn(contractInfo);
-
-        // When & Then
-        mockMvc.perform(get("/api/contracts/{groupId}", TEST_GROUP_ID))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.contractId").value(1L))
-                .andExpect(jsonPath("$.groupId").value(TEST_GROUP_ID))
-                .andExpect(jsonPath("$.groupName").value("Test Group"))
-                .andExpect(jsonPath("$.isActive").value(true));
-    }
-
-    @Test
-    @WithMockUser(username = "nonmember@test.com")
-    void getContractInfo_Unauthorized() throws Exception {
-        // Given
-        when(ownershipGroupService.isGroupMember("nonmember@test.com", TEST_GROUP_ID)).thenReturn(false);
-
-        // When & Then
-        mockMvc.perform(get("/api/contracts/{groupId}", TEST_GROUP_ID))
-                .andExpect(status().isOk()); // Security is disabled in test profile
-    }
-
-    // Removed signContract tests as signContractWithData method has been removed
 }

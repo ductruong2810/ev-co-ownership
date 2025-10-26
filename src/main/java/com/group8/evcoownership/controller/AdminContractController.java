@@ -5,7 +5,6 @@ import com.group8.evcoownership.exception.InvalidContractActionException;
 import com.group8.evcoownership.exception.ResourceNotFoundException;
 import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import com.group8.evcoownership.dto.ContractApprovalRequestDTO;
 import com.group8.evcoownership.dto.ContractDTO;
 import com.group8.evcoownership.enums.ContractApprovalStatus;
@@ -25,6 +24,7 @@ import java.util.Map;
 public class AdminContractController {
 
     private final ContractService contractService;
+    private final UserService userService;
 
 //    @PutMapping("/{contractId}/approve")
 //    @PreAuthorize("hasRole('ADMIN')")
@@ -53,9 +53,9 @@ public class AdminContractController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ContractDTO> processContractApproval(
             @Valid @RequestBody ContractApprovalRequestDTO request,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal String userEmail) {
 
-        User admin = (User) userDetails;
+        User admin = userService.findByEmail(userEmail);
 
         // Validate contract exists
         if (!contractService.contractExists(request.getContractId())) {

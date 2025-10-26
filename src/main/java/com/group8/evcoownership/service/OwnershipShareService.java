@@ -425,10 +425,24 @@ public class OwnershipShareService {
 
     /**
      * Validate tỷ lệ sở hữu
+     * Business rules:
+     * 1. Tỷ lệ sở hữu phải lớn hơn 0%
+     * 2. Tỷ lệ sở hữu không được vượt quá 100%
+     * 3. Tỷ lệ sở hữu tối thiểu là 1% để đảm bảo tính co-ownership
+     * 4. Tổng tỷ lệ sở hữu không được vượt quá 100%
      */
     private void validateOwnershipPercentage(Long groupId, Long userId, BigDecimal newPercentage) {
-        if (newPercentage.compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalArgumentException("Ownership percentage cannot be negative");
+        if (newPercentage == null) {
+            throw new IllegalArgumentException("Ownership percentage cannot be null");
+        }
+        
+        if (newPercentage.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Ownership percentage must be greater than 0%");
+        }
+        
+        BigDecimal minimumOwnership = new BigDecimal("1.00");
+        if (newPercentage.compareTo(minimumOwnership) < 0) {
+            throw new IllegalArgumentException("Ownership percentage must be at least 1% to ensure co-ownership");
         }
         
         if (newPercentage.compareTo(new BigDecimal("100")) > 0) {
