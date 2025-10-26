@@ -73,6 +73,7 @@ public class DepositPaymentService {
         // Kiểm tra contract tồn tại
         Contract contract = contractRepository.findByGroupGroupId(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Contract not found for this group"));
+
         // Kiểm tra contract đã được ký chưa
 //        if (contract.getTerms() == null || !contract.getTerms().contains("[ĐÃ KÝ]")) {
 //            throw new DepositPaymentException("Contract must be signed before making deposit payment");

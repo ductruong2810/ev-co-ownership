@@ -17,6 +17,7 @@ public record DepositPaymentRequest(
         @Schema(description = "ID của user", example = "1")
         String userId,
 
+
         @NotNull(message = "groupId is required")
         @Pattern(regexp = "\\d+", message = "groupId must be a valid number")
         @Schema(description = "ID của group", example = "5")

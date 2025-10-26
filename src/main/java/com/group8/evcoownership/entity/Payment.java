@@ -36,7 +36,7 @@ public class Payment {
     private SharedFund fund;
 
     @NotNull
-    @Column(name = "Amount", nullable = false, precision = 12, scale = 2)
+    @Column(name = "Amount", nullable = false, precision = 18, scale = 2)
     private BigDecimal amount;
 
     @Column(name = "PaymentDate")
