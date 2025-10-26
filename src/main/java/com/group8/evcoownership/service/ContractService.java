@@ -157,7 +157,7 @@ public class ContractService {
         contract.setApprovalStatus(ContractApprovalStatus.REJECTED);
         contract.setRejectionReason(reason);
         contract.setUpdatedAt(LocalDateTime.now());
-        contractRepository.save(contract);
+        contractRepository.saveAndFlush(contract);
     }
 
     /**
@@ -255,7 +255,7 @@ public class ContractService {
         contract.setApprovalStatus(ContractApprovalStatus.SIGNED);
         contract.setUpdatedAt(LocalDateTime.now());
         
-        Contract savedContract = contractRepository.save(contract);
+        Contract savedContract = contractRepository.saveAndFlush(contract);
         
         // Gửi notification cho tất cả thành viên
         if (notificationOrchestrator != null) {
@@ -690,7 +690,9 @@ public class ContractService {
         contract.setApprovedAt(LocalDateTime.now());
         contract.setIsActive(true);
 
-        return convertToDTO(contractRepository.save(contract));
+        Contract savedContract = contractRepository.saveAndFlush(contract);
+        
+        return convertToDTO(savedContract);
     }
 
     @Transactional
@@ -708,7 +710,9 @@ public class ContractService {
         contract.setRejectionReason(reason);
         contract.setIsActive(false);
 
-        return convertToDTO(contractRepository.save(contract));
+        Contract savedContract = contractRepository.saveAndFlush(contract);
+        
+        return convertToDTO(savedContract);
 
     }
 
