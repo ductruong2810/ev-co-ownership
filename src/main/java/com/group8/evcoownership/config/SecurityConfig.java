@@ -54,7 +54,6 @@ public class SecurityConfig {
                                 "/api/user/profile/**",
                                 "/api/shares/**",
                                 "/api/vehicles/**",
-                                "/api/deposits/**",
                                 "/api/contracts/**",
                                 "/api/bookings/**",
                                 "/api/test/**"
