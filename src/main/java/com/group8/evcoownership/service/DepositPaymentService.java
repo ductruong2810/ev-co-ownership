@@ -74,8 +74,12 @@ public class DepositPaymentService {
         Contract contract = contractRepository.findByGroupGroupId(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Contract not found for this group"));
         // Kiểm tra contract đã được ký chưa
-        if (contract.getTerms() == null || !contract.getTerms().contains("[ĐÃ KÝ]")) {
-            throw new DepositPaymentException("Contract must be signed before making deposit payment");
+//        if (contract.getTerms() == null || !contract.getTerms().contains("[ĐÃ KÝ]")) {
+//            throw new DepositPaymentException("Contract must be signed before making deposit payment");
+//        }
+
+        if(!contract.getApprovalStatus().equals(ContractApprovalStatus.SIGNED)) {
+            throw new DepositPaymentException("Contract must be signed before making deposit payment!!!");
         }
 
         // Kiểm tra user đã đóng tiền cọc chưa
