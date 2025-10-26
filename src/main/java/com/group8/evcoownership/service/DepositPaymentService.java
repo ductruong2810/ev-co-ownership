@@ -39,30 +39,47 @@ public class DepositPaymentService {
     private final VehicleRepository vehicleRepository;
     private final NotificationOrchestrator notificationOrchestrator;
 
+
+    private Long parseId(String id, String fieldName) {
+        try {
+            return Long.parseLong(id);
+        } catch (NumberFormatException e) {
+            throw new DepositPaymentException(fieldName + " must be a valid number");
+        }
+    }
+
+
     /**
      * Tạo payment cho tiền cọc với VNPay
      */
     @Transactional
     public DepositPaymentResponse createDepositPayment(DepositPaymentRequest request, HttpServletRequest httpRequest) {
+        // Parse String sang Long
+        Long userId = parseId(request.userId(), "userId");
+        Long groupId = parseId(request.groupId(), "groupId");
+
         // Kiểm tra user tồn tại
-        User user = userRepository.findById(request.userId())
-                .orElseThrow(() -> new EntityNotFoundException("User not found: " + request.userId()));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User not found: " + userId));
 
         // Kiểm tra group tồn tại
-        OwnershipGroup group = groupRepository.findById(request.groupId())
-                .orElseThrow(() -> new EntityNotFoundException("Group not found: " + request.groupId()));
+        OwnershipGroup group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
 
         // Kiểm tra user có trong group không
-        OwnershipShare share = shareRepository.findById(new OwnershipShareId(request.userId(), request.groupId()))
+        OwnershipShare share = shareRepository.findById(new OwnershipShareId(userId, groupId))
                 .orElseThrow(() -> new EntityNotFoundException("User is not a member of this group"));
 
         // Kiểm tra contract tồn tại
-        Contract contract = contractRepository.findByGroupGroupId(request.groupId())
+        Contract contract = contractRepository.findByGroupGroupId(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Contract not found for this group"));
-
         // Kiểm tra contract đã được ký chưa
-        if (contract.getTerms() == null || !contract.getTerms().contains("[ĐÃ KÝ]")) {
-            throw new DepositPaymentException("Contract must be signed before making deposit payment");
+//        if (contract.getTerms() == null || !contract.getTerms().contains("[ĐÃ KÝ]")) {
+//            throw new DepositPaymentException("Contract must be signed before making deposit payment");
+//        }
+
+        if(!contract.getApprovalStatus().equals(ContractApprovalStatus.SIGNED)) {
+            throw new DepositPaymentException("Contract must be signed before making deposit payment!!!");
         }
 
         // Kiểm tra user đã đóng tiền cọc chưa
@@ -77,7 +94,7 @@ public class DepositPaymentService {
         }
 
         // Lấy hoặc tạo SharedFund cho group
-        SharedFund fund = fundRepository.findByGroup_GroupId(request.groupId())
+        SharedFund fund = fundRepository.findByGroup_GroupId(groupId)
                 .orElseGet(() -> {
                     SharedFund newFund = SharedFund.builder()
                             .group(group)
@@ -85,6 +102,7 @@ public class DepositPaymentService {
                             .build();
                     return fundRepository.save(newFund);
                 });
+
 
         // Tạo payment record
         Payment payment = Payment.builder()
