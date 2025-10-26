@@ -144,8 +144,8 @@ class DepositPaymentServiceTest {
     void testCreateDepositPayment_Success() {
         // Arrange
         DepositPaymentRequest request = new DepositPaymentRequest(
-                1L, // userId
-                1L, // groupId
+                "1", // userId
+                "1", // groupId
                 new BigDecimal("38000000"), // amount
                 "VNPAY"
         );
@@ -193,8 +193,8 @@ class DepositPaymentServiceTest {
     void testCreateDepositPayment_UserNotFound() {
         // Arrange
         DepositPaymentRequest request = new DepositPaymentRequest(
-                999L, // non-existent userId
-                1L,
+                "999", // non-existent userId
+                "1",
                 new BigDecimal("38000000"),
                 "VNPAY"
         );
@@ -214,7 +214,7 @@ class DepositPaymentServiceTest {
     void testCreateDepositPayment_ContractNotSigned() {
         // Arrange
         DepositPaymentRequest request = new DepositPaymentRequest(
-                1L, 1L, new BigDecimal("38000000"), "VNPAY"
+                "1", "1", new BigDecimal("38000000"), "VNPAY"
         );
 
         Contract unsignedContract = Contract.builder()
@@ -241,7 +241,7 @@ class DepositPaymentServiceTest {
     void testCreateDepositPayment_AlreadyPaid() {
         // Arrange
         DepositPaymentRequest request = new DepositPaymentRequest(
-                1L, 1L, new BigDecimal("38000000"), "VNPAY"
+                "1", "1", new BigDecimal("38000000"), "VNPAY"
         );
 
         OwnershipShare paidShare = OwnershipShare.builder()
@@ -269,7 +269,7 @@ class DepositPaymentServiceTest {
     void testCreateDepositPayment_WrongAmount() {
         // Arrange
         DepositPaymentRequest request = new DepositPaymentRequest(
-                1L, 1L, new BigDecimal("50000000"), // Wrong amount
+                "1", "1", new BigDecimal("50000000"), // Wrong amount
                 "VNPAY"
         );
 
