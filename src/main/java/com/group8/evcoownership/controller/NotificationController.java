@@ -128,11 +128,27 @@ public class NotificationController {
                 .userId(notification.getUser().getUserId())
                 .title(notification.getTitle())
                 .message(notification.getMessage())
-                .notificationType(com.group8.evcoownership.enums.NotificationType.fromCode(notification.getNotificationType()))
+                .notificationType(convertNotificationType(notification.getNotificationType()))
                 .isRead(notification.getIsRead())
                 .isDelivered(notification.getIsDelivered())
                 .createdAt(notification.getCreatedAt())
                 .build();
+    }
+
+    /**
+     * Safely convert notification type string to enum
+     */
+    private com.group8.evcoownership.enums.NotificationType convertNotificationType(String typeCode) {
+        if (typeCode == null) {
+            return com.group8.evcoownership.enums.NotificationType.SYSTEM_MAINTENANCE;
+        }
+        try {
+            return com.group8.evcoownership.enums.NotificationType.fromCode(typeCode);
+        } catch (IllegalArgumentException e) {
+            // Log the error but don't crash - return a default type
+            System.err.println("Warning: Unknown notification type: " + typeCode + ". Using SYSTEM_MAINTENANCE as fallback.");
+            return com.group8.evcoownership.enums.NotificationType.SYSTEM_MAINTENANCE;
+        }
     }
 
     // ---- helpers to reduce duplication ----
