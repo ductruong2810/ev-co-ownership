@@ -46,6 +46,7 @@ public enum NotificationType {
     FUND_LOW_BALANCE("FUND_LOW_BALANCE", "Low Fund Balance"),
     FUND_CONTRIBUTION_REQUIRED("FUND_CONTRIBUTION_REQUIRED", "Fund Contribution Required"),
     FUND_EXPENSE_APPROVED("FUND_EXPENSE_APPROVED", "Fund Expense Approved"),
+    QUOTA_WARNING("QUOTA_WARNING", "Quota Warning"),
 
     // System related
     SYSTEM_MAINTENANCE("SYSTEM_MAINTENANCE", "System Maintenance"),
