@@ -3,6 +3,7 @@ package com.group8.evcoownership.repository;
 import com.group8.evcoownership.entity.Contract;
 import com.group8.evcoownership.entity.OwnershipGroup;
 import com.group8.evcoownership.enums.ContractApprovalStatus;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,6 +15,7 @@ import java.util.Optional;
 
 @Repository
 public interface ContractRepository extends JpaRepository<Contract, Long> {
+
     @Query("""
     SELECT c FROM Contract c
     ORDER BY 
@@ -33,5 +35,6 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
     Optional<Contract> findByGroup(OwnershipGroup group);
 
     List<Contract> findByApprovalStatus(ContractApprovalStatus status);
+
 
 }

@@ -26,10 +26,12 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class DepositPaymentService {
+
 
     private final PaymentRepository paymentRepository;
     private final PaymentService paymentService;
@@ -212,6 +214,10 @@ public class DepositPaymentService {
         info.put("canPay", contract.getTerms() != null && contract.getTerms().contains("[ĐÃ KÝ]")
                 && share.getDepositStatus() == DepositStatus.PENDING);
 
+        // Thêm contract status
+        info.put("contractStatus", getContractStatus(groupId));
+
+
         return info;
     }
 
@@ -222,6 +228,9 @@ public class DepositPaymentService {
         List<OwnershipShare> shares = shareRepository.findByGroupGroupId(groupId);
         OwnershipGroup group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Group not found"));
+
+        // Lấy contract status 1 lần cho hiệu quả
+        String contractStatus = getContractStatus(groupId);
 
         return shares.stream().map(share -> {
             Map<String, Object> status = new HashMap<>();
@@ -235,6 +244,9 @@ public class DepositPaymentService {
             // Tính toán số tiền cọc cho user này
             BigDecimal depositAmount = calculateDepositAmountForUser(group, share);
             status.put("requiredDepositAmount", depositAmount);
+
+            // Thêm contract status
+            status.put("contractStatus", contractStatus);
 
             return status;
         }).toList();
@@ -277,4 +289,15 @@ public class DepositPaymentService {
         // Kiểm tra số lượng thành viên thực tế = memberCapacity
         return memberCapacity != null && shares.size() == memberCapacity;
     }
+
+    private String getContractStatus(Long groupId) {
+        Optional<Contract> contract = contractRepository.findByGroupGroupId(groupId);
+
+        if (contract.isEmpty()) {
+            return "NO_CONTRACT";
+        }
+
+        return contract.get().getApprovalStatus().name();
+    }
+
 }
