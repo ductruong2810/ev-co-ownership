@@ -581,13 +581,12 @@ public class ContractService {
         terms.append("- Tiền cọc: ").append(formatCurrency(calculateDepositAmount(group))).append("\n");
         terms.append("- Mục tiêu quỹ: 50,000,000 VND\n");
         terms.append("- Nguyên tắc góp: Theo tỷ lệ sở hữu\n");
-        terms.append("- Tài khoản quỹ: MB Bank 0123456789\n");
         terms.append("\nCác khoản chi bảo dưỡng, sạc, vệ sinh… được thanh toán từ Quỹ chung; khoản cá nhân (nếu có) do cá nhân chi trả theo bút toán bù trừ.\n");
         terms.append("\nLưu ý: Tiền cọc phải được đóng đầy đủ trước khi hợp đồng được kích hoạt và có hiệu lực.\n\n");
         
         // 1. Quyền sử dụng & Lịch đặt
         terms.append("2. QUYỀN SỬ DỤNG & LỊCH ĐẶT\n");
-        terms.append("Việc sử dụng xe được thực hiện thông qua hệ thống đặt lịch. Quy tắc ưu tiên: Điểm tín dụng lịch sử & phiên bốc thăm tuần. Mỗi Bên cam kết tuân thủ lịch đặt và hoàn trả đúng hẹn.\n\n");
+        terms.append("Việc sử dụng xe được thực hiện thông qua hệ thống đặt lịch. Mỗi Bên cam kết tuân thủ lịch đặt và hoàn trả đúng hẹn.\n\n");
         
         // 2. Bảo dưỡng, Sửa chữa & Bảo hiểm
         terms.append("3. BẢO DƯỠNG, SỬA CHỮA & BẢO HIỂM\n");
@@ -711,8 +710,9 @@ public class ContractService {
         Contract contract = contractRepository.findById(contractId)
                 .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
 
-        if (contract.getApprovalStatus() != ContractApprovalStatus.PENDING) {
-            throw new IllegalStateException("Only pending contracts can be approved");
+        // Chỉ duyệt contract ở trạng thái SIGNED
+        if (contract.getApprovalStatus() != ContractApprovalStatus.SIGNED) {
+            throw new IllegalStateException("Only signed contracts can be approved");
         }
 
         contract.setApprovalStatus(ContractApprovalStatus.APPROVED);
@@ -721,7 +721,7 @@ public class ContractService {
         contract.setIsActive(true);
 
         Contract savedContract = contractRepository.saveAndFlush(contract);
-        
+
         return convertToDTO(savedContract);
     }
 
@@ -730,20 +730,21 @@ public class ContractService {
         Contract contract = contractRepository.findById(contractId)
                 .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
 
-        if (contract.getApprovalStatus() != ContractApprovalStatus.PENDING) {
-            throw new IllegalStateException("Only pending contracts can be rejected");
+        // Chỉ reject contract ở trạng thái SIGNED
+        if (contract.getApprovalStatus() != ContractApprovalStatus.SIGNED) {
+            throw new IllegalStateException("Only signed contracts can be rejected");
         }
 
-        contract.setApprovalStatus(ContractApprovalStatus.REJECTED);
+        // Sau khi reject, contract quay về trạng thái PENDING
+        contract.setApprovalStatus(ContractApprovalStatus.PENDING);
         contract.setApprovedBy(admin);
         contract.setApprovedAt(LocalDateTime.now());
         contract.setRejectionReason(reason);
         contract.setIsActive(false);
 
         Contract savedContract = contractRepository.saveAndFlush(contract);
-        
-        return convertToDTO(savedContract);
 
+        return convertToDTO(savedContract);
     }
 
     private ContractDTO convertToDTO(Contract contract) {
