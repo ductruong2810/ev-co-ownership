@@ -710,8 +710,9 @@ public class ContractService {
         Contract contract = contractRepository.findById(contractId)
                 .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
 
-        if (contract.getApprovalStatus() != ContractApprovalStatus.PENDING) {
-            throw new IllegalStateException("Only pending contracts can be approved");
+        // Chỉ duyệt contract ở trạng thái SIGNED
+        if (contract.getApprovalStatus() != ContractApprovalStatus.SIGNED) {
+            throw new IllegalStateException("Only signed contracts can be approved");
         }
 
         contract.setApprovalStatus(ContractApprovalStatus.APPROVED);
@@ -720,7 +721,7 @@ public class ContractService {
         contract.setIsActive(true);
 
         Contract savedContract = contractRepository.saveAndFlush(contract);
-        
+
         return convertToDTO(savedContract);
     }
 
@@ -729,20 +730,21 @@ public class ContractService {
         Contract contract = contractRepository.findById(contractId)
                 .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
 
-        if (contract.getApprovalStatus() != ContractApprovalStatus.PENDING) {
-            throw new IllegalStateException("Only pending contracts can be rejected");
+        // Chỉ reject contract ở trạng thái SIGNED
+        if (contract.getApprovalStatus() != ContractApprovalStatus.SIGNED) {
+            throw new IllegalStateException("Only signed contracts can be rejected");
         }
 
-        contract.setApprovalStatus(ContractApprovalStatus.REJECTED);
+        // Sau khi reject, contract quay về trạng thái PENDING
+        contract.setApprovalStatus(ContractApprovalStatus.PENDING);
         contract.setApprovedBy(admin);
         contract.setApprovedAt(LocalDateTime.now());
         contract.setRejectionReason(reason);
         contract.setIsActive(false);
 
         Contract savedContract = contractRepository.saveAndFlush(contract);
-        
-        return convertToDTO(savedContract);
 
+        return convertToDTO(savedContract);
     }
 
     private ContractDTO convertToDTO(Contract contract) {
