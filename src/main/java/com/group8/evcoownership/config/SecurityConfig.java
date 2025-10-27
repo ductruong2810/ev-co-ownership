@@ -56,7 +56,8 @@ public class SecurityConfig {
                                 "/api/vehicles/**",
                                 "/api/contracts/**",
                                 "/api/bookings/**",
-                                "/api/test/**"
+                                "/api/test/**",
+                                "/api/deposits/deposit-callback"
                         ).permitAll()
                         .requestMatchers("/api/staff/**", "/api/admin/**").hasAnyRole("STAFF", "ADMIN")
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()

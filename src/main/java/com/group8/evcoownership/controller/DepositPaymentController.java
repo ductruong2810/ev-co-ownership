@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,9 +31,11 @@ public class DepositPaymentController {
     @Operation(summary = "Tạo thanh toán tiền cọc", description = "Tạo giao dịch thanh toán tiền cọc với tích hợp VNPay")
     public ResponseEntity<DepositPaymentResponse> createDepositPayment(
             @Valid @RequestBody DepositPaymentRequest request,
-            HttpServletRequest httpRequest) {
+            HttpServletRequest httpRequest,
+            Authentication authentication) {
 
-        DepositPaymentResponse response = depositPaymentService.createDepositPayment(request, httpRequest);
+        DepositPaymentResponse response =
+                depositPaymentService.createDepositPayment(request, httpRequest, authentication);
         return ResponseEntity.ok(response);
     }
 
@@ -45,7 +48,7 @@ public class DepositPaymentController {
             @PathVariable Long paymentId,
             @RequestParam String transactionCode) {
 
-        DepositPaymentResponse response = depositPaymentService.confirmDepositPayment(paymentId, transactionCode);
+        DepositPaymentResponse response = depositPaymentService.confirmDepositPayment(String.valueOf(paymentId), transactionCode);
         return ResponseEntity.ok(response);
     }
 
@@ -93,7 +96,7 @@ public class DepositPaymentController {
                 // Tìm payment dựa trên transaction code hoặc amount
                 // Trong thực tế, bạn sẽ cần lưu transaction reference khi tạo payment
                 DepositPaymentResponse response = depositPaymentService.confirmDepositPayment(
-                        Long.parseLong(params.get("vnp_TxnRef")), // Payment ID từ VNPay
+                        String.valueOf(Long.parseLong(params.get("vnp_TxnRef"))), // Payment ID từ VNPay
                         transactionCode
                 );
 

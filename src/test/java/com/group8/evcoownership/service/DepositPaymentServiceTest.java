@@ -145,17 +145,12 @@ class DepositPaymentServiceTest {
         // Arrange
         DepositPaymentRequest request = new DepositPaymentRequest(
                 "1", // userId
-                "1", // groupId
-                new BigDecimal("38000000"), // amount
-                "VNPAY"
-        );
+                "1");
 
         Payment savedPayment = Payment.builder()
                 .id(1L)
                 .payer(testUser)
                 .fund(testFund)
-                .amount(request.amount())
-                .paymentMethod(request.paymentMethod())
                 .paymentType(PaymentType.CONTRIBUTION)
                 .status(PaymentStatus.PENDING)
                 .paymentCategory("GROUP")
@@ -173,7 +168,7 @@ class DepositPaymentServiceTest {
                 .thenReturn(new BigDecimal("38000000"));
 
         // Act
-        DepositPaymentResponse response = depositPaymentService.createDepositPayment(request, httpRequest);
+        DepositPaymentResponse response = depositPaymentService.createDepositPayment(request, httpRequest, null);
 
         // Assert
         assertNotNull(response);
@@ -194,16 +189,13 @@ class DepositPaymentServiceTest {
         // Arrange
         DepositPaymentRequest request = new DepositPaymentRequest(
                 "999", // non-existent userId
-                "1",
-                new BigDecimal("38000000"),
-                "VNPAY"
-        );
+                "1");
 
         when(userRepository.findById(999L)).thenReturn(Optional.empty());
 
         // Act & Assert
         assertThrows(EntityNotFoundException.class, () -> {
-            depositPaymentService.createDepositPayment(request, httpRequest);
+            depositPaymentService.createDepositPayment(request, httpRequest, null);
         });
 
         verify(userRepository).findById(999L);
@@ -214,8 +206,7 @@ class DepositPaymentServiceTest {
     void testCreateDepositPayment_ContractNotSigned() {
         // Arrange
         DepositPaymentRequest request = new DepositPaymentRequest(
-                "1", "1", new BigDecimal("38000000"), "VNPAY"
-        );
+                "1", "1");
 
         Contract unsignedContract = Contract.builder()
                 .id(1L)
@@ -230,7 +221,7 @@ class DepositPaymentServiceTest {
 
         // Act & Assert
         assertThrows(DepositPaymentException.class, () -> {
-            depositPaymentService.createDepositPayment(request, httpRequest);
+            depositPaymentService.createDepositPayment(request, httpRequest, null);
         });
 
         verify(userRepository).findById(1L);
@@ -241,8 +232,7 @@ class DepositPaymentServiceTest {
     void testCreateDepositPayment_AlreadyPaid() {
         // Arrange
         DepositPaymentRequest request = new DepositPaymentRequest(
-                "1", "1", new BigDecimal("38000000"), "VNPAY"
-        );
+                "1", "1");
 
         OwnershipShare paidShare = OwnershipShare.builder()
                 .id(new OwnershipShareId(1L, 1L))
@@ -258,7 +248,7 @@ class DepositPaymentServiceTest {
 
         // Act & Assert
         assertThrows(PaymentConflictException.class, () -> {
-            depositPaymentService.createDepositPayment(request, httpRequest);
+            depositPaymentService.createDepositPayment(request, httpRequest, null);
         });
 
         verify(userRepository).findById(1L);
@@ -269,9 +259,7 @@ class DepositPaymentServiceTest {
     void testCreateDepositPayment_WrongAmount() {
         // Arrange
         DepositPaymentRequest request = new DepositPaymentRequest(
-                "1", "1", new BigDecimal("50000000"), // Wrong amount
-                "VNPAY"
-        );
+                "1", "1");
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
         when(groupRepository.findById(1L)).thenReturn(Optional.of(testGroup));
@@ -282,7 +270,7 @@ class DepositPaymentServiceTest {
 
         // Act & Assert
         assertThrows(DepositPaymentException.class, () -> {
-            depositPaymentService.createDepositPayment(request, httpRequest);
+            depositPaymentService.createDepositPayment(request, httpRequest, null);
         });
 
         verify(userRepository).findById(1L);
@@ -312,7 +300,7 @@ class DepositPaymentServiceTest {
         when(contractRepository.findByGroupGroupId(1L)).thenReturn(Optional.of(testContract));
 
         // Act
-        DepositPaymentResponse response = depositPaymentService.confirmDepositPayment(paymentId, transactionCode);
+        DepositPaymentResponse response = depositPaymentService.confirmDepositPayment(String.valueOf(paymentId), transactionCode);
 
         // Assert
         assertNotNull(response);
