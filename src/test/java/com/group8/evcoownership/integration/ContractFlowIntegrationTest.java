@@ -122,9 +122,7 @@ class ContractFlowIntegrationTest {
         // Arrange
         DepositPaymentRequest request = new DepositPaymentRequest(
                 "1", // userId
-                "1", // groupId
-                new BigDecimal("38000000"), // amount (40% of 95M)
-                "VNPAY"
+                "1"  // groupId
         );
 
         DepositPaymentResponse expectedResponse = DepositPaymentResponse.builder()
@@ -274,7 +272,7 @@ class ContractFlowIntegrationTest {
     void testContractFlowErrorHandling() {
         // Test contract not signed before deposit payment
         DepositPaymentRequest request = new DepositPaymentRequest(
-                "1", "1", new BigDecimal("38000000"), "VNPAY"
+                "1", "1"
         );
 
         when(depositPaymentService.createDepositPayment(request, httpRequest, null))
@@ -303,7 +301,7 @@ class ContractFlowIntegrationTest {
     private void testSingleMemberDeposit(Long userId, BigDecimal expectedAmount) {
         // Arrange
         DepositPaymentRequest request = new DepositPaymentRequest(
-                userId.toString(), "1", expectedAmount, "VNPAY"
+                userId.toString(), "1"
         );
 
         DepositPaymentResponse response = DepositPaymentResponse.builder()
