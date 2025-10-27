@@ -3,21 +3,16 @@ package com.group8.evcoownership.service;
 import com.group8.evcoownership.dto.DepositPaymentRequest;
 import com.group8.evcoownership.dto.DepositPaymentResponse;
 import com.group8.evcoownership.entity.*;
-import com.group8.evcoownership.enums.ContractApprovalStatus;
 import com.group8.evcoownership.enums.DepositStatus;
-import com.group8.evcoownership.enums.NotificationType;
 import com.group8.evcoownership.enums.PaymentStatus;
 import com.group8.evcoownership.enums.PaymentType;
 import com.group8.evcoownership.exception.DepositPaymentException;
-import com.group8.evcoownership.exception.PaymentConflictException;
 import com.group8.evcoownership.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-//import lombok.Value;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,7 +29,6 @@ public class DepositPaymentService {
 
 
     private final PaymentRepository paymentRepository;
-    private final PaymentService paymentService;
     private final OwnershipShareRepository shareRepository;
     private final ContractRepository contractRepository;
     private final SharedFundRepository sharedFundRepository;
@@ -43,7 +37,6 @@ public class DepositPaymentService {
     private final VnPay_PaymentService vnPayPaymentService;
     private final DepositCalculationService depositCalculationService;
     private final VehicleRepository vehicleRepository;
-    private final NotificationOrchestrator notificationOrchestrator;
 
 
     private Long parseId(String id, String fieldName) {
