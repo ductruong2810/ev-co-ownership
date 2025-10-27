@@ -36,18 +36,21 @@ public class VnPay_PaymentService {
     @Value("${app.frontend.url:http://localhost:3000}")
     private String frontendUrl;
 
-    public String createPaymentUrl(long fee, HttpServletRequest request) {
-        return createPaymentUrl(fee, request, false);
+    // thanh toan như không phải đóng tièn cọc, e.g: incident
+    public String createPaymentUrl(long fee, HttpServletRequest request, String txnRef) {
+        return createPaymentUrl(fee, request, txnRef, false);
     }
 
     /**
      * Tạo payment URL cho deposit payment
      */
-    public String createDepositPaymentUrl(long fee, HttpServletRequest request) {
-        return createPaymentUrl(fee, request, true);
+    public String createDepositPaymentUrl(long fee, HttpServletRequest request, String txnRef) {
+        return createPaymentUrl(fee, request, txnRef, true);
     }
 
-    private String createPaymentUrl(long fee, HttpServletRequest request, boolean isDeposit) {
+
+    public String createPaymentUrl(long fee, HttpServletRequest request, String txnRef, boolean isDeposit)
+    {
         long amount = fee * 100L;
         Map<String, String> vnpParamsMap = getVNPayConfig();
 
@@ -56,6 +59,11 @@ public class VnPay_PaymentService {
         vnpParamsMap.put("vnp_ReturnUrl", returnUrl);
         vnpParamsMap.put("vnp_Amount", String.valueOf(amount));
         vnpParamsMap.put("vnp_IpAddr", getIpAddress(request));
+
+        // Quan trọng: thêm mã giao dịch nội bộ
+        vnpParamsMap.put("vnp_TxnRef", txnRef);
+
+
 
         //build query url
         String queryUrl = getPaymentURL(vnpParamsMap, true);
@@ -83,17 +91,31 @@ public class VnPay_PaymentService {
         vnpParamsMap.put("vnp_Command", this.vnp_Command);
         vnpParamsMap.put("vnp_TmnCode", this.vnp_TmnCode);
         vnpParamsMap.put("vnp_CurrCode", "VND");
-        vnpParamsMap.put("vnp_TxnRef", getRandomNumber(8));
+//        vnpParamsMap.put("vnp_TxnRef", getRandomNumber(8));
         vnpParamsMap.put("vnp_OrderInfo", "Thanh toan don hang:" + getRandomNumber(8));
         vnpParamsMap.put("vnp_OrderType", this.orderType);
         vnpParamsMap.put("vnp_Locale", "vn");
-        Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("Etc/GMT+7"));
+
+//        Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("Etc/GMT+7"));
+//        SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
+//        String vnpCreateDate = formatter.format(calendar.getTime());
+//        vnpParamsMap.put("vnp_CreateDate", vnpCreateDate);
+//        calendar.add(Calendar.MINUTE, 15);
+//        String vnp_ExpireDate = formatter.format(calendar.getTime());
+//        vnpParamsMap.put("vnp_ExpireDate", vnp_ExpireDate);
+
+        Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
         SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
-        String vnpCreateDate = formatter.format(calendar.getTime());
-        vnpParamsMap.put("vnp_CreateDate", vnpCreateDate);
+
+        String vnp_CreateDate = formatter.format(calendar.getTime());
+        vnpParamsMap.put("vnp_CreateDate", vnp_CreateDate);
+
+        // +15 phút hiệu lực
         calendar.add(Calendar.MINUTE, 15);
         String vnp_ExpireDate = formatter.format(calendar.getTime());
         vnpParamsMap.put("vnp_ExpireDate", vnp_ExpireDate);
+
+
         return vnpParamsMap;
     }
 

@@ -53,4 +53,9 @@ public interface OwnershipShareRepository extends JpaRepository<OwnershipShare, 
             "WHERE os.user.userId = :userId " +
             "ORDER BY os.group.createdAt DESC")
     List<OwnershipGroup> findGroupsByUserId(@Param("userId") Long userId);
+
+    @Query("SELECT COUNT(os) FROM OwnershipShare os WHERE os.user.userId = :userId")
+    Long countGroupsByUserId(@Param("userId") Long userId);
+
+    Number countByUser_UserId(Long userUserId);
 }

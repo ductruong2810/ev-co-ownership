@@ -4,6 +4,7 @@ import com.group8.evcoownership.dto.UserProfileResponseDTO;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.entity.UserDocument;
 import com.group8.evcoownership.exception.ResourceNotFoundException;
+import com.group8.evcoownership.repository.OwnershipShareRepository;
 import com.group8.evcoownership.repository.UserDocumentRepository;
 import com.group8.evcoownership.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +22,10 @@ public class UserProfileService {
 
     @Autowired
     private UserDocumentRepository userDocumentRepository;
+
+    @Autowired
+    private OwnershipShareRepository ownershipShareRepository;
+
 
     public UserProfileResponseDTO getUserProfile(String email) {
         log.info("Fetching profile for user: {}", email);
@@ -103,6 +108,6 @@ public class UserProfileService {
     }
 
     private int getGroupsCount(Long userId) {
-        return 0;
+        return ownershipShareRepository.countByUser_UserId(userId).intValue();
     }
 }

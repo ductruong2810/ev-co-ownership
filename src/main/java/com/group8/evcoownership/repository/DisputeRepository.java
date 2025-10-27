@@ -9,6 +9,8 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface DisputeRepository extends JpaRepository<Dispute, Long> {
+
+
     Page<Dispute> findByStatus(DisputeStatus status, Pageable pageable);
 
     Page<Dispute> findByFund_FundId(Long fundId, Pageable pageable);
