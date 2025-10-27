@@ -96,14 +96,24 @@ public class VnPay_PaymentService {
         vnpParamsMap.put("vnp_OrderType", this.orderType);
         vnpParamsMap.put("vnp_Locale", "vn");
 
-        Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("Etc/GMT+7"));
+//        Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("Etc/GMT+7"));
+//        SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
+//        String vnpCreateDate = formatter.format(calendar.getTime());
+//        vnpParamsMap.put("vnp_CreateDate", vnpCreateDate);
+//        calendar.add(Calendar.MINUTE, 15);
+//        String vnp_ExpireDate = formatter.format(calendar.getTime());
+//        vnpParamsMap.put("vnp_ExpireDate", vnp_ExpireDate);
+
+        Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
         SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
-        String vnpCreateDate = formatter.format(calendar.getTime());
-        vnpParamsMap.put("vnp_CreateDate", vnpCreateDate);
+
+        String vnp_CreateDate = formatter.format(calendar.getTime());
+        vnpParamsMap.put("vnp_CreateDate", vnp_CreateDate);
+
+        // +15 phút hiệu lực
         calendar.add(Calendar.MINUTE, 15);
         String vnp_ExpireDate = formatter.format(calendar.getTime());
         vnpParamsMap.put("vnp_ExpireDate", vnp_ExpireDate);
-
 
 
         return vnpParamsMap;
