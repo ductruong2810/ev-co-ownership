@@ -63,6 +63,8 @@ public class VnPay_PaymentService {
         // Quan trọng: thêm mã giao dịch nội bộ
         vnpParamsMap.put("vnp_TxnRef", txnRef);
 
+
+
         //build query url
         String queryUrl = getPaymentURL(vnpParamsMap, true);
         String hashData = getPaymentURL(vnpParamsMap, false);
@@ -93,6 +95,7 @@ public class VnPay_PaymentService {
         vnpParamsMap.put("vnp_OrderInfo", "Thanh toan don hang:" + getRandomNumber(8));
         vnpParamsMap.put("vnp_OrderType", this.orderType);
         vnpParamsMap.put("vnp_Locale", "vn");
+
         Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("Etc/GMT+7"));
         SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
         String vnpCreateDate = formatter.format(calendar.getTime());
@@ -100,6 +103,9 @@ public class VnPay_PaymentService {
         calendar.add(Calendar.MINUTE, 15);
         String vnp_ExpireDate = formatter.format(calendar.getTime());
         vnpParamsMap.put("vnp_ExpireDate", vnp_ExpireDate);
+
+
+
         return vnpParamsMap;
     }
 
