@@ -9,8 +9,6 @@ import com.group8.evcoownership.service.NotificationOrchestrator;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -33,18 +31,21 @@ public class NotificationController {
      * Get notifications for current user
      */
     @GetMapping
-    @Operation(summary = "Danh sách thông báo", description = "Lấy danh sách thông báo của người dùng hiện tại với phân trang")
-    public ResponseEntity<Page<NotificationDto>> getNotifications(
+    @Operation(summary = "Danh sách thông báo", description = "Lấy danh sách thông báo của người dùng hiện tại")
+    public ResponseEntity<List<NotificationDto>> getNotifications(
             @AuthenticationPrincipal String email,
-            Pageable pageable,
             @RequestParam(required = false) Boolean isRead) {
         User user = getUserByEmail(email);
 
-        Page<Notification> notifications = (isRead != null)
-                ? notificationRepository.findByUserAndIsRead(user, isRead, pageable)
-                : notificationRepository.findByUser(user, pageable);
+        List<Notification> notifications = (isRead != null)
+                ? notificationRepository.findByUserAndIsReadOrderByCreatedAtDesc(user, isRead)
+                : notificationRepository.findByUserOrderByCreatedAtDesc(user);
 
-        return ResponseEntity.ok(mapToDtoPage(notifications));
+        List<NotificationDto> notificationDtos = notifications.stream()
+                .map(this::convertToDto)
+                .toList();
+
+        return ResponseEntity.ok(notificationDtos);
     }
 
     /**
@@ -147,9 +148,5 @@ public class NotificationController {
 
     private boolean isNotOwner(Notification notification, User user) {
         return !notification.getUser().getUserId().equals(user.getUserId());
-    }
-
-    private Page<NotificationDto> mapToDtoPage(Page<Notification> page) {
-        return page.map(this::convertToDto);
     }
 }
