@@ -3,21 +3,16 @@ package com.group8.evcoownership.service;
 import com.group8.evcoownership.dto.DepositPaymentRequest;
 import com.group8.evcoownership.dto.DepositPaymentResponse;
 import com.group8.evcoownership.entity.*;
-import com.group8.evcoownership.enums.ContractApprovalStatus;
 import com.group8.evcoownership.enums.DepositStatus;
-import com.group8.evcoownership.enums.NotificationType;
 import com.group8.evcoownership.enums.PaymentStatus;
 import com.group8.evcoownership.enums.PaymentType;
 import com.group8.evcoownership.exception.DepositPaymentException;
-import com.group8.evcoownership.exception.PaymentConflictException;
 import com.group8.evcoownership.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-//import lombok.Value;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,13 +21,14 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class DepositPaymentService {
 
+
     private final PaymentRepository paymentRepository;
-    private final PaymentService paymentService;
     private final OwnershipShareRepository shareRepository;
     private final ContractRepository contractRepository;
     private final SharedFundRepository sharedFundRepository;
@@ -41,7 +37,6 @@ public class DepositPaymentService {
     private final VnPay_PaymentService vnPayPaymentService;
     private final DepositCalculationService depositCalculationService;
     private final VehicleRepository vehicleRepository;
-    private final NotificationOrchestrator notificationOrchestrator;
 
 
     private Long parseId(String id, String fieldName) {
@@ -212,6 +207,10 @@ public class DepositPaymentService {
         info.put("canPay", contract.getTerms() != null && contract.getTerms().contains("[ĐÃ KÝ]")
                 && share.getDepositStatus() == DepositStatus.PENDING);
 
+        // Thêm contract status
+        info.put("contractStatus", getContractStatus(groupId));
+
+
         return info;
     }
 
@@ -222,6 +221,9 @@ public class DepositPaymentService {
         List<OwnershipShare> shares = shareRepository.findByGroupGroupId(groupId);
         OwnershipGroup group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Group not found"));
+
+        // Lấy contract status 1 lần cho hiệu quả
+        String contractStatus = getContractStatus(groupId);
 
         return shares.stream().map(share -> {
             Map<String, Object> status = new HashMap<>();
@@ -235,6 +237,9 @@ public class DepositPaymentService {
             // Tính toán số tiền cọc cho user này
             BigDecimal depositAmount = calculateDepositAmountForUser(group, share);
             status.put("requiredDepositAmount", depositAmount);
+
+            // Thêm contract status
+            status.put("contractStatus", contractStatus);
 
             return status;
         }).toList();
@@ -277,4 +282,15 @@ public class DepositPaymentService {
         // Kiểm tra số lượng thành viên thực tế = memberCapacity
         return memberCapacity != null && shares.size() == memberCapacity;
     }
+
+    private String getContractStatus(Long groupId) {
+        Optional<Contract> contract = contractRepository.findByGroupGroupId(groupId);
+
+        if (contract.isEmpty()) {
+            return "NO_CONTRACT";
+        }
+
+        return contract.get().getApprovalStatus().name();
+    }
+
 }
