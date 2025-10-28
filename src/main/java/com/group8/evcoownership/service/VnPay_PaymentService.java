@@ -115,6 +115,10 @@ public class VnPay_PaymentService {
         String vnp_ExpireDate = formatter.format(calendar.getTime());
         vnpParamsMap.put("vnp_ExpireDate", vnp_ExpireDate);
 
+        System.out.println("🕐 CreateDate = " + vnp_CreateDate);
+        System.out.println("🕐 ExpireDate = " + vnp_ExpireDate);
+        System.out.println("🕐 Local time = " + new Date());
+
 
         return vnpParamsMap;
     }
