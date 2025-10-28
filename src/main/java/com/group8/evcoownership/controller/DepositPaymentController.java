@@ -15,7 +15,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -109,21 +108,40 @@ public class DepositPaymentController {
         String transactionNo = params.get("vnp_TransactionNo");
 
         try {
+            // Lấy groupId từ txnRef để redirect đúng về trang nhóm trên FE
+            Long groupId = null;
+            try {
+                var info = depositPaymentService.getDepositInfoByTxn(txnRef);
+                groupId = info != null ? info.groupId() : null;
+            } catch (Exception ignored) {
+                // fallback giữ nguyên đường dẫn cũ nếu không tìm ra groupId
+            }
+
+            String basePath = "/payment-result";
+            if (groupId != null) {
+                basePath = "/dashboard/viewGroups/" + groupId + "/payment-result";
+            }
+
             if ("00".equals(responseCode)) {
                 //  Thanh toán thành công → cập nhật DB
                 depositPaymentService.confirmDepositPayment(txnRef, transactionNo);
-
-                // 🔁 Redirect về FE hiển thị kết quả thành công
-                response.sendRedirect(frontendBaseUrl + "/payment-result?status=success&txnRef=" + txnRef);
-
+                response.sendRedirect(frontendBaseUrl + basePath + "?status=success&txnRef=" + txnRef);
             } else {
                 //  Thanh toán thất bại
-                response.sendRedirect(frontendBaseUrl + "/payment-result?status=fail&txnRef=" + txnRef);
+                response.sendRedirect(frontendBaseUrl + basePath + "?status=fail&txnRef=" + txnRef);
             }
 
         } catch (Exception e) {
             //  Có lỗi trong quá trình xử lý
-            response.sendRedirect(frontendBaseUrl + "/payment-result?status=error&txnRef=" + txnRef);
+            String fallbackPath = "/payment-result?status=error&txnRef=" + txnRef;
+            try {
+                var info = depositPaymentService.getDepositInfoByTxn(txnRef);
+                if (info != null && info.groupId() != null) {
+                    fallbackPath = "/dashboard/viewGroups/" + info.groupId() + "/payment-result?status=error&txnRef=" + txnRef;
+                }
+            } catch (Exception ignored) {
+            }
+            response.sendRedirect(frontendBaseUrl + fallbackPath);
         }
     }
 
