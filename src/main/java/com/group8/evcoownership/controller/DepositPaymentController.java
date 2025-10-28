@@ -96,36 +96,68 @@ public class DepositPaymentController {
     }
 
     /**
-     * Xử lý VNPay callback cho deposit payment
+     * ✅ Xử lý VNPay callback cho deposit payment
      */
     @GetMapping("/deposit-callback")
-    @Operation(summary = "Callback VNPay", description = "Xử lý callback từ VNPay cho thanh toán tiền cọc")
-    public void handleVnPayCallback(
-            @RequestParam Map<String, String> params,
-            HttpServletRequest request,          // ✅ thêm dòng này
-            HttpServletResponse response) throws IOException {
-
-        String responseCode = params.get("vnp_ResponseCode");
-        String txnRef = request.getParameter("vnp_TxnRef");
-        String transactionNo = request.getParameter("vnp_TransactionNo");
+    public void handleDepositCallback(
+            HttpServletResponse response,
+            @RequestParam("vnp_TxnRef") String txnRef,
+            @RequestParam("vnp_ResponseCode") String responseCode,
+            @RequestParam("vnp_TransactionNo") String transactionNo,
+            @RequestParam(value = "groupId", required = false) Long groupId   //có thể null nếu FE chưa truyền
+    ) throws IOException {
 
         try {
             if ("00".equals(responseCode)) {
-                //  Thanh toán thành công → cập nhật DB
+                // Thanh toán thành công → cập nhật DB
                 depositPaymentService.confirmDepositPayment(txnRef, transactionNo);
 
-                // 🔁 Redirect về FE hiển thị kết quả thành công
-                response.sendRedirect(frontendBaseUrl + "/payment-result?status=success&txnRef=" + txnRef);
+                // Redirect về FE hiển thị kết quả thành công
+                if (groupId != null) {
+                    response.sendRedirect(String.format(
+                            "%s/dashboard/viewGroups/%d/payment-result?status=success&txnRef=%s",
+                            frontendBaseUrl, groupId, txnRef
+                    ));
+                } else {
+                    // fallback nếu thiếu groupId
+                    response.sendRedirect(String.format(
+                            "%s/payment-result?status=success&txnRef=%s",
+                            frontendBaseUrl, txnRef
+                    ));
+                }
 
             } else {
-                //  Thanh toán thất bại
-                response.sendRedirect(frontendBaseUrl + "/payment-result?status=fail&txnRef=" + txnRef);
+                // Thanh toán thất bại
+                if (groupId != null) {
+                    response.sendRedirect(String.format(
+                            "%s/dashboard/viewGroups/%d/payment-result?status=fail&txnRef=%s",
+                            frontendBaseUrl, groupId, txnRef
+                    ));
+                } else {
+                    response.sendRedirect(String.format(
+                            "%s/payment-result?status=fail&txnRef=%s",
+                            frontendBaseUrl, txnRef
+                    ));
+                }
             }
 
         } catch (Exception e) {
-            //  Có lỗi trong quá trình xử lý
-            response.sendRedirect(frontendBaseUrl + "/payment-result?status=error&txnRef=" + txnRef);
+            e.printStackTrace(); // Log lỗi để debug nếu có
+            //  Có lỗi trong quá trình xử lý callback
+            if (groupId != null) {
+                response.sendRedirect(String.format(
+                        "%s/dashboard/viewGroups/%d/payment-result?status=error&txnRef=%s",
+                        frontendBaseUrl, groupId, txnRef
+                ));
+            } else {
+                response.sendRedirect(String.format(
+                        "%s/payment-result?status=error&txnRef=%s",
+                        frontendBaseUrl, txnRef
+                ));
+            }
         }
     }
+
+
 
 }
