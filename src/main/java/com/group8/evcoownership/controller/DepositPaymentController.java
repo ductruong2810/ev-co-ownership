@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -50,7 +51,7 @@ public class DepositPaymentController {
     @Operation(summary = "Xác nhận thanh toán", description = "Xác nhận giao dịch thanh toán VNPay thành công")
     public ResponseEntity<DepositPaymentResponse> confirmDepositPayment(
             @RequestParam("vnp_TxnRef") String txnRef,
-            @RequestParam("vnp_TransactionNo") String transactionNo) {
+            @RequestParam("vnp_TxnRef") String transactionNo) {
 
         DepositPaymentResponse response = depositPaymentService.confirmDepositPayment(txnRef, transactionNo);
         return ResponseEntity.ok(response);
@@ -95,54 +96,68 @@ public class DepositPaymentController {
     }
 
     /**
-     * Xử lý VNPay callback cho deposit payment
+     * ✅ Xử lý VNPay callback cho deposit payment
      */
     @GetMapping("/deposit-callback")
-    @Operation(summary = "Callback VNPay", description = "Xử lý callback từ VNPay cho thanh toán tiền cọc")
-    public void handleVnPayCallback(
-            @RequestParam Map<String, String> params,
-            HttpServletResponse response) throws IOException {
-
-        String responseCode = params.get("vnp_ResponseCode");
-        String txnRef = params.get("vnp_TxnRef");
-        String transactionNo = params.get("vnp_TransactionNo");
+    public void handleDepositCallback(
+            HttpServletResponse response,
+            @RequestParam("vnp_TxnRef") String txnRef,
+            @RequestParam("vnp_ResponseCode") String responseCode,
+            @RequestParam("vnp_TransactionNo") String transactionNo,
+            @RequestParam(value = "groupId", required = false) Long groupId   //có thể null nếu FE chưa truyền
+    ) throws IOException {
 
         try {
-            // Lấy groupId từ txnRef để redirect đúng về trang nhóm trên FE
-            Long groupId = null;
-            try {
-                var info = depositPaymentService.getDepositInfoByTxn(txnRef);
-                groupId = info != null ? info.groupId() : null;
-            } catch (Exception ignored) {
-                // fallback giữ nguyên đường dẫn cũ nếu không tìm ra groupId
-            }
-
-            String basePath = "/payment-result";
-            if (groupId != null) {
-                basePath = "/dashboard/viewGroups/" + groupId + "/payment-result";
-            }
-
             if ("00".equals(responseCode)) {
-                //  Thanh toán thành công → cập nhật DB
+                // Thanh toán thành công → cập nhật DB
                 depositPaymentService.confirmDepositPayment(txnRef, transactionNo);
-                response.sendRedirect(frontendBaseUrl + basePath + "?status=success&txnRef=" + txnRef);
+
+                // Redirect về FE hiển thị kết quả thành công
+                if (groupId != null) {
+                    response.sendRedirect(String.format(
+                            "%s/dashboard/viewGroups/%d/payment-result?status=success&txnRef=%s",
+                            frontendBaseUrl, groupId, txnRef
+                    ));
+                } else {
+                    // fallback nếu thiếu groupId
+                    response.sendRedirect(String.format(
+                            "%s/payment-result?status=success&txnRef=%s",
+                            frontendBaseUrl, txnRef
+                    ));
+                }
+
             } else {
-                //  Thanh toán thất bại
-                response.sendRedirect(frontendBaseUrl + basePath + "?status=fail&txnRef=" + txnRef);
+                // Thanh toán thất bại
+                if (groupId != null) {
+                    response.sendRedirect(String.format(
+                            "%s/dashboard/viewGroups/%d/payment-result?status=fail&txnRef=%s",
+                            frontendBaseUrl, groupId, txnRef
+                    ));
+                } else {
+                    response.sendRedirect(String.format(
+                            "%s/payment-result?status=fail&txnRef=%s",
+                            frontendBaseUrl, txnRef
+                    ));
+                }
             }
 
         } catch (Exception e) {
-            //  Có lỗi trong quá trình xử lý
-            String fallbackPath = "/payment-result?status=error&txnRef=" + txnRef;
-            try {
-                var info = depositPaymentService.getDepositInfoByTxn(txnRef);
-                if (info != null && info.groupId() != null) {
-                    fallbackPath = "/dashboard/viewGroups/" + info.groupId() + "/payment-result?status=error&txnRef=" + txnRef;
-                }
-            } catch (Exception ignored) {
+            e.printStackTrace(); // Log lỗi để debug nếu có
+            //  Có lỗi trong quá trình xử lý callback
+            if (groupId != null) {
+                response.sendRedirect(String.format(
+                        "%s/dashboard/viewGroups/%d/payment-result?status=error&txnRef=%s",
+                        frontendBaseUrl, groupId, txnRef
+                ));
+            } else {
+                response.sendRedirect(String.format(
+                        "%s/payment-result?status=error&txnRef=%s",
+                        frontendBaseUrl, txnRef
+                ));
             }
-            response.sendRedirect(frontendBaseUrl + fallbackPath);
         }
     }
+
+
 
 }

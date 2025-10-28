@@ -34,6 +34,9 @@ public class PaymentController {
     @PostMapping
     @Operation(summary = "Tạo thanh toán", description = "Tạo một giao dịch thanh toán mới và sinh URL thanh toán VNPay")
     public ResponseEntity<?> createPayment(@RequestBody PaymentRequest request, HttpServletRequest servletRequest) {
+
+        Long groupId = request.getGroupId();
+
         // 1️⃣ Lưu payment vào DB
         PaymentResponse payment = paymentService.create(request);
 
@@ -42,8 +45,10 @@ public class PaymentController {
                 request.getAmount().longValue(),
                 servletRequest,
                 payment.getTransactionCode(), // hoặc payment.getId().toString()
-                false
+                false,
+                groupId
         );
+
 
         // 3️⃣ Trả về cho FE
         return ResponseEntity.ok(Map.of(
