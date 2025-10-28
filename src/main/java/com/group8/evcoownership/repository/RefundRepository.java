@@ -9,7 +9,7 @@ import java.util.Optional;
 
 @Repository
 public interface RefundRepository extends JpaRepository<Refund, Long> {
-    List<Refund> findByDispute_DisputeId(Long disputeId);
+    List<Refund> findByDispute_Id(Long disputeId);
     
     Optional<Refund> findByTxnRef(String txnRef);
     
