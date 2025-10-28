@@ -154,7 +154,6 @@ public class DepositPaymentService {
 
         payment.setStatus(PaymentStatus.COMPLETED);
         payment.setPaymentDate(LocalDateTime.now());
-        payment.setTransactionCode(transactionNo);
         paymentRepository.save(payment);
 
         return convertToResponse(payment);

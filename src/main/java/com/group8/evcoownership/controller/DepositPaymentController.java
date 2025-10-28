@@ -51,7 +51,7 @@ public class DepositPaymentController {
     @Operation(summary = "Xác nhận thanh toán", description = "Xác nhận giao dịch thanh toán VNPay thành công")
     public ResponseEntity<DepositPaymentResponse> confirmDepositPayment(
             @RequestParam("vnp_TxnRef") String txnRef,
-            @RequestParam("vnp_TransactionNo") String transactionNo) {
+            @RequestParam("vnp_TxnRef") String transactionNo) {
 
         DepositPaymentResponse response = depositPaymentService.confirmDepositPayment(txnRef, transactionNo);
         return ResponseEntity.ok(response);
@@ -102,11 +102,12 @@ public class DepositPaymentController {
     @Operation(summary = "Callback VNPay", description = "Xử lý callback từ VNPay cho thanh toán tiền cọc")
     public void handleVnPayCallback(
             @RequestParam Map<String, String> params,
+            HttpServletRequest request,          // ✅ thêm dòng này
             HttpServletResponse response) throws IOException {
 
         String responseCode = params.get("vnp_ResponseCode");
-        String txnRef = params.get("vnp_TxnRef");
-        String transactionNo = params.get("vnp_TransactionNo");
+        String txnRef = request.getParameter("vnp_TxnRef");
+        String transactionNo = request.getParameter("vnp_TransactionNo");
 
         try {
             if ("00".equals(responseCode)) {
