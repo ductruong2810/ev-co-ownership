@@ -2,12 +2,14 @@ package com.group8.evcoownership.controller;
 
 import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.entity.UsageBooking;
+import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.service.UsageBookingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -23,6 +25,7 @@ import java.util.Map;
 public class UsageBookingController {
 
     private final UsageBookingService usageBookingService;
+    private final UserRepository userRepository;
 
     /**
      * Tạo booking mới
@@ -31,9 +34,15 @@ public class UsageBookingController {
      */
     @PostMapping("/create")
     @Operation(summary = "Tạo đặt xe mới", description = "Tạo một booking mới để sử dụng phương tiện")
-    public ResponseEntity<BookingResponseDTO> createBooking(@RequestBody BookingRequestDTO dto) {
+    public ResponseEntity<BookingResponseDTO> createBooking(
+            @RequestBody BookingRequestDTO dto,
+            @AuthenticationPrincipal String email) {
+        
+        Long userId = userRepository.findByEmail(email)
+                .orElseThrow().getUserId();
+        
         UsageBooking booking = usageBookingService.createBooking(
-                dto.getUserId(), dto.getVehicleId(), dto.getStartDateTime(), dto.getEndDateTime()
+                userId, dto.getVehicleId(), dto.getStartDateTime(), dto.getEndDateTime()
         );
 
         var vehicle = booking.getVehicle();
@@ -87,9 +96,12 @@ public class UsageBookingController {
     @GetMapping("/user-bookings")
     @Operation(summary = "Đặt xe của tôi", description = "Lấy danh sách booking của người dùng, có thể lọc theo tuần hoặc lấy tất cả sắp tới")
     public ResponseEntity<List<BookingResponseDTO>> getUserBookings(
-            @RequestParam Long userId,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime weekStart
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime weekStart,
+            @AuthenticationPrincipal String email
     ) {
+        Long userId = userRepository.findByEmail(email)
+                .orElseThrow().getUserId();
+        
         List<UsageBooking> bookings;
 
         if (weekStart != null) {
@@ -123,10 +135,13 @@ public class UsageBookingController {
     @GetMapping("/quota")
     @Operation(summary = "Quota sử dụng", description = "Lấy thông tin quota còn lại của người dùng cho xe trong tuần")
     public ResponseEntity<Map<String, Object>> getUserQuotaForWeek(
-            @RequestParam Long userId,
             @RequestParam Long vehicleId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime weekStart
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime weekStart,
+            @AuthenticationPrincipal String email
     ) {
+        Long userId = userRepository.findByEmail(email)
+                .orElseThrow().getUserId();
+        
         Map<String, Object> quotaInfo = usageBookingService.getUserQuotaInfo(userId, vehicleId, weekStart);
         return ResponseEntity.ok(quotaInfo);
     }
