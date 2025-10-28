@@ -119,7 +119,7 @@ public class DepositPaymentService {
                 .paymentCategory("GROUP")
                 .transactionCode(txnRef)
                 .build();
-        paymentRepository.save(payment);
+        payment = paymentRepository.save(payment);
 
         // 5️⃣ Sinh link thanh toán VNPay
         //String paymentUrl = vnPayPaymentService.createDepositPaymentUrl(requiredAmount.longValue(), servletRequest);
@@ -178,7 +178,7 @@ public class DepositPaymentService {
                 .paymentMethod("VNPAY")
                 .status(PaymentStatus.valueOf(p.getStatus().name()))
                 .transactionCode(p.getTransactionCode())
-                .createdAt(p.getPaymentDate())
+                .paidAt(p.getPaymentDate())
                 .build();
     }
 

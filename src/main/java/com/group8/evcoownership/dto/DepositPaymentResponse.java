@@ -16,7 +16,6 @@ public record DepositPaymentResponse(
         String paymentMethod,
         PaymentStatus status,
         String transactionCode,
-        LocalDateTime createdAt,
         LocalDateTime paidAt,
         String vnpayUrl,
         String message
