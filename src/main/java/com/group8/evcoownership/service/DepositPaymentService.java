@@ -154,11 +154,12 @@ public class DepositPaymentService {
 
         payment.setStatus(PaymentStatus.COMPLETED);
         payment.setPaymentDate(LocalDateTime.now());
-        payment.setTransactionCode(transactionNo);
         paymentRepository.save(payment);
 
         return convertToResponse(payment);
     }
+
+
 
     /**
      * 3️⃣ API cho frontend kiểm tra trạng thái thanh toán
@@ -292,5 +293,16 @@ public class DepositPaymentService {
 
         return contract.get().getApprovalStatus().name();
     }
+
+    /**
+     * ✅ Lấy thông tin chi tiết của thanh toán dựa theo mã giao dịch (txnRef)
+     */
+    public DepositPaymentResponse getDepositInfoByTxn(String txnRef) {
+        Payment payment = paymentRepository.findByTransactionCode(txnRef)
+                .orElseThrow(() -> new RuntimeException("Payment not found for txnRef: " + txnRef));
+
+        return convertToResponse(payment);
+    }
+
 
 }
