@@ -40,17 +40,18 @@ public class DepositPaymentController {
     }
 
     /**
-     * Xác nhận payment thành công (callback từ payment gateway)
+     * Xác nhận callback từ VNPay → cập nhật trạng thái thanh toán
      */
-    @PostMapping("/confirm/{paymentId}")
-    @Operation(summary = "Xác nhận thanh toán", description = "Xác nhận giao dịch thanh toán tiền cọc thành công")
+    @PostMapping("/confirm")
+    @Operation(summary = "Xác nhận thanh toán", description = "Xác nhận giao dịch thanh toán VNPay thành công")
     public ResponseEntity<DepositPaymentResponse> confirmDepositPayment(
-            @PathVariable Long paymentId,
-            @RequestParam String transactionCode) {
+            @RequestParam("vnp_TxnRef") String txnRef,
+            @RequestParam("vnp_TransactionNo") String transactionNo) {
 
-        DepositPaymentResponse response = depositPaymentService.confirmDepositPayment(String.valueOf(paymentId), transactionCode);
+        DepositPaymentResponse response = depositPaymentService.confirmDepositPayment(txnRef, transactionNo);
         return ResponseEntity.ok(response);
     }
+
 
     /**
      * Lấy thông tin deposit của user trong group
