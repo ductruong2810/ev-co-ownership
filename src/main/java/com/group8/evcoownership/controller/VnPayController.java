@@ -30,7 +30,7 @@ public class VnPayController {
         String txnRef = String.valueOf(System.currentTimeMillis());
 
         // ✅ Gọi đúng method có 3 tham số
-        String url = VnPay_PaymentService.createPaymentUrl(fee, request, txnRef);
+        String url = VnPay_PaymentService.createPaymentUrl(fee, request, txnRef, null);
 
         map.put("url", url);
         return ResponseEntity.ok(map);

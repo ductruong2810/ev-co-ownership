@@ -123,7 +123,7 @@ public class DepositPaymentService {
 
         // 5️⃣ Sinh link thanh toán VNPay
         //String paymentUrl = vnPayPaymentService.createDepositPaymentUrl(requiredAmount.longValue(), servletRequest);
-        String paymentUrl = vnPayPaymentService.createDepositPaymentUrl(requiredAmount.longValue(), servletRequest, txnRef);
+        String paymentUrl = vnPayPaymentService.createDepositPaymentUrl(requiredAmount.longValue(), servletRequest, txnRef, groupId);
 
 
         return DepositPaymentResponse.builder()
