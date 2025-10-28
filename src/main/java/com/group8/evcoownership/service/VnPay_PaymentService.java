@@ -37,35 +37,43 @@ public class VnPay_PaymentService {
     private String frontendUrl;
 
     // thanh toan như không phải đóng tièn cọc, e.g: incident
-    public String createPaymentUrl(long fee, HttpServletRequest request, String txnRef) {
-        return createPaymentUrl(fee, request, txnRef, false);
+    public String createPaymentUrl(long fee, HttpServletRequest request, String txnRef, Long groupId) {
+        return createPaymentUrl(fee, request, txnRef, true, groupId);
     }
 
     /**
-     * Tạo payment URL cho deposit payment
+     * 1 Tạo payment URL cho tiền cọc (deposit) với groupId cụ thể
      */
-    public String createDepositPaymentUrl(long fee, HttpServletRequest request, String txnRef) {
-        return createPaymentUrl(fee, request, txnRef, true);
+    public String createDepositPaymentUrl(long fee, HttpServletRequest request, String txnRef, Long groupId) {
+        return createPaymentUrl(fee, request, txnRef, true, groupId);
     }
 
 
-    public String createPaymentUrl(long fee, HttpServletRequest request, String txnRef, boolean isDeposit)
-    {
+    /**
+     *  2️ Hàm chính tạo URL thanh toán cho VNPay
+     * - Thêm groupId vào callback URL khi là deposit
+     */
+    public String createPaymentUrl(long fee, HttpServletRequest request, String txnRef, boolean isDeposit, Long groupId) {
         long amount = fee * 100L;
         Map<String, String> vnpParamsMap = getVNPayConfig();
 
-        // Sử dụng callback URL khác nhau cho deposit và payment thông thường
         String returnUrl = isDeposit ? this.vnp_DepositReturnUrl : this.vnp_ReturnUrl;
+
+        // ✅ Nếu là deposit thì thêm groupId (ưu tiên từ param truyền vào)
+        if (isDeposit) {
+            String effectiveGroupId = (groupId != null) ? String.valueOf(groupId) : request.getParameter("groupId");
+            if (effectiveGroupId == null || effectiveGroupId.isEmpty()) {
+                System.err.println("⚠️ [VNPay] groupId missing — fallback to 0");
+                effectiveGroupId = "0";
+            }
+            returnUrl = returnUrl + "?groupId=" + effectiveGroupId;
+        }
+
         vnpParamsMap.put("vnp_ReturnUrl", returnUrl);
         vnpParamsMap.put("vnp_Amount", String.valueOf(amount));
         vnpParamsMap.put("vnp_IpAddr", getIpAddress(request));
-
-        // Quan trọng: thêm mã giao dịch nội bộ
         vnpParamsMap.put("vnp_TxnRef", txnRef);
 
-
-
-        //build query url
         String queryUrl = getPaymentURL(vnpParamsMap, true);
         String hashData = getPaymentURL(vnpParamsMap, false);
         String vnpSecureHash = hmacSHA512(secretKey, hashData);
@@ -74,15 +82,29 @@ public class VnPay_PaymentService {
         return vnp_PayUrl + "?" + queryUrl;
     }
 
+
+    /**
+     * 3 Callback hiển thị kết quả thanh toán (nếu bạn dùng tạm thời)
+     * Ở dự án EV Co-ownership, thực tế bạn dùng DepositController.depositCallback()
+     * để xử lý cập nhật Payment/OwnershipShare → nên hàm này chỉ cần redirect đơn giản
+     */
     public void handlePaymentCallBack(HttpServletRequest request, HttpServletResponse response) throws Exception {
         String status = request.getParameter("vnp_ResponseCode");
+        String txnRef = request.getParameter("vnp_TxnRef");
+        String groupId = request.getParameter("groupId");
+
+        // ✅ Dựa theo groupId redirect về đúng trang FE trong dashboard
         String redirectUrl = String.format(
-                "%s/payment-status?vnp_ResponseCode=%s",
+                "%s/dashboard/viewGroups/%s/payment-result?status=%s&txnRef=%s",
                 frontendUrl,
-                status
+                groupId != null ? groupId : "unknown",
+                "00".equals(status) ? "success" : "fail",
+                txnRef != null ? txnRef : ""
         );
+
         response.sendRedirect(redirectUrl);
     }
+
 
 
     private Map<String, String> getVNPayConfig() {
