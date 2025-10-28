@@ -133,7 +133,6 @@ class ContractFlowIntegrationTest {
                 .requiredAmount(new BigDecimal("38000000"))
                 .paymentMethod("VNPAY")
                 .status(PaymentStatus.PENDING)
-                .createdAt(LocalDateTime.now())
                 .vnpayUrl("https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?test=123")
                 .message("Deposit payment created successfully. Please complete the payment via VNPay.")
                 .build();
@@ -172,7 +171,6 @@ class ContractFlowIntegrationTest {
                 .paymentMethod("VNPAY")
                 .status(PaymentStatus.COMPLETED)
                 .transactionCode("VNPAY123456789")
-                .createdAt(LocalDateTime.now())
                 .paidAt(LocalDateTime.now())
                 .message("Deposit payment completed successfully")
                 .build();
@@ -312,7 +310,6 @@ class ContractFlowIntegrationTest {
                 .requiredAmount(expectedAmount)
                 .paymentMethod("VNPAY")
                 .status(PaymentStatus.PENDING)
-                .createdAt(LocalDateTime.now())
                 .vnpayUrl("https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?test=" + userId)
                 .message("Deposit payment created successfully")
                 .build();
