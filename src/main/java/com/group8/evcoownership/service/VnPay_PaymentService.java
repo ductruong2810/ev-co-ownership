@@ -106,18 +106,14 @@ public class VnPay_PaymentService {
 
         Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
         SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
+        formatter.setTimeZone(TimeZone.getTimeZone("Asia/Ho_Chi_Minh")); // ✅ thêm dòng này
 
         String vnp_CreateDate = formatter.format(calendar.getTime());
         vnpParamsMap.put("vnp_CreateDate", vnp_CreateDate);
 
-        // +15 phút hiệu lực
         calendar.add(Calendar.MINUTE, 15);
         String vnp_ExpireDate = formatter.format(calendar.getTime());
         vnpParamsMap.put("vnp_ExpireDate", vnp_ExpireDate);
-
-        System.out.println("🕐 CreateDate = " + vnp_CreateDate);
-        System.out.println("🕐 ExpireDate = " + vnp_ExpireDate);
-        System.out.println("🕐 Local time = " + new Date());
 
 
         return vnpParamsMap;
