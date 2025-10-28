@@ -6,12 +6,15 @@ import com.group8.evcoownership.service.DepositPaymentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,7 +26,9 @@ import java.util.Map;
 public class DepositPaymentController {
 
     private final DepositPaymentService depositPaymentService;
-
+    // Inject frontend URL từ file application.properties
+    @Value("${frontend.base.url}")
+    private String frontendBaseUrl;
     /**
      * Tạo payment cho tiền cọc với VNPay
      */
@@ -40,17 +45,18 @@ public class DepositPaymentController {
     }
 
     /**
-     * Xác nhận payment thành công (callback từ payment gateway)
+     * Xác nhận callback từ VNPay → cập nhật trạng thái thanh toán
      */
-    @PostMapping("/confirm/{paymentId}")
-    @Operation(summary = "Xác nhận thanh toán", description = "Xác nhận giao dịch thanh toán tiền cọc thành công")
+    @PostMapping("/confirm")
+    @Operation(summary = "Xác nhận thanh toán", description = "Xác nhận giao dịch thanh toán VNPay thành công")
     public ResponseEntity<DepositPaymentResponse> confirmDepositPayment(
-            @PathVariable Long paymentId,
-            @RequestParam String transactionCode) {
+            @RequestParam("vnp_TxnRef") String txnRef,
+            @RequestParam("vnp_TransactionNo") String transactionNo) {
 
-        DepositPaymentResponse response = depositPaymentService.confirmDepositPayment(String.valueOf(paymentId), transactionCode);
+        DepositPaymentResponse response = depositPaymentService.confirmDepositPayment(txnRef, transactionNo);
         return ResponseEntity.ok(response);
     }
+
 
     /**
      * Lấy thông tin deposit của user trong group
@@ -82,37 +88,31 @@ public class DepositPaymentController {
      */
     @GetMapping("/deposit-callback")
     @Operation(summary = "Callback VNPay", description = "Xử lý callback từ VNPay cho thanh toán tiền cọc")
-    public ResponseEntity<Map<String, Object>> handleVnPayCallback(
-            @RequestParam Map<String, String> params) {
+    public void handleVnPayCallback(
+            @RequestParam Map<String, String> params,
+            HttpServletResponse response) throws IOException {
 
         String responseCode = params.get("vnp_ResponseCode");
-        String transactionCode = params.get("vnp_TransactionNo");
+        String txnRef = params.get("vnp_TxnRef");
+        String transactionNo = params.get("vnp_TransactionNo");
 
-        Map<String, Object> result = new HashMap<>();
+        try {
+            if ("00".equals(responseCode)) {
+                //  Thanh toán thành công → cập nhật DB
+                depositPaymentService.confirmDepositPayment(txnRef, transactionNo);
 
-        if ("00".equals(responseCode)) {
-            // Payment thành công
-            try {
-                // Tìm payment dựa trên transaction code hoặc amount
-                // Trong thực tế, bạn sẽ cần lưu transaction reference khi tạo payment
-                DepositPaymentResponse response = depositPaymentService.confirmDepositPayment(
-                        String.valueOf(Long.parseLong(params.get("vnp_TxnRef"))), // Payment ID từ VNPay
-                        transactionCode
-                );
+                // 🔁 Redirect về FE hiển thị kết quả thành công
+                response.sendRedirect(frontendBaseUrl + "/payment-result?status=success&txnRef=" + txnRef);
 
-                result.put("success", true);
-                result.put("message", "Payment completed successfully");
-                result.put("data", response);
-
-            } catch (Exception e) {
-                result.put("success", false);
-                result.put("message", "Error processing payment: " + e.getMessage());
+            } else {
+                //  Thanh toán thất bại
+                response.sendRedirect(frontendBaseUrl + "/payment-result?status=fail&txnRef=" + txnRef);
             }
-        } else {
-            result.put("success", false);
-            result.put("message", "Payment failed with code: " + responseCode);
-        }
 
-        return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            //  Có lỗi trong quá trình xử lý
+            response.sendRedirect(frontendBaseUrl + "/payment-result?status=error&txnRef=" + txnRef);
+        }
     }
+
 }
