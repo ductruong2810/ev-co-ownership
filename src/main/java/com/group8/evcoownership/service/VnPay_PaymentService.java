@@ -106,11 +106,11 @@ public class VnPay_PaymentService {
 
         Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
         SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
+        formatter.setTimeZone(TimeZone.getTimeZone("Asia/Ho_Chi_Minh")); // ✅ thêm dòng này
 
         String vnp_CreateDate = formatter.format(calendar.getTime());
         vnpParamsMap.put("vnp_CreateDate", vnp_CreateDate);
 
-        // +15 phút hiệu lực
         calendar.add(Calendar.MINUTE, 15);
         String vnp_ExpireDate = formatter.format(calendar.getTime());
         vnpParamsMap.put("vnp_ExpireDate", vnp_ExpireDate);
@@ -141,18 +141,33 @@ public class VnPay_PaymentService {
         }
     }
 
-    public static String getIpAddress(HttpServletRequest request) {
-        String ipAdress;
-        try {
-            ipAdress = request.getHeader("X-FORWARDED-FOR");
-            if (ipAdress == null) {
-                ipAdress = request.getRemoteAddr();
-            }
-        } catch (Exception e) {
-            ipAdress = "Invalid IP:" + e.getMessage();
+//    public static String getIpAddress(HttpServletRequest request) {
+//        String ipAdress;
+//        try {
+//            ipAdress = request.getHeader("X-FORWARDED-FOR");
+//            if (ipAdress == null) {
+//                ipAdress = request.getRemoteAddr();
+//            }
+//        } catch (Exception e) {
+//            ipAdress = "Invalid IP:" + e.getMessage();
+//        }
+//        return ipAdress;
+//    }
+
+    private String getIpAddress(HttpServletRequest request) {
+        String ipAddress = request.getHeader("X-FORWARDED-FOR");
+        if (ipAddress == null || ipAddress.isEmpty()) {
+            ipAddress = request.getRemoteAddr();
         }
-        return ipAdress;
+
+        // ✅ FIX: chuyển IPv6 localhost (::1) về IPv4 127.0.0.1
+        if ("0:0:0:0:0:0:0:1".equals(ipAddress)) {
+            ipAddress = "127.0.0.1";
+        }
+
+        return ipAddress;
     }
+
 
     public static String getRandomNumber(int len) {
         Random rnd = new Random();
