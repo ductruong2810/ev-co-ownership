@@ -145,18 +145,33 @@ public class VnPay_PaymentService {
         }
     }
 
-    public static String getIpAddress(HttpServletRequest request) {
-        String ipAdress;
-        try {
-            ipAdress = request.getHeader("X-FORWARDED-FOR");
-            if (ipAdress == null) {
-                ipAdress = request.getRemoteAddr();
-            }
-        } catch (Exception e) {
-            ipAdress = "Invalid IP:" + e.getMessage();
+//    public static String getIpAddress(HttpServletRequest request) {
+//        String ipAdress;
+//        try {
+//            ipAdress = request.getHeader("X-FORWARDED-FOR");
+//            if (ipAdress == null) {
+//                ipAdress = request.getRemoteAddr();
+//            }
+//        } catch (Exception e) {
+//            ipAdress = "Invalid IP:" + e.getMessage();
+//        }
+//        return ipAdress;
+//    }
+
+    private String getIpAddress(HttpServletRequest request) {
+        String ipAddress = request.getHeader("X-FORWARDED-FOR");
+        if (ipAddress == null || ipAddress.isEmpty()) {
+            ipAddress = request.getRemoteAddr();
         }
-        return ipAdress;
+
+        // ✅ FIX: chuyển IPv6 localhost (::1) về IPv4 127.0.0.1
+        if ("0:0:0:0:0:0:0:1".equals(ipAddress)) {
+            ipAddress = "127.0.0.1";
+        }
+
+        return ipAddress;
     }
+
 
     public static String getRandomNumber(int len) {
         Random rnd = new Random();
