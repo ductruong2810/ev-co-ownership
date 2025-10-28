@@ -57,6 +57,18 @@ public class DepositPaymentController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * Lấy thông tin thanh toán dựa trên mã giao dịch (txnRef)
+     * Dùng cho Frontend hiển thị chi tiết sau khi redirect từ VNPay
+     */
+    @GetMapping("/info-by-txn")
+    @Operation(summary = "Thông tin thanh toán theo mã giao dịch", description = "Trả về thông tin chi tiết của giao dịch dựa trên mã tham chiếu (txnRef)")
+    public ResponseEntity<DepositPaymentResponse> getDepositInfoByTxn(@RequestParam String txnRef) {
+        DepositPaymentResponse response = depositPaymentService.getDepositInfoByTxn(txnRef);
+        return ResponseEntity.ok(response);
+    }
+
+
 
     /**
      * Lấy thông tin deposit của user trong group
