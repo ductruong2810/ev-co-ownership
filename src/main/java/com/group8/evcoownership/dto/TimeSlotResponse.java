@@ -10,4 +10,6 @@ public class TimeSlotResponse {
     private String status; // AVAILABLE, BOOKED
     private String bookedBy;
     private boolean bookable;
+    // Detailed type for FE rendering: AVAILABLE | BOOKED_SELF | BOOKED_OTHER | MAINTENANCE | LOCKED
+    private String type;
 }
