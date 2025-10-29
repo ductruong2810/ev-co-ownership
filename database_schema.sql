@@ -771,3 +771,50 @@ GO
 -- Mỗi group chỉ có 1 vehicle (áp dụng khi GroupId NOT NULL)
 CREATE UNIQUE INDEX UQ_Vehicle_GroupId ON Vehicle (GroupId) WHERE GroupId IS NOT NULL;
 GO
+
+
+-- =============================================
+-- CLEANUP (Remove Dispute-related tables)
+-- =============================================
+-- B1
+PRINT 'Dropping foreign keys referencing Dispute...';
+GO
+
+-- Xóa các khóa ngoại trỏ đến Dispute
+DECLARE @sql NVARCHAR(MAX) = N'';
+SELECT @sql += 'ALTER TABLE [' + OBJECT_NAME(parent_object_id) + '] DROP CONSTRAINT [' + name + '];'
+FROM sys.foreign_keys
+WHERE referenced_object_id = OBJECT_ID('Dispute');
+EXEC sp_executesql @sql;
+GO
+
+-- B2
+PRINT 'Dropping legacy Dispute-related tables if exist...';
+GO
+
+IF OBJECT_ID('JournalEntry', 'U') IS NOT NULL
+    DROP TABLE JournalEntry;
+GO
+
+IF OBJECT_ID('Refund', 'U') IS NOT NULL
+    DROP TABLE Refund;
+GO
+
+IF OBJECT_ID('DisputeAttachment', 'U') IS NOT NULL
+    DROP TABLE DisputeAttachment;
+GO
+
+IF OBJECT_ID('DisputeEvent', 'U') IS NOT NULL
+    DROP TABLE DisputeEvent;
+GO
+
+IF OBJECT_ID('DisputeTicket', 'U') IS NOT NULL
+    DROP TABLE DisputeTicket;
+GO
+
+IF OBJECT_ID('Dispute', 'U') IS NOT NULL
+    DROP TABLE Dispute;
+GO
+
+
+
