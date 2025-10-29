@@ -83,14 +83,6 @@ class ContractFlowIntegrationTest {
     @Test
     void testContractSigning() {
         // Arrange
-        Map<String, Object> signRequest = Map.of(
-                "signedAt", LocalDateTime.now().toString(),
-                "signature", "Digital signature by admin",
-                "adminName", "Nguyễn Văn Test",
-                "signatureType", "ADMIN_PROXY",
-                "reason", "Admin Group ký thay tất cả thành viên theo quy định"
-        );
-
         Map<String, Object> expectedResponse = Map.of(
                 "success", true,
                 "contractId", 1L,
