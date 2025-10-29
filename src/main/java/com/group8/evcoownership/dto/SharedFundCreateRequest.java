@@ -14,7 +14,7 @@ import java.math.BigDecimal;
 public class SharedFundCreateRequest {
     @NotNull
     Long groupId;
-    
+
     @PositiveOrZero
     BigDecimal targetAmount;
 }

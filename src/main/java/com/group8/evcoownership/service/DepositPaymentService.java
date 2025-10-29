@@ -11,6 +11,7 @@ import com.group8.evcoownership.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +25,7 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class DepositPaymentService {
 
     private final FundService fundService;
@@ -48,7 +50,7 @@ public class DepositPaymentService {
     }
 
     /**
-     *  Tạo payment mới → sinh URL thanh toán VNPay
+     * Tạo payment mới → sinh URL thanh toán VNPay
      */
     @Transactional
     public DepositPaymentResponse createDepositPayment(DepositPaymentRequest request,
@@ -149,14 +151,14 @@ public class DepositPaymentService {
         }
 
         String providerResponse = String.format(
-            "{\"vnp_TransactionNo\":\"%s\",\"vnp_TxnRef\":\"%s\"}", 
-            transactionNo, txnRef
+                "{\"vnp_TransactionNo\":\"%s\",\"vnp_TxnRef\":\"%s\"}",
+                transactionNo, txnRef
         );
 
         // 1. Cập nhật trạng thái Payment
         payment.setStatus(PaymentStatus.COMPLETED);
         payment.setPaymentDate(LocalDateTime.now());
-        payment.setProviderResponse(providerResponse); 
+        payment.setProviderResponse(providerResponse);
         paymentRepository.save(payment);
 
         // 2. Cập nhật quỹ (Fund)
@@ -190,9 +192,8 @@ public class DepositPaymentService {
 //    }
 
 
-
     /**
-     *API cho frontend kiểm tra trạng thái thanh toán
+     * API cho frontend kiểm tra trạng thái thanh toán
      */
     public DepositPaymentResponse getByTxnRef(String txnRef) {
         Payment payment = paymentRepository.findByTransactionCode(txnRef)
@@ -212,7 +213,6 @@ public class DepositPaymentService {
                 .paidAt(p.getPaymentDate())
                 .build();
     }
-
 
 
     /**
@@ -300,11 +300,11 @@ public class DepositPaymentService {
         if (shares.isEmpty()) {
             return false;
         }
-        
+
         // Lấy group để kiểm tra memberCapacity
         OwnershipGroup group = shares.get(0).getGroup();
         Integer memberCapacity = group.getMemberCapacity();
-        
+
         // Kiểm tra số lượng thành viên thực tế = memberCapacity
         return memberCapacity != null && shares.size() == memberCapacity;
     }
@@ -326,5 +326,112 @@ public class DepositPaymentService {
         return convertToResponse(payment);
     }
 
+    // ========== DEPOSIT REFUND METHODS ==========
+
+    /**
+     * Hoàn tiền cọc cho tất cả members đã đóng khi contract bị reject
+     *
+     * @param shares  Danh sách OwnershipShare của group
+     * @param groupId ID của ownership group
+     */
+    @Transactional
+    public void refundDepositsForGroup(List<OwnershipShare> shares, Long groupId) {
+        for (OwnershipShare share : shares) {
+            if (share.getDepositStatus() == DepositStatus.PAID) {
+                try {
+                    // Tìm payment deposits cho user này
+                    List<Payment> deposits = paymentRepository.findAllByPayer_UserIdAndStatusAndPaymentType(
+                                    share.getUser().getUserId(),
+                                    PaymentStatus.COMPLETED,
+                                    PaymentType.DEPOSIT,
+                                    null
+                            ).stream()
+                            .filter(p -> p.getFund().getGroup().getGroupId().equals(groupId))
+                            .toList();
+
+                    // Hoàn tiền cọc qua VNPay API cho từng payment
+                    for (Payment payment : deposits) {
+                        try {
+                            refundSinglePayment(payment);
+                        } catch (Exception ex) {
+                            log.error("Failed to refund payment {}", payment.getId(), ex);
+                        }
+                    }
+
+                    // Đánh dấu deposit đã được refund
+                    share.setDepositStatus(DepositStatus.REFUNDED);
+                    shareRepository.save(share);
+
+                    log.info("Successfully refunded deposits for user {} in group {}",
+                            share.getUser().getUserId(), groupId);
+
+                } catch (Exception ex) {
+                    log.error("Failed to refund deposit for user {} in group {}",
+                            share.getUser().getUserId(), groupId, ex);
+                }
+            }
+        }
+    }
+
+    /**
+     * Hoàn tiền cho một payment đơn lẻ qua VNPay API
+     *
+     * @param payment Payment cần hoàn tiền
+     */
+    private void refundSinglePayment(Payment payment) throws java.io.IOException {
+        // Parse vnp_TransactionNo từ providerResponse
+        String vnpTransactionNo = VnPay_PaymentService.extractTransactionNo(payment.getProviderResponse());
+        if (vnpTransactionNo == null) {
+            log.warn("Cannot extract vnp_TransactionNo for payment {}. Skipping refund.", payment.getId());
+            return;
+        }
+
+        // Format vnp_TransactionDate từ payment.paymentDate
+        java.text.SimpleDateFormat formatter = new java.text.SimpleDateFormat("yyyyMMddHHmmss");
+        formatter.setTimeZone(java.util.TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
+        String vnpTransactionDate = formatter.format(
+                java.util.Date.from(payment.getPaymentDate().atZone(java.time.ZoneId.systemDefault()).toInstant())
+        );
+
+        // Tạo refund request URL từ VNPay
+        String refundUrl = vnPayPaymentService.createRefundRequest(
+                payment.getAmount().longValue(),
+                payment.getTransactionCode(),
+                vnpTransactionNo,
+                vnpTransactionDate
+        );
+
+        log.info("VNPay Refund URL created for payment {}: {}", payment.getId(), refundUrl);
+
+        // Gọi HTTP GET đến VNPay để thực hiện refund
+        java.net.URL url = new java.net.URL(refundUrl);
+        java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("GET");
+        conn.setConnectTimeout(10000);
+        conn.setReadTimeout(10000);
+
+        int responseCode = conn.getResponseCode();
+        log.info("VNPay Refund Response Code for payment {}: {}", payment.getId(), responseCode);
+
+        // Đọc response
+        try (java.io.BufferedReader in = new java.io.BufferedReader(
+                new java.io.InputStreamReader(conn.getInputStream()))) {
+            String inputLine;
+            StringBuilder response = new StringBuilder();
+            while ((inputLine = in.readLine()) != null) {
+                response.append(inputLine);
+            }
+            log.info("VNPay Refund Response for payment {}: {}", payment.getId(), response);
+        }
+
+        // Đánh dấu payment REFUNDED và trừ quỹ
+        payment.setStatus(PaymentStatus.REFUNDED);
+        paymentRepository.save(payment);
+
+        fundService.decreaseBalance(payment.getFund().getFundId(), payment.getAmount());
+
+        log.info("Successfully refunded payment {} - Amount: {} VND",
+                payment.getId(), payment.getAmount());
+    }
 
 }

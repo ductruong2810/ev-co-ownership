@@ -1,6 +1,5 @@
 package com.group8.evcoownership.service;
 
-import com.group8.evcoownership.dto.CreatePaymentRequest;
 import com.group8.evcoownership.dto.PaymentRequest;
 import com.group8.evcoownership.dto.PaymentResponse;
 import com.group8.evcoownership.dto.UpdatePaymentRequest;

@@ -81,10 +81,6 @@ class ContractServiceTest {
     }
 
 
-
-
-
-
     @Test
     void getRequiredDepositAmount_Success() {
         // Given
@@ -101,7 +97,6 @@ class ContractServiceTest {
         verify(groupRepository).findById(TEST_GROUP_ID);
         verify(contractRepository).findByGroupGroupId(TEST_GROUP_ID);
     }
-
 
 
     @Test
@@ -197,38 +192,38 @@ class ContractServiceTest {
         // Given
         when(groupRepository.findById(TEST_GROUP_ID))
                 .thenReturn(Optional.of(testGroup));
-        
+
         // Mock shares với đủ số thành viên nhưng tổng tỷ lệ không bằng 100%
         OwnershipShare share1 = OwnershipShare.builder()
                 .group(testGroup)
                 .user(User.builder().userId(1L).build())
                 .ownershipPercentage(new BigDecimal("40.00"))
                 .build();
-        
+
         OwnershipShare share2 = OwnershipShare.builder()
                 .group(testGroup)
                 .user(User.builder().userId(2L).build())
                 .ownershipPercentage(new BigDecimal("30.00"))
                 .build();
-        
+
         OwnershipShare share3 = OwnershipShare.builder()
                 .group(testGroup)
                 .user(User.builder().userId(3L).build())
                 .ownershipPercentage(new BigDecimal("20.00"))
                 .build();
-        
+
         OwnershipShare share4 = OwnershipShare.builder()
                 .group(testGroup)
                 .user(User.builder().userId(4L).build())
                 .ownershipPercentage(new BigDecimal("5.00"))
                 .build();
-        
+
         OwnershipShare share5 = OwnershipShare.builder()
                 .group(testGroup)
                 .user(User.builder().userId(5L).build())
                 .ownershipPercentage(new BigDecimal("3.00"))
                 .build();
-        
+
         // Tổng chỉ có 98%, thiếu 2%
         when(ownershipShareRepository.findByGroupGroupId(TEST_GROUP_ID))
                 .thenReturn(List.of(share1, share2, share3, share4, share5));
@@ -248,38 +243,38 @@ class ContractServiceTest {
         // Given
         when(groupRepository.findById(TEST_GROUP_ID))
                 .thenReturn(Optional.of(testGroup));
-        
+
         // Mock shares với đủ số thành viên nhưng một thành viên có 0% ownership
         OwnershipShare share1 = OwnershipShare.builder()
                 .group(testGroup)
                 .user(User.builder().userId(1L).fullName("John Doe").build())
                 .ownershipPercentage(new BigDecimal("50.00"))
                 .build();
-        
+
         OwnershipShare share2 = OwnershipShare.builder()
                 .group(testGroup)
                 .user(User.builder().userId(2L).fullName("Jane Smith").build())
                 .ownershipPercentage(new BigDecimal("0.00")) // 0% ownership - should fail
                 .build();
-        
+
         OwnershipShare share3 = OwnershipShare.builder()
                 .group(testGroup)
                 .user(User.builder().userId(3L).fullName("Bob Wilson").build())
                 .ownershipPercentage(new BigDecimal("25.00"))
                 .build();
-        
+
         OwnershipShare share4 = OwnershipShare.builder()
                 .group(testGroup)
                 .user(User.builder().userId(4L).fullName("Alice Brown").build())
                 .ownershipPercentage(new BigDecimal("15.00"))
                 .build();
-        
+
         OwnershipShare share5 = OwnershipShare.builder()
                 .group(testGroup)
                 .user(User.builder().userId(5L).fullName("Charlie Davis").build())
                 .ownershipPercentage(new BigDecimal("10.00"))
                 .build();
-        
+
         when(ownershipShareRepository.findByGroupGroupId(TEST_GROUP_ID))
                 .thenReturn(List.of(share1, share2, share3, share4, share5));
 
@@ -298,38 +293,38 @@ class ContractServiceTest {
         // Given
         when(groupRepository.findById(TEST_GROUP_ID))
                 .thenReturn(Optional.of(testGroup));
-        
+
         // Mock shares với đủ số thành viên nhưng một thành viên có null ownership percentage
         OwnershipShare share1 = OwnershipShare.builder()
                 .group(testGroup)
                 .user(User.builder().userId(1L).fullName("John Doe").build())
                 .ownershipPercentage(new BigDecimal("50.00"))
                 .build();
-        
+
         OwnershipShare share2 = OwnershipShare.builder()
                 .group(testGroup)
                 .user(User.builder().userId(2L).fullName("Jane Smith").build())
                 .ownershipPercentage(null) // null ownership - should fail
                 .build();
-        
+
         OwnershipShare share3 = OwnershipShare.builder()
                 .group(testGroup)
                 .user(User.builder().userId(3L).fullName("Bob Wilson").build())
                 .ownershipPercentage(new BigDecimal("25.00"))
                 .build();
-        
+
         OwnershipShare share4 = OwnershipShare.builder()
                 .group(testGroup)
                 .user(User.builder().userId(4L).fullName("Alice Brown").build())
                 .ownershipPercentage(new BigDecimal("15.00"))
                 .build();
-        
+
         OwnershipShare share5 = OwnershipShare.builder()
                 .group(testGroup)
                 .user(User.builder().userId(5L).fullName("Charlie Davis").build())
                 .ownershipPercentage(new BigDecimal("10.00"))
                 .build();
-        
+
         when(ownershipShareRepository.findByGroupGroupId(TEST_GROUP_ID))
                 .thenReturn(List.of(share1, share2, share3, share4, share5));
 
@@ -348,42 +343,42 @@ class ContractServiceTest {
         // Given
         when(groupRepository.findById(TEST_GROUP_ID))
                 .thenReturn(Optional.of(testGroup));
-        
+
         // Mock shares với đủ số thành viên nhưng tổng tỷ lệ không bằng 100%
         OwnershipShare share1 = OwnershipShare.builder()
                 .group(testGroup)
                 .user(User.builder().userId(1L).build())
                 .ownershipPercentage(new BigDecimal("50.00"))
                 .build();
-        
+
         OwnershipShare share2 = OwnershipShare.builder()
                 .group(testGroup)
                 .user(User.builder().userId(2L).build())
                 .ownershipPercentage(new BigDecimal("30.00"))
                 .build();
-        
+
         OwnershipShare share3 = OwnershipShare.builder()
                 .group(testGroup)
                 .user(User.builder().userId(3L).build())
                 .ownershipPercentage(new BigDecimal("15.00"))
                 .build();
-        
+
         OwnershipShare share4 = OwnershipShare.builder()
                 .group(testGroup)
                 .user(User.builder().userId(4L).build())
                 .ownershipPercentage(new BigDecimal("3.00"))
                 .build();
-        
+
         OwnershipShare share5 = OwnershipShare.builder()
                 .group(testGroup)
                 .user(User.builder().userId(5L).build())
                 .ownershipPercentage(new BigDecimal("1.00"))
                 .build();
-        
+
         // Tổng chỉ có 99%, thiếu 1%
         when(ownershipShareRepository.findByGroupGroupId(TEST_GROUP_ID))
                 .thenReturn(List.of(share1, share2, share3, share4, share5));
-        
+
         // Mock vehicle repository
         when(vehicleRepository.findByOwnershipGroup(testGroup))
                 .thenReturn(Optional.empty());
@@ -396,7 +391,7 @@ class ContractServiceTest {
         assertFalse((Boolean) conditions.get("canAutoSign"));
         assertEquals(new BigDecimal("99.00"), conditions.get("totalOwnershipPercentage"));
         assertEquals(new BigDecimal("100.00"), conditions.get("expectedOwnershipPercentage"));
-        
+
         verify(groupRepository).findById(TEST_GROUP_ID);
         verify(ownershipShareRepository).findByGroupGroupId(TEST_GROUP_ID);
         verify(vehicleRepository).findByOwnershipGroup(testGroup);

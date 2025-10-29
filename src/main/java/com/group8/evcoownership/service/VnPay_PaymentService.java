@@ -50,7 +50,7 @@ public class VnPay_PaymentService {
 
 
     /**
-     *  2️ Hàm chính tạo URL thanh toán cho VNPay
+     * 2️ Hàm chính tạo URL thanh toán cho VNPay
      * - Thêm groupId vào callback URL khi là deposit
      */
     public String createPaymentUrl(long fee, HttpServletRequest request, String txnRef, boolean isDeposit, Long groupId) {
@@ -104,7 +104,6 @@ public class VnPay_PaymentService {
 
         response.sendRedirect(redirectUrl);
     }
-
 
 
     private Map<String, String> getVNPayConfig() {
@@ -216,44 +215,45 @@ public class VnPay_PaymentService {
 
     /**
      * 4️⃣ Tạo yêu cầu hoàn tiền qua VNPay API
-     * @param amount Số tiền cần hoàn (VND)
-     * @param vnpTxnRef Mã giao dịch nội bộ
-     * @param vnpTransactionNo Số giao dịch VNPay từ payment gốc
+     *
+     * @param amount             Số tiền cần hoàn (VND)
+     * @param vnpTxnRef          Mã giao dịch nội bộ
+     * @param vnpTransactionNo   Số giao dịch VNPay từ payment gốc
      * @param vnpTransactionDate Ngày giao dịch gốc (format: yyyyMMddHHmmss)
      * @return URL để gọi VNPay refund API
      */
     public String createRefundRequest(Long amount, String vnpTxnRef, String vnpTransactionNo, String vnpTransactionDate) {
         Map<String, String> vnpParamsMap = new HashMap<>();
-        
+
         // Base config
         vnpParamsMap.put("vnp_Version", this.vnp_Version);
         vnpParamsMap.put("vnp_Command", "refund");
         vnpParamsMap.put("vnp_TmnCode", this.vnp_TmnCode);
         vnpParamsMap.put("vnp_CurrCode", "VND");
-        
+
         // Transaction info
         vnpParamsMap.put("vnp_TxnRef", vnpTxnRef);
         vnpParamsMap.put("vnp_TransactionNo", vnpTransactionNo);
         vnpParamsMap.put("vnp_TransactionDate", vnpTransactionDate);
         vnpParamsMap.put("vnp_Amount", String.valueOf(amount * 100));  // Đổi sang xu
-        
+
         // Order info
         vnpParamsMap.put("vnp_OrderInfo", "Hoan tien coc - " + vnpTxnRef);
         vnpParamsMap.put("vnp_OrderType", this.orderType);
         vnpParamsMap.put("vnp_Locale", "vn");
-        
+
         // Create timestamp
         Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
         SimpleDateFormat fmt = new SimpleDateFormat("yyyyMMddHHmmss");
         fmt.setTimeZone(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
         vnpParamsMap.put("vnp_CreateDate", fmt.format(cal.getTime()));
-        
+
         // Build URL và hash
         String queryUrl = getPaymentURL(vnpParamsMap, true);
         String hashData = getPaymentURL(vnpParamsMap, false);
         String vnpSecureHash = hmacSHA512(this.secretKey, hashData);
         queryUrl += "&vnp_SecureHash=" + vnpSecureHash;
-        
+
         return this.vnp_PayUrl + "?" + queryUrl;
     }
 

@@ -22,7 +22,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -109,7 +110,7 @@ class FundServiceTest {
         Long fundId = 1L;
         BigDecimal newBalance = new BigDecimal("1000000");
         BigDecimal newTargetAmount = new BigDecimal("5000000");
-        
+
         SharedFundUpdateRequest request = new SharedFundUpdateRequest();
         request.setBalance(newBalance);
         request.setTargetAmount(newTargetAmount);
@@ -199,7 +200,7 @@ class FundServiceTest {
         // Then
         assertNotNull(result);
         assertEquals(1, result.size());
-        
+
         SharedFundDto dto = result.get(0);
         assertEquals(1L, dto.fundId());
         assertEquals(1L, dto.groupId());

@@ -1,31 +1,23 @@
 package com.group8.evcoownership.service;
 
-import com.group8.evcoownership.dto.WeeklyCalendarResponse;
-import com.group8.evcoownership.dto.DailySlotResponse;
-import com.group8.evcoownership.dto.TimeSlotResponse;
-import com.group8.evcoownership.dto.UserQuotaResponse;
-import com.group8.evcoownership.dto.FlexibleBookingRequest;
-import com.group8.evcoownership.dto.FlexibleBookingResponse;
+import com.group8.evcoownership.dto.*;
+import com.group8.evcoownership.entity.OwnershipGroup;
 import com.group8.evcoownership.entity.UsageBooking;
 import com.group8.evcoownership.entity.Vehicle;
-import com.group8.evcoownership.entity.OwnershipGroup;
 import com.group8.evcoownership.enums.BookingStatus;
-import com.group8.evcoownership.repository.UsageBookingRepository;
-import com.group8.evcoownership.repository.VehicleRepository;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
+import com.group8.evcoownership.repository.UsageBookingRepository;
 import com.group8.evcoownership.repository.UserRepository;
+import com.group8.evcoownership.repository.VehicleRepository;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import jakarta.persistence.EntityNotFoundException;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.DayOfWeek;
-import java.time.Duration;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -83,12 +75,12 @@ public class WeeklyCalendarService {
 
         // Tạo 12 slot theo layout UI: 00-03, 03-04, 04-07, 07-08, 08-11, 11-12, 12-15, 15-16, 16-19, 19-20, 20-23, 23-24
         int[][] ranges = new int[][]{
-                {0,3},{3,4},{4,7},{7,8},{8,11},{11,12},{12,15},{15,16},{16,19},{19,20},{20,23},{23,24}
+                {0, 3}, {3, 4}, {4, 7}, {7, 8}, {8, 11}, {11, 12}, {12, 15}, {15, 16}, {16, 19}, {19, 20}, {20, 23}, {23, 24}
         };
 
         for (int[] r : ranges) {
             LocalDateTime slotStart = date.atTime(r[0], 0);
-            LocalDateTime slotEnd = (r[1] == 24) ? date.plusDays(1).atTime(0,0) : date.atTime(r[1], 0);
+            LocalDateTime slotEnd = (r[1] == 24) ? date.plusDays(1).atTime(0, 0) : date.atTime(r[1], 0);
             TimeSlotResponse slot = createTimeSlot(vehicleId, slotStart, slotEnd, userId);
             slots.add(slot);
         }
@@ -108,12 +100,12 @@ public class WeeklyCalendarService {
 
         // Lấy bookings từ ngày bắt đầu
         List<UsageBooking> bookings = new ArrayList<>(usageBookingRepository.findByVehicleIdAndDateWithUser(vehicleId, start.toLocalDate()));
-        
+
         // Nếu slot kéo dài qua ngày hôm sau, lấy thêm bookings từ ngày đó
         if (!end.toLocalDate().equals(start.toLocalDate())) {
             bookings.addAll(usageBookingRepository.findByVehicleIdAndDateWithUser(vehicleId, end.toLocalDate()));
         }
-        
+
         // Lọc các booking overlap với slot
         List<UsageBooking> overlapping = bookings.stream()
                 .filter(b -> !b.getStartDateTime().isAfter(end) && !b.getEndDateTime().isBefore(start))
@@ -175,7 +167,7 @@ public class WeeklyCalendarService {
      */
     private String formatTimeSlot(LocalDateTime start, LocalDateTime end) {
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
-        
+
         if (start.toLocalDate().equals(end.toLocalDate())) {
             // Cùng ngày: 08:00-12:00
             return start.format(timeFormatter) + "-" + end.format(timeFormatter);
@@ -190,18 +182,18 @@ public class WeeklyCalendarService {
      */
     public List<String> getBookingSuggestions(Long groupId, Long userId, LocalDate weekStart) {
         List<String> suggestions = new ArrayList<>();
-        
+
         WeeklyCalendarResponse calendar = getWeeklyCalendar(groupId, userId, weekStart);
-        
+
         // Suggestion dựa trên quota
         if (calendar.getUserQuota().getRemainingHours() > 20) {
-            suggestions.add("Bạn còn " + calendar.getUserQuota().getRemainingHours() + 
-                           " giờ chưa sử dụng. Nên book thêm để tận dụng quota!");
+            suggestions.add("Bạn còn " + calendar.getUserQuota().getRemainingHours() +
+                    " giờ chưa sử dụng. Nên book thêm để tận dụng quota!");
         }
-        
+
         if (calendar.getUserQuota().getRemainingHours() < 5) {
-            suggestions.add("Bạn chỉ còn " + calendar.getUserQuota().getRemainingHours() + 
-                           " giờ. Hãy cân nhắc khi book!");
+            suggestions.add("Bạn chỉ còn " + calendar.getUserQuota().getRemainingHours() +
+                    " giờ. Hãy cân nhắc khi book!");
         }
 
         // Suggestion dựa trên availability
@@ -209,7 +201,7 @@ public class WeeklyCalendarService {
                 .flatMap(daily -> daily.getSlots().stream())
                 .filter(TimeSlotResponse::isBookable)
                 .count();
-                
+
         if (availableSlots < 5) {
             suggestions.add("Tuần này còn ít slot trống (" + availableSlots + " slots). Hãy book sớm!");
         }
@@ -233,10 +225,10 @@ public class WeeklyCalendarService {
         long bookedHours = usageBookingRepository.getTotalBookedHoursThisWeek(
                 request.getUserId(), request.getVehicleId(), weekStart);
         long newBookingHours = Duration.between(request.getStartDateTime(), request.getEndDateTime()).toHours();
-        
+
         Long quotaLimit = usageBookingRepository.getQuotaLimitByOwnershipPercentage(
                 request.getUserId(), request.getVehicleId());
-        
+
         if (quotaLimit == null) {
             throw new IllegalStateException("User is not a member of the vehicle's ownership group.");
         }

@@ -44,9 +44,9 @@ public class OcrService {
         if (azureClient == null && azureEnabled && !azureEndpoint.isEmpty() && !azureKey.isEmpty()) {
             try {
                 azureClient = new ImageAnalysisClientBuilder()
-                    .endpoint(azureEndpoint)
-                    .credential(new AzureKeyCredential(azureKey))
-                    .buildClient();
+                        .endpoint(azureEndpoint)
+                        .credential(new AzureKeyCredential(azureKey))
+                        .buildClient();
                 log.info("Azure Computer Vision client initialized successfully");
             } catch (Exception e) {
                 log.warn("Failed to initialize Azure Computer Vision client: {}", e.getMessage());
@@ -63,25 +63,25 @@ public class OcrService {
         log.info("Azure enabled: {}", azureEnabled);
         log.info("Azure endpoint: {}", azureEndpoint);
         log.info("Azure key configured: {}", !azureKey.isEmpty());
-        
+
         return CompletableFuture.supplyAsync(() -> {
             try {
                 if (azureEnabled && !azureEndpoint.isEmpty() && !azureKey.isEmpty()) {
                     log.info("Using Azure Computer Vision for OCR extraction");
                     String azureResult = extractTextWithAzure(imageFile);
                     if (azureResult != null && !azureResult.trim().isEmpty()) {
-                        log.info("Successfully extracted text using Azure Computer Vision. Text length: {}", 
-                            azureResult.length());
-                        log.debug("Extracted text preview: {}", 
-                            azureResult.substring(0, Math.min(200, azureResult.length())));
+                        log.info("Successfully extracted text using Azure Computer Vision. Text length: {}",
+                                azureResult.length());
+                        log.debug("Extracted text preview: {}",
+                                azureResult.substring(0, Math.min(200, azureResult.length())));
                         return azureResult;
                     } else {
                         log.warn("Azure Computer Vision returned empty result");
                     }
                 } else {
                     log.warn("Azure Computer Vision is disabled or not configured");
-                    log.warn("azureEnabled: {}, endpoint empty: {}, key empty: {}", 
-                        azureEnabled, azureEndpoint.isEmpty(), azureKey.isEmpty());
+                    log.warn("azureEnabled: {}, endpoint empty: {}, key empty: {}",
+                            azureEnabled, azureEndpoint.isEmpty(), azureKey.isEmpty());
                 }
 
                 log.warn("Failed to extract text from image using Azure Computer Vision");
@@ -111,7 +111,7 @@ public class OcrService {
             log.info("Original image size: {} bytes", imageFile.getSize());
             log.info("Original image name: {}", imageFile.getOriginalFilename());
             log.info("Original image content type: {}", imageFile.getContentType());
-            
+
             BinaryData imageData;
             try {
                 // Try different approaches to convert MultipartFile to BinaryData
@@ -132,9 +132,9 @@ public class OcrService {
             log.info("Sending request to Azure Computer Vision API...");
             long startTime = System.currentTimeMillis();
             ImageAnalysisResult result = azureClient.analyze(
-                imageData,
-                Collections.singletonList(VisualFeatures.READ),
-                null
+                    imageData,
+                    Collections.singletonList(VisualFeatures.READ),
+                    null
             );
             long endTime = System.currentTimeMillis();
             log.info("Azure Computer Vision API response received in {} ms", endTime - startTime);
@@ -154,8 +154,8 @@ public class OcrService {
             String resultText = extractedText.toString().trim();
             log.info("OCR extraction completed. Text length: {}", resultText.length());
             if (!resultText.isEmpty()) {
-                log.info("Extracted text preview: {}", 
-                    resultText.substring(0, Math.min(300, resultText.length())));
+                log.info("Extracted text preview: {}",
+                        resultText.substring(0, Math.min(300, resultText.length())));
             } else {
                 log.warn("No text extracted from image");
             }
@@ -176,14 +176,14 @@ public class OcrService {
         }
 
         String text = extractedText.toLowerCase();
-        
+
         // Keywords thường có trong cà vẹt xe Việt Nam
         String[] vehicleKeywords = {
-            "giấy đăng ký xe", "đăng ký xe", "cà vẹt", "biển số", "số khung", "số máy",
-            "nhãn hiệu", "kiểu loại", "màu sắc", "năm sản xuất", "nơi sản xuất",
-            "chủ xe", "địa chỉ", "ngày cấp", "cơ quan cấp", "phương tiện",
-            "xe máy", "ô tô", "xe đạp điện", "xe điện", "motor", "car", "vehicle",
-            "registration", "license plate", "chassis", "engine", "brand", "model"
+                "giấy đăng ký xe", "đăng ký xe", "cà vẹt", "biển số", "số khung", "số máy",
+                "nhãn hiệu", "kiểu loại", "màu sắc", "năm sản xuất", "nơi sản xuất",
+                "chủ xe", "địa chỉ", "ngày cấp", "cơ quan cấp", "phương tiện",
+                "xe máy", "ô tô", "xe đạp điện", "xe điện", "motor", "car", "vehicle",
+                "registration", "license plate", "chassis", "engine", "brand", "model"
         };
 
         int keywordCount = 0;
@@ -220,43 +220,43 @@ public class OcrService {
      */
     public CompletableFuture<GroupWithVehicleResponse.AutoFillInfo> processVehicleInfoFromImage(
             MultipartFile image, long startTime) {
-        
+
         return extractTextFromImage(image)
                 .thenApply(extractedText -> {
                     try {
                         if (extractedText == null || extractedText.trim().isEmpty()) {
                             return new GroupWithVehicleResponse.AutoFillInfo(
-                                true, "", "", "", "", "", false, "No text extracted",
-                                System.currentTimeMillis() - startTime + "ms"
+                                    true, "", "", "", "", "", false, "No text extracted",
+                                    System.currentTimeMillis() - startTime + "ms"
                             );
                         }
-                        
+
                         // Check if it's a vehicle registration document
                         boolean isRegistrationDocument = isVehicleRegistrationDocument(extractedText);
-                        
+
                         // Extract vehicle information
-                        VehicleInfoDto vehicleInfo = 
-                            vehicleInfoExtractionService.extractVehicleInfo(extractedText);
-                        
+                        VehicleInfoDto vehicleInfo =
+                                vehicleInfoExtractionService.extractVehicleInfo(extractedText);
+
                         long processingTime = System.currentTimeMillis() - startTime;
-                        
+
                         return new GroupWithVehicleResponse.AutoFillInfo(
-                            true,
-                            vehicleInfo.brand(),
-                            vehicleInfo.model(),
-                            vehicleInfo.year(),
-                            vehicleInfo.licensePlate(),
-                            vehicleInfo.chassisNumber(),
-                            isRegistrationDocument,
-                            "High", // OCR confidence level
-                            processingTime + "ms"
+                                true,
+                                vehicleInfo.brand(),
+                                vehicleInfo.model(),
+                                vehicleInfo.year(),
+                                vehicleInfo.licensePlate(),
+                                vehicleInfo.chassisNumber(),
+                                isRegistrationDocument,
+                                "High", // OCR confidence level
+                                processingTime + "ms"
                         );
-                        
+
                     } catch (Exception e) {
                         long processingTime = System.currentTimeMillis() - startTime;
                         return new GroupWithVehicleResponse.AutoFillInfo(
-                            true, "", "", "", "", "", false, "Processing failed: " + e.getMessage(), 
-                            processingTime + "ms"
+                                true, "", "", "", "", "", false, "Processing failed: " + e.getMessage(),
+                                processingTime + "ms"
                         );
                     }
                 });

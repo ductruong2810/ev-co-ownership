@@ -1,10 +1,6 @@
 package com.group8.evcoownership.controller;
 
-import com.group8.evcoownership.dto.AmountRequest;
-import com.group8.evcoownership.dto.FundBalanceResponse;
-import com.group8.evcoownership.dto.SharedFundCreateRequest;
-import com.group8.evcoownership.dto.SharedFundDto;
-import com.group8.evcoownership.dto.SharedFundUpdateRequest;
+import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.entity.SharedFund;
 import com.group8.evcoownership.service.FundService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,7 +29,7 @@ public class FundController {
         SharedFund fund = fundService.createOrGroup(groupId);
         return new FundBalanceResponse(fund.getFundId(), fund.getGroup().getGroupId(), fund.getBalance(), fund.getTargetAmount());
     }
-    
+
     // Api tao quy theo body(DTO) - có thể tùy chọn targetAmount
     @PostMapping
     @Operation(summary = "Tạo quỹ mới", description = "Tạo quỹ chung mới với thông tin chi tiết từ request body")

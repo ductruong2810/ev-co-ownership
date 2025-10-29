@@ -14,50 +14,50 @@ public class VehicleInfoExtractionService {
 
     // Danh sách các hãng xe phổ biến tại Việt Nam
     private static final Set<String> COMMON_BRANDS = new HashSet<>(Arrays.asList(
-        "honda", "yamaha", "suzuki", "kawasaki", "ducati", "ktm", "bmw", "harley-davidson",
-        "toyota", "hyundai", "kia", "mazda", "nissan", "mitsubishi", "subaru",
-        "ford", "chevrolet", "volkswagen", "audi", "mercedes-benz", "lexus",
-        "vinfast", "thaco", "isuzu",
-        "piaggio", "vespa", "sym", "kymco", "benelli", "cfmoto", "qj motor"
+            "honda", "yamaha", "suzuki", "kawasaki", "ducati", "ktm", "bmw", "harley-davidson",
+            "toyota", "hyundai", "kia", "mazda", "nissan", "mitsubishi", "subaru",
+            "ford", "chevrolet", "volkswagen", "audi", "mercedes-benz", "lexus",
+            "vinfast", "thaco", "isuzu",
+            "piaggio", "vespa", "sym", "kymco", "benelli", "cfmoto", "qj motor"
     ));
 
     // Pattern để tìm thông tin xe từ text OCR
     private static final Pattern BRAND_MODEL_PATTERN = Pattern.compile(
-        "(?i)(nhãn hiệu\\s*\\(?brand\\)?)[\\s:]*([a-zA-Z0-9\\s-]+)",
-        Pattern.CASE_INSENSITIVE
+            "(?i)(nhãn hiệu\\s*\\(?brand\\)?)[\\s:]*([a-zA-Z0-9\\s-]+)",
+            Pattern.CASE_INSENSITIVE
     );
-    
+
     private static final Pattern MODEL_PATTERN = Pattern.compile(
-        "(?i)(số loại\\s*\\(?model\\s*code\\)?)[\\s:]*([a-zA-Z0-9\\s-]+)",
-        Pattern.CASE_INSENSITIVE
+            "(?i)(số loại\\s*\\(?model\\s*code\\)?)[\\s:]*([a-zA-Z0-9\\s-]+)",
+            Pattern.CASE_INSENSITIVE
     );
 
     private static final Pattern YEAR_PATTERN = Pattern.compile(
-        "(?i)(năm sản xuất|năm|year)[\\s:]*([0-9]{4})",
-        Pattern.CASE_INSENSITIVE
+            "(?i)(năm sản xuất|năm|year)[\\s:]*([0-9]{4})",
+            Pattern.CASE_INSENSITIVE
     );
 
     private static final Pattern LICENSE_PATTERN = Pattern.compile(
-        "([0-9]{2}[A-Z][0-9]?-?[0-9]{3}\\.[0-9]{2})",
-        Pattern.CASE_INSENSITIVE
+            "([0-9]{2}[A-Z][0-9]?-?[0-9]{3}\\.[0-9]{2})",
+            Pattern.CASE_INSENSITIVE
     );
 
     // Pattern cho chassis xe máy (10-12 ký tự)
     private static final Pattern MOTORCYCLE_CHASSIS_PATTERN = Pattern.compile(
-        "([A-Z0-9]{10,12})",
-        Pattern.CASE_INSENSITIVE
+            "([A-Z0-9]{10,12})",
+            Pattern.CASE_INSENSITIVE
     );
-    
+
     // Pattern cho chassis xe ô tô (17 ký tự)
     private static final Pattern CAR_CHASSIS_PATTERN = Pattern.compile(
-        "([A-Z0-9]{17})",
-        Pattern.CASE_INSENSITIVE
+            "([A-Z0-9]{17})",
+            Pattern.CASE_INSENSITIVE
     );
-    
+
     // Pattern chung cho cả hai loại
     private static final Pattern CHASSIS_PATTERN = Pattern.compile(
-        "([A-Z0-9]{10,17})",
-        Pattern.CASE_INSENSITIVE
+            "([A-Z0-9]{10,17})",
+            Pattern.CASE_INSENSITIVE
     );
 
     /**
@@ -79,7 +79,7 @@ public class VehicleInfoExtractionService {
         VehicleInfoDto result = new VehicleInfoDto(brand, model, year, licensePlate, chassisNumber);
         log.info("Extracted vehicle info: {}", result);
         log.info("Full OCR text for debugging: {}", ocrText);
-        
+
         return result;
     }
 
@@ -128,7 +128,7 @@ public class VehicleInfoExtractionService {
                 return capitalizeFirstLetter(commonBrand);
             }
         }
-        
+
         // Additional fallback: Tìm trong dòng có chứa "nhãn hiệu" hoặc "brand"
         String[] brandLines = text.split("\n");
         for (String line : brandLines) {
@@ -187,7 +187,7 @@ public class VehicleInfoExtractionService {
                 return capitalizeFirstLetter(model);
             }
         }
-        
+
         // Additional fallback: Tìm trong dòng có chứa "số loại" hoặc "model"
         String[] modelLines = text.split("\n");
         for (String line : modelLines) {
@@ -235,7 +235,7 @@ public class VehicleInfoExtractionService {
         if (matcher.find()) {
             return matcher.group(1).toUpperCase();
         }
-        
+
         // Fallback: Tìm trong text có chứa "biển số" hoặc "plate"
         String[] lines = text.split("\n");
         for (int i = 0; i < lines.length; i++) {
@@ -252,7 +252,7 @@ public class VehicleInfoExtractionService {
                 }
             }
         }
-        
+
         return "";
     }
 
@@ -262,15 +262,15 @@ public class VehicleInfoExtractionService {
     private String extractChassisNumber(String text) {
         // Bước 1: Xác định loại xe dựa trên brand và context
         boolean isMotorcycle = isMotorcycleBrand(text);
-        
+
         // Bước 2: Tìm chassis theo loại xe
         String chassis = findChassisByVehicleType(text, isMotorcycle);
-        
+
         if (!chassis.isEmpty()) {
             log.info("Extracted {} chassis: {}", isMotorcycle ? "motorcycle" : "car", chassis);
             return chassis;
         }
-        
+
         // Bước 3: Fallback - tìm trong text có chứa "số khung" hoặc "chassis"
         String[] lines = text.split("\n");
         for (int i = 0; i < lines.length; i++) {
@@ -288,46 +288,46 @@ public class VehicleInfoExtractionService {
                 }
             }
         }
-        
+
         return "";
     }
-    
+
     /**
      * Xác định có phải xe máy không dựa trên brand
      */
     private boolean isMotorcycleBrand(String text) {
         String lowerText = text.toLowerCase();
-        
+
         // Các hãng xe máy phổ biến
         String[] motorcycleBrands = {
-            "yamaha", "honda", "suzuki", "kawasaki", "ducati", "ktm", 
-            "piaggio", "vespa", "sym", "kymco", "benelli", "cfmoto", "qj motor"
+                "yamaha", "honda", "suzuki", "kawasaki", "ducati", "ktm",
+                "piaggio", "vespa", "sym", "kymco", "benelli", "cfmoto", "qj motor"
         };
-        
+
         for (String brand : motorcycleBrands) {
             if (lowerText.contains(brand)) {
                 return true;
             }
         }
-        
+
         // Kiểm tra context - xe máy thường có "Số máy" và "Dung tích"
         boolean hasEngineNumber = lowerText.contains("số máy") || lowerText.contains("engine");
         boolean hasCapacity = lowerText.contains("dung tích") || lowerText.contains("capacity");
-        
+
         return hasEngineNumber && hasCapacity;
     }
-    
+
     /**
      * Tìm chassis theo loại xe
      */
     private String findChassisByVehicleType(String text, boolean isMotorcycle) {
         Pattern pattern = isMotorcycle ? MOTORCYCLE_CHASSIS_PATTERN : CAR_CHASSIS_PATTERN;
         Matcher matcher = pattern.matcher(text);
-        
+
         if (matcher.find()) {
             return matcher.group(1).toUpperCase();
         }
-        
+
         return "";
     }
 
@@ -340,7 +340,7 @@ public class VehicleInfoExtractionService {
         }
 
         brand = brand.trim().toLowerCase();
-        
+
         // Mapping các tên brand phổ biến
         Map<String, String> brandMapping = new HashMap<>();
         brandMapping.put("honda", "Honda");
@@ -371,10 +371,10 @@ public class VehicleInfoExtractionService {
 
         // Clean up text: remove newlines, extra characters, trim
         String cleaned = model.replaceAll("\\n", " ").replaceAll("\\s+", " ").trim();
-        
+
         // Remove common suffixes that might be OCR artifacts
         cleaned = cleaned.replaceAll("\\s+[a-z]$", ""); // Remove single letter at end
-        
+
         return cleaned.toUpperCase();
     }
 
@@ -387,8 +387,8 @@ public class VehicleInfoExtractionService {
         }
 
         String lowerBrand = brand.toLowerCase().trim();
-        return COMMON_BRANDS.contains(lowerBrand) || 
-               (brand.length() >= 2 && brand.length() <= 20 && brand.matches("[a-zA-Z0-9\\s-]+"));
+        return COMMON_BRANDS.contains(lowerBrand) ||
+                (brand.length() >= 2 && brand.length() <= 20 && brand.matches("[a-zA-Z0-9\\s-]+"));
     }
 
     /**

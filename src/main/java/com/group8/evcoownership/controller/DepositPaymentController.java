@@ -12,8 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.Authentication;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -31,6 +31,7 @@ public class DepositPaymentController {
     // Inject frontend URL từ file application.properties
     @Value("${frontend.base.url}")
     private String frontendBaseUrl;
+
     /**
      * Tạo payment cho tiền cọc với VNPay
      */
@@ -69,7 +70,6 @@ public class DepositPaymentController {
         DepositPaymentResponse response = depositPaymentService.getDepositInfoByTxn(txnRef);
         return ResponseEntity.ok(response);
     }
-
 
 
     /**
@@ -159,7 +159,6 @@ public class DepositPaymentController {
             }
         }
     }
-
 
 
 }

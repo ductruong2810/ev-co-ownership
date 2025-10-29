@@ -19,7 +19,7 @@ public class GroupOwnershipSummaryResponse {
     private BigDecimal remainingPercentage;
     private String currentUserRole;
     private List<MemberOwnershipInfo> members;
-    
+
     @Data
     @Builder
     public static class MemberOwnershipInfo {
