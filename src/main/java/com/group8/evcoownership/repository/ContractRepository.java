@@ -15,8 +15,8 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
 
     @Query("""
                 SELECT c FROM Contract c
-                ORDER BY 
-                    CASE 
+                ORDER BY
+                    CASE
                         WHEN c.approvalStatus = 'PENDING' THEN 0
                         WHEN c.approvalStatus = 'SIGNED' THEN 1
                         WHEN c.approvalStatus = 'APPROVED' THEN 2

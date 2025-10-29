@@ -59,17 +59,14 @@ class ContractControllerTest {
     void testGenerateContractData_WithNullEmail_ShouldThrowException() {
         // Arrange
         Long groupId = 1L;
-        String userEmail = null;
 
-        when(contractService.getUserIdByEmail(userEmail))
+        when(contractService.getUserIdByEmail(null))
                 .thenThrow(new IllegalArgumentException("Email cannot be null"));
 
         // Act & Assert
-        assertThrows(IllegalArgumentException.class, () -> {
-            contractController.generateContractData(groupId, userEmail);
-        });
+        assertThrows(IllegalArgumentException.class, () -> contractController.generateContractData(groupId, null));
 
-        verify(contractService).getUserIdByEmail(userEmail);
+        verify(contractService).getUserIdByEmail(null);
         verify(contractService, never()).generateContractData(any(), any());
     }
 
@@ -83,9 +80,7 @@ class ContractControllerTest {
                 .thenThrow(new jakarta.persistence.EntityNotFoundException("User not found with email: " + userEmail));
 
         // Act & Assert
-        assertThrows(jakarta.persistence.EntityNotFoundException.class, () -> {
-            contractController.generateContractData(groupId, userEmail);
-        });
+        assertThrows(jakarta.persistence.EntityNotFoundException.class, () -> contractController.generateContractData(groupId, userEmail));
 
         verify(contractService).getUserIdByEmail(userEmail);
         verify(contractService, never()).generateContractData(any(), any());
