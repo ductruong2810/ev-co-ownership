@@ -260,13 +260,23 @@ public class ContractService {
         
         Contract savedContract = contractRepository.saveAndFlush(contract);
         
-        // Gửi notification cho tất cả thành viên
+        // Gửi notification cho tất cả thành viên (kèm dữ liệu chi tiết để email không bị N/A)
         if (notificationOrchestrator != null) {
+            java.util.Map<String, Object> emailData = new java.util.HashMap<>();
+            emailData.put("groupId", group.getGroupId());
+            emailData.put("contractId", savedContract.getId());
+            emailData.put("groupName", group.getGroupName());
+            emailData.put("startDate", savedContract.getStartDate());
+            emailData.put("endDate", savedContract.getEndDate());
+            emailData.put("depositAmount", savedContract.getRequiredDepositAmount());
+            emailData.put("status", savedContract.getApprovalStatus());
+
             notificationOrchestrator.sendGroupNotification(
                     groupId,
                     NotificationType.CONTRACT_CREATED,
                     "Contract Auto-Signed",
-                    "Your co-ownership contract has been automatically signed and is ready for deposit payments."
+                    "Your co-ownership contract has been automatically signed and is ready for deposit payments.",
+                    emailData
             );
         }
         
