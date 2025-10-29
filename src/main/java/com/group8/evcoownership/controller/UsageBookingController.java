@@ -12,7 +12,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -27,65 +26,10 @@ public class UsageBookingController {
     private final UsageBookingService usageBookingService;
     private final UserRepository userRepository;
 
-    /**
-     * Tạo booking mới
-     * Example:
-     * POST /api/bookings/create?userId=1&vehicleId=2&start=2025-10-10T08:00&end=2025-10-10T12:00
-     */
-    @PostMapping("/create")
-    @Operation(summary = "Tạo đặt xe mới", description = "Tạo một booking mới để sử dụng phương tiện")
-    public ResponseEntity<BookingResponseDTO> createBooking(
-            @RequestBody BookingRequestDTO dto,
-            @AuthenticationPrincipal String email) {
-        
-        Long userId = userRepository.findByEmail(email)
-                .orElseThrow().getUserId();
-        
-        UsageBooking booking = usageBookingService.createBooking(
-                userId, dto.getVehicleId(), dto.getStartDateTime(), dto.getEndDateTime()
-        );
-
-        var vehicle = booking.getVehicle();
-
-        BookingResponseDTO response = new BookingResponseDTO(
-                booking.getId(),
-                vehicle.getLicensePlate(),
-                vehicle.getBrand(),
-                vehicle.getModel(),
-                booking.getStartDateTime(),
-                booking.getEndDateTime(),
-                booking.getStatus().name()
-        );
-
-        return ResponseEntity.ok(response);
-    }
+    // Removed deprecated create endpoint. Use /api/calendar/flexible-booking instead.
 
 
-    /**
-     * Lấy các slot đã đặt của xe trong ngày với thông tin user
-     * Example:
-     * GET /api/bookings/slots?vehicleId=2&date=2025-10-10
-     */
-    @GetMapping("/slots")
-    @Operation(summary = "Lịch đặt xe theo ngày", description = "Lấy danh sách các slot đã đặt của xe trong một ngày cụ thể")
-    public ResponseEntity<List<BookingSlotWithUserDTO>> getVehicleBookingsForDay(
-            @RequestParam Long vehicleId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
-    ) {
-        List<UsageBooking> bookings = usageBookingService.getBookingsByVehicleAndDate(vehicleId, date);
-        List<BookingSlotWithUserDTO> slots = bookings.stream()
-                .map(b -> new BookingSlotWithUserDTO(
-                        b.getId(),
-                        b.getUser().getFullName(),
-                        b.getUser().getEmail(),
-                        b.getStartDateTime(),
-                        b.getEndDateTime(),
-                        b.getStatus().name()
-                ))
-                .toList();
-
-        return ResponseEntity.ok(slots);
-    }
+    // Removed per simplification; weekly calendar covers this use case.
 
     /**
      * Lấy danh sách booking của user (có thể lọc theo tuần hoặc lấy tất cả upcoming)
@@ -127,24 +71,7 @@ public class UsageBookingController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Lấy quota còn lại của user cho xe trong tuần
-     * Example:
-     * GET /api/bookings/quota?userId=1&vehicleId=2&weekStart=2025-10-06T00:00:00
-     */
-    @GetMapping("/quota")
-    @Operation(summary = "Quota sử dụng", description = "Lấy thông tin quota còn lại của người dùng cho xe trong tuần")
-    public ResponseEntity<Map<String, Object>> getUserQuotaForWeek(
-            @RequestParam Long vehicleId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime weekStart,
-            @AuthenticationPrincipal String email
-    ) {
-        Long userId = userRepository.findByEmail(email)
-                .orElseThrow().getUserId();
-        
-        Map<String, Object> quotaInfo = usageBookingService.getUserQuotaInfo(userId, vehicleId, weekStart);
-        return ResponseEntity.ok(quotaInfo);
-    }
+    // Removed; quota is returned in weekly calendar response.
 
     /**
      * Xác nhận booking (chuyển từ Pending → Confirmed)
@@ -208,18 +135,7 @@ public class UsageBookingController {
         return ResponseEntity.ok(result);
     }
 
-    /**
-     * Tạo maintenance booking và cancel các booking bị ảnh hưởng
-     * Example:
-     * POST /api/bookings/maintenance
-     */
-    @PostMapping("/maintenance")
-    @Operation(summary = "Tạo booking bảo trì", description = "Tạo maintenance booking và tự động hủy các booking bị ảnh hưởng")
-    public ResponseEntity<Map<String, Object>> createMaintenanceBooking(
-            @RequestBody MaintenanceBookingRequestDTO request) {
-        Map<String, Object> result = usageBookingService.createMaintenanceBooking(request);
-        return ResponseEntity.ok(result);
-    }
+    // Removed to avoid duplication. Use MaintenanceController under /api/maintenance instead.
 
     /**
      * Hoàn thành booking và tạo buffer time (chuyển sang Completed + tạo Buffer)

@@ -9,7 +9,6 @@ import com.group8.evcoownership.dto.FlexibleBookingResponse;
 import com.group8.evcoownership.entity.UsageBooking;
 import com.group8.evcoownership.entity.Vehicle;
 import com.group8.evcoownership.entity.OwnershipGroup;
-import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.enums.BookingStatus;
 import com.group8.evcoownership.repository.UsageBookingRepository;
 import com.group8.evcoownership.repository.VehicleRepository;
@@ -81,19 +80,15 @@ public class WeeklyCalendarService {
      */
     private DailySlotResponse createDailySlot(Long vehicleId, LocalDate date, Long userId) {
         List<TimeSlotResponse> slots = new ArrayList<>();
-        
-        // Tạo slots 24/7 - mỗi slot 4 giờ để dễ quản lý
-        // 00:00-04:00, 04:00-08:00, 08:00-12:00, 12:00-16:00, 16:00-20:00, 20:00-24:00
-        
-        for (int hour = 0; hour < 24; hour += 4) {
-            LocalDateTime slotStart = date.atTime(hour, 0);
-            LocalDateTime slotEnd = date.atTime(hour + 4, 0);
-            
-            // Xử lý trường hợp slot cuối cùng (20:00-24:00)
-            if (hour == 20) {
-                slotEnd = date.plusDays(1).atTime(0, 0);
-            }
-            
+
+        // Tạo 12 slot theo layout UI: 00-03, 03-04, 04-07, 07-08, 08-11, 11-12, 12-15, 15-16, 16-19, 19-20, 20-23, 23-24
+        int[][] ranges = new int[][]{
+                {0,3},{3,4},{4,7},{7,8},{8,11},{11,12},{12,15},{15,16},{16,19},{19,20},{20,23},{23,24}
+        };
+
+        for (int[] r : ranges) {
+            LocalDateTime slotStart = date.atTime(r[0], 0);
+            LocalDateTime slotEnd = (r[1] == 24) ? date.plusDays(1).atTime(0,0) : date.atTime(r[1], 0);
             TimeSlotResponse slot = createTimeSlot(vehicleId, slotStart, slotEnd, userId);
             slots.add(slot);
         }
@@ -120,37 +115,60 @@ public class WeeklyCalendarService {
             bookings.addAll(usageBookingRepository.findByVehicleIdAndDateWithUser(vehicleId, end.toLocalDate()));
         }
         
-        boolean isBooked = bookings.stream().anyMatch(booking -> 
-                !booking.getStartDateTime().isAfter(end) && 
-                !booking.getEndDateTime().isBefore(start) &&
-                booking.getStatus().name().equals("CONFIRMED"));
+        // Lọc các booking overlap với slot
+        List<UsageBooking> overlapping = bookings.stream()
+                .filter(b -> !b.getStartDateTime().isAfter(end) && !b.getEndDateTime().isBefore(start))
+                .toList();
 
-        if (isBooked) {
-            // Tìm booking chi tiết
-            UsageBooking booking = bookings.stream()
-                    .filter(b -> !b.getStartDateTime().isAfter(end) && 
-                                !b.getEndDateTime().isBefore(start))
-                    .findFirst()
-                    .orElse(null);
+        String timeDisplay = formatTimeSlot(start, end);
 
-            // Format time để hiển thị overnight
-            String timeDisplay = formatTimeSlot(start, end);
-
+        // Ưu tiên hiển thị: MAINTENANCE (BUFFER, user=null) → LOCKED (BUFFER, user!=null) → BOOKED (CONFIRMED)
+        UsageBooking maintenance = overlapping.stream()
+                .filter(b -> b.getStatus() == BookingStatus.BUFFER && b.getUser() == null)
+                .findFirst().orElse(null);
+        if (maintenance != null) {
             return TimeSlotResponse.builder()
                     .time(timeDisplay)
                     .status("BOOKED")
-                    .bookedBy(booking != null ? booking.getUser().getFullName() : "Unknown")
+                    .type("MAINTENANCE")
+                    .bookedBy("Maintenance")
                     .bookable(false)
                     .build();
-        } else {
-            String timeDisplay = formatTimeSlot(start, end);
-            
+        }
+
+        UsageBooking locked = overlapping.stream()
+                .filter(b -> b.getStatus() == BookingStatus.BUFFER && b.getUser() != null)
+                .findFirst().orElse(null);
+        if (locked != null) {
             return TimeSlotResponse.builder()
                     .time(timeDisplay)
-                    .status("AVAILABLE")
-                    .bookable(true)
+                    .status("BOOKED")
+                    .type("LOCKED")
+                    .bookedBy(locked.getUser() != null ? locked.getUser().getFullName() : null)
+                    .bookable(false)
                     .build();
         }
+
+        UsageBooking confirmed = overlapping.stream()
+                .filter(b -> b.getStatus() == BookingStatus.CONFIRMED)
+                .findFirst().orElse(null);
+        if (confirmed != null) {
+            boolean bookedBySelf = confirmed.getUser() != null && confirmed.getUser().getUserId().equals(userId);
+            return TimeSlotResponse.builder()
+                    .time(timeDisplay)
+                    .status("BOOKED")
+                    .type(bookedBySelf ? "BOOKED_SELF" : "BOOKED_OTHER")
+                    .bookedBy(confirmed.getUser() != null ? confirmed.getUser().getFullName() : "Unknown")
+                    .bookable(false)
+                    .build();
+        }
+
+        return TimeSlotResponse.builder()
+                .time(timeDisplay)
+                .status("AVAILABLE")
+                .type("AVAILABLE")
+                .bookable(true)
+                .build();
     }
 
     /**
