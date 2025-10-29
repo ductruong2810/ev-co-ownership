@@ -256,13 +256,22 @@ public class PaymentService {
                 if (providerResponseJson != null) p.setProviderResponse(providerResponseJson);
                 paymentRepo.save(p);
 
-                // Send payment failed notification
-                notificationOrchestrator.sendPaymentNotification(
+                // Send payment failed notification with rich email data
+                java.util.Map<String, Object> emailDataFailed = new java.util.HashMap<>();
+                emailDataFailed.put("paymentId", p.getId());
+                emailDataFailed.put("transactionCode", p.getTransactionCode());
+                emailDataFailed.put("amount", p.getAmount());
+                emailDataFailed.put("paymentMethod", p.getPaymentMethod());
+                emailDataFailed.put("paymentType", p.getPaymentType());
+                emailDataFailed.put("paymentDate", p.getPaymentDate());
+                emailDataFailed.put("status", PaymentStatus.FAILED.name());
+
+                notificationOrchestrator.sendComprehensiveNotification(
                         p.getPayer().getUserId(),
                         NotificationType.PAYMENT_FAILED,
                         "Payment Failed",
                         String.format("Your payment of %s VND has failed. Please try again.", p.getAmount()),
-                        p.getId()
+                        emailDataFailed
                 );
             }
             case COMPLETED -> {
@@ -279,13 +288,22 @@ public class PaymentService {
                 // Cộng quỹ đúng 1 lần khi chốt Completed
                 fundService.increaseBalance(p.getFund().getFundId(), p.getAmount());
 
-                // Send payment success notification
-                notificationOrchestrator.sendPaymentNotification(
+                // Send payment success notification with rich email data
+                java.util.Map<String, Object> emailDataSuccess = new java.util.HashMap<>();
+                emailDataSuccess.put("paymentId", p.getId());
+                emailDataSuccess.put("transactionCode", p.getTransactionCode());
+                emailDataSuccess.put("amount", p.getAmount());
+                emailDataSuccess.put("paymentMethod", p.getPaymentMethod());
+                emailDataSuccess.put("paymentType", p.getPaymentType());
+                emailDataSuccess.put("paymentDate", p.getPaymentDate());
+                emailDataSuccess.put("status", PaymentStatus.COMPLETED.name());
+
+                notificationOrchestrator.sendComprehensiveNotification(
                         p.getPayer().getUserId(),
                         NotificationType.PAYMENT_SUCCESS,
                         "Payment Successful",
                         String.format("Your payment of %s VND has been processed successfully", p.getAmount()),
-                        p.getId()
+                        emailDataSuccess
                 );
             }
             case REFUNDED -> {
