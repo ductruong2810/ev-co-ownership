@@ -11,7 +11,6 @@ import com.group8.evcoownership.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,18 +46,6 @@ public class DepositPaymentService {
             throw new DepositPaymentException(fieldName + " must be a valid number");
         }
     }
-
-    @Value("${payment.vnPay.tmnCode}")
-    private String vnp_TmnCode;
-
-    @Value("${payment.vnPay.secretKey}")
-    private String vnp_HashSecret;
-
-    @Value("${payment.vnPay.url}")
-    private String vnp_PayUrl;
-
-    @Value("${payment.vnPay.depositReturnUrl}")
-    private String vnp_ReturnUrl;
 
     /**
      * 1️⃣ Tạo payment mới → sinh URL thanh toán VNPay
@@ -133,8 +120,8 @@ public class DepositPaymentService {
 
 
         return DepositPaymentResponse.builder()
-                .paymentId(payment != null ? payment.getId() : null)
-                .userId(user != null ? user.getUserId() : null)
+                .paymentId(payment.getId())
+                .userId(user.getUserId())
                 .groupId(group != null ? group.getGroupId() : null)
                 .amount(requiredAmount) // hoặc BigDecimal.valueOf(requiredAmount.longValue())
                 .requiredAmount(requiredAmount)
@@ -323,11 +310,8 @@ public class DepositPaymentService {
     private String getContractStatus(Long groupId) {
         Optional<Contract> contract = contractRepository.findByGroupGroupId(groupId);
 
-        if (contract.isEmpty()) {
-            return "NO_CONTRACT";
-        }
+        return contract.map(value -> value.getApprovalStatus().name()).orElse("NO_CONTRACT");
 
-        return contract.get().getApprovalStatus().name();
     }
 
     /**
