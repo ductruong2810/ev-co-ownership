@@ -5,6 +5,7 @@ import com.group8.evcoownership.dto.MaintenanceBookingRequestDTO;
 import com.group8.evcoownership.entity.UsageBooking;
 import com.group8.evcoownership.enums.BookingStatus;
 import com.group8.evcoownership.enums.NotificationType;
+import com.group8.evcoownership.exception.InvalidBookingException;
 import com.group8.evcoownership.repository.UsageBookingRepository;
 import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.repository.VehicleRepository;
@@ -32,14 +33,32 @@ public class UsageBookingService {
 
     //Tạo booking mới — kiểm tra quota, trùng giờ, buffer.
     public UsageBooking createBooking(Long userId, Long vehicleId, LocalDateTime start, LocalDateTime end) {
-        // Kiểm tra tồn tại user & vehicle
+        // Validate input parameters
+        if (userId == null) {
+            throw new InvalidBookingException("User ID is required and must be a valid number");
+        }
+        if (vehicleId == null) {
+            throw new InvalidBookingException("Vehicle ID is required and must be a valid number");
+        }
+        if (start == null) {
+            throw new InvalidBookingException("Start date time is required");
+        }
+        if (end == null) {
+            throw new InvalidBookingException("End date time is required");
+        }
+
+        // Kiểm tra tồn tại user & vehicle với thông báo cụ thể hơn
         var user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+                .orElseThrow(() -> new EntityNotFoundException("User with ID " + userId + " not found"));
         var vehicle = vehicleRepository.findById(vehicleId)
-                .orElseThrow(() -> new EntityNotFoundException("Vehicle not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Vehicle with ID " + vehicleId + " not found"));
 
         if (end.isBefore(start)) {
-            throw new IllegalArgumentException("End time must be after start time");
+            throw new InvalidBookingException("End time must be after start time");
+        }
+
+        if (start.isBefore(LocalDateTime.now())) {
+            throw new InvalidBookingException("Start time cannot be in the past");
         }
 
         // Tính quota dựa trên ownership percentage (168h/tuần * ownership%)
@@ -50,20 +69,20 @@ public class UsageBookingService {
         // Lấy quota limit dựa trên ownership percentage
         Long quotaLimit = usageBookingRepository.getQuotaLimitByOwnershipPercentage(userId, vehicleId);
         if (quotaLimit == null) {
-            throw new IllegalStateException("User is not a member of the vehicle's ownership group.");
+            throw new InvalidBookingException("User is not a member of the vehicle's ownership group");
         }
 
         if (bookedHours + newBookingHours > quotaLimit) {
             long remainingHours = quotaLimit - bookedHours;
-            throw new IllegalStateException(String.format(
-                    "Weekly quota exceeded. You have used %d/%d hours this week. You can only book %d more hours based on your ownership percentage.",
+            throw new InvalidBookingException(String.format(
+                    "Weekly quota exceeded. You have used %d/%d hours this week. You can only book %d more hours based on your ownership percentage",
                     bookedHours, quotaLimit, Math.max(0, remainingHours)));
         }
 
         // Kiểm tra trùng giờ + buffer 1h (để kỹ thuật viên kiểm tra và sạc pin)
         long conflicts = usageBookingRepository.countOverlappingBookingsWithBuffer(vehicleId, start, end);
         if (conflicts > 0) {
-            throw new IllegalStateException("Time slot not available. There is a 1-hour buffer period after each booking for technical inspection and charging.");
+            throw new InvalidBookingException("Time slot not available. There is a 1-hour buffer period after each booking for technical inspection and charging");
         }
 
         // Tạo booking mới
@@ -91,29 +110,52 @@ public class UsageBookingService {
 
     //Lấy danh sách slot đã đặt trong ngày với thông tin user (để tạo lịch trống)
     public List<UsageBooking> getBookingsByVehicleAndDate(Long vehicleId, LocalDate date) {
+        if (vehicleId == null) {
+            throw new InvalidBookingException("Vehicle ID is required");
+        }
+        if (date == null) {
+            throw new InvalidBookingException("Date is required");
+        }
         return usageBookingRepository.findByVehicleIdAndDateWithUser(vehicleId, date);
     }
 
     //Lấy các booking sắp tới của user
     public List<UsageBooking> getUpcomingBookings(Long userId) {
+        if (userId == null) {
+            throw new InvalidBookingException("User ID is required");
+        }
         return usageBookingRepository.findUpcomingBookingsByUser(userId);
     }
 
-
     //Lấy tất cả booking của user trong tuần chứa weekStart
     public List<UsageBooking> getBookingsByUserInWeek(Long userId, LocalDateTime weekStart) {
+        if (userId == null) {
+            throw new InvalidBookingException("User ID is required");
+        }
+        if (weekStart == null) {
+            throw new InvalidBookingException("Week start date is required");
+        }
         return usageBookingRepository.findBookingsByUserInWeek(userId, weekStart);
     }
 
     //Lấy thông tin quota của user cho xe trong tuần
     public Map<String, Object> getUserQuotaInfo(Long userId, Long vehicleId, LocalDateTime weekStart) {
+        if (userId == null) {
+            throw new InvalidBookingException("User ID is required");
+        }
+        if (vehicleId == null) {
+            throw new InvalidBookingException("Vehicle ID is required");
+        }
+        if (weekStart == null) {
+            throw new InvalidBookingException("Week start date is required");
+        }
+
         Map<String, Object> quotaInfo = new HashMap<>();
 
         // Lấy quota limit dựa trên ownership percentage
         Long quotaLimit = usageBookingRepository.getQuotaLimitByOwnershipPercentage(userId, vehicleId);
         if (quotaLimit == null) {
-            quotaInfo.put("error", "User is not a member of the vehicle's ownership group.");
-            return quotaInfo;
+            throw new InvalidBookingException("User is not a member of the vehicle's ownership group");
         }
 
         // Lấy số giờ đã book trong tuần
@@ -127,6 +169,7 @@ public class UsageBookingService {
 
         return quotaInfo;
     }
+
 
     //Xác nhận booking (Pending → Confirmed) - kiểm tra conflict trước khi confirm
     public UsageBooking confirmBooking(Long bookingId) {

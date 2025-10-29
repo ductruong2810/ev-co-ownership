@@ -3,6 +3,7 @@ package com.group8.evcoownership.controller;
 import com.group8.evcoownership.dto.NotificationDto;
 import com.group8.evcoownership.entity.Notification;
 import com.group8.evcoownership.entity.User;
+import com.group8.evcoownership.enums.NotificationType;
 import com.group8.evcoownership.repository.NotificationRepository;
 import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.service.NotificationOrchestrator;
@@ -27,9 +28,6 @@ public class NotificationController {
     private final UserRepository userRepository;
     private final NotificationOrchestrator notificationOrchestrator;
 
-    /**
-     * Get notifications for current user
-     */
     @GetMapping
     @Operation(summary = "Danh sách thông báo", description = "Lấy danh sách thông báo của người dùng hiện tại")
     public ResponseEntity<List<NotificationDto>> getNotifications(
@@ -39,7 +37,7 @@ public class NotificationController {
 
         List<Notification> notifications = (isRead != null)
                 ? notificationRepository.findByUserAndIsReadOrderByCreatedAtDesc(user, isRead)
-                : notificationRepository.findByUserOrderByCreatedAtDesc(user);
+                : notificationRepository.findByUserOrderByUnreadThenCreatedAtDesc(user);
 
         List<NotificationDto> notificationDtos = notifications.stream()
                 .map(this::convertToDto)
@@ -48,9 +46,6 @@ public class NotificationController {
         return ResponseEntity.ok(notificationDtos);
     }
 
-    /**
-     * Get unread notification count
-     */
     @GetMapping("/unread-count")
     @Operation(summary = "Số thông báo chưa đọc", description = "Lấy số lượng thông báo chưa đọc của người dùng")
     public ResponseEntity<Map<String, Long>> getUnreadCount(@AuthenticationPrincipal String email) {
@@ -60,9 +55,6 @@ public class NotificationController {
         return ResponseEntity.ok(Map.of("unreadCount", count));
     }
 
-    /**
-     * Mark notification as read
-     */
     @PutMapping("/{notificationId}/read")
     @Operation(summary = "Đánh dấu đã đọc", description = "Đánh dấu một thông báo cụ thể là đã đọc")
     public ResponseEntity<Void> markAsRead(@PathVariable Long notificationId, @AuthenticationPrincipal String email) {
@@ -74,9 +66,6 @@ public class NotificationController {
         return ResponseEntity.ok().build();
     }
 
-    /**
-     * Mark all notifications as read
-     */
     @PutMapping("/mark-all-read")
     @Operation(summary = "Đánh dấu tất cả đã đọc", description = "Đánh dấu tất cả thông báo của người dùng là đã đọc")
     public ResponseEntity<Void> markAllAsRead(@AuthenticationPrincipal String email) {
@@ -87,9 +76,6 @@ public class NotificationController {
         return ResponseEntity.ok().build();
     }
 
-    /**
-     * Delete notification
-     */
     @DeleteMapping("/{notificationId}")
     @Operation(summary = "Xóa thông báo", description = "Xóa một thông báo cụ thể")
     public ResponseEntity<Void> deleteNotification(@PathVariable Long notificationId, @AuthenticationPrincipal String email) {
@@ -100,9 +86,6 @@ public class NotificationController {
         return ResponseEntity.ok().build();
     }
 
-    /**
-     * Test notification (for development)
-     */
     @PostMapping("/test")
     @Operation(summary = "Gửi thông báo test", description = "Gửi thông báo test để kiểm tra hệ thống (chỉ dành cho development)")
     public ResponseEntity<Void> sendTestNotification(@AuthenticationPrincipal String email) {
@@ -119,9 +102,6 @@ public class NotificationController {
         return ResponseEntity.ok().build();
     }
 
-    /**
-     * Convert Notification entity to DTO
-     */
     private NotificationDto convertToDto(Notification notification) {
         return NotificationDto.builder()
                 .id(notification.getId())
@@ -135,10 +115,7 @@ public class NotificationController {
                 .build();
     }
 
-    /**
-     * Safely convert notification type string to enum
-     */
-    private com.group8.evcoownership.enums.NotificationType convertNotificationType(String typeCode) {
+    private NotificationType convertNotificationType(String typeCode) {
         if (typeCode == null) {
             return com.group8.evcoownership.enums.NotificationType.SYSTEM_MAINTENANCE;
         }
