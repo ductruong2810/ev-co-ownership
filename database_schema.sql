@@ -756,16 +756,99 @@ GO
 -- =============================================
 -- CLEANUP (Remove dispute-related tables)
 -- =============================================
--- B1
-
-
--- Xóa các khóa ngoại trỏ đến dispute
-
--- B2
-
 IF OBJECT_ID('Refund', 'U') IS NOT NULL
     DROP TABLE Refund;
 GO
+
+
+-- ==================================================================================================================
+-- Drop theo thứ tự: Expense → Incident → Maintenance
+IF OBJECT_ID('Expense', 'U') IS NOT NULL
+    DROP TABLE Expense;
+GO
+IF OBJECT_ID('Incident', 'U') IS NOT NULL
+    DROP TABLE Incident;
+GO
+IF OBJECT_ID('Maintenance', 'U') IS NOT NULL
+    DROP TABLE Maintenance;
+GO
+
+CREATE TABLE Maintenance
+(
+    MaintenanceId     BIGINT IDENTITY (1,1) PRIMARY KEY,
+    VehicleId         BIGINT       NOT NULL,
+    RequestedBy       BIGINT       NOT NULL,     -- technician phát hiện
+    ApprovedBy        BIGINT       NULL,         -- staff duyệt
+    Description       NVARCHAR(MAX),
+    ActualCost        DECIMAL(12, 2),
+    Status            NVARCHAR(20) NOT NULL DEFAULT 'PENDING',  -- PENDING | APPROVED | REJECTED
+    CreatedAt         DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
+
+    FOREIGN KEY (VehicleId)   REFERENCES Vehicle (VehicleId),
+    FOREIGN KEY (RequestedBy) REFERENCES Users (UserId),
+    FOREIGN KEY (ApprovedBy)  REFERENCES Users (UserId)
+);
+GO
+
+CREATE TABLE Incident
+(
+    IncidentId   BIGINT IDENTITY (1,1) PRIMARY KEY,
+    BookingId    BIGINT       NOT NULL,
+    UserId       BIGINT       NOT NULL,         -- người gặp sự cố
+    Description  NVARCHAR(MAX),
+    ActualCost   DECIMAL(12, 2),
+    ImageUrls    NVARCHAR(MAX),
+    Status       NVARCHAR(20) NOT NULL DEFAULT 'PENDING',  -- PENDING | APPROVED | REJECTED
+    ApprovedBy   BIGINT NULL,                   -- staff duyệt
+    CreatedAt    DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
+
+    FOREIGN KEY (BookingId) REFERENCES UsageBooking (BookingId),
+    FOREIGN KEY (UserId)    REFERENCES Users (UserId),
+    FOREIGN KEY (ApprovedBy) REFERENCES Users (UserId)
+);
+GO
+
+CREATE TABLE Expense
+(
+    ExpenseId       BIGINT IDENTITY (1,1) PRIMARY KEY,
+    FundId          BIGINT       NOT NULL,
+    SourceType      NVARCHAR(30) NOT NULL CHECK (SourceType IN ('INCIDENT', 'MAINTENANCE')),
+    SourceId        BIGINT       NOT NULL,         -- FK logic đến Incident/Maintenance
+    RecipientUserId BIGINT       NULL,             -- người được hoàn tiền (nếu có)
+    Description     NVARCHAR(MAX),
+    Amount          DECIMAL(12, 2) NOT NULL,
+    Status          NVARCHAR(20) NOT NULL DEFAULT 'PENDING',  -- PENDING | COMPLETED
+    CreatedAt       DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
+    ApprovedBy      BIGINT NULL,                   -- admin duyệt chi / hoàn
+
+    FOREIGN KEY (FundId)          REFERENCES SharedFund (FundId),
+    FOREIGN KEY (RecipientUserId) REFERENCES Users (UserId),
+    FOREIGN KEY (ApprovedBy)      REFERENCES Users (UserId)
+);
+GO
+
+-- Maintenance
+INSERT INTO Maintenance (VehicleId, RequestedBy, ApprovedBy, Description, ActualCost, Status)
+VALUES
+    (1, 4, NULL, N'Battery health warning detected, awaiting review', 0, 'PENDING'),
+    (1, 4, 2, N'Tire pressure adjustment and brake check completed', 500000, 'APPROVED'),
+    (1, 4, 2, N'Body repaint request rejected due to non-essential cosmetic issue', 0, 'REJECTED');
+
+-- Incident
+INSERT INTO Incident (BookingId, UserId, Description, ActualCost, ImageUrls, Status, ApprovedBy)
+VALUES
+    (1, 1, N'Front headlight malfunction during night trip. User paid for replacement.', 350000,
+     N'https://example.com/headlight_before.jpg;https://example.com/headlight_after.jpg', 'APPROVED', 2),
+    (1, 1, N'Scratch on rear bumper reported by user. Considered user fault.', 150000,
+     N'https://example.com/bumper_scratch.jpg', 'REJECTED', 2);
+
+-- Expense
+INSERT INTO Expense (FundId, SourceType, SourceId, RecipientUserId, Description, Amount, Status, ApprovedBy)
+VALUES
+    (1, 'INCIDENT', 1, 1, N'Reimburse user for headlight repair (incident #1)', 350000, 'COMPLETED', 3),
+    (1, 'MAINTENANCE', 2, NULL, N'Brake and tire maintenance by technician', 500000, 'COMPLETED', 3);
+GO
+
 
 
 
