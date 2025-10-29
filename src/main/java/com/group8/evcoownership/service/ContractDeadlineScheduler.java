@@ -138,6 +138,7 @@ public class ContractDeadlineScheduler {
                     emailData.put("endDate", contract.getEndDate());
                     emailData.put("depositAmount", contract.getRequiredDepositAmount());
                     emailData.put("status", contract.getApprovalStatus());
+                    emailData.put("rejectionReason", contract.getRejectionReason());
 
                     // Send in-app + websocket + email to all group members
                     notificationOrchestrator.sendGroupNotification(
