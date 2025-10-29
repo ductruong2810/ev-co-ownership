@@ -48,13 +48,21 @@ public class MaintenanceService {
 
         Maintenance savedMaintenance = maintenanceRepository.save(maintenance);
 
-        // Send maintenance request notification to group members
+        // Send maintenance request notification to group members (include rich data for email)
+        java.util.Map<String, Object> emailData = new java.util.HashMap<>();
+        emailData.put("groupId", vehicle.getOwnershipGroup().getGroupId());
+        emailData.put("vehicleName", vehicle.getBrand() + " " + vehicle.getModel());
+        emailData.put("description", description);
+        emailData.put("estimatedCost", estimatedCost);
+        emailData.put("status", "PENDING");
+
         notificationOrchestrator.sendGroupNotification(
                 vehicle.getOwnershipGroup().getGroupId(),
                 NotificationType.MAINTENANCE_REQUESTED,
                 "Maintenance Requested",
                 String.format("Maintenance has been requested for vehicle %s: %s",
-                        vehicle.getLicensePlate(), description)
+                        vehicle.getLicensePlate(), description),
+                emailData
         );
 
         return savedMaintenance;

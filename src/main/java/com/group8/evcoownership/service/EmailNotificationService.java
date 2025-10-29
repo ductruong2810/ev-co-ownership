@@ -134,6 +134,11 @@ public class EmailNotificationService {
             }
             case CONTRACT_REJECTED -> {
                 content.append("Your contract has been rejected. Please contact support for assistance.\n\n");
+                // Hiển thị lý do reject nếu có
+                String rejectionReason = (String) contractData.getOrDefault("rejectionReason", null);
+                if (rejectionReason != null && !rejectionReason.trim().isEmpty()) {
+                    content.append("Rejection Reason: ").append(rejectionReason).append("\n\n");
+                }
                 content.append("Contract Details:\n");
             }
             case CONTRACT_EXPIRING -> {

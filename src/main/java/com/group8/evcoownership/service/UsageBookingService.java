@@ -211,10 +211,10 @@ public class UsageBookingService {
         booking.setStatus(BookingStatus.COMPLETED);
         UsageBooking savedBooking = usageBookingRepository.save(booking);
 
-        // Send booking completed notification
+        // Send booking completed notification (reuse BOOKING_CREATED type for completed event)
         notificationOrchestrator.sendBookingNotification(
                 booking.getUser().getUserId(),
-                NotificationType.BOOKING_CANCELLED,
+                NotificationType.BOOKING_CREATED,
                 "Booking Completed",
                 String.format("Your booking for %s %s has been completed",
                         booking.getVehicle().getBrand(), booking.getVehicle().getModel()),

@@ -767,6 +767,28 @@ public class ContractService {
 
         Contract savedContract = contractRepository.saveAndFlush(contract);
 
+        // Gửi notification cho tất cả thành viên với lý do reject
+        if (notificationOrchestrator != null) {
+            Long groupId = savedContract.getGroup().getGroupId();
+            java.util.Map<String, Object> emailData = new java.util.HashMap<>();
+            emailData.put("groupId", groupId);
+            emailData.put("contractId", savedContract.getId());
+            emailData.put("groupName", savedContract.getGroup().getGroupName());
+            emailData.put("startDate", savedContract.getStartDate());
+            emailData.put("endDate", savedContract.getEndDate());
+            emailData.put("depositAmount", savedContract.getRequiredDepositAmount());
+            emailData.put("status", savedContract.getApprovalStatus());
+            emailData.put("rejectionReason", savedContract.getRejectionReason());
+
+            notificationOrchestrator.sendGroupNotification(
+                    groupId,
+                    NotificationType.CONTRACT_REJECTED,
+                    "Hợp đồng bị từ chối",
+                    "Hợp đồng của nhóm đã bị từ chối bởi quản trị viên.",
+                    emailData
+            );
+        }
+
         return convertToDTO(savedContract);
     }
 
