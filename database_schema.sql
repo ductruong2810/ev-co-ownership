@@ -559,22 +559,6 @@ CREATE INDEX IX_UserDocument_Status ON UserDocument (Status);
 CREATE INDEX IX_Voting_GroupId ON Voting (GroupId);
 CREATE INDEX IX_Voting_Status ON Voting (Status);
 
--- Dispute
-CREATE INDEX IX_Dispute_FundId ON Dispute (FundId);
-CREATE INDEX IX_Dispute_Status ON Dispute (Status);
-
--- Dispute add-ons
-CREATE INDEX IX_DisputeTicket_DisputeId ON DisputeTicket (DisputeId);
-CREATE INDEX IX_DisputeTicket_AssignedTo ON DisputeTicket (AssignedTo);
-CREATE INDEX IX_DisputeTicket_Open ON DisputeTicket (DisputeId, ClosedAt);
-CREATE INDEX IX_DisputeEvent_TicketId ON DisputeEvent (TicketId);
-CREATE INDEX IX_DisputeEvent_EventType ON DisputeEvent (EventType);
-CREATE INDEX IX_DisputeAttachment_DisputeId ON DisputeAttachment (DisputeId);
-CREATE INDEX IX_DisputeAttachment_UploadedBy ON DisputeAttachment (UploadedBy);
-CREATE INDEX IX_Refund_DisputeId ON Refund (DisputeId);
-CREATE INDEX IX_Refund_Status ON Refund (Status);
-CREATE INDEX IX_Journal_FundId ON JournalEntry (FundId);
-CREATE INDEX IX_Journal_DisputeId ON JournalEntry (DisputeId);
 
 -- FinancialReport
 CREATE INDEX IX_FinancialReport_FundId ON FinancialReport (FundId);
@@ -651,10 +635,6 @@ VALUES (1, 1, 1000000, 'BANK_TRANSFER', 'PENDING', 'CONTRIBUTION', 'TXN-P-001', 
 -- Expense demo
 INSERT INTO Expense(FundId, SourceType, SourceId, Description, Amount)
 VALUES (1, 'MAINTENANCE', NULL, N'Periodic maintenance', 300000);
-
--- Dispute demo
-INSERT INTO Dispute(FundId, DisputeType, RelatedEntityType, Description, DisputedAmount, Resolution, Status)
-VALUES (1, 'FINANCIAL', 'PAYMENT', N'Payment dispute', 100000, N'Resolved by refund', 'OPEN');
 
 -- Incident demo
 INSERT INTO Incident(BookingId, IncidentType, Description, Status)
@@ -771,3 +751,104 @@ GO
 -- Mỗi group chỉ có 1 vehicle (áp dụng khi GroupId NOT NULL)
 CREATE UNIQUE INDEX UQ_Vehicle_GroupId ON Vehicle (GroupId) WHERE GroupId IS NOT NULL;
 GO
+
+
+-- =============================================
+-- CLEANUP (Remove dispute-related tables)
+-- =============================================
+IF OBJECT_ID('Refund', 'U') IS NOT NULL
+    DROP TABLE Refund;
+GO
+
+
+-- ==================================================================================================================
+-- Drop theo thứ tự: Expense → Incident → Maintenance
+IF OBJECT_ID('Expense', 'U') IS NOT NULL
+    DROP TABLE Expense;
+GO
+IF OBJECT_ID('Incident', 'U') IS NOT NULL
+    DROP TABLE Incident;
+GO
+IF OBJECT_ID('Maintenance', 'U') IS NOT NULL
+    DROP TABLE Maintenance;
+GO
+
+CREATE TABLE Maintenance
+(
+    MaintenanceId     BIGINT IDENTITY (1,1) PRIMARY KEY,
+    VehicleId         BIGINT       NOT NULL,
+    RequestedBy       BIGINT       NOT NULL,     -- technician phát hiện
+    ApprovedBy        BIGINT       NULL,         -- staff duyệt
+    Description       NVARCHAR(MAX),
+    ActualCost        DECIMAL(12, 2),
+    Status            NVARCHAR(20) NOT NULL DEFAULT 'PENDING',  -- PENDING | APPROVED | REJECTED
+    CreatedAt         DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
+
+    FOREIGN KEY (VehicleId)   REFERENCES Vehicle (VehicleId),
+    FOREIGN KEY (RequestedBy) REFERENCES Users (UserId),
+    FOREIGN KEY (ApprovedBy)  REFERENCES Users (UserId)
+);
+GO
+
+CREATE TABLE Incident
+(
+    IncidentId   BIGINT IDENTITY (1,1) PRIMARY KEY,
+    BookingId    BIGINT       NOT NULL,
+    UserId       BIGINT       NOT NULL,         -- người gặp sự cố
+    Description  NVARCHAR(MAX),
+    ActualCost   DECIMAL(12, 2),
+    ImageUrls    NVARCHAR(MAX),
+    Status       NVARCHAR(20) NOT NULL DEFAULT 'PENDING',  -- PENDING | APPROVED | REJECTED
+    ApprovedBy   BIGINT NULL,                   -- staff duyệt
+    CreatedAt    DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
+
+    FOREIGN KEY (BookingId) REFERENCES UsageBooking (BookingId),
+    FOREIGN KEY (UserId)    REFERENCES Users (UserId),
+    FOREIGN KEY (ApprovedBy) REFERENCES Users (UserId)
+);
+GO
+
+CREATE TABLE Expense
+(
+    ExpenseId       BIGINT IDENTITY (1,1) PRIMARY KEY,
+    FundId          BIGINT       NOT NULL,
+    SourceType      NVARCHAR(30) NOT NULL CHECK (SourceType IN ('INCIDENT', 'MAINTENANCE')),
+    SourceId        BIGINT       NOT NULL,         -- FK logic đến Incident/Maintenance
+    RecipientUserId BIGINT       NULL,             -- người được hoàn tiền (nếu có)
+    Description     NVARCHAR(MAX),
+    Amount          DECIMAL(12, 2) NOT NULL,
+    Status          NVARCHAR(20) NOT NULL DEFAULT 'PENDING',  -- PENDING | COMPLETED
+    CreatedAt       DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
+    ApprovedBy      BIGINT NULL,                   -- admin duyệt chi / hoàn
+
+    FOREIGN KEY (FundId)          REFERENCES SharedFund (FundId),
+    FOREIGN KEY (RecipientUserId) REFERENCES Users (UserId),
+    FOREIGN KEY (ApprovedBy)      REFERENCES Users (UserId)
+);
+GO
+
+-- Maintenance
+INSERT INTO Maintenance (VehicleId, RequestedBy, ApprovedBy, Description, ActualCost, Status)
+VALUES
+    (1, 4, NULL, N'Battery health warning detected, awaiting review', 0, 'PENDING'),
+    (1, 4, 2, N'Tire pressure adjustment and brake check completed', 500000, 'APPROVED'),
+    (1, 4, 2, N'Body repaint request rejected due to non-essential cosmetic issue', 0, 'REJECTED');
+
+-- Incident
+INSERT INTO Incident (BookingId, UserId, Description, ActualCost, ImageUrls, Status, ApprovedBy)
+VALUES
+    (1, 1, N'Front headlight malfunction during night trip. User paid for replacement.', 350000,
+     N'https://example.com/headlight_before.jpg;https://example.com/headlight_after.jpg', 'APPROVED', 2),
+    (1, 1, N'Scratch on rear bumper reported by user. Considered user fault.', 150000,
+     N'https://example.com/bumper_scratch.jpg', 'REJECTED', 2);
+
+-- Expense
+INSERT INTO Expense (FundId, SourceType, SourceId, RecipientUserId, Description, Amount, Status, ApprovedBy)
+VALUES
+    (1, 'INCIDENT', 1, 1, N'Reimburse user for headlight repair (incident #1)', 350000, 'COMPLETED', 3),
+    (1, 'MAINTENANCE', 2, NULL, N'Brake and tire maintenance by technician', 500000, 'COMPLETED', 3);
+GO
+
+
+
+

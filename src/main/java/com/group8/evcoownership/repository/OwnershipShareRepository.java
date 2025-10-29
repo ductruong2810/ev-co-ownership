@@ -16,6 +16,7 @@ import java.util.Optional;
 @Repository
 public interface OwnershipShareRepository extends JpaRepository<OwnershipShare, OwnershipShareId> {
 
+
     boolean existsByGroup_GroupIdAndUser_UserId(Long groupId, Long userId);
 
     long countByGroup_GroupId(Long groupId);
@@ -53,4 +54,25 @@ public interface OwnershipShareRepository extends JpaRepository<OwnershipShare, 
             "WHERE os.user.userId = :userId " +
             "ORDER BY os.group.createdAt DESC")
     List<OwnershipGroup> findGroupsByUserId(@Param("userId") Long userId);
+
+    @Query("SELECT COUNT(os) FROM OwnershipShare os WHERE os.user.userId = :userId")
+    Long countGroupsByUserId(@Param("userId") Long userId);
+
+    Number countByUser_UserId(Long userUserId);
+
+    @Query("""
+    SELECT os
+    FROM OwnershipShare os
+    WHERE os.user.userId = :userId
+      AND os.group.groupId = (
+            SELECT g.groupId
+            FROM SharedFund f
+            JOIN f.group g
+            WHERE f.fundId = :fundId
+      )
+""")
+    Optional<OwnershipShare> findByUserIdAndFundId(@Param("userId") Long userId,
+                                                   @Param("fundId") Long fundId);
+
+
 }

@@ -133,16 +133,15 @@ class ContractFlowIntegrationTest {
                 .requiredAmount(new BigDecimal("38000000"))
                 .paymentMethod("VNPAY")
                 .status(PaymentStatus.PENDING)
-                .createdAt(LocalDateTime.now())
                 .vnpayUrl("https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?test=123")
                 .message("Deposit payment created successfully. Please complete the payment via VNPay.")
                 .build();
 
-        when(depositPaymentService.createDepositPayment(request, httpRequest))
+        when(depositPaymentService.createDepositPayment(request, httpRequest, null))
                 .thenReturn(expectedResponse);
 
         // Act
-        DepositPaymentResponse response = depositPaymentService.createDepositPayment(request, httpRequest);
+        DepositPaymentResponse response = depositPaymentService.createDepositPayment(request, httpRequest, null);
 
         // Assert
         assertNotNull(response);
@@ -154,7 +153,7 @@ class ContractFlowIntegrationTest {
         assertNotNull(response.vnpayUrl());
         assertTrue(response.vnpayUrl().contains("vnpayment.vn"));
 
-        verify(depositPaymentService).createDepositPayment(request, httpRequest);
+        verify(depositPaymentService).createDepositPayment(request, httpRequest, null);
     }
 
     @Test
@@ -172,16 +171,15 @@ class ContractFlowIntegrationTest {
                 .paymentMethod("VNPAY")
                 .status(PaymentStatus.COMPLETED)
                 .transactionCode("VNPAY123456789")
-                .createdAt(LocalDateTime.now())
                 .paidAt(LocalDateTime.now())
                 .message("Deposit payment completed successfully")
                 .build();
 
-        when(depositPaymentService.confirmDepositPayment(paymentId, transactionCode))
+        when(depositPaymentService.confirmDepositPayment(String.valueOf(paymentId), transactionCode))
                 .thenReturn(expectedResponse);
 
         // Act
-        DepositPaymentResponse response = depositPaymentService.confirmDepositPayment(paymentId, transactionCode);
+        DepositPaymentResponse response = depositPaymentService.confirmDepositPayment(String.valueOf(paymentId), transactionCode);
 
         // Assert
         assertNotNull(response);
@@ -191,7 +189,7 @@ class ContractFlowIntegrationTest {
         assertNotNull(response.paidAt());
         assertEquals("Deposit payment completed successfully", response.message());
 
-        verify(depositPaymentService).confirmDepositPayment(paymentId, transactionCode);
+        verify(depositPaymentService).confirmDepositPayment(String.valueOf(paymentId), transactionCode);
     }
 
     @Test
@@ -275,13 +273,13 @@ class ContractFlowIntegrationTest {
                 "1", "1"
         );
 
-        when(depositPaymentService.createDepositPayment(request, httpRequest))
+        when(depositPaymentService.createDepositPayment(request, httpRequest, null))
                 .thenThrow(new IllegalStateException("Contract must be signed before making deposit payment"));
 
         // Act & Assert
-        assertThrows(IllegalStateException.class, () -> depositPaymentService.createDepositPayment(request, httpRequest));
+        assertThrows(IllegalStateException.class, () -> depositPaymentService.createDepositPayment(request, httpRequest, null));
 
-        verify(depositPaymentService).createDepositPayment(request, httpRequest);
+        verify(depositPaymentService).createDepositPayment(request, httpRequest, null);
     }
 
     @Test
@@ -312,16 +310,15 @@ class ContractFlowIntegrationTest {
                 .requiredAmount(expectedAmount)
                 .paymentMethod("VNPAY")
                 .status(PaymentStatus.PENDING)
-                .createdAt(LocalDateTime.now())
                 .vnpayUrl("https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?test=" + userId)
                 .message("Deposit payment created successfully")
                 .build();
 
-        when(depositPaymentService.createDepositPayment(request, httpRequest))
+        when(depositPaymentService.createDepositPayment(request, httpRequest, null))
                 .thenReturn(response);
 
         // Act
-        DepositPaymentResponse result = depositPaymentService.createDepositPayment(request, httpRequest);
+        DepositPaymentResponse result = depositPaymentService.createDepositPayment(request, httpRequest, null);
 
         // Assert
         assertNotNull(result);
@@ -329,6 +326,6 @@ class ContractFlowIntegrationTest {
         assertEquals(expectedAmount, result.amount());
         assertEquals(PaymentStatus.PENDING, result.status());
 
-        verify(depositPaymentService).createDepositPayment(request, httpRequest);
+        verify(depositPaymentService).createDepositPayment(request, httpRequest, null);
     }
 }

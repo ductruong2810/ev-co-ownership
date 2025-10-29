@@ -3,19 +3,15 @@ package com.group8.evcoownership.service;
 import com.group8.evcoownership.dto.DepositPaymentRequest;
 import com.group8.evcoownership.dto.DepositPaymentResponse;
 import com.group8.evcoownership.entity.*;
-import com.group8.evcoownership.enums.ContractApprovalStatus;
 import com.group8.evcoownership.enums.DepositStatus;
-import com.group8.evcoownership.enums.NotificationType;
 import com.group8.evcoownership.enums.PaymentStatus;
 import com.group8.evcoownership.enums.PaymentType;
 import com.group8.evcoownership.exception.DepositPaymentException;
-import com.group8.evcoownership.exception.PaymentConflictException;
 import com.group8.evcoownership.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,22 +20,23 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class DepositPaymentService {
 
+    private final FundService fundService;
+
     private final PaymentRepository paymentRepository;
-    private final PaymentService paymentService;
     private final OwnershipShareRepository shareRepository;
     private final ContractRepository contractRepository;
-    private final SharedFundRepository fundRepository;
+    private final SharedFundRepository sharedFundRepository;
     private final UserRepository userRepository;
     private final OwnershipGroupRepository groupRepository;
     private final VnPay_PaymentService vnPayPaymentService;
     private final DepositCalculationService depositCalculationService;
     private final VehicleRepository vehicleRepository;
-    private final NotificationOrchestrator notificationOrchestrator;
 
 
     private Long parseId(String id, String fieldName) {
@@ -50,20 +47,18 @@ public class DepositPaymentService {
         }
     }
 
-
     /**
-     * Tạo payment cho tiền cọc với VNPay
+     *  Tạo payment mới → sinh URL thanh toán VNPay
      */
     @Transactional
-    public DepositPaymentResponse createDepositPayment(DepositPaymentRequest request, HttpServletRequest httpRequest) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new DepositPaymentException("User must be authenticated to make deposit payment");
-        }
+    public DepositPaymentResponse createDepositPayment(DepositPaymentRequest request,
+                                                       HttpServletRequest servletRequest,
+                                                       Authentication authentication) {
 
         Long userId = parseId(request.userId(), "userId");
         Long groupId = parseId(request.groupId(), "groupId");
 
+        //  Xác thực user
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + userId));
 
@@ -72,19 +67,26 @@ public class DepositPaymentService {
             throw new DepositPaymentException("You can only create deposit payment for your own account");
         }
 
+        // Kiểm tra group, membership, contract, fund
         OwnershipGroup group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
 
         OwnershipShare share = shareRepository.findById(new OwnershipShareId(userId, groupId))
                 .orElseThrow(() -> new EntityNotFoundException("User is not a member of this group"));
 
-        Contract contract = contractRepository.findByGroupGroupId(groupId)
+        // Kiểm tra nếu người dùng đã đóng tiền cọc rồi (PAID) → chặn
+        if (share.getDepositStatus() == DepositStatus.PAID) {
+            throw new DepositPaymentException("Deposit has already been paid for this user in this group.");
+        }
+
+        // Kiểm tra contract tồn tại
+        contractRepository.findByGroupGroupId(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Contract not found for this group"));
 
-        SharedFund fund = fundRepository.findByGroup_GroupId(groupId)
+        SharedFund fund = sharedFundRepository.findByGroup_GroupId(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Fund not found for group: " + groupId));
 
-        // 🔹 Tính deposit amount
+        // Tính toán số tiền cần đặt cọc
         BigDecimal requiredAmount;
         Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group).orElse(null);
 
@@ -98,125 +100,120 @@ public class DepositPaymentService {
                     group.getMemberCapacity()
             );
         }
+        // Tạo record Payment trong DB
+        String txnRef = String.valueOf(System.currentTimeMillis()).substring(5, 13); // 8 số ngẫu nhiên
 
-        // 🔹 Set cứng phương thức thanh toán = VNPAY
-        //PaymentMethod method = PaymentMethod.VNPAY;
-
-        // 🔹 Tạo Payment entity
         Payment payment = Payment.builder()
                 .payer(user)
                 .fund(fund)
                 .amount(requiredAmount)
-                .paymentMethod("VNPAY") // mặc định
+                .paymentMethod("VNPAY")
+                .paymentType(PaymentType.DEPOSIT)
                 .status(PaymentStatus.PENDING)
-                .paymentType(PaymentType.DEPOSIT) // ✅ bắt buộc vì entity có @NotNull
-                .paymentCategory("GROUP") // ✅ tránh lỗi NULL
-                .paymentDate(LocalDateTime.now())
-                .version(0L) // ✅ khởi tạo version nếu Lombok Builder bỏ qua
+                .paymentCategory("GROUP")
+                .transactionCode(txnRef)
                 .build();
+        payment = paymentRepository.save(payment);
 
-        paymentRepository.save(payment);
+        // Sinh link thanh toán VNPay
+        //String paymentUrl = vnPayPaymentService.createDepositPaymentUrl(requiredAmount.longValue(), servletRequest);
+        String paymentUrl = vnPayPaymentService.createDepositPaymentUrl(requiredAmount.longValue(), servletRequest, txnRef, groupId);
 
-        // 8. Create VNPay URL using requiredAmount (longValue)
-        //    Use requiredAmount.longValue() as VNPay expects integer amount (đơn vị tùy config)
-        String vnpayUrl = vnPayPaymentService.createDepositPaymentUrl(requiredAmount.longValue(), httpRequest);
 
-        // 🔹 Tạo response
         return DepositPaymentResponse.builder()
                 .paymentId(payment.getId())
                 .userId(user.getUserId())
-                .groupId(group.getGroupId())
-                .amount(requiredAmount)
+                .groupId(group != null ? group.getGroupId() : null)
+                .amount(requiredAmount) // hoặc BigDecimal.valueOf(requiredAmount.longValue())
                 .requiredAmount(requiredAmount)
                 .paymentMethod("VNPAY")
                 .status(PaymentStatus.PENDING)
+                .transactionCode(txnRef)
+                .vnpayUrl(paymentUrl)
                 .message("Deposit payment created successfully. Please complete the payment via VNPay.")
-                .vnpayUrl(vnpayUrl)
                 .build();
     }
 
 
     /**
-     * Xác nhận payment thành công (callback từ payment gateway)
+     * Xác nhận callback từ VNPay → cập nhật Payment COMPLETED
      */
     @Transactional
-    public DepositPaymentResponse confirmDepositPayment(Long paymentId, String transactionCode) {
-        Payment payment = paymentRepository.findById(paymentId)
-                .orElseThrow(() -> new EntityNotFoundException("Payment not found: " + paymentId));
+    public DepositPaymentResponse confirmDepositPayment(String txnRef, String transactionNo) {
+        Payment payment = paymentRepository.findByTransactionCode(txnRef)
+                .orElseThrow(() -> new RuntimeException("Payment not found for txnRef: " + txnRef));
 
-        if (payment.getStatus() != PaymentStatus.PENDING) {
-            throw new PaymentConflictException("Payment is not in PENDING status");
+        // Nếu đã COMPLETED thì bỏ qua
+        if (payment.getStatus() == PaymentStatus.COMPLETED) {
+            return convertToResponse(payment);
         }
 
-        // Cập nhật payment status
-        paymentService.updateStatus(paymentId, PaymentStatus.COMPLETED, transactionCode, null);
+        String providerResponse = String.format(
+            "{\"vnp_TransactionNo\":\"%s\",\"vnp_TxnRef\":\"%s\"}", 
+            transactionNo, txnRef
+        );
 
-        // Cập nhật deposit status của user
-        OwnershipShareId shareId = new OwnershipShareId(payment.getPayer().getUserId(),
-                payment.getFund().getGroup().getGroupId());
-        OwnershipShare share = shareRepository.findById(shareId)
-                .orElseThrow(() -> new EntityNotFoundException("Ownership share not found"));
+        // 1. Cập nhật trạng thái Payment
+        payment.setStatus(PaymentStatus.COMPLETED);
+        payment.setPaymentDate(LocalDateTime.now());
+        payment.setProviderResponse(providerResponse); 
+        paymentRepository.save(payment);
+
+        // 2. Cập nhật quỹ (Fund)
+        fundService.increaseBalance(payment.getFund().getFundId(), payment.getAmount());
+
+        // 3. Cập nhật trạng thái tiền cọc trong OwnershipShare
+        OwnershipShare share = shareRepository.findByUserIdAndFundId(
+                payment.getPayer().getUserId(),
+                payment.getFund().getFundId()
+        ).orElseThrow(() -> new RuntimeException("OwnershipShare not found"));
 
         share.setDepositStatus(DepositStatus.PAID);
-        share.setUpdatedAt(LocalDateTime.now());
         shareRepository.save(share);
 
-        // Kiểm tra và tự động kích hoạt contract nếu tất cả deposit đã đóng đầy đủ
-        Long groupId = payment.getFund().getGroup().getGroupId();
-        checkAndActivateContractIfAllDepositsPaid(groupId);
+        // 4. Trả response
+        return convertToResponse(payment);
+    }
+//    public DepositPaymentResponse confirmDepositPayment(String txnRef, String transactionNo) {
+//        Payment payment = paymentRepository.findByTransactionCode(txnRef)
+//                .orElseThrow(() -> new RuntimeException("Payment not found for txnRef: " + txnRef));
+//
+//        if (payment.getStatus() == PaymentStatus.COMPLETED) {
+//            return convertToResponse(payment);
+//        }
+//
+//        payment.setStatus(PaymentStatus.COMPLETED);
+//        payment.setPaymentDate(LocalDateTime.now());
+//        paymentRepository.save(payment);
+//
+//        return convertToResponse(payment);
+//    }
 
+
+
+    /**
+     *API cho frontend kiểm tra trạng thái thanh toán
+     */
+    public DepositPaymentResponse getByTxnRef(String txnRef) {
+        Payment payment = paymentRepository.findByTransactionCode(txnRef)
+                .orElseThrow(() -> new RuntimeException("Payment not found for txnRef: " + txnRef));
+        return convertToResponse(payment);
+    }
+
+    private DepositPaymentResponse convertToResponse(Payment p) {
         return DepositPaymentResponse.builder()
-                .paymentId(paymentId)
-                .userId(payment.getPayer().getUserId())
-                .groupId(payment.getFund().getGroup().getGroupId())
-                .amount(payment.getAmount())
-                .requiredAmount(payment.getAmount())
-                .paymentMethod(payment.getPaymentMethod())
-                .status(PaymentStatus.COMPLETED)
-                .transactionCode(transactionCode)
-                .paidAt(LocalDateTime.now())
-                .message("Deposit payment completed successfully")
+                .paymentId(p.getId())
+                .userId(p.getPayer() != null ? p.getPayer().getUserId() : null)
+                .groupId(p.getFund() != null && p.getFund().getGroup() != null ? p.getFund().getGroup().getGroupId() : null)
+                .amount(p.getAmount())
+                .paymentMethod("VNPAY")
+                .status(PaymentStatus.valueOf(p.getStatus().name()))
+                .transactionCode(p.getTransactionCode())
+                .paidAt(p.getPaymentDate())
                 .build();
     }
 
-    /**
-     * Kiểm tra và tự động kích hoạt contract nếu tất cả deposit đã đóng đầy đủ
-     */
-    @Transactional
-    public void checkAndActivateContractIfAllDepositsPaid(Long groupId) {
-        // Lấy tất cả ownership shares của group
-        List<OwnershipShare> shares = shareRepository.findByGroupGroupId(groupId);
-        
-        // Kiểm tra tất cả shares đã đóng deposit chưa
-        boolean allDepositsPaid = shares.stream()
-                .allMatch(share -> share.getDepositStatus() == DepositStatus.PAID);
-        
-        if (allDepositsPaid && !shares.isEmpty()) {
-            // Lấy contract của group
-            Contract contract = contractRepository.findByGroupGroupId(groupId)
-                    .orElse(null);
-            
-            if (contract != null && contract.getApprovalStatus() == ContractApprovalStatus.SIGNED) {
-                // Kiểm tra điều kiện auto-approve: số lượng thành viên và deposit
-                if (canAutoApproveContract(shares)) {
-                    // Tự động kích hoạt contract (chuyển từ SIGNED → APPROVED)
-                    contract.setApprovalStatus(ContractApprovalStatus.APPROVED);
-                    contract.setApprovedAt(LocalDateTime.now());
-                    contractRepository.save(contract);
-                    
-                    // Gửi notification cho tất cả thành viên
-                    if (notificationOrchestrator != null) {
-                        notificationOrchestrator.sendGroupNotification(
-                                groupId,
-                                NotificationType.CONTRACT_APPROVED,
-                                "Contract Activated",
-                                "All deposits have been paid successfully. Your co-ownership contract is now active!"
-                        );
-                    }
-                }
-            }
-        }
-    }
+
 
     /**
      * Lấy thông tin deposit của user trong group
@@ -241,6 +238,10 @@ public class DepositPaymentService {
         info.put("canPay", contract.getTerms() != null && contract.getTerms().contains("[ĐÃ KÝ]")
                 && share.getDepositStatus() == DepositStatus.PENDING);
 
+        // Thêm contract status
+        info.put("contractStatus", getContractStatus(groupId));
+
+
         return info;
     }
 
@@ -251,6 +252,9 @@ public class DepositPaymentService {
         List<OwnershipShare> shares = shareRepository.findByGroupGroupId(groupId);
         OwnershipGroup group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Group not found"));
+
+        // Lấy contract status 1 lần cho hiệu quả
+        String contractStatus = getContractStatus(groupId);
 
         return shares.stream().map(share -> {
             Map<String, Object> status = new HashMap<>();
@@ -264,6 +268,9 @@ public class DepositPaymentService {
             // Tính toán số tiền cọc cho user này
             BigDecimal depositAmount = calculateDepositAmountForUser(group, share);
             status.put("requiredDepositAmount", depositAmount);
+
+            // Thêm contract status
+            status.put("contractStatus", contractStatus);
 
             return status;
         }).toList();
@@ -288,12 +295,7 @@ public class DepositPaymentService {
         }
     }
 
-    /**
-     * Kiểm tra có thể tự động duyệt contract không
-     * Business rules: 
-     * 1. Số thành viên thực tế = memberCapacity của group
-     * 2. Tất cả thành viên đã đóng deposit (đã được kiểm tra ở trên)
-     */
+    @SuppressWarnings("unused")
     private boolean canAutoApproveContract(List<OwnershipShare> shares) {
         if (shares.isEmpty()) {
             return false;
@@ -306,4 +308,23 @@ public class DepositPaymentService {
         // Kiểm tra số lượng thành viên thực tế = memberCapacity
         return memberCapacity != null && shares.size() == memberCapacity;
     }
+
+    private String getContractStatus(Long groupId) {
+        Optional<Contract> contract = contractRepository.findByGroupGroupId(groupId);
+
+        return contract.map(value -> value.getApprovalStatus().name()).orElse("NO_CONTRACT");
+
+    }
+
+    /**
+     * ✅ Lấy thông tin chi tiết của thanh toán dựa theo mã giao dịch (txnRef)
+     */
+    public DepositPaymentResponse getDepositInfoByTxn(String txnRef) {
+        Payment payment = paymentRepository.findByTransactionCode(txnRef)
+                .orElseThrow(() -> new RuntimeException("Payment not found for txnRef: " + txnRef));
+
+        return convertToResponse(payment);
+    }
+
+
 }

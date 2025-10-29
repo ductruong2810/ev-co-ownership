@@ -9,6 +9,7 @@ import com.group8.evcoownership.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -33,6 +34,10 @@ public class ContractService {
     private final UserRepository userRepository;
     private final NotificationOrchestrator notificationOrchestrator;
     private final OwnershipShareRepository shareRepository;
+    private final ContractDeadlinePolicy deadlinePolicy;
+
+    @Value("${contract.deposit.deadline.minutes:5}")
+    private long depositDeadlineMinutes;
 
     /**
      * Lấy thông tin hợp đồng chi tiết cho một Group
@@ -45,7 +50,7 @@ public class ContractService {
     public Map<String, Object> getContractInfoDetail(Long groupId) {
         Map<String, Object> result = new LinkedHashMap<>();
 
-        // 1️⃣ Lấy hợp đồng của group
+        // Lấy hợp đồng của group
         // ------------------------------------------------------------
         // Mỗi nhóm chỉ có 1 hợp đồng đang hoạt động.
         // Nếu không tìm thấy -> ném lỗi để controller trả HTTP 404.
@@ -53,18 +58,18 @@ public class ContractService {
                 .orElseThrow(() ->
                         new RuntimeException("Không tìm thấy hợp đồng cho groupId " + groupId));
 
-        // 2️⃣ Lấy thông tin nhóm sở hữu
+        //  Lấy thông tin nhóm sở hữu
         // ------------------------------------------------------------
         OwnershipGroup group = groupRepository.findById(groupId)
                 .orElseThrow(() ->
                         new RuntimeException("Không tìm thấy nhóm sở hữu " + groupId));
 
-        // 3️⃣ Lấy danh sách thành viên trong nhóm
+        //  Lấy danh sách thành viên trong nhóm
         // ------------------------------------------------------------
         // Mỗi bản ghi OwnershipShare đại diện cho 1 thành viên và phần sở hữu của họ trong group.
         List<OwnershipShare> shares = shareRepository.findByGroup_GroupId(groupId);
 
-        // 4️⃣ Chuẩn bị danh sách thành viên (gọn gàng, không trả entity thô)
+        // Chuẩn bị danh sách thành viên (gọn gàng, không trả entity thô)
         List<Map<String, Object>> members = shares.stream()
                 .map(share -> {
                     User user = userRepository.findById(share.getUser().getUserId())
@@ -82,7 +87,7 @@ public class ContractService {
                 })
                 .toList();
 
-        // 5️⃣ Gộp toàn bộ dữ liệu trả về client
+        // Gộp toàn bộ dữ liệu trả về client
         // ------------------------------------------------------------
         result.put("contract", Map.of(
                 "contractId", contract.getId(),
@@ -90,6 +95,7 @@ public class ContractService {
                 "requiredDepositAmount", contract.getRequiredDepositAmount(),
                 "startDate", contract.getStartDate(),
                 "endDate", contract.getEndDate(),
+                "depositDeadline", computeDepositDeadlineSafe(contract),
                 "isActive", contract.getIsActive(),
                 "approvalStatus", contract.getApprovalStatus(),
                 "createdAt", contract.getCreatedAt(),
@@ -119,9 +125,6 @@ public class ContractService {
                 .orElseThrow(() -> new EntityNotFoundException("Contract not found for group: " + groupId));
     }
 
-
-
-
     /**
      * Lấy requiredDepositAmount của group
      * Nếu có contract thì lấy từ contract, nếu không thì tính từ group
@@ -139,8 +142,6 @@ public class ContractService {
             return depositCalculationService.calculateRequiredDepositAmount(group);
         }
     }
-
-
 
     /**
      * Hủy contract với lý do
@@ -182,6 +183,7 @@ public class ContractService {
             info.put("endDate", contract.getEndDate());
             info.put("terms", contract.getTerms());
             info.put("requiredDepositAmount", contract.getRequiredDepositAmount());
+            info.put("depositDeadline", computeDepositDeadlineSafe(contract));
             info.put("isActive", contract.getIsActive());
             info.put("approvalStatus", contract.getApprovalStatus());
             info.put("createdAt", contract.getCreatedAt());
@@ -274,9 +276,20 @@ public class ContractService {
         result.put("contractNumber", generateContractNumber(savedContract.getId()));
         result.put("status", "AUTO_SIGNED");
         result.put("signedAt", LocalDateTime.now());
+        result.put("depositDeadline", computeDepositDeadlineSafe(savedContract));
         result.put("message", "Contract has been automatically signed");
         
         return result;
+    }
+
+    private LocalDateTime computeDepositDeadlineSafe(Contract contract) {
+        if (deadlinePolicy != null) {
+            return deadlinePolicy.computeDepositDeadline(contract);
+        }
+        LocalDateTime reference = contract.getUpdatedAt() != null
+                ? contract.getUpdatedAt()
+                : (contract.getCreatedAt() != null ? contract.getCreatedAt() : LocalDateTime.now());
+        return reference.plusMinutes(depositDeadlineMinutes);
     }
     
     /**

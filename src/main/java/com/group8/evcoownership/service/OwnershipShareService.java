@@ -8,6 +8,7 @@ import com.group8.evcoownership.enums.DepositStatus;
 import com.group8.evcoownership.enums.GroupRole;
 import com.group8.evcoownership.enums.GroupStatus;
 import com.group8.evcoownership.enums.NotificationType;
+import com.group8.evcoownership.repository.ContractRepository;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
 import com.group8.evcoownership.repository.OwnershipShareRepository;
 import com.group8.evcoownership.repository.UserRepository;
@@ -30,6 +31,7 @@ public class OwnershipShareService {
     private final OwnershipGroupRepository groupRepo;
     private final UserRepository userRepo;
     private final VehicleRepository vehicleRepository;
+    private final ContractRepository contractRepository;
     private final NotificationOrchestrator notificationOrchestrator;
     private final UserDocumentValidationService userDocumentValidationService;
 
@@ -185,14 +187,14 @@ public class OwnershipShareService {
         // Tính số tiền đầu tư
         BigDecimal investmentAmount = calculateInvestmentAmount(vehicle.getVehicleValue(), share.getOwnershipPercentage());
         
-        // Xác định trạng thái ownership percentage của user
+        // Determine ownership percentage status of user
         String ownershipStatus;
         if (share.getOwnershipPercentage().compareTo(BigDecimal.ZERO) == 0) {
-            ownershipStatus = "PENDING"; // Chưa nhập tỷ lệ
+            ownershipStatus = "PENDING"; // No ownership percentage entered
         } else if (group.getStatus() == GroupStatus.ACTIVE && canEdit) {
-            ownershipStatus = "CONFIRMED"; // Đã nhập tỷ lệ, có thể chỉnh sửa
+            ownershipStatus = "CONFIRMED"; // Ownership percentage entered, can be edited
         } else {
-            ownershipStatus = "LOCKED"; // Đã khóa, không thể chỉnh sửa
+            ownershipStatus = "LOCKED"; // Locked, cannot be edited
         }
         
         return OwnershipPercentageResponse.builder()
@@ -206,7 +208,7 @@ public class OwnershipShareService {
                 .canEdit(canEdit)
                 .status(ownershipStatus)
                 .updatedAt(share.getUpdatedAt())
-                .message(canEdit ? "Bạn có thể nhập tỷ lệ sở hữu" : "Tỷ lệ sở hữu đã được xác nhận")
+                .message(canEdit ? "You can enter ownership percentage" : "Ownership percentage has been confirmed")
                 .build();
     }
 
@@ -229,6 +231,12 @@ public class OwnershipShareService {
         
         var share = shareRepo.findById(new OwnershipShareId(userId, groupId))
                 .orElseThrow(() -> new EntityNotFoundException("User is not a member of this group"));
+        
+        // Kiểm tra contract đã ký chưa - nếu đã ký thì không cho sửa tỷ lệ
+        var contract = contractRepository.findByGroupGroupId(groupId).orElse(null);
+        if (contract != null && contract.getApprovalStatus() == com.group8.evcoownership.enums.ContractApprovalStatus.SIGNED) {
+            throw new IllegalStateException("Không thể sửa tỷ lệ sở hữu sau khi hợp đồng đã được ký");
+        }
         
         // Kiểm tra tỷ lệ mới có hợp lệ không
         validateOwnershipPercentage(groupId, userId, request.getOwnershipPercentage());
@@ -268,7 +276,7 @@ public class OwnershipShareService {
                 .canEdit(canEditAfterUpdate)
                 .status(ownershipStatus)
                 .updatedAt(share.getUpdatedAt())
-                .message("Tỷ lệ sở hữu đã được cập nhật thành công")
+                .message("Ownership percentage has been updated successfully")
                 .build();
     }
 

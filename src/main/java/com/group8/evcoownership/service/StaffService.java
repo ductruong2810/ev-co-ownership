@@ -131,6 +131,17 @@ public class StaffService {
         return "Document rejected successfully";
     }
 
+    @Transactional
+    public String deleteUser(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        // Soft delete to avoid FK violations
+        user.setStatus(UserStatus.BANNED);
+        userRepository.save(user);
+        return "User has been deactivated (BANNED) successfully";
+    }
+
     private boolean hasDocumentWithStatus(UserProfileResponseDTO profile, String status) {
         if (profile.getDocuments() == null) return false;
 

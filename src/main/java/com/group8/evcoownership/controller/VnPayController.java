@@ -25,9 +25,17 @@ public class VnPayController {
     @Operation(summary = "Tạo URL thanh toán VNPay", description = "Tạo URL thanh toán VNPay cho một khoản phí cụ thể")
     public ResponseEntity<Map<String, String>> createPaymentUrl(@PathVariable long fee, HttpServletRequest request) {
         Map<String, String> map = new HashMap<>();
-        map.put("url", VnPay_PaymentService.createPaymentUrl(fee, request));
+
+        // ✅ Tạo mã giao dịch nội bộ (txnRef)
+        String txnRef = String.valueOf(System.currentTimeMillis());
+
+        // ✅ Gọi đúng method có 3 tham số
+        String url = VnPay_PaymentService.createPaymentUrl(fee, request, txnRef, null);
+
+        map.put("url", url);
         return ResponseEntity.ok(map);
     }
+
 
     @GetMapping("/vn-pay-callback")
     @Operation(summary = "Xử lý callback VNPay", description = "Xử lý callback từ VNPay sau khi thanh toán")

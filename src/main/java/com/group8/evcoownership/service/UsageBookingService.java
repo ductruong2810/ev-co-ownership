@@ -5,6 +5,7 @@ import com.group8.evcoownership.dto.MaintenanceBookingRequestDTO;
 import com.group8.evcoownership.entity.UsageBooking;
 import com.group8.evcoownership.enums.BookingStatus;
 import com.group8.evcoownership.enums.NotificationType;
+import com.group8.evcoownership.exception.InvalidBookingException;
 import com.group8.evcoownership.repository.UsageBookingRepository;
 import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.repository.VehicleRepository;
@@ -101,9 +102,29 @@ public class UsageBookingService {
 
 
     //Lấy tất cả booking của user trong tuần chứa weekStart
+    //Lấy tất cả booking của user trong tuần chứa weekStart
     public List<UsageBooking> getBookingsByUserInWeek(Long userId, LocalDateTime weekStart) {
-        return usageBookingRepository.findBookingsByUserInWeek(userId, weekStart);
+        if (userId == null) {
+            throw new InvalidBookingException("User ID is required");
+        }
+        if (weekStart == null) {
+            throw new InvalidBookingException("Week start date is required");
+        }
+
+        // Giữ nguyên ngày, chỉ chuẩn hóa về 00:00:00
+        LocalDateTime normalizedWeekStart = weekStart.toLocalDate().atStartOfDay();
+
+        // Tính 7 ngày từ ngày được chọn
+        LocalDateTime weekEnd = normalizedWeekStart.plusDays(7);
+
+        // DEBUG: In ra console
+        System.out.println("DEBUG - userId: " + userId);
+        System.out.println("DEBUG - normalizedWeekStart: " + normalizedWeekStart);
+        System.out.println("DEBUG - weekEnd: " + weekEnd);
+        // Truyền đủ 3 tham số: userId, weekStart, weekEnd
+        return usageBookingRepository.findBookingsByUserInWeek(userId, normalizedWeekStart, weekEnd);
     }
+
 
     //Lấy thông tin quota của user cho xe trong tuần
     public Map<String, Object> getUserQuotaInfo(Long userId, Long vehicleId, LocalDateTime weekStart) {

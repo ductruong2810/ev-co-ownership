@@ -34,20 +34,27 @@ public class PaymentController {
     @PostMapping
     @Operation(summary = "Tạo thanh toán", description = "Tạo một giao dịch thanh toán mới và sinh URL thanh toán VNPay")
     public ResponseEntity<?> createPayment(@RequestBody PaymentRequest request, HttpServletRequest servletRequest) {
-        // 1️⃣ Lưu thông tin Payment trước (nếu bạn cần ghi DB)
+
+        Long groupId = request.getGroupId();
+
+        // 1️⃣ Lưu payment vào DB
         PaymentResponse payment = paymentService.create(request);
 
-        // 2️⃣ Nếu phương thức thanh toán là VNPAY => sinh link thanh toán
+        // 2️⃣ Sinh URL VNPay
+        String paymentUrl = vnPayService.createPaymentUrl(
+                request.getAmount().longValue(),
+                servletRequest,
+                payment.getTransactionCode(), // hoặc payment.getId().toString()
+                false,
+                groupId
+        );
 
-            String paymentUrl = vnPayService.createPaymentUrl(request.getAmount().longValue(), servletRequest);
-            return ResponseEntity.ok(Map.of(
-                    "payment", payment,
-                    "paymentUrl", paymentUrl
-            ));
 
-//
-//        // 3️⃣ Nếu là phương thức khác (chuyển khoản, tiền mặt…)
-//        return ResponseEntity.status(HttpStatus.CREATED).body(payment);
+        // 3️⃣ Trả về cho FE
+        return ResponseEntity.ok(Map.of(
+                "payment", payment,
+                "paymentUrl", paymentUrl
+        ));
     }
 
     // READ - by id

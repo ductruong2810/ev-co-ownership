@@ -99,4 +99,12 @@ public class StaffController {
         String message = staffService.rejectDocument(documentId, reason, staffEmail);
         return ResponseEntity.ok(Map.of("message", message));
     }
+
+    @DeleteMapping("/users/{userId}")
+    @PreAuthorize("hasRole('STAFF') or hasRole('ADMIN')")
+    @Operation(summary = "Xóa người dùng (soft delete)", description = "Đặt trạng thái người dùng thành BANNED để vô hiệu hóa tài khoản an toàn")
+    public ResponseEntity<Map<String, String>> deleteUser(@PathVariable Long userId) {
+        String message = staffService.deleteUser(userId);
+        return ResponseEntity.ok(Map.of("message", message));
+    }
 }

@@ -147,6 +147,73 @@ public class GlobalExceptionHandler {
         );
     }
 
+    // ========== 400 - INVALID BOOKING ==========
+    //them vao de xu ly loi booking
+    @ExceptionHandler(InvalidBookingException.class)
+    public ResponseEntity<ValidationErrorResponseDTO> handleInvalidBooking(
+            InvalidBookingException ex, WebRequest request) {
+
+        logger.warn("Invalid booking: {}", ex.getMessage());
+
+        String field = determineFieldFromBookingMessage(ex.getMessage());
+
+        return ResponseEntity.badRequest().body(
+                ValidationErrorResponseDTO.singleError(400, "Invalid Booking", ex.getMessage(), field,
+                        request.getDescription(false).replace("uri=", ""))
+        );
+    }
+
+    // ========== 400 - NULL POINTER (Missing required fields) ==========
+    @ExceptionHandler(NullPointerException.class)
+    public ResponseEntity<ValidationErrorResponseDTO> handleNullPointer(
+            NullPointerException ex, WebRequest request) {
+
+        logger.warn("Null pointer exception: {}", ex.getMessage());
+
+        String message = "Required field is missing or invalid";
+        String field = "unknown";
+
+        if (ex.getMessage() != null) {
+            String msg = ex.getMessage().toLowerCase();
+            if (msg.contains("userid")) {
+                field = "userId";
+                message = "User ID is required and must be a valid number";
+            } else if (msg.contains("vehicleid")) {
+                field = "vehicleId";
+                message = "Vehicle ID is required and must be a valid number";
+            } else if (msg.contains("startdatetime")) {
+                field = "startDateTime";
+                message = "Start date time is required";
+            } else if (msg.contains("enddatetime")) {
+                field = "endDateTime";
+                message = "End date time is required";
+            }
+        }
+
+        return ResponseEntity.badRequest().body(
+                ValidationErrorResponseDTO.singleError(400, "Bad Request", message, field,
+                        request.getDescription(false).replace("uri=", ""))
+        );
+    }
+
+    // Helper method cho booking errors
+    private String determineFieldFromBookingMessage(String message) {
+        if (message == null) return "unknown";
+
+        String lower = message.toLowerCase();
+
+        if (lower.contains("user id") || lower.contains("userid")) return "userId";
+        if (lower.contains("vehicle id") || lower.contains("vehicleid")) return "vehicleId";
+        if (lower.contains("start") && lower.contains("time")) return "startDateTime";
+        if (lower.contains("end") && lower.contains("time")) return "endDateTime";
+        if (lower.contains("quota")) return "quota";
+        if (lower.contains("buffer") || lower.contains("overlap")) return "timeSlot";
+        if (lower.contains("booking")) return "booking";
+
+        return "general";
+    }
+
+
     // ========== FILE UPLOAD - SIZE EXCEEDED ==========
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ValidationErrorResponseDTO> handleMaxUploadSizeExceeded(
