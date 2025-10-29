@@ -39,21 +39,29 @@ public class UsageBookingController {
      */
     @GetMapping("/user-bookings")
     @Operation(summary = "Đặt xe của tôi", description = "Lấy danh sách booking của người dùng, có thể lọc theo tuần hoặc lấy tất cả sắp tới")
-    public ResponseEntity<List<BookingResponseDTO>> getUserBookings(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime weekStart,
+    public ResponseEntity<?> getUserBookings(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart,
             @AuthenticationPrincipal String email
     ) {
         Long userId = userRepository.findByEmail(email)
                 .orElseThrow().getUserId();
-        
+
         List<UsageBooking> bookings;
 
         if (weekStart != null) {
-            // Lấy booking trong tuần cụ thể
-            bookings = usageBookingService.getBookingsByUserInWeek(userId, weekStart);
+            // Convert LocalDate to LocalDateTime at start of day
+            LocalDateTime weekStartDateTime = weekStart.atStartOfDay();
+            bookings = usageBookingService.getBookingsByUserInWeek(userId, weekStartDateTime);
         } else {
-            // Lấy booking sắp tới
             bookings = usageBookingService.getUpcomingBookings(userId);
+        }
+
+        // Nếu không có booking, trả về message
+        if (bookings.isEmpty()) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "No bookings found for this period");
+            response.put("bookings", List.of());
+            return ResponseEntity.ok(response);
         }
 
         List<BookingResponseDTO> response = bookings.stream()
@@ -70,8 +78,6 @@ public class UsageBookingController {
 
         return ResponseEntity.ok(response);
     }
-
-    // Removed; quota is returned in weekly calendar response.
 
     /**
      * Xác nhận booking (chuyển từ Pending → Confirmed)

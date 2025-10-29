@@ -53,7 +53,7 @@ public class WeeklyCalendarService {
         LocalDateTime weekStartDateTime = weekStart.atStartOfDay();
         Long totalQuota = usageBookingRepository.getQuotaLimitByOwnershipPercentage(userId, vehicle.getId());
         Long usedHours = usageBookingRepository.getTotalBookedHoursThisWeek(userId, vehicle.getId(), weekStartDateTime);
-        Long remainingHours = totalQuota - usedHours;
+        long remainingHours = totalQuota - usedHours;
 
         // Tạo daily slots cho 7 ngày
         List<DailySlotResponse> dailySlots = new ArrayList<>();
@@ -105,10 +105,9 @@ public class WeeklyCalendarService {
      */
     private TimeSlotResponse createTimeSlot(Long vehicleId, LocalDateTime start, LocalDateTime end, Long userId) {
         // Kiểm tra slot này có bị book chưa - hỗ trợ overnight booking
-        List<UsageBooking> bookings = new ArrayList<>();
-        
+
         // Lấy bookings từ ngày bắt đầu
-        bookings.addAll(usageBookingRepository.findByVehicleIdAndDateWithUser(vehicleId, start.toLocalDate()));
+        List<UsageBooking> bookings = new ArrayList<>(usageBookingRepository.findByVehicleIdAndDateWithUser(vehicleId, start.toLocalDate()));
         
         // Nếu slot kéo dài qua ngày hôm sau, lấy thêm bookings từ ngày đó
         if (!end.toLocalDate().equals(start.toLocalDate())) {
@@ -208,7 +207,7 @@ public class WeeklyCalendarService {
         // Suggestion dựa trên availability
         long availableSlots = calendar.getDailySlots().stream()
                 .flatMap(daily -> daily.getSlots().stream())
-                .filter(slot -> slot.isBookable())
+                .filter(TimeSlotResponse::isBookable)
                 .count();
                 
         if (availableSlots < 5) {
