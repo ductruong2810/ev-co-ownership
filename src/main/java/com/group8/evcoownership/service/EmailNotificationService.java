@@ -8,6 +8,9 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.text.NumberFormat;
+import java.util.Locale;
 import java.util.Map;
 
 @Service
@@ -158,7 +161,7 @@ public class EmailNotificationService {
         content.append("- Group: ").append(contractData.getOrDefault("groupName", "N/A")).append("\n");
         content.append("- Start Date: ").append(contractData.getOrDefault("startDate", "N/A")).append("\n");
         content.append("- End Date: ").append(contractData.getOrDefault("endDate", "N/A")).append("\n");
-        content.append("- Deposit Amount: ").append(contractData.getOrDefault("depositAmount", "N/A")).append("\n");
+        content.append("- Deposit Amount: ").append(formatVnd(contractData.get("depositAmount"))).append("\n");
         content.append("- Status: ").append(contractData.getOrDefault("status", "N/A")).append("\n\n");
         content.append("Best regards,\nEV Co-ownership Team");
         return content.toString();
@@ -184,7 +187,7 @@ public class EmailNotificationService {
 
         content.append("Transaction Details:\n");
         content.append("- Transaction Code: ").append(paymentData.getOrDefault("transactionCode", "N/A")).append("\n");
-        content.append("- Amount: ").append(paymentData.getOrDefault("amount", "N/A")).append("\n");
+        content.append("- Amount: ").append(formatVnd(paymentData.get("amount"))).append("\n");
         content.append("- Payment Method: ").append(paymentData.getOrDefault("paymentMethod", "N/A")).append("\n");
         content.append("- Payment Type: ").append(paymentData.getOrDefault("paymentType", "N/A")).append("\n");
         content.append("- Date: ").append(paymentData.getOrDefault("paymentDate", "N/A")).append("\n");
@@ -203,7 +206,7 @@ public class EmailNotificationService {
                 "- Group Name: " + groupData.getOrDefault("groupName", "N/A") + "\n" +
                 "- Description: " + groupData.getOrDefault("description", "N/A") + "\n" +
                 "- Current Members: " + groupData.getOrDefault("currentMembers", "N/A") + "\n" +
-                "- Deposit Amount: " + groupData.getOrDefault("depositAmount", "N/A") + "\n" +
+                "- Deposit Amount: " + formatVnd(groupData.get("depositAmount")) + "\n" +
                 "- Status: " + groupData.getOrDefault("status", "Active") + "\n\n" +
                 "Please respond to this invitation within 7 days.\n\n" +
                 "Best regards,\nEV Co-ownership Team";
@@ -281,5 +284,19 @@ public class EmailNotificationService {
             case POLICY_UPDATE -> "Policy Update - EV Co-ownership";
             default -> "Notification - EV Co-ownership";
         };
+    }
+
+    private String formatVnd(Object value) {
+        if (value == null) return "N/A";
+        try {
+            BigDecimal amount = (value instanceof Number)
+                    ? new BigDecimal(value.toString())
+                    : new BigDecimal(value.toString().trim());
+            NumberFormat nf = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
+            nf.setMaximumFractionDigits(0);
+            return nf.format(amount);
+        } catch (Exception e) {
+            return value.toString();
+        }
     }
 }
