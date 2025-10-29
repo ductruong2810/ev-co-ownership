@@ -96,17 +96,20 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
     List<UsageBooking> findUpcomingBookingsByUser(@Param("userId") Long userId);
 
 
-    @Query(value = """
-                SELECT *
-                FROM UsageBooking
-                WHERE UserId = :userId
-                  AND Status IN ('Pending', 'Confirmed')
-                  AND DATEPART(ISO_WEEK, StartDateTime) = DATEPART(ISO_WEEK, :weekStart)
-                  AND YEAR(StartDateTime) = YEAR(:weekStart)
-                ORDER BY StartDateTime
-            """, nativeQuery = true)
-    List<UsageBooking> findBookingsByUserInWeek(@Param("userId") Long userId,
-                                                @Param("weekStart") LocalDateTime weekStart);
+    @Query("""
+    SELECT b FROM UsageBooking b
+    WHERE b.user.userId = :userId
+    AND b.startDateTime >= :weekStart
+    AND b.startDateTime < :weekEnd
+    ORDER BY b.startDateTime
+    """)
+    List<UsageBooking> findBookingsByUserInWeek(
+            @Param("userId") Long userId,
+            @Param("weekStart") LocalDateTime weekStart,
+            @Param("weekEnd") LocalDateTime weekEnd
+    );
+
+
 
     // Tìm các booking bị ảnh hưởng bởi maintenance period
     @Query("""
