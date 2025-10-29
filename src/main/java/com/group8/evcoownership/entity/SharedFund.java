@@ -41,10 +41,10 @@ public class SharedFund {
     @Version
     @Column(name = "Version")
     private Long version;
-
-    // Relationships với các entity khác
-    @OneToMany(mappedBy = "fund", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Dispute> disputes;
+//
+//    // Relationships với các entity khác
+//    @OneToMany(mappedBy = "fund", cascade = CascadeType.ALL, orphanRemoval = true)
+//    private List<Dispute> disputes;
 
     @PrePersist
     public void onCreate() {

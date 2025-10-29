@@ -56,7 +56,7 @@ public class ContractDeadlineScheduler {
                 }
 
                 // Reject hợp đồng do quá hạn
-                contract.setApprovalStatus(ContractApprovalStatus.REJECTED);
+                contract.setApprovalStatus(ContractApprovalStatus.PENDING);
                 contract.setIsActive(false);
                 contract.setRejectionReason("Hết hạn đóng cọc (quá hạn vào " + deadline + ")");
                 contract.setUpdatedAt(LocalDateTime.now());
