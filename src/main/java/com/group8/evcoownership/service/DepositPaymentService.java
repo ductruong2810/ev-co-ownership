@@ -11,7 +11,6 @@ import com.group8.evcoownership.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +26,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class DepositPaymentService {
 
+    private final FundService fundService;
 
     private final PaymentRepository paymentRepository;
     private final OwnershipShareRepository shareRepository;
@@ -46,18 +46,6 @@ public class DepositPaymentService {
             throw new DepositPaymentException(fieldName + " must be a valid number");
         }
     }
-
-    @Value("${payment.vnPay.tmnCode}")
-    private String vnp_TmnCode;
-
-    @Value("${payment.vnPay.secretKey}")
-    private String vnp_HashSecret;
-
-    @Value("${payment.vnPay.url}")
-    private String vnp_PayUrl;
-
-    @Value("${payment.vnPay.depositReturnUrl}")
-    private String vnp_ReturnUrl;
 
     /**
      *  Tạo payment mới → sinh URL thanh toán VNPay
@@ -85,6 +73,11 @@ public class DepositPaymentService {
 
         OwnershipShare share = shareRepository.findById(new OwnershipShareId(userId, groupId))
                 .orElseThrow(() -> new EntityNotFoundException("User is not a member of this group"));
+
+        // Kiểm tra nếu người dùng đã đóng tiền cọc rồi (PAID) → chặn
+        if (share.getDepositStatus() == DepositStatus.PAID) {
+            throw new DepositPaymentException("Deposit has already been paid for this user in this group.");
+        }
 
         Contract contract = contractRepository.findByGroupGroupId(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Contract not found for this group"));
@@ -119,16 +112,16 @@ public class DepositPaymentService {
                 .paymentCategory("GROUP")
                 .transactionCode(txnRef)
                 .build();
-        paymentRepository.save(payment);
+        payment = paymentRepository.save(payment);
 
         // Sinh link thanh toán VNPay
         //String paymentUrl = vnPayPaymentService.createDepositPaymentUrl(requiredAmount.longValue(), servletRequest);
-        String paymentUrl = vnPayPaymentService.createDepositPaymentUrl(requiredAmount.longValue(), servletRequest, txnRef);
+        String paymentUrl = vnPayPaymentService.createDepositPaymentUrl(requiredAmount.longValue(), servletRequest, txnRef, groupId);
 
 
         return DepositPaymentResponse.builder()
-                .paymentId(payment != null ? payment.getId() : null)
-                .userId(user != null ? user.getUserId() : null)
+                .paymentId(payment.getId())
+                .userId(user.getUserId())
                 .groupId(group != null ? group.getGroupId() : null)
                 .amount(requiredAmount) // hoặc BigDecimal.valueOf(requiredAmount.longValue())
                 .requiredAmount(requiredAmount)
@@ -144,21 +137,52 @@ public class DepositPaymentService {
     /**
      * Xác nhận callback từ VNPay → cập nhật Payment COMPLETED
      */
+    @Transactional
     public DepositPaymentResponse confirmDepositPayment(String txnRef, String transactionNo) {
         Payment payment = paymentRepository.findByTransactionCode(txnRef)
                 .orElseThrow(() -> new RuntimeException("Payment not found for txnRef: " + txnRef));
 
+        // Nếu đã COMPLETED thì bỏ qua
         if (payment.getStatus() == PaymentStatus.COMPLETED) {
             return convertToResponse(payment);
         }
 
+        // 1. Cập nhật trạng thái Payment
         payment.setStatus(PaymentStatus.COMPLETED);
         payment.setPaymentDate(LocalDateTime.now());
-        payment.setTransactionCode(transactionNo);
         paymentRepository.save(payment);
 
+        // 2. Cập nhật quỹ (Fund)
+        fundService.increaseBalance(payment.getFund().getFundId(), payment.getAmount());
+
+        // 3. Cập nhật trạng thái tiền cọc trong OwnershipShare
+        OwnershipShare share = shareRepository.findByUserIdAndFundId(
+                payment.getPayer().getUserId(),
+                payment.getFund().getFundId()
+        ).orElseThrow(() -> new RuntimeException("OwnershipShare not found"));
+
+        share.setDepositStatus(DepositStatus.PAID);
+        shareRepository.save(share);
+
+        // 4. Trả response
         return convertToResponse(payment);
     }
+//    public DepositPaymentResponse confirmDepositPayment(String txnRef, String transactionNo) {
+//        Payment payment = paymentRepository.findByTransactionCode(txnRef)
+//                .orElseThrow(() -> new RuntimeException("Payment not found for txnRef: " + txnRef));
+//
+//        if (payment.getStatus() == PaymentStatus.COMPLETED) {
+//            return convertToResponse(payment);
+//        }
+//
+//        payment.setStatus(PaymentStatus.COMPLETED);
+//        payment.setPaymentDate(LocalDateTime.now());
+//        paymentRepository.save(payment);
+//
+//        return convertToResponse(payment);
+//    }
+
+
 
     /**
      *API cho frontend kiểm tra trạng thái thanh toán
@@ -178,7 +202,7 @@ public class DepositPaymentService {
                 .paymentMethod("VNPAY")
                 .status(PaymentStatus.valueOf(p.getStatus().name()))
                 .transactionCode(p.getTransactionCode())
-                .createdAt(p.getPaymentDate())
+                .paidAt(p.getPaymentDate())
                 .build();
     }
 
@@ -286,11 +310,19 @@ public class DepositPaymentService {
     private String getContractStatus(Long groupId) {
         Optional<Contract> contract = contractRepository.findByGroupGroupId(groupId);
 
-        if (contract.isEmpty()) {
-            return "NO_CONTRACT";
-        }
+        return contract.map(value -> value.getApprovalStatus().name()).orElse("NO_CONTRACT");
 
-        return contract.get().getApprovalStatus().name();
     }
+
+    /**
+     * ✅ Lấy thông tin chi tiết của thanh toán dựa theo mã giao dịch (txnRef)
+     */
+    public DepositPaymentResponse getDepositInfoByTxn(String txnRef) {
+        Payment payment = paymentRepository.findByTransactionCode(txnRef)
+                .orElseThrow(() -> new RuntimeException("Payment not found for txnRef: " + txnRef));
+
+        return convertToResponse(payment);
+    }
+
 
 }

@@ -9,6 +9,7 @@ import com.group8.evcoownership.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -33,6 +34,10 @@ public class ContractService {
     private final UserRepository userRepository;
     private final NotificationOrchestrator notificationOrchestrator;
     private final OwnershipShareRepository shareRepository;
+    private final ContractDeadlinePolicy deadlinePolicy;
+
+    @Value("${contract.deposit.deadline.minutes:5}")
+    private long depositDeadlineMinutes;
 
     /**
      * Lấy thông tin hợp đồng chi tiết cho một Group
@@ -90,6 +95,7 @@ public class ContractService {
                 "requiredDepositAmount", contract.getRequiredDepositAmount(),
                 "startDate", contract.getStartDate(),
                 "endDate", contract.getEndDate(),
+                "depositDeadline", computeDepositDeadlineSafe(contract),
                 "isActive", contract.getIsActive(),
                 "approvalStatus", contract.getApprovalStatus(),
                 "createdAt", contract.getCreatedAt(),
@@ -177,6 +183,7 @@ public class ContractService {
             info.put("endDate", contract.getEndDate());
             info.put("terms", contract.getTerms());
             info.put("requiredDepositAmount", contract.getRequiredDepositAmount());
+            info.put("depositDeadline", computeDepositDeadlineSafe(contract));
             info.put("isActive", contract.getIsActive());
             info.put("approvalStatus", contract.getApprovalStatus());
             info.put("createdAt", contract.getCreatedAt());
@@ -269,9 +276,20 @@ public class ContractService {
         result.put("contractNumber", generateContractNumber(savedContract.getId()));
         result.put("status", "AUTO_SIGNED");
         result.put("signedAt", LocalDateTime.now());
+        result.put("depositDeadline", computeDepositDeadlineSafe(savedContract));
         result.put("message", "Contract has been automatically signed");
         
         return result;
+    }
+
+    private LocalDateTime computeDepositDeadlineSafe(Contract contract) {
+        if (deadlinePolicy != null) {
+            return deadlinePolicy.computeDepositDeadline(contract);
+        }
+        LocalDateTime reference = contract.getUpdatedAt() != null
+                ? contract.getUpdatedAt()
+                : (contract.getCreatedAt() != null ? contract.getCreatedAt() : LocalDateTime.now());
+        return reference.plusMinutes(depositDeadlineMinutes);
     }
     
     /**

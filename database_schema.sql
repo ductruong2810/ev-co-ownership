@@ -559,22 +559,6 @@ CREATE INDEX IX_UserDocument_Status ON UserDocument (Status);
 CREATE INDEX IX_Voting_GroupId ON Voting (GroupId);
 CREATE INDEX IX_Voting_Status ON Voting (Status);
 
--- Dispute
-CREATE INDEX IX_Dispute_FundId ON Dispute (FundId);
-CREATE INDEX IX_Dispute_Status ON Dispute (Status);
-
--- Dispute add-ons
-CREATE INDEX IX_DisputeTicket_DisputeId ON DisputeTicket (DisputeId);
-CREATE INDEX IX_DisputeTicket_AssignedTo ON DisputeTicket (AssignedTo);
-CREATE INDEX IX_DisputeTicket_Open ON DisputeTicket (DisputeId, ClosedAt);
-CREATE INDEX IX_DisputeEvent_TicketId ON DisputeEvent (TicketId);
-CREATE INDEX IX_DisputeEvent_EventType ON DisputeEvent (EventType);
-CREATE INDEX IX_DisputeAttachment_DisputeId ON DisputeAttachment (DisputeId);
-CREATE INDEX IX_DisputeAttachment_UploadedBy ON DisputeAttachment (UploadedBy);
-CREATE INDEX IX_Refund_DisputeId ON Refund (DisputeId);
-CREATE INDEX IX_Refund_Status ON Refund (Status);
-CREATE INDEX IX_Journal_FundId ON JournalEntry (FundId);
-CREATE INDEX IX_Journal_DisputeId ON JournalEntry (DisputeId);
 
 -- FinancialReport
 CREATE INDEX IX_FinancialReport_FundId ON FinancialReport (FundId);
@@ -651,10 +635,6 @@ VALUES (1, 1, 1000000, 'BANK_TRANSFER', 'PENDING', 'CONTRIBUTION', 'TXN-P-001', 
 -- Expense demo
 INSERT INTO Expense(FundId, SourceType, SourceId, Description, Amount)
 VALUES (1, 'MAINTENANCE', NULL, N'Periodic maintenance', 300000);
-
--- Dispute demo
-INSERT INTO Dispute(FundId, DisputeType, RelatedEntityType, Description, DisputedAmount, Resolution, Status)
-VALUES (1, 'FINANCIAL', 'PAYMENT', N'Payment dispute', 100000, N'Resolved by refund', 'OPEN');
 
 -- Incident demo
 INSERT INTO Incident(BookingId, IncidentType, Description, Status)
@@ -771,3 +751,21 @@ GO
 -- Mỗi group chỉ có 1 vehicle (áp dụng khi GroupId NOT NULL)
 CREATE UNIQUE INDEX UQ_Vehicle_GroupId ON Vehicle (GroupId) WHERE GroupId IS NOT NULL;
 GO
+
+
+-- =============================================
+-- CLEANUP (Remove dispute-related tables)
+-- =============================================
+-- B1
+
+
+-- Xóa các khóa ngoại trỏ đến dispute
+
+-- B2
+
+IF OBJECT_ID('Refund', 'U') IS NOT NULL
+    DROP TABLE Refund;
+GO
+
+
+

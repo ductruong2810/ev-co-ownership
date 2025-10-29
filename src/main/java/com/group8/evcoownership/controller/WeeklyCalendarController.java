@@ -3,12 +3,14 @@ package com.group8.evcoownership.controller;
 import com.group8.evcoownership.dto.WeeklyCalendarResponse;
 import com.group8.evcoownership.dto.FlexibleBookingRequest;
 import com.group8.evcoownership.dto.FlexibleBookingResponse;
+import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.service.WeeklyCalendarService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -22,13 +24,18 @@ import java.util.List;
 public class WeeklyCalendarController {
 
     private final WeeklyCalendarService weeklyCalendarService;
+    private final UserRepository userRepository;
 
     @GetMapping("/groups/{groupId}/weekly")
     @Operation(summary = "Lấy lịch tuần", description = "Hiển thị lịch tuần với các slot đã book và quota của user")
     public ResponseEntity<WeeklyCalendarResponse> getWeeklyCalendar(
             @PathVariable Long groupId,
-            @RequestParam Long userId,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart,
+            @AuthenticationPrincipal String email) {
+        
+        // Lấy userId từ JWT
+        Long userId = userRepository.findByEmail(email)
+                .orElseThrow().getUserId();
         
         // Nếu không có weekStart, dùng tuần hiện tại
         if (weekStart == null) {
@@ -43,8 +50,12 @@ public class WeeklyCalendarController {
     @Operation(summary = "Lấy gợi ý booking", description = "Gợi ý booking dựa trên quota và availability")
     public ResponseEntity<List<String>> getBookingSuggestions(
             @PathVariable Long groupId,
-            @RequestParam Long userId,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart,
+            @AuthenticationPrincipal String email) {
+        
+        // Lấy userId từ JWT
+        Long userId = userRepository.findByEmail(email)
+                .orElseThrow().getUserId();
         
         if (weekStart == null) {
             weekStart = LocalDate.now().with(DayOfWeek.MONDAY);
@@ -56,7 +67,15 @@ public class WeeklyCalendarController {
 
     @PostMapping("/flexible-booking")
     @Operation(summary = "Tạo booking linh hoạt", description = "Tạo booking với thời gian tùy chỉnh, hỗ trợ qua đêm")
-    public ResponseEntity<FlexibleBookingResponse> createFlexibleBooking(@RequestBody FlexibleBookingRequest request) {
+    public ResponseEntity<FlexibleBookingResponse> createFlexibleBooking(
+            @RequestBody FlexibleBookingRequest request,
+            @AuthenticationPrincipal String email) {
+        
+        // Lấy userId từ JWT và gán vào request
+        Long userId = userRepository.findByEmail(email)
+                .orElseThrow().getUserId();
+        request.setUserId(userId);
+        
         FlexibleBookingResponse response = weeklyCalendarService.createFlexibleBooking(request);
         return ResponseEntity.ok(response);
     }
