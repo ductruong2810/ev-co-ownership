@@ -262,7 +262,7 @@ public class VehicleImageApprovalService {
         // Nếu có hình ảnh bị từ chối và group đang ở trạng thái PENDING
         else if (rejectedImages > 0 && group.getStatus() == GroupStatus.PENDING) {
             group.setStatus(GroupStatus.INACTIVE);
-            
+
             // Lấy lý do từ chối từ hình ảnh bị từ chối đầu tiên
             List<VehicleImage> rejectedImagesList = vehicleImageRepository.findByVehicleIdAndApprovalStatus(vehicleId, ImageApprovalStatus.REJECTED);
             if (!rejectedImagesList.isEmpty()) {
@@ -272,7 +272,7 @@ public class VehicleImageApprovalService {
             } else {
                 log.info("Group {} status updated to INACTIVE after images rejected", groupId);
             }
-            
+
             ownershipGroupRepository.save(group);
         }
     }

@@ -19,24 +19,24 @@ public class CreateGroupWithVehicleDynamicValidator implements ConstraintValidat
 
     // Tất cả image types hợp lệ (linh hoạt cho cả xe máy và xe ô tô)
     private static final String[] ALL_VALID_IMAGE_TYPES = {
-        "VEHICLE", "FRONT", "BACK", "LEFT", "RIGHT", 
-        "INTERIOR", "ENGINE", "LICENSE", "REGISTRATION"
+            "VEHICLE", "FRONT", "BACK", "LEFT", "RIGHT",
+            "INTERIOR", "ENGINE", "LICENSE", "REGISTRATION"
     };
-    
+
     // Pattern cho biển số xe ô tô: 29A-123.45
     private static final Pattern CAR_LICENSE_PATTERN = Pattern.compile(
-        "^[0-9]{2}[A-Z]-[0-9]{3}\\.[0-9]{2}$"
+            "^[0-9]{2}[A-Z]-[0-9]{3}\\.[0-9]{2}$"
     );
-    
+
     // Pattern cho biển số xe máy: 29A1-12345 hoặc 29A-12345
     private static final Pattern MOTORCYCLE_LICENSE_PATTERN = Pattern.compile(
-        "^[0-9]{2}[A-Z][0-9]?-?[0-9]{3,5}$"
+            "^[0-9]{2}[A-Z][0-9]?-?[0-9]{3,5}$"
     );
-    
+
     // Các hãng xe máy phổ biến
     private static final String[] MOTORCYCLE_BRANDS = {
-        "yamaha", "honda", "suzuki", "kawasaki", "ducati", "ktm", 
-        "piaggio", "vespa", "sym", "kymco", "benelli", "cfmoto", "qj motor"
+            "yamaha", "honda", "suzuki", "kawasaki", "ducati", "ktm",
+            "piaggio", "vespa", "sym", "kymco", "benelli", "cfmoto", "qj motor"
     };
 
     @Override
@@ -47,7 +47,7 @@ public class CreateGroupWithVehicleDynamicValidator implements ConstraintValidat
     @Override
     public boolean isValid(CreateGroupWithVehicleRequest request, ConstraintValidatorContext context) {
         boolean isValid = true;
-        
+
         try {
             // Auto-detect vehicle type nếu không có
             String vehicleType = request.vehicleType();
@@ -55,37 +55,37 @@ public class CreateGroupWithVehicleDynamicValidator implements ConstraintValidat
                 vehicleType = detectVehicleType(request);
                 log.info("Auto-detected vehicle type: {}", vehicleType);
             }
-            
+
             // Validate license plate theo loại xe
             if (!validateLicensePlate(request.licensePlate(), vehicleType)) {
                 context.disableDefaultConstraintViolation();
                 context.buildConstraintViolationWithTemplate(
-                    "License plate format is invalid for " + vehicleType + ". " +
-                    "Car format: 29A-123.45, Motorcycle format: 29A1-12345")
-                    .addConstraintViolation();
+                                "License plate format is invalid for " + vehicleType + ". " +
+                                        "Car format: 29A-123.45, Motorcycle format: 29A1-12345")
+                        .addConstraintViolation();
                 isValid = false;
             }
-            
+
             // Validate chassis number theo loại xe
             if (!validateChassisNumber(request.chassisNumber(), vehicleType)) {
                 context.disableDefaultConstraintViolation();
                 context.buildConstraintViolationWithTemplate(
-                    "Chassis number format is invalid for " + vehicleType + ". " +
-                    "Car: 17 characters, Motorcycle: 10-12 characters")
-                    .addConstraintViolation();
+                                "Chassis number format is invalid for " + vehicleType + ". " +
+                                        "Car: 17 characters, Motorcycle: 10-12 characters")
+                        .addConstraintViolation();
                 isValid = false;
             }
-            
+
             // Validate image types (linh hoạt cho cả xe máy và xe ô tô)
             if (!validateImageTypes(request.imageTypes(), context)) {
                 isValid = false;
             }
-            
+
             // Validate file sizes
             if (!validateFileSizes(request.vehicleImages(), context)) {
                 isValid = false;
             }
-            
+
             // Validate image count matches image types count
             if (request.vehicleImages().length != request.imageTypes().length) {
                 context.disableDefaultConstraintViolation();
@@ -93,7 +93,7 @@ public class CreateGroupWithVehicleDynamicValidator implements ConstraintValidat
                         .addConstraintViolation();
                 isValid = false;
             }
-            
+
         } catch (Exception e) {
             log.error("Error during validation", e);
             context.disableDefaultConstraintViolation();
@@ -101,10 +101,10 @@ public class CreateGroupWithVehicleDynamicValidator implements ConstraintValidat
                     .addConstraintViolation();
             isValid = false;
         }
-        
+
         return isValid;
     }
-    
+
     /**
      * Tự động phát hiện loại xe dựa trên brand và format biển số
      */
@@ -113,7 +113,7 @@ public class CreateGroupWithVehicleDynamicValidator implements ConstraintValidat
         String brand = request.brand();
         if (brand != null && !brand.trim().isEmpty()) {
             String lowerBrand = brand.toLowerCase().trim();
-            
+
             for (String motorcycleBrand : MOTORCYCLE_BRANDS) {
                 if (lowerBrand.contains(motorcycleBrand)) {
                     log.info("Detected motorcycle by brand: {}", motorcycleBrand);
@@ -121,7 +121,7 @@ public class CreateGroupWithVehicleDynamicValidator implements ConstraintValidat
                 }
             }
         }
-        
+
         // Bước 2: Kiểm tra format biển số
         String licensePlate = request.licensePlate();
         if (licensePlate != null && !licensePlate.trim().isEmpty()) {
@@ -134,12 +134,12 @@ public class CreateGroupWithVehicleDynamicValidator implements ConstraintValidat
                 return VehicleType.CAR.getValue();
             }
         }
-        
+
         // Default: xe ô tô
         log.info("Default to car type");
         return VehicleType.CAR.getValue();
     }
-    
+
     /**
      * Validate biển số theo loại xe
      */
@@ -147,16 +147,16 @@ public class CreateGroupWithVehicleDynamicValidator implements ConstraintValidat
         if (licensePlate == null || licensePlate.trim().isEmpty()) {
             return false;
         }
-        
+
         if (VehicleType.CAR.getValue().equals(vehicleType)) {
             return CAR_LICENSE_PATTERN.matcher(licensePlate).matches();
         } else if (VehicleType.MOTORCYCLE.getValue().equals(vehicleType)) {
             return MOTORCYCLE_LICENSE_PATTERN.matcher(licensePlate).matches();
         }
-        
+
         return false;
     }
-    
+
     /**
      * Validate số khung theo loại xe
      */
@@ -164,24 +164,24 @@ public class CreateGroupWithVehicleDynamicValidator implements ConstraintValidat
         if (chassisNumber == null || chassisNumber.trim().isEmpty()) {
             return true; // Chassis number is optional (OCR can fill)
         }
-        
+
         String trimmedChassis = chassisNumber.trim().toUpperCase();
-        
+
         // Validate format: only uppercase letters and digits
         if (!trimmedChassis.matches("^[A-Z0-9]+$")) {
             return false;
         }
-        
+
         // Validate length theo loại xe
         if (VehicleType.CAR.getValue().equals(vehicleType)) {
             return trimmedChassis.length() == 17;
         } else if (VehicleType.MOTORCYCLE.getValue().equals(vehicleType)) {
             return trimmedChassis.length() >= 10 && trimmedChassis.length() <= 12;
         }
-        
+
         return false;
     }
-    
+
     /**
      * Validate image types (linh hoạt cho cả xe máy và xe ô tô)
      */
@@ -190,39 +190,39 @@ public class CreateGroupWithVehicleDynamicValidator implements ConstraintValidat
             if (!Arrays.asList(ALL_VALID_IMAGE_TYPES).contains(imageType)) {
                 context.disableDefaultConstraintViolation();
                 context.buildConstraintViolationWithTemplate(
-                    "Invalid image type: " + imageType + 
-                    ". Valid types: " + Arrays.toString(ALL_VALID_IMAGE_TYPES))
-                    .addConstraintViolation();
+                                "Invalid image type: " + imageType +
+                                        ". Valid types: " + Arrays.toString(ALL_VALID_IMAGE_TYPES))
+                        .addConstraintViolation();
                 return false;
             }
         }
-        
+
         return true;
     }
-    
+
     /**
      * Validate file sizes
      */
     private boolean validateFileSizes(MultipartFile[] images, ConstraintValidatorContext context) {
         long maxFileSize = 10 * 1024 * 1024; // 10MB
-        
+
         for (MultipartFile image : images) {
             if (image.getSize() > maxFileSize) {
                 context.disableDefaultConstraintViolation();
                 context.buildConstraintViolationWithTemplate(
-                    "File size exceeds 10MB limit: " + image.getOriginalFilename())
-                    .addConstraintViolation();
+                                "File size exceeds 10MB limit: " + image.getOriginalFilename())
+                        .addConstraintViolation();
                 return false;
             }
             if (image.isEmpty()) {
                 context.disableDefaultConstraintViolation();
                 context.buildConstraintViolationWithTemplate(
-                    "Empty file not allowed: " + image.getOriginalFilename())
-                    .addConstraintViolation();
+                                "Empty file not allowed: " + image.getOriginalFilename())
+                        .addConstraintViolation();
                 return false;
             }
         }
-        
+
         return true;
     }
 }

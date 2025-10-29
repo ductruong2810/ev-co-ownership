@@ -1,10 +1,9 @@
 package com.group8.evcoownership.controller;
 
 import com.group8.evcoownership.service.ContractService;
-import lombok.RequiredArgsConstructor;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -26,15 +25,15 @@ public class ContractController {
      * API: Xem chi tiết hợp đồng của một nhóm
      * ------------------------------------------------------------
      * Dành cho:
-     *   - Group Admin
-     *   - Các thành viên trong nhóm
+     * - Group Admin
+     * - Các thành viên trong nhóm
      * <p>
      * Mục đích:
-     *   Khi người dùng bấm "Xem hợp đồng" ở giao diện FE,
-     *   API này sẽ trả về thông tin chi tiết gồm:
-     *     1. Hợp đồng (terms, deposit, startDate, endDate, ...)
-     *     2. Nhóm (tên, trạng thái, ngày tạo, ...)
-     *     3. Danh sách thành viên (tên, email, vai trò, % sở hữu, trạng thái cọc, ...)
+     * Khi người dùng bấm "Xem hợp đồng" ở giao diện FE,
+     * API này sẽ trả về thông tin chi tiết gồm:
+     * 1. Hợp đồng (terms, deposit, startDate, endDate, ...)
+     * 2. Nhóm (tên, trạng thái, ngày tạo, ...)
+     * 3. Danh sách thành viên (tên, email, vai trò, % sở hữu, trạng thái cọc, ...)
      */
     @GetMapping("/{groupId}/details")
     @PreAuthorize("@ownershipGroupService.isGroupMember(authentication.name, #groupId)")
@@ -51,7 +50,6 @@ public class ContractController {
         // Trả kết quả về client với HTTP 200 OK
         return ResponseEntity.ok(contractDetail);
     }
-
 
 
     /**
@@ -74,14 +72,13 @@ public class ContractController {
     public ResponseEntity<Map<String, Object>> generateContractData(
             @PathVariable Long groupId,
             @AuthenticationPrincipal String userEmail) {
-        
+
         // Lấy userId từ email
         Long userId = contractService.getUserIdByEmail(userEmail);
-        
+
         Map<String, Object> contractData = contractService.generateContractData(groupId, userId);
         return ResponseEntity.ok(contractData);
     }
-
 
 
     /**
@@ -110,13 +107,13 @@ public class ContractController {
      * API: Tự động ký contract cho group
      * ------------------------------------------------------------
      * Dành cho:
-     *   - Group Admin
-     *   - System (tự động trigger)
+     * - Group Admin
+     * - System (tự động trigger)
      * <p>
      * Điều kiện:
-     *   - Group đã có đủ thành viên theo memberCapacity
-     *   - Group đã có vehicle với vehicleValue
-     *   - Contract chưa được ký
+     * - Group đã có đủ thành viên theo memberCapacity
+     * - Group đã có vehicle với vehicleValue
+     * - Contract chưa được ký
      */
     @PostMapping("/{groupId}/auto-sign")
     @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
@@ -130,8 +127,8 @@ public class ContractController {
      * API: Kiểm tra điều kiện ký tự động contract
      * ------------------------------------------------------------
      * Dành cho:
-     *   - Group Admin
-     *   - Các thành viên trong nhóm
+     * - Group Admin
+     * - Các thành viên trong nhóm
      */
     @GetMapping("/{groupId}/auto-sign-conditions")
     @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
@@ -145,8 +142,8 @@ public class ContractController {
      * API: Tự động kiểm tra và ký contract nếu đủ điều kiện
      * ------------------------------------------------------------
      * Dành cho:
-     *   - System (scheduler)
-     *   - Group Admin
+     * - System (scheduler)
+     * - Group Admin
      */
     @PostMapping("/{groupId}/check-and-auto-sign")
     @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")

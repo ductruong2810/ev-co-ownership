@@ -15,7 +15,7 @@ public class SharedFundUpdateRequest {
     @NotNull
     @PositiveOrZero
     BigDecimal balance;
-    
+
     @PositiveOrZero
     BigDecimal targetAmount;
 }

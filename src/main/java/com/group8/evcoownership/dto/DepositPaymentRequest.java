@@ -1,12 +1,9 @@
 package com.group8.evcoownership.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import lombok.Builder;
-
-import java.math.BigDecimal;
 
 @Builder
 @Schema(description = "Request để tạo payment cho tiền cọc")

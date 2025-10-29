@@ -61,16 +61,16 @@ public interface OwnershipShareRepository extends JpaRepository<OwnershipShare, 
     Number countByUser_UserId(Long userUserId);
 
     @Query("""
-    SELECT os
-    FROM OwnershipShare os
-    WHERE os.user.userId = :userId
-      AND os.group.groupId = (
-            SELECT g.groupId
-            FROM SharedFund f
-            JOIN f.group g
-            WHERE f.fundId = :fundId
-      )
-""")
+                SELECT os
+                FROM OwnershipShare os
+                WHERE os.user.userId = :userId
+                  AND os.group.groupId = (
+                        SELECT g.groupId
+                        FROM SharedFund f
+                        JOIN f.group g
+                        WHERE f.fundId = :fundId
+                  )
+            """)
     Optional<OwnershipShare> findByUserIdAndFundId(@Param("userId") Long userId,
                                                    @Param("fundId") Long fundId);
 

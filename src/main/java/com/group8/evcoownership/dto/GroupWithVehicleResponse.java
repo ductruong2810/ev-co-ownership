@@ -39,5 +39,6 @@ public record GroupWithVehicleResponse(
             Boolean isRegistrationDocument,
             String ocrConfidence,
             String processingTime
-    ) {}
+    ) {
+    }
 }

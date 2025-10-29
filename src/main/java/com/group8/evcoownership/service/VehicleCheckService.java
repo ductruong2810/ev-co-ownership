@@ -183,7 +183,7 @@ public class VehicleCheckService {
      */
     public Map<String, Object> processQrCheckIn(String qrCode, Long userId) {
         Map<String, Object> result = new HashMap<>();
-        
+
         try {
             // Parse QR code để lấy vehicle/group info
             Long vehicleId = parseQrCode(qrCode);
@@ -199,44 +199,44 @@ public class VehicleCheckService {
 
             // Tìm booking active của user cho vehicle này
             List<UsageBooking> activeBookings = usageBookingRepository.findActiveBookingsByUserAndVehicle(userId, vehicleId);
-            
+
             if (activeBookings.isEmpty()) {
                 result.put("success", false);
                 result.put("message", "No active booking found for this vehicle");
                 result.put("vehicleInfo", Map.of(
-                    "vehicleId", vehicle.getId(),
-                    "brand", vehicle.getBrand(),
-                    "model", vehicle.getModel(),
-                    "licensePlate", vehicle.getLicensePlate()
+                        "vehicleId", vehicle.getId(),
+                        "brand", vehicle.getBrand(),
+                        "model", vehicle.getModel(),
+                        "licensePlate", vehicle.getLicensePlate()
                 ));
                 return result;
             }
 
             // Lấy booking gần nhất
             UsageBooking booking = activeBookings.get(0);
-            
+
             // Kiểm tra thời gian
             LocalDateTime now = LocalDateTime.now();
-            boolean canCheckIn = now.isAfter(booking.getStartDateTime().minusMinutes(15)) 
-                               && now.isBefore(booking.getEndDateTime());
-            
+            boolean canCheckIn = now.isAfter(booking.getStartDateTime().minusMinutes(15))
+                    && now.isBefore(booking.getEndDateTime());
+
             result.put("success", true);
             result.put("bookingId", booking.getId());
             result.put("vehicleInfo", Map.of(
-                "vehicleId", vehicle.getId(),
-                "brand", vehicle.getBrand(),
-                "model", vehicle.getModel(),
-                "licensePlate", vehicle.getLicensePlate()
+                    "vehicleId", vehicle.getId(),
+                    "brand", vehicle.getBrand(),
+                    "model", vehicle.getModel(),
+                    "licensePlate", vehicle.getLicensePlate()
             ));
             result.put("bookingInfo", Map.of(
-                "startTime", booking.getStartDateTime(),
-                "endTime", booking.getEndDateTime(),
-                "status", booking.getStatus().toString()
+                    "startTime", booking.getStartDateTime(),
+                    "endTime", booking.getEndDateTime(),
+                    "status", booking.getStatus().toString()
             ));
             result.put("canCheckIn", canCheckIn);
             result.put("hasPreUseCheck", hasCheck(booking.getId(), "PRE_USE"));
             result.put("hasPostUseCheck", hasCheck(booking.getId(), "POST_USE"));
-            
+
             if (!canCheckIn) {
                 result.put("message", "Booking time is not valid for check-in");
             } else {
@@ -273,7 +273,7 @@ public class VehicleCheckService {
         } catch (NumberFormatException e) {
             // Invalid format
         }
-        
+
         return null;
     }
 }

@@ -2,7 +2,6 @@ package com.group8.evcoownership.integration;
 
 import com.group8.evcoownership.dto.DepositPaymentRequest;
 import com.group8.evcoownership.dto.DepositPaymentResponse;
-import com.group8.evcoownership.dto.SaveContractDataRequest;
 import com.group8.evcoownership.enums.DepositStatus;
 import com.group8.evcoownership.enums.PaymentStatus;
 import com.group8.evcoownership.service.ContractService;
@@ -16,8 +15,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
