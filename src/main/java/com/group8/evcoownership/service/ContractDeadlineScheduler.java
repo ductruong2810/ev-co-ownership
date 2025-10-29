@@ -28,6 +28,7 @@ public class ContractDeadlineScheduler {
     private final FundService fundService;
     private final NotificationOrchestrator notificationOrchestrator;
     private final ContractDeadlinePolicy deadlinePolicy;
+    private final VnPay_PaymentService vnPayPaymentService; 
 
     /**
      * Gửi thông báo nhắc nhở cho các member chưa đóng cọc khi gần hết hạn
@@ -112,6 +113,7 @@ public class ContractDeadlineScheduler {
                 for (OwnershipShare share : shares) {
                     if (share.getDepositStatus() != DepositStatus.PAID) {
                         try {
+                            assert notificationOrchestrator != null;
                             notificationOrchestrator.sendComprehensiveNotification(
                                     share.getUser().getUserId(),
                                     com.group8.evcoownership.enums.NotificationType.DEPOSIT_OVERDUE,
@@ -157,27 +159,70 @@ public class ContractDeadlineScheduler {
                             .filter(p -> p.getFund().getGroup().getGroupId().equals(groupId))
                             .toList();
 
-                    // Đánh dấu các payment này là REFUNDED và trừ quỹ
+                    // Hoàn tiền cọc qua VNPay API
                     for (Payment payment : deposits) {
-                        payment.setStatus(PaymentStatus.REFUNDED);
-                        paymentRepository.save(payment);
-                        
-                        // Trừ quỹ khi refund (quan trọng!)
                         try {
-                            fundService.decreaseBalance(payment.getFund().getFundId(), payment.getAmount());
-                            log.info("Refunded deposit for user {} in group {} - Fund decreased by {}", 
-                                    share.getUser().getUserId(), groupId, payment.getAmount());
-                        } catch (Exception fundEx) {
-                            log.error("Failed to decrease fund for refunded payment {}", payment.getId(), fundEx);
-                            // Rollback payment status nếu không trừ được quỹ
-                            payment.setStatus(PaymentStatus.COMPLETED);
+                            // Parse vnp_TransactionNo và vnp_TransactionDate từ providerResponse
+                            String vnpTransactionNo = VnPay_PaymentService.extractTransactionNo(payment.getProviderResponse());
+                            if (vnpTransactionNo == null) {
+                                log.warn("Cannot extract vnp_TransactionNo for payment {}", payment.getId());
+                                continue;  // Skip payment này nếu không có VNPay transaction number
+                            }
+
+                            // Format vnp_TransactionDate từ payment.paymentDate
+                            java.text.SimpleDateFormat formatter = new java.text.SimpleDateFormat("yyyyMMddHHmmss");
+                            formatter.setTimeZone(java.util.TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
+                            String vnpTransactionDate = formatter.format(
+                                java.util.Date.from(payment.getPaymentDate().atZone(java.time.ZoneId.systemDefault()).toInstant())
+                            );
+
+                            // Gọi VNPay API để hoàn tiền
+                            String refundUrl = vnPayPaymentService.createRefundRequest(
+                                payment.getAmount().longValue(),
+                                payment.getTransactionCode(),
+                                vnpTransactionNo,
+                                vnpTransactionDate
+                            );
+                            
+                            log.info("VNPay Refund URL created: {}", refundUrl);
+                            
+                            // Gọi HTTP GET đến VNPay để thực hiện refund
+                            java.net.URL url = new java.net.URL(refundUrl);
+                            java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                            conn.setRequestMethod("GET");
+                            conn.setConnectTimeout(10000);
+                            conn.setReadTimeout(10000);
+                            
+                            int responseCode = conn.getResponseCode();
+                            log.info("📡 VNPay Refund Response Code: {}", responseCode);
+                            
+                            // Đọc response
+                            try (java.io.BufferedReader in = new java.io.BufferedReader(
+                                new java.io.InputStreamReader(conn.getInputStream()))) {
+                                String inputLine;
+                                StringBuilder response = new StringBuilder();
+                                while ((inputLine = in.readLine()) != null) {
+                                    response.append(inputLine);
+                                }
+                                log.info("📄 VNPay Refund Response: {}", response);
+                            }
+
+                            // Đánh dấu payment REFUNDED và trừ quỹ
+                            payment.setStatus(PaymentStatus.REFUNDED);
                             paymentRepository.save(payment);
-                            throw fundEx;
+                            
+                            fundService.decreaseBalance(payment.getFund().getFundId(), payment.getAmount());
+                            
+                            log.info("Refunded payment {} - Amount: {} VND",
+                                    payment.getId(), payment.getAmount());
+                            
+                        } catch (Exception ex) {
+                            log.error("Failed to refund payment {}", payment.getId(), ex);
                         }
                     }
 
-                    // Reset deposit status về PENDING
-                    share.setDepositStatus(DepositStatus.PENDING);
+                    // Hoàn tiền cọc - đánh dấu deposit đã được refund
+                    share.setDepositStatus(DepositStatus.REFUNDED);
                     ownershipShareRepository.save(share);
 
                 } catch (Exception ex) {

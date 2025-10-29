@@ -79,7 +79,8 @@ public class DepositPaymentService {
             throw new DepositPaymentException("Deposit has already been paid for this user in this group.");
         }
 
-        Contract contract = contractRepository.findByGroupGroupId(groupId)
+        // Kiểm tra contract tồn tại
+        contractRepository.findByGroupGroupId(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Contract not found for this group"));
 
         SharedFund fund = sharedFundRepository.findByGroup_GroupId(groupId)
@@ -147,9 +148,15 @@ public class DepositPaymentService {
             return convertToResponse(payment);
         }
 
+        String providerResponse = String.format(
+            "{\"vnp_TransactionNo\":\"%s\",\"vnp_TxnRef\":\"%s\"}", 
+            transactionNo, txnRef
+        );
+
         // 1. Cập nhật trạng thái Payment
         payment.setStatus(PaymentStatus.COMPLETED);
         payment.setPaymentDate(LocalDateTime.now());
+        payment.setProviderResponse(providerResponse); 
         paymentRepository.save(payment);
 
         // 2. Cập nhật quỹ (Fund)
@@ -288,12 +295,7 @@ public class DepositPaymentService {
         }
     }
 
-    /**
-     * Kiểm tra có thể tự động duyệt contract không
-     * Business rules: 
-     * 1. Số thành viên thực tế = memberCapacity của group
-     * 2. Tất cả thành viên đã đóng deposit (đã được kiểm tra ở trên)
-     */
+    @SuppressWarnings("unused")
     private boolean canAutoApproveContract(List<OwnershipShare> shares) {
         if (shares.isEmpty()) {
             return false;
