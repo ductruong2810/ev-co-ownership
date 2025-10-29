@@ -94,25 +94,30 @@ public class NotificationOrchestrator {
      * Send group notification to all members
      */
     public void sendGroupNotification(Long groupId, NotificationType type, String title, String message) {
+        sendGroupNotification(groupId, type, title, message, java.util.Map.of("groupId", groupId));
+    }
+
+    public void sendGroupNotification(Long groupId, NotificationType type, String title, String message,
+                                      java.util.Map<String, Object> data) {
         List<User> groupMembers = userRepository.findUsersByGroupId(groupId);
 
-        Map<String, Object> data = Map.of("groupId", groupId);
+        // Ensure groupId present in data for routing
+        if (data == null) {
+            data = new java.util.HashMap<>();
+        }
+        data.putIfAbsent("groupId", groupId);
 
         for (User member : groupMembers) {
-            // In-app
             notificationService.sendNotification(member, title, message, type.getCode());
 
-            // WebSocket
             webSocketService.sendToUser(member.getUserId(), type, title, message, "MEDIUM",
                     getActionUrl(type, data), data);
 
-            // Email for important group events
             if (shouldSendEmail(type)) {
                 sendEmailNotification(member, type, title, message, data);
             }
         }
 
-        // Also send to group channel
         webSocketService.sendToGroup(groupId, type, title, message);
     }
 

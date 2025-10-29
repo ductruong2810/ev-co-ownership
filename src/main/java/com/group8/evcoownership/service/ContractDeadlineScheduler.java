@@ -129,11 +129,23 @@ public class ContractDeadlineScheduler {
 
                 // 2. Gửi thông báo TỚI CẢ NHÓM (tất cả members)
                 if (notificationOrchestrator != null) {
+                    // Build rich data for email content
+                    java.util.Map<String, Object> emailData = new java.util.HashMap<>();
+                    emailData.put("groupId", groupId);
+                    emailData.put("contractId", contract.getId());
+                    emailData.put("groupName", contract.getGroup().getGroupName());
+                    emailData.put("startDate", contract.getStartDate());
+                    emailData.put("endDate", contract.getEndDate());
+                    emailData.put("depositAmount", contract.getRequiredDepositAmount());
+                    emailData.put("status", contract.getApprovalStatus());
+
+                    // Send in-app + websocket + email to all group members
                     notificationOrchestrator.sendGroupNotification(
                             groupId,
                             com.group8.evcoownership.enums.NotificationType.CONTRACT_REJECTED,
                             "Hợp đồng bị từ chối do hết hạn đóng cọc",
-                            "Hợp đồng đã bị từ chối vì chưa hoàn tất tiền cọc trước hạn. Tiền cọc đã được hoàn lại cho các thành viên đã đóng."
+                            "Hợp đồng đã bị từ chối vì chưa hoàn tất tiền cọc trước hạn. Tiền cọc đã được hoàn lại cho các thành viên đã đóng.",
+                            emailData
                     );
                 }
             } catch (Exception ex) {
