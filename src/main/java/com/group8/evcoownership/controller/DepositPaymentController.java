@@ -9,13 +9,14 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -25,6 +26,7 @@ import java.util.Map;
 @Tag(name = "Deposit Payments", description = "Quản lý thanh toán tiền cọc")
 public class DepositPaymentController {
 
+    private static final Logger log = LoggerFactory.getLogger(DepositPaymentController.class);
     private final DepositPaymentService depositPaymentService;
     // Inject frontend URL từ file application.properties
     @Value("${frontend.base.url}")
@@ -142,7 +144,7 @@ public class DepositPaymentController {
             }
 
         } catch (Exception e) {
-            e.printStackTrace(); // Log lỗi để debug nếu có
+            log.error("Error processing deposit callback for txnRef: {}, groupId: {}", txnRef, groupId, e);
             //  Có lỗi trong quá trình xử lý callback
             if (groupId != null) {
                 response.sendRedirect(String.format(
