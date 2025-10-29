@@ -45,7 +45,7 @@ public class ContractService {
     public Map<String, Object> getContractInfoDetail(Long groupId) {
         Map<String, Object> result = new LinkedHashMap<>();
 
-        // 1️⃣ Lấy hợp đồng của group
+        // Lấy hợp đồng của group
         // ------------------------------------------------------------
         // Mỗi nhóm chỉ có 1 hợp đồng đang hoạt động.
         // Nếu không tìm thấy -> ném lỗi để controller trả HTTP 404.
@@ -53,18 +53,18 @@ public class ContractService {
                 .orElseThrow(() ->
                         new RuntimeException("Không tìm thấy hợp đồng cho groupId " + groupId));
 
-        // 2️⃣ Lấy thông tin nhóm sở hữu
+        //  Lấy thông tin nhóm sở hữu
         // ------------------------------------------------------------
         OwnershipGroup group = groupRepository.findById(groupId)
                 .orElseThrow(() ->
                         new RuntimeException("Không tìm thấy nhóm sở hữu " + groupId));
 
-        // 3️⃣ Lấy danh sách thành viên trong nhóm
+        //  Lấy danh sách thành viên trong nhóm
         // ------------------------------------------------------------
         // Mỗi bản ghi OwnershipShare đại diện cho 1 thành viên và phần sở hữu của họ trong group.
         List<OwnershipShare> shares = shareRepository.findByGroup_GroupId(groupId);
 
-        // 4️⃣ Chuẩn bị danh sách thành viên (gọn gàng, không trả entity thô)
+        // Chuẩn bị danh sách thành viên (gọn gàng, không trả entity thô)
         List<Map<String, Object>> members = shares.stream()
                 .map(share -> {
                     User user = userRepository.findById(share.getUser().getUserId())
@@ -82,7 +82,7 @@ public class ContractService {
                 })
                 .toList();
 
-        // 5️⃣ Gộp toàn bộ dữ liệu trả về client
+        // Gộp toàn bộ dữ liệu trả về client
         // ------------------------------------------------------------
         result.put("contract", Map.of(
                 "contractId", contract.getId(),
@@ -119,9 +119,6 @@ public class ContractService {
                 .orElseThrow(() -> new EntityNotFoundException("Contract not found for group: " + groupId));
     }
 
-
-
-
     /**
      * Lấy requiredDepositAmount của group
      * Nếu có contract thì lấy từ contract, nếu không thì tính từ group
@@ -139,8 +136,6 @@ public class ContractService {
             return depositCalculationService.calculateRequiredDepositAmount(group);
         }
     }
-
-
 
     /**
      * Hủy contract với lý do

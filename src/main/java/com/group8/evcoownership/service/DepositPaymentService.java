@@ -60,7 +60,7 @@ public class DepositPaymentService {
     private String vnp_ReturnUrl;
 
     /**
-     * 1️⃣ Tạo payment mới → sinh URL thanh toán VNPay
+     *  Tạo payment mới → sinh URL thanh toán VNPay
      */
     @Transactional
     public DepositPaymentResponse createDepositPayment(DepositPaymentRequest request,
@@ -70,7 +70,7 @@ public class DepositPaymentService {
         Long userId = parseId(request.userId(), "userId");
         Long groupId = parseId(request.groupId(), "groupId");
 
-        // 1️⃣ Xác thực user
+        //  Xác thực user
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + userId));
 
@@ -79,7 +79,7 @@ public class DepositPaymentService {
             throw new DepositPaymentException("You can only create deposit payment for your own account");
         }
 
-        // 2️⃣ Kiểm tra group, membership, contract, fund
+        // Kiểm tra group, membership, contract, fund
         OwnershipGroup group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
 
@@ -92,7 +92,7 @@ public class DepositPaymentService {
         SharedFund fund = sharedFundRepository.findByGroup_GroupId(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Fund not found for group: " + groupId));
 
-        // 3️⃣ Tính toán số tiền cần đặt cọc
+        // Tính toán số tiền cần đặt cọc
         BigDecimal requiredAmount;
         Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group).orElse(null);
 
@@ -106,7 +106,7 @@ public class DepositPaymentService {
                     group.getMemberCapacity()
             );
         }
-        // 4️⃣ Tạo record Payment trong DB
+        // Tạo record Payment trong DB
         String txnRef = String.valueOf(System.currentTimeMillis()).substring(5, 13); // 8 số ngẫu nhiên
 
         Payment payment = Payment.builder()
@@ -121,7 +121,7 @@ public class DepositPaymentService {
                 .build();
         paymentRepository.save(payment);
 
-        // 5️⃣ Sinh link thanh toán VNPay
+        // Sinh link thanh toán VNPay
         //String paymentUrl = vnPayPaymentService.createDepositPaymentUrl(requiredAmount.longValue(), servletRequest);
         String paymentUrl = vnPayPaymentService.createDepositPaymentUrl(requiredAmount.longValue(), servletRequest, txnRef);
 
@@ -142,7 +142,7 @@ public class DepositPaymentService {
 
 
     /**
-     * 2️⃣ Xác nhận callback từ VNPay → cập nhật Payment COMPLETED
+     * Xác nhận callback từ VNPay → cập nhật Payment COMPLETED
      */
     public DepositPaymentResponse confirmDepositPayment(String txnRef, String transactionNo) {
         Payment payment = paymentRepository.findByTransactionCode(txnRef)
@@ -161,7 +161,7 @@ public class DepositPaymentService {
     }
 
     /**
-     * 3️⃣ API cho frontend kiểm tra trạng thái thanh toán
+     *API cho frontend kiểm tra trạng thái thanh toán
      */
     public DepositPaymentResponse getByTxnRef(String txnRef) {
         Payment payment = paymentRepository.findByTransactionCode(txnRef)
