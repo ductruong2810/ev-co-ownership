@@ -81,19 +81,19 @@ public class WeeklyCalendarService {
      */
     private DailySlotResponse createDailySlot(Long vehicleId, LocalDate date, Long userId) {
         List<TimeSlotResponse> slots = new ArrayList<>();
-        
-        // Tạo slots 24/7 - mỗi slot 4 giờ để dễ quản lý
-        // 00:00-04:00, 04:00-08:00, 08:00-12:00, 12:00-16:00, 16:00-20:00, 20:00-24:00
-        
+
         for (int hour = 0; hour < 24; hour += 4) {
             LocalDateTime slotStart = date.atTime(hour, 0);
-            LocalDateTime slotEnd = date.atTime(hour + 4, 0);
-            
-            // Xử lý trường hợp slot cuối cùng (20:00-24:00)
-            if (hour == 20) {
-                slotEnd = date.plusDays(1).atTime(0, 0);
+            LocalDateTime slotEnd;
+
+            //Xử lý TRƯỚC khi tạo slotEnd
+            if (hour + 4 >= 24) {
+                // Slot cuối cùng trong ngày (20:00-00:00)
+                slotEnd = date.plusDays(1).atStartOfDay();
+            } else {
+                slotEnd = date.atTime(hour + 4, 0);
             }
-            
+
             TimeSlotResponse slot = createTimeSlot(vehicleId, slotStart, slotEnd, userId);
             slots.add(slot);
         }
