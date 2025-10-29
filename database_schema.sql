@@ -559,22 +559,6 @@ CREATE INDEX IX_UserDocument_Status ON UserDocument (Status);
 CREATE INDEX IX_Voting_GroupId ON Voting (GroupId);
 CREATE INDEX IX_Voting_Status ON Voting (Status);
 
--- Dispute
-CREATE INDEX IX_Dispute_FundId ON Dispute (FundId);
-CREATE INDEX IX_Dispute_Status ON Dispute (Status);
-
--- Dispute add-ons
-CREATE INDEX IX_DisputeTicket_DisputeId ON DisputeTicket (DisputeId);
-CREATE INDEX IX_DisputeTicket_AssignedTo ON DisputeTicket (AssignedTo);
-CREATE INDEX IX_DisputeTicket_Open ON DisputeTicket (DisputeId, ClosedAt);
-CREATE INDEX IX_DisputeEvent_TicketId ON DisputeEvent (TicketId);
-CREATE INDEX IX_DisputeEvent_EventType ON DisputeEvent (EventType);
-CREATE INDEX IX_DisputeAttachment_DisputeId ON DisputeAttachment (DisputeId);
-CREATE INDEX IX_DisputeAttachment_UploadedBy ON DisputeAttachment (UploadedBy);
-CREATE INDEX IX_Refund_DisputeId ON Refund (DisputeId);
-CREATE INDEX IX_Refund_Status ON Refund (Status);
-CREATE INDEX IX_Journal_FundId ON JournalEntry (FundId);
-CREATE INDEX IX_Journal_DisputeId ON JournalEntry (DisputeId);
 
 -- FinancialReport
 CREATE INDEX IX_FinancialReport_FundId ON FinancialReport (FundId);
@@ -651,10 +635,6 @@ VALUES (1, 1, 1000000, 'BANK_TRANSFER', 'PENDING', 'CONTRIBUTION', 'TXN-P-001', 
 -- Expense demo
 INSERT INTO Expense(FundId, SourceType, SourceId, Description, Amount)
 VALUES (1, 'MAINTENANCE', NULL, N'Periodic maintenance', 300000);
-
--- Dispute demo
-INSERT INTO Dispute(FundId, DisputeType, RelatedEntityType, Description, DisputedAmount, Resolution, Status)
-VALUES (1, 'FINANCIAL', 'PAYMENT', N'Payment dispute', 100000, N'Resolved by refund', 'OPEN');
 
 -- Incident demo
 INSERT INTO Incident(BookingId, IncidentType, Description, Status)
@@ -774,46 +754,17 @@ GO
 
 
 -- =============================================
--- CLEANUP (Remove Dispute-related tables)
+-- CLEANUP (Remove dispute-related tables)
 -- =============================================
 -- B1
-PRINT 'Dropping foreign keys referencing Dispute...';
-GO
 
--- Xóa các khóa ngoại trỏ đến Dispute
-DECLARE @sql NVARCHAR(MAX) = N'';
-SELECT @sql += 'ALTER TABLE [' + OBJECT_NAME(parent_object_id) + '] DROP CONSTRAINT [' + name + '];'
-FROM sys.foreign_keys
-WHERE referenced_object_id = OBJECT_ID('Dispute');
-EXEC sp_executesql @sql;
-GO
+
+-- Xóa các khóa ngoại trỏ đến dispute
 
 -- B2
-PRINT 'Dropping legacy Dispute-related tables if exist...';
-GO
-
-IF OBJECT_ID('JournalEntry', 'U') IS NOT NULL
-    DROP TABLE JournalEntry;
-GO
 
 IF OBJECT_ID('Refund', 'U') IS NOT NULL
     DROP TABLE Refund;
-GO
-
-IF OBJECT_ID('DisputeAttachment', 'U') IS NOT NULL
-    DROP TABLE DisputeAttachment;
-GO
-
-IF OBJECT_ID('DisputeEvent', 'U') IS NOT NULL
-    DROP TABLE DisputeEvent;
-GO
-
-IF OBJECT_ID('DisputeTicket', 'U') IS NOT NULL
-    DROP TABLE DisputeTicket;
-GO
-
-IF OBJECT_ID('Dispute', 'U') IS NOT NULL
-    DROP TABLE Dispute;
 GO
 
 

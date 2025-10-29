@@ -71,9 +71,9 @@ public class Payment {
     @JoinColumn(name = "ChargedUserId")
     private User chargedUser; // required when PERSONAL
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "SourceDisputeId")
-    private Dispute sourceDispute; // if originated from a dispute
+//    @ManyToOne(fetch = FetchType.LAZY)
+//    @JoinColumn(name = "SourceDisputeId")
+//    private Dispute sourceDispute; // if originated from a dispute
 
     @Lob
     @Nationalized
