@@ -114,6 +114,7 @@ public class OtpUtil {
     }
 
     // ================= INVALIDATE OTP (CLEANUP METHOD) - THÊM MỚI =================
+
     /**
      * Remove OTP data for given email
      * Used for cleanup when email sending fails or user cancels registration
@@ -126,6 +127,7 @@ public class OtpUtil {
     }
 
     // ================= CHECK IF OTP EXISTS - THÊM MỚI =================
+
     /**
      * Check if OTP exists for given email
      */

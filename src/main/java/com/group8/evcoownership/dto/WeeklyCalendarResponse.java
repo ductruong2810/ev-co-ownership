@@ -2,6 +2,7 @@ package com.group8.evcoownership.dto;
 
 import lombok.Builder;
 import lombok.Data;
+
 import java.time.LocalDate;
 import java.util.List;
 

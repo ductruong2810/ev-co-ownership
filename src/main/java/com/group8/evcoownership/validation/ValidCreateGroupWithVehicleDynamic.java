@@ -15,6 +15,8 @@ import java.lang.annotation.*;
 @Documented
 public @interface ValidCreateGroupWithVehicleDynamic {
     String message() default "Invalid vehicle data";
+
     Class<?>[] groups() default {};
+
     Class<? extends Payload>[] payload() default {};
 }

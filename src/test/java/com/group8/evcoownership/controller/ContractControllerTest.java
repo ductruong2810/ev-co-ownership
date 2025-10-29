@@ -13,7 +13,6 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 /**
@@ -34,24 +33,24 @@ class ContractControllerTest {
         Long groupId = 1L;
         String userEmail = "test@example.com";
         Long userId = 123L;
-        
+
         Map<String, Object> expectedContractData = new HashMap<>();
         expectedContractData.put("contractId", 1L);
         expectedContractData.put("groupId", groupId);
         expectedContractData.put("status", "DRAFT");
-        
+
         when(contractService.getUserIdByEmail(userEmail)).thenReturn(userId);
         when(contractService.generateContractData(groupId, userId)).thenReturn(expectedContractData);
-        
+
         // Act
         ResponseEntity<Map<String, Object>> response = contractController.generateContractData(groupId, userEmail);
-        
+
         // Assert
         assertNotNull(response);
         assertEquals(200, response.getStatusCode().value());
         assertNotNull(response.getBody());
         assertEquals(expectedContractData, response.getBody());
-        
+
         verify(contractService).getUserIdByEmail(userEmail);
         verify(contractService).generateContractData(groupId, userId);
     }
@@ -61,15 +60,15 @@ class ContractControllerTest {
         // Arrange
         Long groupId = 1L;
         String userEmail = null;
-        
+
         when(contractService.getUserIdByEmail(userEmail))
                 .thenThrow(new IllegalArgumentException("Email cannot be null"));
-        
+
         // Act & Assert
         assertThrows(IllegalArgumentException.class, () -> {
             contractController.generateContractData(groupId, userEmail);
         });
-        
+
         verify(contractService).getUserIdByEmail(userEmail);
         verify(contractService, never()).generateContractData(any(), any());
     }
@@ -79,15 +78,15 @@ class ContractControllerTest {
         // Arrange
         Long groupId = 1L;
         String userEmail = "nonexistent@example.com";
-        
+
         when(contractService.getUserIdByEmail(userEmail))
                 .thenThrow(new jakarta.persistence.EntityNotFoundException("User not found with email: " + userEmail));
-        
+
         // Act & Assert
         assertThrows(jakarta.persistence.EntityNotFoundException.class, () -> {
             contractController.generateContractData(groupId, userEmail);
         });
-        
+
         verify(contractService).getUserIdByEmail(userEmail);
         verify(contractService, never()).generateContractData(any(), any());
     }

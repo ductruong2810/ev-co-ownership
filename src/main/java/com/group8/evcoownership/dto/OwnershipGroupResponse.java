@@ -20,10 +20,10 @@ public record OwnershipGroupResponse(
         BigDecimal ownershipPercentage // tỷ lệ sở hữu của user trong group
 ) {
     // Constructor cho backward compatibility
-    public OwnershipGroupResponse(Long groupId, String groupName, String description, 
-                                 Integer memberCapacity, GroupStatus status, 
-                                 LocalDateTime createdAt, LocalDateTime updatedAt) {
-        this(groupId, groupName, description, memberCapacity, status, createdAt, updatedAt, 
-             null, false, false, null);
+    public OwnershipGroupResponse(Long groupId, String groupName, String description,
+                                  Integer memberCapacity, GroupStatus status,
+                                  LocalDateTime createdAt, LocalDateTime updatedAt) {
+        this(groupId, groupName, description, memberCapacity, status, createdAt, updatedAt,
+                null, false, false, null);
     }
 }

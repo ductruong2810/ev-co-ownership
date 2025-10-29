@@ -20,7 +20,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -80,7 +79,7 @@ class ContractIntegrationTest {
 
         // When
         Map<String, Object> contractData = contractService.generateContractData(testGroup.getGroupId(), 1L);
-        
+
         // Then
         assertNotNull(contractData);
         assertEquals(testGroup.getGroupId(), contractData.get("groupId"));

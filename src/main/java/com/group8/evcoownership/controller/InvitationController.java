@@ -40,9 +40,9 @@ public class InvitationController {
     @Operation(
             summary = "Gửi lời mời (hoặc tự động gửi lại)",
             description = """
-            Tạo mới lời mời nếu chưa tồn tại. 
-            Nếu email đã có invitation PENDING trong cùng group, hệ thống sẽ tự động resend (cập nhật OTP, thời hạn, gửi lại mail).
-            """
+                    Tạo mới lời mời nếu chưa tồn tại. 
+                    Nếu email đã có invitation PENDING trong cùng group, hệ thống sẽ tự động resend (cập nhật OTP, thời hạn, gửi lại mail).
+                    """
     )
     public ResponseEntity<InvitationResponse> createOrResend(
             @PathVariable Long groupId,

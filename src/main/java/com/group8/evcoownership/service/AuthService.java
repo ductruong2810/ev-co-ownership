@@ -73,6 +73,7 @@ public class AuthService {
                 .role(user.getRole().getRoleName().name())
                 .build();
     }
+
     // ================= REFRESH TOKEN =================
     public LoginResponseDTO refreshToken(String refreshToken) {
         log.info("Processing token refresh");

@@ -9,13 +9,13 @@ import java.math.BigDecimal;
 @ValidCreateGroupWithVehicleDynamic
 public record CreateGroupWithVehicleRequest(
         @NotBlank(message = "Group name is required")
-                @Size(max = 100, message = "Group name must not exceed 100 characters")
+        @Size(max = 100, message = "Group name must not exceed 100 characters")
         String groupName,
 
         @Size(max = 4000, message = "Description must not exceed 4000 characters")
         String description,
 
-            @NotBlank
+        @NotBlank
 //        @NotNull(message = "Member capacity is required")
 //        @Min(value = 1, message = "Member capacity must be at least 1")
 //        @Max(value = 50, message = "Member capacity cannot exceed 50")
@@ -48,10 +48,10 @@ public record CreateGroupWithVehicleRequest(
         // Optional fields for auto-fill from OCR
         String brand,
         String model,
-        
+
         // Flag to enable OCR processing (default true)
         Boolean enableAutoFill,
-        
+
         // Optional vehicle type - auto-detect if not provided
         String vehicleType
 ) {
