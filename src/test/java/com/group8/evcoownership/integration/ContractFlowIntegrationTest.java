@@ -1,7 +1,7 @@
 package com.group8.evcoownership.integration;
 
-import com.group8.evcoownership.dto.DepositPaymentRequest;
-import com.group8.evcoownership.dto.DepositPaymentResponse;
+import com.group8.evcoownership.dto.DepositPaymentRequestDTO;
+import com.group8.evcoownership.dto.DepositPaymentResponseDTO;
 import com.group8.evcoownership.enums.DepositStatus;
 import com.group8.evcoownership.enums.PaymentStatus;
 import com.group8.evcoownership.service.ContractService;
@@ -111,12 +111,12 @@ class ContractFlowIntegrationTest {
     @Test
     void testDepositPaymentCreation() {
         // Arrange
-        DepositPaymentRequest request = new DepositPaymentRequest(
+        DepositPaymentRequestDTO request = new DepositPaymentRequestDTO(
                 "1", // userId
                 "1"  // groupId
         );
 
-        DepositPaymentResponse expectedResponse = DepositPaymentResponse.builder()
+        DepositPaymentResponseDTO expectedResponse = DepositPaymentResponseDTO.builder()
                 .paymentId(1L)
                 .userId(1L)
                 .groupId(1L)
@@ -132,7 +132,7 @@ class ContractFlowIntegrationTest {
                 .thenReturn(expectedResponse);
 
         // Act
-        DepositPaymentResponse response = depositPaymentService.createDepositPayment(request, httpRequest, null);
+        DepositPaymentResponseDTO response = depositPaymentService.createDepositPayment(request, httpRequest, null);
 
         // Assert
         assertNotNull(response);
@@ -153,7 +153,7 @@ class ContractFlowIntegrationTest {
         Long paymentId = 1L;
         String transactionCode = "VNPAY123456789";
 
-        DepositPaymentResponse expectedResponse = DepositPaymentResponse.builder()
+        DepositPaymentResponseDTO expectedResponse = DepositPaymentResponseDTO.builder()
                 .paymentId(1L)
                 .userId(1L)
                 .groupId(1L)
@@ -170,7 +170,7 @@ class ContractFlowIntegrationTest {
                 .thenReturn(expectedResponse);
 
         // Act
-        DepositPaymentResponse response = depositPaymentService.confirmDepositPayment(String.valueOf(paymentId), transactionCode);
+        DepositPaymentResponseDTO response = depositPaymentService.confirmDepositPayment(String.valueOf(paymentId), transactionCode);
 
         // Assert
         assertNotNull(response);
@@ -260,7 +260,7 @@ class ContractFlowIntegrationTest {
     @Test
     void testContractFlowErrorHandling() {
         // Test contract not signed before deposit payment
-        DepositPaymentRequest request = new DepositPaymentRequest(
+        DepositPaymentRequestDTO request = new DepositPaymentRequestDTO(
                 "1", "1"
         );
 
@@ -289,11 +289,11 @@ class ContractFlowIntegrationTest {
 
     private void testSingleMemberDeposit(Long userId, BigDecimal expectedAmount) {
         // Arrange
-        DepositPaymentRequest request = new DepositPaymentRequest(
+        DepositPaymentRequestDTO request = new DepositPaymentRequestDTO(
                 userId.toString(), "1"
         );
 
-        DepositPaymentResponse response = DepositPaymentResponse.builder()
+        DepositPaymentResponseDTO response = DepositPaymentResponseDTO.builder()
                 .paymentId(userId)
                 .userId(userId)
                 .groupId(1L)
@@ -309,7 +309,7 @@ class ContractFlowIntegrationTest {
                 .thenReturn(response);
 
         // Act
-        DepositPaymentResponse result = depositPaymentService.createDepositPayment(request, httpRequest, null);
+        DepositPaymentResponseDTO result = depositPaymentService.createDepositPayment(request, httpRequest, null);
 
         // Assert
         assertNotNull(result);

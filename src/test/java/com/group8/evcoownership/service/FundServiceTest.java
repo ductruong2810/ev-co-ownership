@@ -1,9 +1,9 @@
 package com.group8.evcoownership.service;
 
-import com.group8.evcoownership.dto.FundBalanceResponse;
-import com.group8.evcoownership.dto.SharedFundCreateRequest;
-import com.group8.evcoownership.dto.SharedFundDto;
-import com.group8.evcoownership.dto.SharedFundUpdateRequest;
+import com.group8.evcoownership.dto.FundBalanceResponseDTO;
+import com.group8.evcoownership.dto.SharedFundCreateRequestDTO;
+import com.group8.evcoownership.dto.SharedFundDTO;
+import com.group8.evcoownership.dto.SharedFundUpdateRequestDTO;
 import com.group8.evcoownership.entity.OwnershipGroup;
 import com.group8.evcoownership.entity.SharedFund;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
@@ -92,7 +92,7 @@ class FundServiceTest {
         when(fundRepo.findByGroup_GroupId(groupId)).thenReturn(Optional.of(testFund));
 
         // When
-        FundBalanceResponse result = fundService.getBalanceByGroupId(groupId);
+        FundBalanceResponseDTO result = fundService.getBalanceByGroupId(groupId);
 
         // Then
         assertNotNull(result);
@@ -111,7 +111,7 @@ class FundServiceTest {
         BigDecimal newBalance = new BigDecimal("1000000");
         BigDecimal newTargetAmount = new BigDecimal("5000000");
 
-        SharedFundUpdateRequest request = new SharedFundUpdateRequest();
+        SharedFundUpdateRequestDTO request = new SharedFundUpdateRequestDTO();
         request.setBalance(newBalance);
         request.setTargetAmount(newTargetAmount);
 
@@ -131,7 +131,7 @@ class FundServiceTest {
     void create_WithTargetAmount_ShouldCreateFundWithCustomTargetAmount_Success() {
         // Given
         BigDecimal customTargetAmount = new BigDecimal("5000000");
-        SharedFundCreateRequest request = new SharedFundCreateRequest();
+        SharedFundCreateRequestDTO request = new SharedFundCreateRequestDTO();
         request.setGroupId(1L);
         request.setTargetAmount(customTargetAmount);
 
@@ -166,7 +166,7 @@ class FundServiceTest {
     @Test
     void create_WithoutTargetAmount_ShouldCreateFundWithDefaultTargetAmount_Success() {
         // Given
-        SharedFundCreateRequest request = new SharedFundCreateRequest();
+        SharedFundCreateRequestDTO request = new SharedFundCreateRequestDTO();
         request.setGroupId(1L);
         request.setTargetAmount(null); // Không nhập targetAmount
 
@@ -195,13 +195,13 @@ class FundServiceTest {
         when(fundRepo.findAll(pageable)).thenReturn(new PageImpl<>(List.of(testFund)));
 
         // When
-        List<SharedFundDto> result = fundService.list(pageable);
+        List<SharedFundDTO> result = fundService.list(pageable);
 
         // Then
         assertNotNull(result);
         assertEquals(1, result.size());
 
-        SharedFundDto dto = result.get(0);
+        SharedFundDTO dto = result.get(0);
         assertEquals(1L, dto.fundId());
         assertEquals(1L, dto.groupId());
         assertEquals(BigDecimal.ZERO, dto.balance());

@@ -1,9 +1,9 @@
 package com.group8.evcoownership.service;
 
 
-import com.group8.evcoownership.dto.VehicleCreateRequest;
-import com.group8.evcoownership.dto.VehicleResponse;
-import com.group8.evcoownership.dto.VehicleUpdateRequest;
+import com.group8.evcoownership.dto.VehicleCreateRequestDTO;
+import com.group8.evcoownership.dto.VehicleResponseDTO;
+import com.group8.evcoownership.dto.VehicleUpdateRequestDTO;
 import com.group8.evcoownership.entity.OwnershipGroup;
 import com.group8.evcoownership.entity.Vehicle;
 import com.group8.evcoownership.entity.VehicleImage;
@@ -30,8 +30,8 @@ public class VehicleService {
     private final VehicleImageRepository vehicleImageRepository;
     private final AzureBlobStorageService azureBlobStorageService;
 
-    private VehicleResponse toDto(Vehicle v) {
-        return new VehicleResponse(
+    private VehicleResponseDTO toDto(Vehicle v) {
+        return new VehicleResponseDTO(
                 v.getId(), v.getBrand(), v.getModel(),
                 v.getLicensePlate(), v.getChassisNumber(), v.getQrCode(),
                 v.getOwnershipGroup().getGroupId(), v.getVehicleValue(), v.getCreatedAt(), v.getUpdatedAt()
@@ -39,7 +39,7 @@ public class VehicleService {
     }
 
     @Transactional
-    public VehicleResponse create(VehicleCreateRequest req) {
+    public VehicleResponseDTO create(VehicleCreateRequestDTO req) {
         OwnershipGroup group = groupRepo.findById(req.groupId())
                 .orElseThrow(() -> new EntityNotFoundException("Group not found"));
         if (vehicleRepo.existsByOwnershipGroup_GroupId(req.groupId()))
@@ -81,7 +81,7 @@ public class VehicleService {
 
     // ======= Updte ============
     @Transactional
-    public VehicleResponse update(Long vehicleId, VehicleUpdateRequest req) {
+    public VehicleResponseDTO update(Long vehicleId, VehicleUpdateRequestDTO req) {
         var v = vehicleRepo.findById(vehicleId)
                 .orElseThrow(() -> new EntityNotFoundException("Vehicle not found"));
 
@@ -104,13 +104,13 @@ public class VehicleService {
 
 
     // ======== Get ==============
-    public VehicleResponse getById(Long vehicleId) {
+    public VehicleResponseDTO getById(Long vehicleId) {
         return vehicleRepo.findById(vehicleId)
                 .map(this::toDto)
                 .orElseThrow(() -> new EntityNotFoundException("Vehicle not found"));
     }
 
-    public Page<VehicleResponse> listByGroup(Long groupId, Pageable pageable) {
+    public Page<VehicleResponseDTO> listByGroup(Long groupId, Pageable pageable) {
         if (!groupRepo.existsById(groupId))
             throw new EntityNotFoundException("Group not found");
         return vehicleRepo.findByOwnershipGroupGroupId(groupId, pageable).map(this::toDto);

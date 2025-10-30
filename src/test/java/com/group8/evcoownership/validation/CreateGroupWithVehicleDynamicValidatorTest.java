@@ -1,6 +1,6 @@
 package com.group8.evcoownership.validation;
 
-import com.group8.evcoownership.dto.CreateGroupWithVehicleRequest;
+import com.group8.evcoownership.dto.CreateGroupWithVehicleRequestDTO;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -43,7 +43,7 @@ class CreateGroupWithVehicleDynamicValidatorTest {
 
     @Test
     void testValidCarRequest() {
-        CreateGroupWithVehicleRequest request = new CreateGroupWithVehicleRequest(
+        CreateGroupWithVehicleRequestDTO request = new CreateGroupWithVehicleRequestDTO(
                 "Test Group",
                 "Test Description",
                 "3",
@@ -58,13 +58,13 @@ class CreateGroupWithVehicleDynamicValidatorTest {
                 "CAR" // Explicit car type
         );
 
-        Set<ConstraintViolation<CreateGroupWithVehicleRequest>> violations = validator.validate(request);
+        Set<ConstraintViolation<CreateGroupWithVehicleRequestDTO>> violations = validator.validate(request);
         assertTrue(violations.isEmpty(), "Car request should be valid");
     }
 
     @Test
     void testValidMotorcycleRequest() {
-        CreateGroupWithVehicleRequest request = new CreateGroupWithVehicleRequest(
+        CreateGroupWithVehicleRequestDTO request = new CreateGroupWithVehicleRequestDTO(
                 "Test Group",
                 "Test Description",
                 "2",
@@ -79,13 +79,13 @@ class CreateGroupWithVehicleDynamicValidatorTest {
                 "MOTORCYCLE" // Explicit motorcycle type
         );
 
-        Set<ConstraintViolation<CreateGroupWithVehicleRequest>> violations = validator.validate(request);
+        Set<ConstraintViolation<CreateGroupWithVehicleRequestDTO>> violations = validator.validate(request);
         assertTrue(violations.isEmpty(), "Motorcycle request should be valid");
     }
 
     @Test
     void testAutoDetectCarByBrand() {
-        CreateGroupWithVehicleRequest request = new CreateGroupWithVehicleRequest(
+        CreateGroupWithVehicleRequestDTO request = new CreateGroupWithVehicleRequestDTO(
                 "Test Group",
                 "Test Description",
                 "3",
@@ -100,13 +100,13 @@ class CreateGroupWithVehicleDynamicValidatorTest {
                 null // No explicit type - should auto-detect
         );
 
-        Set<ConstraintViolation<CreateGroupWithVehicleRequest>> violations = validator.validate(request);
+        Set<ConstraintViolation<CreateGroupWithVehicleRequestDTO>> violations = validator.validate(request);
         assertTrue(violations.isEmpty(), "Should auto-detect car by brand");
     }
 
     @Test
     void testAutoDetectMotorcycleByBrand() {
-        CreateGroupWithVehicleRequest request = new CreateGroupWithVehicleRequest(
+        CreateGroupWithVehicleRequestDTO request = new CreateGroupWithVehicleRequestDTO(
                 "Test Group",
                 "Test Description",
                 "2",
@@ -121,13 +121,13 @@ class CreateGroupWithVehicleDynamicValidatorTest {
                 null // No explicit type - should auto-detect
         );
 
-        Set<ConstraintViolation<CreateGroupWithVehicleRequest>> violations = validator.validate(request);
+        Set<ConstraintViolation<CreateGroupWithVehicleRequestDTO>> violations = validator.validate(request);
         assertTrue(violations.isEmpty(), "Should auto-detect motorcycle by brand");
     }
 
     @Test
     void testInvalidCarLicensePlate() {
-        CreateGroupWithVehicleRequest request = new CreateGroupWithVehicleRequest(
+        CreateGroupWithVehicleRequestDTO request = new CreateGroupWithVehicleRequestDTO(
                 "Test Group",
                 "Test Description",
                 "3",
@@ -142,14 +142,14 @@ class CreateGroupWithVehicleDynamicValidatorTest {
                 "CAR"
         );
 
-        Set<ConstraintViolation<CreateGroupWithVehicleRequest>> violations = validator.validate(request);
+        Set<ConstraintViolation<CreateGroupWithVehicleRequestDTO>> violations = validator.validate(request);
         assertFalse(violations.isEmpty(), "Should fail validation for wrong license plate format");
         assertTrue(violations.stream().anyMatch(v -> v.getMessage().contains("License plate format is invalid")));
     }
 
     @Test
     void testInvalidMotorcycleLicensePlate() {
-        CreateGroupWithVehicleRequest request = new CreateGroupWithVehicleRequest(
+        CreateGroupWithVehicleRequestDTO request = new CreateGroupWithVehicleRequestDTO(
                 "Test Group",
                 "Test Description",
                 "2",
@@ -164,7 +164,7 @@ class CreateGroupWithVehicleDynamicValidatorTest {
                 "MOTORCYCLE"
         );
 
-        Set<ConstraintViolation<CreateGroupWithVehicleRequest>> violations = validator.validate(request);
+        Set<ConstraintViolation<CreateGroupWithVehicleRequestDTO>> violations = validator.validate(request);
         assertFalse(violations.isEmpty(), "Should fail validation for wrong license plate format");
         assertTrue(violations.stream().anyMatch(v -> v.getMessage().contains("License plate format is invalid")));
     }
@@ -173,7 +173,7 @@ class CreateGroupWithVehicleDynamicValidatorTest {
     void testInvalidImageTypeForCar() {
         String[] invalidImageTypes = new String[]{"VEHICLE", "INVALID_TYPE"};
 
-        CreateGroupWithVehicleRequest request = new CreateGroupWithVehicleRequest(
+        CreateGroupWithVehicleRequestDTO request = new CreateGroupWithVehicleRequestDTO(
                 "Test Group",
                 "Test Description",
                 "3",
@@ -188,7 +188,7 @@ class CreateGroupWithVehicleDynamicValidatorTest {
                 "CAR"
         );
 
-        Set<ConstraintViolation<CreateGroupWithVehicleRequest>> violations = validator.validate(request);
+        Set<ConstraintViolation<CreateGroupWithVehicleRequestDTO>> violations = validator.validate(request);
         assertFalse(violations.isEmpty(), "Should fail validation for invalid image type");
         assertTrue(violations.stream().anyMatch(v -> v.getMessage().contains("Invalid image type")));
     }
@@ -198,7 +198,7 @@ class CreateGroupWithVehicleDynamicValidatorTest {
         // Test với image types hợp lệ cho cả xe máy và xe ô tô
         String[] validImageTypes = new String[]{"VEHICLE", "FRONT"}; // Chỉ 2 types để match với 2 images
 
-        CreateGroupWithVehicleRequest request = new CreateGroupWithVehicleRequest(
+        CreateGroupWithVehicleRequestDTO request = new CreateGroupWithVehicleRequestDTO(
                 "Test Group",
                 "Test Description",
                 "2",
@@ -213,14 +213,14 @@ class CreateGroupWithVehicleDynamicValidatorTest {
                 "MOTORCYCLE"
         );
 
-        Set<ConstraintViolation<CreateGroupWithVehicleRequest>> violations = validator.validate(request);
+        Set<ConstraintViolation<CreateGroupWithVehicleRequestDTO>> violations = validator.validate(request);
         assertTrue(violations.isEmpty(), "Should be valid with common image types");
     }
 
     @Test
     void testAutoDetectByLicensePlateFormat() {
         // Test car detection by license plate when no brand provided
-        CreateGroupWithVehicleRequest carRequest = new CreateGroupWithVehicleRequest(
+        CreateGroupWithVehicleRequestDTO carRequest = new CreateGroupWithVehicleRequestDTO(
                 "Test Group",
                 "Test Description",
                 "3",
@@ -235,11 +235,11 @@ class CreateGroupWithVehicleDynamicValidatorTest {
                 null // No explicit type
         );
 
-        Set<ConstraintViolation<CreateGroupWithVehicleRequest>> carViolations = validator.validate(carRequest);
+        Set<ConstraintViolation<CreateGroupWithVehicleRequestDTO>> carViolations = validator.validate(carRequest);
         assertTrue(carViolations.isEmpty(), "Should auto-detect car by license plate format");
 
         // Test motorcycle detection by license plate when no brand provided
-        CreateGroupWithVehicleRequest motorcycleRequest = new CreateGroupWithVehicleRequest(
+        CreateGroupWithVehicleRequestDTO motorcycleRequest = new CreateGroupWithVehicleRequestDTO(
                 "Test Group",
                 "Test Description",
                 "2",
@@ -254,7 +254,7 @@ class CreateGroupWithVehicleDynamicValidatorTest {
                 null // No explicit type
         );
 
-        Set<ConstraintViolation<CreateGroupWithVehicleRequest>> motorcycleViolations = validator.validate(motorcycleRequest);
+        Set<ConstraintViolation<CreateGroupWithVehicleRequestDTO>> motorcycleViolations = validator.validate(motorcycleRequest);
         assertTrue(motorcycleViolations.isEmpty(), "Should auto-detect motorcycle by license plate format");
     }
 }

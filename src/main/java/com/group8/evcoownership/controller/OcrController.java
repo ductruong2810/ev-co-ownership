@@ -1,6 +1,6 @@
 package com.group8.evcoownership.controller;
 
-import com.group8.evcoownership.dto.GroupWithVehicleResponse;
+import com.group8.evcoownership.dto.GroupWithVehicleResponseDTO;
 import com.group8.evcoownership.service.OcrService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -25,7 +25,7 @@ public class OcrController {
     @PostMapping("/extract-vehicle-info")
     @Operation(summary = "Trích xuất thông tin xe từ hình ảnh",
             description = "Sử dụng OCR để đọc và trích xuất thông tin brand, model từ hình ảnh cà vẹt xe")
-    public CompletableFuture<GroupWithVehicleResponse.AutoFillInfo> extractVehicleInfo(
+    public CompletableFuture<GroupWithVehicleResponseDTO.AutoFillInfo> extractVehicleInfo(
             @RequestParam("image") MultipartFile image) {
 
         long startTime = System.currentTimeMillis();

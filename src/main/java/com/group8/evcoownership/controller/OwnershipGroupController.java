@@ -28,8 +28,8 @@ public class OwnershipGroupController {
 
     @PostMapping("/with-vehicle")
     @Operation(summary = "Tạo nhóm với phương tiện", description = "Tạo nhóm đồng sở hữu mới kèm theo phương tiện và nhiều hình ảnh với OCR auto-fill")
-    public GroupWithVehicleResponse createGroupWithVehicle(
-            @Valid @ModelAttribute CreateGroupWithVehicleRequest request,
+    public GroupWithVehicleResponseDTO createGroupWithVehicle(
+            @Valid @ModelAttribute CreateGroupWithVehicleRequestDTO request,
             @AuthenticationPrincipal String userEmail) {
         Integer memberCapacity = Integer.parseInt(request.memberCapacity());
         return service.createGroupWithVehicle(
@@ -41,21 +41,21 @@ public class OwnershipGroupController {
 
     @PutMapping("/{groupId}")
     @Operation(summary = "Cập nhật nhóm", description = "Chủ nhóm hoặc thành viên có quyền cập nhật thông tin nhóm")
-    public OwnershipGroupResponse updateByUser(@PathVariable Long groupId,
-                                               @RequestBody @Valid OwnershipGroupUpdateRequest req) {
+    public OwnershipGroupResponseDTO updateByUser(@PathVariable Long groupId,
+                                                  @RequestBody @Valid OwnershipGroupUpdateRequestDTO req) {
         return service.updateByUser(groupId, req);
     }
 
     @PatchMapping("/{groupId}/status")
     @Operation(summary = "Cập nhật trạng thái nhóm", description = "Thay đổi trạng thái hoạt động của nhóm")
-    public OwnershipGroupResponse updateStatus(@PathVariable Long groupId,
-                                               @RequestBody @Valid OwnershipGroupStatusUpdateRequest req) {
+    public OwnershipGroupResponseDTO updateStatus(@PathVariable Long groupId,
+                                                  @RequestBody @Valid OwnershipGroupStatusUpdateRequestDTO req) {
         return service.updateStatus(groupId, req);
     }
 
     @GetMapping("/{groupId}")
     @Operation(summary = "Lấy chi tiết nhóm", description = "Trả về thông tin chi tiết của một nhóm theo ID")
-    public OwnershipGroupResponse getById(@PathVariable Long groupId, @AuthenticationPrincipal String userEmail) {
+    public OwnershipGroupResponseDTO getById(@PathVariable Long groupId, @AuthenticationPrincipal String userEmail) {
         return service.getByIdWithUserRole(groupId, userEmail);
     }
 
@@ -65,7 +65,7 @@ public class OwnershipGroupController {
     @GetMapping("/staff/all")
     @Operation(summary = "Danh sách tất cả nhóm (staff)", description = "Chỉ STAFF/ADMIN có thể xem, hỗ trợ lọc và phân trang với custom vehicle description")
     @PreAuthorize("hasRole('STAFF') or hasRole('ADMIN')")
-    public Page<StaffOwnershipGroupResponse> listAllGroups(
+    public Page<StaffOwnershipGroupResponseDTO> listAllGroups(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) GroupStatus status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
@@ -82,7 +82,7 @@ public class OwnershipGroupController {
      */
     @GetMapping("/my-groups")
     @Operation(summary = "Nhóm của tôi", description = "Lấy tất cả nhóm mà người dùng hiện tại tạo hoặc tham gia")
-    public List<OwnershipGroupResponse> getMyGroups(@AuthenticationPrincipal String userEmail) {
+    public List<OwnershipGroupResponseDTO> getMyGroups(@AuthenticationPrincipal String userEmail) {
         return service.getGroupsByUser(userEmail);
     }
 

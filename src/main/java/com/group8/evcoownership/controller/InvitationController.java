@@ -1,8 +1,8 @@
 package com.group8.evcoownership.controller;
 
-import com.group8.evcoownership.dto.InvitationAcceptRequest;
-import com.group8.evcoownership.dto.InvitationCreateRequest;
-import com.group8.evcoownership.dto.InvitationResponse;
+import com.group8.evcoownership.dto.InvitationAcceptRequestDTO;
+import com.group8.evcoownership.dto.InvitationCreateRequestDTO;
+import com.group8.evcoownership.dto.InvitationResponseDTO;
 import com.group8.evcoownership.service.InvitationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -44,12 +44,12 @@ public class InvitationController {
                     Nếu email đã có invitation PENDING trong cùng group, hệ thống sẽ tự động resend (cập nhật OTP, thời hạn, gửi lại mail).
                     """
     )
-    public ResponseEntity<InvitationResponse> createOrResend(
+    public ResponseEntity<InvitationResponseDTO> createOrResend(
             @PathVariable Long groupId,
-            @RequestBody @Valid InvitationCreateRequest req,
+            @RequestBody @Valid InvitationCreateRequestDTO req,
             Authentication auth
     ) {
-        InvitationResponse response = invitationService.create(groupId, req, auth);
+        InvitationResponseDTO response = invitationService.create(groupId, req, auth);
         return ResponseEntity.ok(response);
     }
 
@@ -62,7 +62,7 @@ public class InvitationController {
      */
     @GetMapping("/groups/{groupId}/invitations")
     @Operation(summary = "Danh sách lời mời theo nhóm", description = "Lấy danh sách lời mời của một group (phân trang).")
-    public ResponseEntity<Page<InvitationResponse>> listByGroup(
+    public ResponseEntity<Page<InvitationResponseDTO>> listByGroup(
             @PathVariable Long groupId,
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
@@ -76,7 +76,7 @@ public class InvitationController {
      */
     @GetMapping("/invitations/{invitationId}")
     @Operation(summary = "Chi tiết lời mời", description = "Lấy thông tin chi tiết của lời mời cụ thể.")
-    public ResponseEntity<InvitationResponse> getOne(
+    public ResponseEntity<InvitationResponseDTO> getOne(
             @PathVariable Long invitationId,
             Authentication auth
     ) {
@@ -107,8 +107,8 @@ public class InvitationController {
     @PostMapping("/invitations/accept")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Chấp nhận lời mời", description = "Người được mời nhập OTP để tham gia group.")
-    public ResponseEntity<InvitationResponse> accept(
-            @RequestBody @Valid InvitationAcceptRequest req,
+    public ResponseEntity<InvitationResponseDTO> accept(
+            @RequestBody @Valid InvitationAcceptRequestDTO req,
             Authentication auth
     ) {
         return ResponseEntity.ok(invitationService.accept(req, auth));

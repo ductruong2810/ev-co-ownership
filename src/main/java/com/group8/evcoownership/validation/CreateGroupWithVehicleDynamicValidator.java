@@ -1,6 +1,6 @@
 package com.group8.evcoownership.validation;
 
-import com.group8.evcoownership.dto.CreateGroupWithVehicleRequest;
+import com.group8.evcoownership.dto.CreateGroupWithVehicleRequestDTO;
 import com.group8.evcoownership.enums.VehicleType;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
@@ -15,7 +15,7 @@ import java.util.regex.Pattern;
  * Tự động phát hiện loại xe và áp dụng validation tương ứng
  */
 @Slf4j
-public class CreateGroupWithVehicleDynamicValidator implements ConstraintValidator<ValidCreateGroupWithVehicleDynamic, CreateGroupWithVehicleRequest> {
+public class CreateGroupWithVehicleDynamicValidator implements ConstraintValidator<ValidCreateGroupWithVehicleDynamic, CreateGroupWithVehicleRequestDTO> {
 
     // Tất cả image types hợp lệ (linh hoạt cho cả xe máy và xe ô tô)
     private static final String[] ALL_VALID_IMAGE_TYPES = {
@@ -45,7 +45,7 @@ public class CreateGroupWithVehicleDynamicValidator implements ConstraintValidat
     }
 
     @Override
-    public boolean isValid(CreateGroupWithVehicleRequest request, ConstraintValidatorContext context) {
+    public boolean isValid(CreateGroupWithVehicleRequestDTO request, ConstraintValidatorContext context) {
         boolean isValid = true;
 
         try {
@@ -108,7 +108,7 @@ public class CreateGroupWithVehicleDynamicValidator implements ConstraintValidat
     /**
      * Tự động phát hiện loại xe dựa trên brand và format biển số
      */
-    private String detectVehicleType(CreateGroupWithVehicleRequest request) {
+    private String detectVehicleType(CreateGroupWithVehicleRequestDTO request) {
         // Bước 1: Kiểm tra brand
         String brand = request.brand();
         if (brand != null && !brand.trim().isEmpty()) {
