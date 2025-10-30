@@ -11,6 +11,7 @@ import com.group8.evcoownership.entity.Maintenance;
 import com.group8.evcoownership.repository.IncidentRepository;
 import com.group8.evcoownership.repository.MaintenanceRepository;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
+import com.group8.evcoownership.repository.OwnershipShareRepository;
 import com.group8.evcoownership.repository.UsageBookingRepository;
 import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.repository.VehicleCheckRepository;
@@ -23,7 +24,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.springframework.data.domain.PageRequest;
 
 @Service
@@ -34,6 +37,7 @@ public class WeeklyCalendarService {
     private final UsageBookingRepository usageBookingRepository;
     private final VehicleRepository vehicleRepository;
     private final OwnershipGroupRepository groupRepository;
+    private final OwnershipShareRepository ownershipShareRepository;
     private final UserRepository userRepository;
     private final VehicleCheckRepository vehicleCheckRepository;
     private final MaintenanceRepository maintenanceRepository;
@@ -85,7 +89,8 @@ public class WeeklyCalendarService {
         int remainingQuotaSlots = totalQuotaSlots - usedQuotaSlots;
 
         // Get dashboard summary
-        WeeklyCalendarDashboardDTO dashboard = getDashboardSummary(vehicle.getId(), group.getGroupId(), vehicle);
+        WeeklyCalendarDashboardDTO dashboard = getDashboardSummary(
+                vehicle.getId(), group.getGroupId(), vehicle, weekStart, userId);
 
         return WeeklyCalendarResponseDTO.builder()
                 .weekStart(weekStart)
@@ -103,7 +108,8 @@ public class WeeklyCalendarService {
     /**
      * Get dashboard summary for vehicle and group
      */
-    private WeeklyCalendarDashboardDTO getDashboardSummary(Long vehicleId, Long groupId, Vehicle vehicle) {
+    private WeeklyCalendarDashboardDTO getDashboardSummary(Long vehicleId, Long groupId, Vehicle vehicle, 
+                                                           LocalDate weekStart, Long userId) {
         // 1. Get vehicle status from latest POST_USE check
         VehicleCheck latestCheck = getLatestVehicleCheck(vehicleId, groupId);
         
@@ -126,6 +132,25 @@ public class WeeklyCalendarService {
         // 4. Determine vehicleStatus
         String vehicleStatus = determineVehicleStatus(vehicleId, groupId);
 
+        // 5. Calculate booking statistics for the week
+        LocalDateTime weekStartDateTime = weekStart.atStartOfDay();
+        LocalDateTime weekEndDateTime = weekStart.plusDays(7).atStartOfDay();
+        
+        // Count total bookings for the week (CONFIRMED and PENDING only)
+        int totalBookings = countTotalBookingsInWeek(vehicleId, weekStartDateTime, weekEndDateTime);
+        
+        // Count user bookings for the week
+        int userBookings = countUserBookingsInWeek(vehicleId, userId, weekStartDateTime, weekEndDateTime);
+        
+        // Get user's ownership percentage (tỷ lệ sở hữu)
+        Double bookingRatio = ownershipShareRepository.findById_UserIdAndGroup_GroupId(userId, groupId)
+                .map(share -> {
+                    // Convert BigDecimal to Double and round to 1 decimal place
+                    double percentage = share.getOwnershipPercentage().doubleValue();
+                    return Math.round(percentage * 10.0) / 10.0;
+                })
+                .orElse(null);
+
         return WeeklyCalendarDashboardDTO.builder()
                 .groupId(groupId)
                 .vehicleId(vehicleId)
@@ -139,7 +164,47 @@ public class WeeklyCalendarService {
                 .lastMaintenanceDate(maintenanceDates.lastMaintenanceDate)
                 .nextMaintenanceDate(maintenanceDates.nextMaintenanceDate)
                 .maintenanceStatus(maintenanceStatus)
+                .totalBookings(totalBookings)
+                .userBookings(userBookings)
+                .bookingRatio(bookingRatio)
                 .build();
+    }
+    
+    /**
+     * Count total bookings for vehicle in the week (CONFIRMED and PENDING only)
+     * Counts unique bookings that overlap with the week period
+     */
+    private int countTotalBookingsInWeek(Long vehicleId, LocalDateTime weekStart, LocalDateTime weekEnd) {
+        // Use findAffectedBookings pattern to get all bookings that overlap with the week
+        List<UsageBooking> bookings = usageBookingRepository.findAffectedBookings(
+                vehicleId, weekStart, weekEnd);
+        
+        // Count unique bookings (CONFIRMED and PENDING only, exclude BUFFER)
+        Set<Long> uniqueBookingIds = new HashSet<>();
+        bookings.stream()
+                .filter(b -> b.getStatus() == BookingStatus.CONFIRMED || b.getStatus() == BookingStatus.PENDING)
+                .forEach(b -> uniqueBookingIds.add(b.getId()));
+        
+        return uniqueBookingIds.size();
+    }
+    
+    /**
+     * Count user bookings for vehicle in the week
+     * Counts unique bookings that overlap with the week period
+     */
+    private int countUserBookingsInWeek(Long vehicleId, Long userId, LocalDateTime weekStart, LocalDateTime weekEnd) {
+        // Use findAffectedBookings to get all bookings for vehicle that overlap with the week
+        List<UsageBooking> bookings = usageBookingRepository.findAffectedBookings(
+                vehicleId, weekStart, weekEnd);
+        
+        // Filter by user and count unique bookings (CONFIRMED and PENDING only)
+        Set<Long> uniqueBookingIds = new HashSet<>();
+        bookings.stream()
+                .filter(b -> b.getUser() != null && b.getUser().getUserId().equals(userId))
+                .filter(b -> b.getStatus() == BookingStatus.CONFIRMED || b.getStatus() == BookingStatus.PENDING)
+                .forEach(b -> uniqueBookingIds.add(b.getId()));
+        
+        return uniqueBookingIds.size();
     }
 
     /**
@@ -227,19 +292,23 @@ public class WeeklyCalendarService {
 
     /**
      * Determine vehicle status for vehicle and group
-     * Priority: Maintenance PENDING > VehicleCheck Issues > Incident unresolved
+     * Priority: Active Maintenance (APPROVED today) > VehicleCheck Issues > Incident unresolved
+     * Note: Only show "Under Maintenance" when maintenance is actually being performed (APPROVED today)
      */
     private String determineVehicleStatus(Long vehicleId, Long groupId) {
-        boolean hasPendingMaintenance = maintenanceRepository.existsByVehicle_IdAndGroupIdAndStatusPending(vehicleId, groupId);
+        // Check if maintenance is being performed today (APPROVED with ApprovalDate = today)
+        boolean hasActiveMaintenance = maintenanceRepository.existsActiveMaintenance(vehicleId, groupId);
         boolean hasVehicleCheckIssues = vehicleCheckRepository.existsPostUseCheckWithIssuesByVehicleAndGroup(vehicleId, groupId);
         boolean hasUnresolvedIncidents = incidentRepository.existsUnresolvedIncidentsByVehicleIdAndGroupId(vehicleId, groupId);
         
-        if (hasPendingMaintenance) {
+        if (hasActiveMaintenance) {
             return "Under Maintenance";
+        } else if (hasVehicleCheckIssues && hasUnresolvedIncidents) {
+            return "Has Issues (Vehicle Check & Incident)";
         } else if (hasVehicleCheckIssues) {
-            return "Has Issues";
+            return "Has Issues (Vehicle Check)";
         } else if (hasUnresolvedIncidents) {
-            return "Has Issues";
+            return "Has Issues (Incident)";
         } else {
             return "Good";
         }
