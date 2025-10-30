@@ -53,7 +53,7 @@ public class VehicleImageApprovalService {
 
         // Lấy tất cả hình ảnh của vehicle
         List<VehicleImage> images = vehicleImageRepository.findByVehicleId(vehicle.getId());
-        List<VehicleImageResponse> imageResponses = mapToResponses(images);
+        List<VehicleImageResponseDTO> imageResponses = mapToResponses(images);
         ImageCountsDTO counts = computeCounts(images);
 
         return VehicleWithImagesResponseDTO.builder()
@@ -305,7 +305,7 @@ public class VehicleImageApprovalService {
         }
     }
 
-    private List<VehicleImageResponse> mapToResponses(List<VehicleImage> images) {
+    private List<VehicleImageResponseDTO> mapToResponses(List<VehicleImage> images) {
         return images.stream().map(this::toResponse).collect(Collectors.toList());
     }
 
