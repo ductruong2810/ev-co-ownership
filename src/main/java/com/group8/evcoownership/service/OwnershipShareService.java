@@ -384,7 +384,7 @@ public class OwnershipShareService {
                 .canEdit(true)
                 .status(ownershipStatus)
                 .updatedAt(share.getUpdatedAt())
-                .message("Tỷ lệ sở hữu đã được đặt lại về 0%")
+                .message("Ownership percentage has been reset to 0%")
                 .build();
     }
 

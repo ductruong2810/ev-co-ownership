@@ -195,13 +195,13 @@ public class WeeklyCalendarService {
 
         // Suggestion dựa trên quota
         if (calendar.getUserQuota().getRemainingHours() > 20) {
-            suggestions.add("Bạn còn " + calendar.getUserQuota().getRemainingHours() +
-                    " giờ chưa sử dụng. Nên book thêm để tận dụng quota!");
+            suggestions.add("You have " + calendar.getUserQuota().getRemainingHours() +
+                    " unused hours left. Consider booking more to use your quota!");
         }
 
         if (calendar.getUserQuota().getRemainingHours() < 5) {
-            suggestions.add("Bạn chỉ còn " + calendar.getUserQuota().getRemainingHours() +
-                    " giờ. Hãy cân nhắc khi book!");
+            suggestions.add("You only have " + calendar.getUserQuota().getRemainingHours() +
+                    " hours left. Please book carefully!");
         }
 
         // Suggestion dựa trên availability
@@ -211,7 +211,7 @@ public class WeeklyCalendarService {
                 .count();
 
         if (availableSlots < 5) {
-            suggestions.add("Tuần này còn ít slot trống (" + availableSlots + " slots). Hãy book sớm!");
+            suggestions.add("There are few available slots this week (" + availableSlots + " slots). Book soon!");
         }
 
         return suggestions;

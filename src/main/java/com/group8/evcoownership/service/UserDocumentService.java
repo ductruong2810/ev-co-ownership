@@ -53,7 +53,7 @@ public class UserDocumentService {
                 log.error("Duplicate files detected: frontHash={}, backHash={}",
                         frontHash.substring(0, 8), backHash.substring(0, 8));
                 throw new IllegalArgumentException(
-                        "Ảnh mặt trước và mặt sau không được giống nhau. Vui lòng chọn 2 ảnh khác nhau."
+                        "Front and back images must be different. Please choose two different images."
                 );
             }
 
@@ -62,11 +62,11 @@ public class UserDocumentService {
 
         } catch (IOException e) {
             log.error("Error calculating file hash: {}", e.getMessage());
-            throw new RuntimeException("Không thể xử lý file. Vui lòng thử lại.");
+            throw new RuntimeException("Unable to process file. Please try again.");
         }
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("User không tồn tại"));
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         Map<String, UserDocument> results = new HashMap<>();
 
@@ -94,7 +94,7 @@ public class UserDocumentService {
                 }
             });
 
-            throw new RuntimeException("Upload thất bại. Vui lòng thử lại: " + e.getMessage());
+            throw new RuntimeException("Upload failed. Please try again: " + e.getMessage());
         }
 
         return results;
@@ -109,7 +109,7 @@ public class UserDocumentService {
             return hash;
         } catch (IOException e) {
             log.error("Error reading file bytes: {}", e.getMessage());
-            throw new IOException("Không thể đọc file. Vui lòng thử lại.");
+            throw new IOException("Unable to read file. Please try again.");
         }
     }
 
@@ -142,7 +142,7 @@ public class UserDocumentService {
     // ================= GET ALL MY DOCUMENTS =================
     public List<UserDocument> getMyDocuments(String email) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("User không tồn tại"));
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         return userDocumentRepository.findByUserId(user.getUserId());
     }
@@ -159,22 +159,22 @@ public class UserDocumentService {
     public void deleteDocument(String email, Long documentId) {
         // Validate ID
         if (documentId == null || documentId <= 0) {
-            throw new IllegalArgumentException("ID tài liệu không hợp lệ");
+            throw new IllegalArgumentException("Invalid document ID");
         }
 
         // Tìm user
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thông tin người dùng"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         // Tìm document
         UserDocument document = userDocumentRepository.findById(documentId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        String.format("Không tìm thấy tài liệu với ID: %d. Vui lòng kiểm tra lại", documentId)
+                        String.format("Document not found with ID: %d. Please check again", documentId)
                 ));
 
         // Check ownership
         if (!document.getUserId().equals(user.getUserId())) {
-            throw new UnauthorizedException("Bạn không có quyền xóa tài liệu này");
+            throw new UnauthorizedException("You do not have permission to delete this document");
         }
 
         // Delete từ Azure Blob Storage
@@ -182,7 +182,7 @@ public class UserDocumentService {
             azureBlobStorageService.deleteFile(document.getImageUrl());
         } catch (Exception e) {
             log.error("Failed to delete file from Azure: {}", e.getMessage(), e);
-            throw new FileStorageException("Không thể xóa file từ hệ thống lưu trữ. Vui lòng thử lại");
+            throw new FileStorageException("Unable to delete file from storage. Please try again");
         }
 
         // Delete từ database
@@ -191,29 +191,29 @@ public class UserDocumentService {
             log.info("Document deleted successfully: documentId={}, userId={}", documentId, user.getUserId());
         } catch (Exception e) {
             log.error("Failed to delete document from database: {}", e.getMessage(), e);
-            throw new RuntimeException("Không thể xóa thông tin tài liệu. Vui lòng thử lại");
+            throw new RuntimeException("Unable to delete document information. Please try again");
         }
     }
 
     // ================= VALIDATION HELPERS =================
     private void validateDocumentType(String documentType) {
         if (!documentType.equals("CITIZEN_ID") && !documentType.equals("DRIVER_LICENSE")) {
-            throw new IllegalArgumentException("DocumentType phải là CITIZEN_ID hoặc DRIVER_LICENSE");
+            throw new IllegalArgumentException("DocumentType must be CITIZEN_ID or DRIVER_LICENSE");
         }
     }
 
     private void validateImage(MultipartFile file) {
         if (file.isEmpty()) {
-            throw new IllegalArgumentException("File không được để trống");
+            throw new IllegalArgumentException("File must not be empty");
         }
 
         if (file.getSize() > 10 * 1024 * 1024) {
-            throw new IllegalArgumentException("File quá lớn. Kích thước tối đa: 10MB");
+            throw new IllegalArgumentException("File is too large. Maximum size: 10MB");
         }
 
         String contentType = file.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
-            throw new IllegalArgumentException("File phải là ảnh (jpg, png, ...)");
+            throw new IllegalArgumentException("File must be an image (jpg, png, ...)");
         }
     }
 }
