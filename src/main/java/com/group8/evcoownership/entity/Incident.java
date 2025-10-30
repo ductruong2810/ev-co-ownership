@@ -2,10 +2,7 @@ package com.group8.evcoownership.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.Nationalized;
 
 import java.math.BigDecimal;
@@ -18,70 +15,52 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class Incident {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "IncidentId", nullable = false)
     private Long id;
 
+    // FK -> UsageBooking
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "BookingId", nullable = false)
     private UsageBooking booking;
 
-    @Column(name = "IncidentType", length = 50)
-    private String incidentType; // BATTERY_FAILURE, ACCIDENT, TECHNICAL_ISSUE, DAMAGE
+    // FK -> Users (người gặp sự cố)
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "UserId", nullable = false)
+    private User user;
 
     @Nationalized
     @Lob
     @Column(name = "Description")
     private String description;
 
-    @Column(name = "EstimatedCost", precision = 12, scale = 2)
-    private BigDecimal estimatedCost;
-
     @Column(name = "ActualCost", precision = 12, scale = 2)
     private BigDecimal actualCost;
-
-    @Column(name = "Status", length = 20)
-    private String status; // REPORTED, INVESTIGATING, RESOLVED
 
     @Nationalized
     @Lob
     @Column(name = "ImageUrls")
-    private String imageUrls; // JSON array of image URLs
+    private String imageUrls; // có thể chứa danh sách ảnh dạng JSON hoặc chuỗi phân cách bằng dấu ;
 
-    @Column(name = "IncidentDate")
-    private LocalDateTime incidentDate;
+    @Column(name = "Status", length = 20, nullable = false)
+    private String status; // PENDING | APPROVED | REJECTED
 
-    @Column(name = "ResolvedDate")
-    private LocalDateTime resolvedDate;
-
-    @Nationalized
-    @Column(name = "Notes", length = 1000)
-    private String notes; // ghi chú ngắn, optional
-
+    // FK -> Users (staff duyệt)
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "ResolvedBy")
-    private User resolvedBy;
+    @JoinColumn(name = "ApprovedBy")
+    private User approvedBy;
 
-    @Column(name = "CreatedAt")
+    @Column(name = "CreatedAt", nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist
     public void onCreate() {
-        createdAt = LocalDateTime.now();
-        if (incidentDate == null) {
-            incidentDate = LocalDateTime.now();
-        }
-    }
-
-    @PreUpdate
-    public void touchResolvedDate() {
-        if (resolvedDate == null && status != null) {
-            String st = status.trim().toUpperCase();
-            if ("RESOLVED".equals(st)) {
-                resolvedDate = LocalDateTime.now();
-            }
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
         }
     }
 }
