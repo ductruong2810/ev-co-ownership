@@ -1,5 +1,6 @@
 package com.group8.evcoownership.service;
 
+import com.group8.evcoownership.dto.MaintenanceBookingRequestDTO;
 import com.group8.evcoownership.entity.Maintenance;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.entity.Vehicle;
@@ -39,11 +40,11 @@ public class MaintenanceService {
 
         Maintenance maintenance = Maintenance.builder()
                 .vehicle(vehicle)
-                .requestedBy(technician.getUserId())
-                .requestDate(LocalDateTime.now())
+                .requestedBy(technician)
+                .createdAt(LocalDateTime.now())
                 .description(description)
-                .estimatedCost(estimatedCost)
-                .maintenanceStatus("PENDING")
+                .actualCost(estimatedCost)
+                .status("PENDING")
                 .build();
 
         Maintenance savedMaintenance = maintenanceRepository.save(maintenance);
@@ -79,24 +80,17 @@ public class MaintenanceService {
 
         // Update maintenance status
         maintenance.setApprovedBy(approver);
-        maintenance.setApprovalDate(LocalDateTime.now());
-        maintenance.setMaintenanceStatus("APPROVED");
+        maintenance.setStatus("APPROVED");
         maintenanceRepository.save(maintenance);
 
         // Tạo maintenance booking để block thời gian
-        var maintenanceBookingRequest = new com.group8.evcoownership.dto.MaintenanceBookingRequestDTO();
-        maintenanceBookingRequest.setVehicleId(maintenance.getVehicle().getId());
-        maintenanceBookingRequest.setStartDateTime(startDateTime);
-        maintenanceBookingRequest.setEndDateTime(endDateTime);
-        maintenanceBookingRequest.setReason("Maintenance approved: " + maintenance.getDescription());
-        maintenanceBookingRequest.setCancelAffectedBookings(true);
-        maintenanceBookingRequest.setNotifyUsers(true);
+        var maintenanceBookingRequest = createMaintenanceBookingRequest(maintenance, startDateTime, endDateTime);
 
         // Cancel bookings và gửi notifications
         Map<String, Object> result = usageBookingService.createMaintenanceBooking(maintenanceBookingRequest);
 
         // Gửi notification cho tất cả users trong group về maintenance
-        List<User> groupUsers = getUsersInOwnershipGroup(maintenance.getVehicle().getId());
+        List<User> groupUsers = getUsersInOwnershipGroup();
         String title = "Vehicle Maintenance Scheduled";
         String message = String.format("Vehicle %s will be under maintenance from %s to %s. Reason: %s",
                 maintenance.getVehicle().getLicensePlate(),
@@ -114,9 +108,23 @@ public class MaintenanceService {
     }
 
     // Lấy tất cả users trong ownership group của vehicle
-    private List<User> getUsersInOwnershipGroup(Long vehicleId) {
+    private List<User> getUsersInOwnershipGroup() {
         // TODO: Implement logic to get all users in the vehicle's ownership group
         // This would require joining Vehicle -> OwnershipGroup -> OwnershipShare -> User
         return List.of(); // Placeholder
+    }
+
+    private MaintenanceBookingRequestDTO createMaintenanceBookingRequest(
+            Maintenance maintenance,
+            LocalDateTime startDateTime,
+            LocalDateTime endDateTime) {
+        var maintenanceBookingRequest = new com.group8.evcoownership.dto.MaintenanceBookingRequestDTO();
+        maintenanceBookingRequest.setVehicleId(maintenance.getVehicle().getId());
+        maintenanceBookingRequest.setStartDateTime(startDateTime);
+        maintenanceBookingRequest.setEndDateTime(endDateTime);
+        maintenanceBookingRequest.setReason("Maintenance approved: " + maintenance.getDescription());
+        maintenanceBookingRequest.setCancelAffectedBookings(true);
+        maintenanceBookingRequest.setNotifyUsers(true);
+        return maintenanceBookingRequest;
     }
 }
