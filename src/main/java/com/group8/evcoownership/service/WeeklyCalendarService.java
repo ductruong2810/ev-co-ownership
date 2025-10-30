@@ -290,7 +290,7 @@ public class WeeklyCalendarService {
         booking.setVehicle(vehicle);
         booking.setStartDateTime(request.getStartDateTime());
         booking.setEndDateTime(request.getEndDateTime());
-        booking.setStatus(BookingStatus.PENDING);
+        booking.setStatus(BookingStatus.CONFIRMED);
 
         UsageBooking savedBooking = usageBookingRepository.save(booking);
 
@@ -300,7 +300,7 @@ public class WeeklyCalendarService {
 
         return FlexibleBookingResponseDTO.builder()
                 .bookingId(savedBooking.getId())
-                .status("PENDING")
+                .status("CONFIRMED")
                 .message(overnightBooking ? "Overnight booking created successfully" : "Booking created successfully")
                 .totalHours(newBookingHours)
                 .overnightBooking(overnightBooking)
