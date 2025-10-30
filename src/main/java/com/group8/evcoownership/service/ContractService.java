@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -260,15 +261,7 @@ public class ContractService {
 
         // Gửi notification cho tất cả thành viên (kèm dữ liệu chi tiết để email không bị N/A)
         if (notificationOrchestrator != null) {
-            java.util.Map<String, Object> emailData = new java.util.HashMap<>();
-            emailData.put("groupId", group.getGroupId());
-            emailData.put("contractId", savedContract.getId());
-            emailData.put("groupName", group.getGroupName());
-            emailData.put("startDate", savedContract.getStartDate());
-            emailData.put("endDate", savedContract.getEndDate());
-            emailData.put("depositAmount", savedContract.getRequiredDepositAmount());
-            emailData.put("status", savedContract.getApprovalStatus());
-
+            Map<String, Object> emailData = notificationOrchestrator.buildContractEmailData(savedContract);
             notificationOrchestrator.sendGroupNotification(
                     groupId,
                     NotificationType.CONTRACT_CREATED,
@@ -770,21 +763,12 @@ public class ContractService {
 
         // Gửi notification cho tất cả thành viên với lý do reject
         if (notificationOrchestrator != null) {
-            java.util.Map<String, Object> emailData = new java.util.HashMap<>();
-            emailData.put("groupId", groupId);
-            emailData.put("contractId", savedContract.getId());
-            emailData.put("groupName", savedContract.getGroup().getGroupName());
-            emailData.put("startDate", savedContract.getStartDate());
-            emailData.put("endDate", savedContract.getEndDate());
-            emailData.put("depositAmount", savedContract.getRequiredDepositAmount());
-            emailData.put("status", savedContract.getApprovalStatus());
-            emailData.put("rejectionReason", savedContract.getRejectionReason());
-
+            Map<String, Object> emailData = notificationOrchestrator.buildContractEmailData(savedContract);
             notificationOrchestrator.sendGroupNotification(
                     groupId,
                     NotificationType.CONTRACT_REJECTED,
-                    "Hợp đồng bị từ chối",
-                    "Hợp đồng của nhóm đã bị từ chối bởi quản trị viên. Tiền cọc đã được hoàn lại cho các thành viên đã đóng.",
+                    "Contract Rejected",
+                    "The group's contract has been rejected by the administrator. Deposits have been refunded to members who paid.",
                     emailData
             );
         }
@@ -825,7 +809,7 @@ public class ContractService {
         BigDecimal totalPaid = BigDecimal.ZERO;
         int paidMembers = 0;
 
-        List<Map<String, Object>> memberDetails = new java.util.ArrayList<>();
+        List<Map<String, Object>> memberDetails = new ArrayList<>();
 
         for (OwnershipShare share : shares) {
             Map<String, Object> memberInfo = new LinkedHashMap<>();
@@ -833,7 +817,7 @@ public class ContractService {
             // Tính tiền cọc cần đóng của từng thành viên
             BigDecimal memberRequired = requiredAmount
                     .multiply(share.getOwnershipPercentage())
-                    .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
 
             // Kiểm tra trạng thái đóng cọc
             boolean isPaid = share.getDepositStatus() == com.group8.evcoownership.enums.DepositStatus.PAID;
@@ -872,7 +856,7 @@ public class ContractService {
         result.put("paidMembers", paidMembers);
         result.put("allMembersPaid", allMembersPaid);
         result.put("paymentProgress", String.format("%.1f%%",
-                totalPaid.multiply(BigDecimal.valueOf(100)).divide(requiredAmount, 1, java.math.RoundingMode.HALF_UP).doubleValue()));
+                totalPaid.multiply(BigDecimal.valueOf(100)).divide(requiredAmount, 1, RoundingMode.HALF_UP).doubleValue()));
         result.put("memberDetails", memberDetails);
 
         return result;
@@ -901,6 +885,8 @@ public class ContractService {
     public boolean contractExists(Long contractId) {
         return contractRepository.existsById(contractId);
     }
+
+    
 
     /**
      * Lấy userId từ email

@@ -27,13 +27,13 @@ public class LogoutService {
      */
     public void logout(String token) {
         if (token == null || token.trim().isEmpty()) {
-            throw new IllegalArgumentException("Token không được để trống");
+            throw new IllegalArgumentException("Token must not be empty");
         }
 
         try {
             // Validate token trước khi blacklist
             if (!jwtUtil.validateToken(token)) {
-                throw new IllegalArgumentException("Token không hợp lệ hoặc đã hết hạn");
+                throw new IllegalArgumentException("Token is invalid or has expired");
             }
 
             // Lấy expiration date của token
@@ -50,7 +50,7 @@ public class LogoutService {
 
         } catch (Exception e) {
             log.error("Logout failed: {}", e.getMessage());
-            throw new RuntimeException("Không thể đăng xuất: " + e.getMessage());
+            throw new RuntimeException("Unable to logout: " + e.getMessage());
         }
     }
 

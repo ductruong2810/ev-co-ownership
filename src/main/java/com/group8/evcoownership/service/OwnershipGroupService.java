@@ -26,10 +26,13 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+
+import static java.lang.System.currentTimeMillis;
 
 @Service
 @RequiredArgsConstructor
@@ -91,9 +94,9 @@ public class OwnershipGroupService {
      */
     private String getCustomVehicleDescription(GroupStatus status) {
         return switch (status) {
-            case PENDING -> "Nhóm đăng ký và đang chờ duyệt bởi staff";
-            case ACTIVE -> "Nhóm đã được duyệt và có thể sử dụng các chức năng trong group";
-            case INACTIVE -> "Nhóm đã bị từ chối bởi staff";
+            case PENDING -> "The group has been registered and is awaiting staff approval";
+            case ACTIVE -> "The group has been approved and can use group features";
+            case INACTIVE -> "The group has been rejected by staff";
         };
     }
 
@@ -129,22 +132,22 @@ public class OwnershipGroupService {
         StringBuilder missingDocs = new StringBuilder();
 
         if (!hasCitizenIdFront || !hasCitizenIdBack) {
-            missingDocs.append("CCCD (cả mặt trước và sau), ");
+            missingDocs.append("Citizen ID (both front and back), ");
         } else if (!citizenIdApproved) {
-            missingDocs.append("CCCD chưa được duyệt, ");
+            missingDocs.append("Citizen ID not approved, ");
         }
 
         if (!hasDriverLicenseFront || !hasDriverLicenseBack) {
-            missingDocs.append("GPLX (cả mặt trước và sau), ");
+            missingDocs.append("Driver's License (both front and back), ");
         } else if (!driverLicenseApproved) {
-            missingDocs.append("GPLX chưa được duyệt, ");
+            missingDocs.append("Driver's License not approved, ");
         }
 
         if (!missingDocs.isEmpty()) {
             // Xóa dấu phẩy cuối
             String missing = missingDocs.toString().replaceAll(", $", "");
             throw new InsufficientDocumentsException(
-                    "Không thể tạo group. Bạn cần upload và được duyệt: " + missing);
+                    "Cannot create group. You need to upload and get approved: " + missing);
         }
     }
 
@@ -189,7 +192,7 @@ public class OwnershipGroupService {
                 .group(savedGroup)
                 .groupRole(GroupRole.ADMIN)
                 .depositStatus(DepositStatus.PENDING)
-                .ownershipPercentage(java.math.BigDecimal.ZERO) // Bắt đầu với 0%
+                .ownershipPercentage(BigDecimal.ZERO) // Bắt đầu với 0%
                 .joinDate(LocalDateTime.now())
                 .build();
 
@@ -213,14 +216,14 @@ public class OwnershipGroupService {
     @Transactional
     public GroupWithVehicleResponseDTO createGroupWithVehicle(
             String groupName, String description, Integer memberCapacity,
-            java.math.BigDecimal vehicleValue, String licensePlate, String chassisNumber,
+            BigDecimal vehicleValue, String licensePlate, String chassisNumber,
             MultipartFile[] vehicleImages, String[] imageTypes, String userEmail,
             String brand, String model, Boolean enableAutoFill) {
 
-        long startTime = System.currentTimeMillis();
+        long startTime = currentTimeMillis();
         GroupWithVehicleResponseDTO.AutoFillInfo autoFillInfo = null;
 
-        // Step 1: Process OCR if auto-fill is enabled (default true)
+        // Step 1: Process OCR if autofill is enabled (default true)
         boolean shouldProcessOcr = enableAutoFill == null || enableAutoFill;
         log.info("OCR processing enabled: {} (enableAutoFill: {})", shouldProcessOcr, enableAutoFill);
 
@@ -268,16 +271,16 @@ public class OwnershipGroupService {
             // No user input - must rely on OCR
             if (autoFillInfo != null && isLikelyInvalidDocument(autoFillInfo)) {
                 throw new IllegalArgumentException(
-                        "Không thể trích xuất thông tin xe từ hình ảnh. Vui lòng kiểm tra lại hình ảnh có phải là giấy đăng ký xe hợp lệ không, hoặc nhập thông tin thủ công.");
+                        "Unable to extract vehicle information from the image. Please verify the image is a valid vehicle registration document, or enter information manually.");
             }
 
             throw new IllegalArgumentException(
-                    "Biển số xe và số khung xe là bắt buộc. Vui lòng nhập thông tin thủ công hoặc đảm bảo OCR có thể trích xuất từ giấy đăng ký xe.");
+                    "License plate and chassis number are required. Please enter information manually or ensure OCR can extract from the registration document.");
         } else {
             // User provided some input - STRICT VALIDATION: Must have valid document
             if (autoFillInfo != null && isLikelyInvalidDocument(autoFillInfo)) {
                 throw new IllegalArgumentException(
-                        "Hình ảnh không phải là giấy đăng ký xe hợp lệ. Vui lòng upload đúng cà vẹt xe để xác minh thông tin.");
+                        "The image is not a valid vehicle registration document. Please upload the correct document to verify information.");
             }
         }
 
@@ -360,7 +363,7 @@ public class OwnershipGroupService {
             String ocrPlate = autoFillInfo.extractedLicensePlate().trim().toUpperCase();
 
             if (!userPlate.equals(ocrPlate)) {
-                errors.append("Biển số xe không khớp với giấy tờ đăng ký. ");
+                errors.append("License plate does not match the registration document. ");
             }
         }
 
@@ -372,7 +375,7 @@ public class OwnershipGroupService {
             String ocrChassis = autoFillInfo.extractedChassisNumber().trim().toUpperCase();
 
             if (!userChassis.equals(ocrChassis)) {
-                errors.append("Số khung xe không khớp với giấy tờ đăng ký. ");
+                errors.append("Chassis number does not match the registration document. ");
             }
         }
 
@@ -384,7 +387,7 @@ public class OwnershipGroupService {
             String ocrBrand = autoFillInfo.extractedBrand().trim().toUpperCase();
 
             if (!userBrand.equals(ocrBrand)) {
-                warnings.append("Nhãn hiệu xe có thể không khớp với giấy tờ đăng ký. ");
+                warnings.append("Vehicle brand may not match the registration document. ");
                 log.warn("Brand mismatch: user='{}' vs OCR='{}'", brand, autoFillInfo.extractedBrand());
             }
         }
@@ -397,20 +400,20 @@ public class OwnershipGroupService {
             String ocrModel = autoFillInfo.extractedModel().trim().toUpperCase();
 
             if (!userModel.equals(ocrModel)) {
-                warnings.append("Dòng xe có thể không khớp với giấy tờ đăng ký. ");
+                warnings.append("Vehicle model may not match the registration document. ");
                 log.warn("Model mismatch: user='{}' vs OCR='{}'", model, autoFillInfo.extractedModel());
             }
         }
 
         // Handle validation results
-        if (errors.length() > 0) {
+        if (!errors.isEmpty()) {
             // CRITICAL ERRORS: Block creation
-            String errorMessage = "Thông tin xe không khớp với giấy tờ đăng ký. " + errors.toString().trim();
+            String errorMessage = "Vehicle information does not match the registration document. " + errors.toString().trim();
             log.warn("User input validation failed: {}", errorMessage);
             throw new IllegalArgumentException(errorMessage);
         }
 
-        if (warnings.length() > 0) {
+        if (!warnings.isEmpty()) {
             // SOFT WARNINGS: Log but allow creation
             log.info("Soft validation warnings: {}", warnings.toString().trim());
         }
@@ -443,7 +446,7 @@ public class OwnershipGroupService {
             if (registrationImage == null) {
                 return new GroupWithVehicleResponseDTO.AutoFillInfo(
                         true, "", "", "", "", "", false, "No registration document found",
-                        String.valueOf(System.currentTimeMillis() - startTime) + "ms"
+                        currentTimeMillis() - startTime + "ms"
                 );
             }
 
@@ -451,7 +454,7 @@ public class OwnershipGroupService {
             return ocrService.processVehicleInfoFromImage(registrationImage, startTime).get();
 
         } catch (Exception e) {
-            long processingTime = System.currentTimeMillis() - startTime;
+            long processingTime = currentTimeMillis() - startTime;
             return new GroupWithVehicleResponseDTO.AutoFillInfo(
                     true, "", "", "", "", "", false, "OCR processing failed: " + e.getMessage(),
                     processingTime + "ms"
@@ -598,33 +601,11 @@ public class OwnershipGroupService {
      * - fromDate/toDate: lọc theo CreatedAt (inclusive), dùng BETWEEN các method đã khai báo
      */
     public Page<OwnershipGroupResponseDTO> list(String keyword,
-                                                GroupStatus status,
-                                                LocalDate fromDate,
-                                                LocalDate toDate,
-                                                Pageable pageable) {
-
-        boolean hasKeyword = keyword != null && !keyword.isBlank();
-        boolean hasStatus = status != null;
-
-        // ✅ Giới hạn thời gian trong phạm vi hợp lệ của SQL Server
-        LocalDateTime SQLSERVER_MIN = LocalDateTime.of(1753, 1, 1, 0, 0);
-        LocalDateTime SQLSERVER_MAX = LocalDateTime.of(9999, 12, 31, 23, 59, 59, 999_000_000);
-
-        // ✅ Chuẩn hóa mốc thời gian (bao phủ trọn ngày)
-        LocalDateTime start = (fromDate != null) ? fromDate.atStartOfDay() : SQLSERVER_MIN;
-        LocalDateTime end = (toDate != null)
-                ? toDate.plusDays(1).atStartOfDay().minusNanos(1)
-                : SQLSERVER_MAX;
-
-        // ✅ Gọi native query trong repository
-        Page<OwnershipGroup> page = repo.findSortedGroups(
-                hasKeyword ? keyword : null,
-                hasStatus && status != null ? status.name() : null,
-                start,
-                end,
-                pageable
-        );
-
+                                             GroupStatus status,
+                                             LocalDate fromDate,
+                                             LocalDate toDate,
+                                             Pageable pageable) {
+        Page<OwnershipGroup> page = querySortedGroups(keyword, status, fromDate, toDate, pageable);
         return page.map(this::toDto);
     }
 
@@ -636,30 +617,33 @@ public class OwnershipGroupService {
                                                           LocalDate fromDate,
                                                           LocalDate toDate,
                                                           Pageable pageable) {
+        Page<OwnershipGroup> page = querySortedGroups(keyword, status, fromDate, toDate, pageable);
+        return page.map(this::toStaffDto);
+    }
 
+    private Page<OwnershipGroup> querySortedGroups(String keyword,
+                                                   GroupStatus status,
+                                                   LocalDate fromDate,
+                                                   LocalDate toDate,
+                                                   Pageable pageable) {
         boolean hasKeyword = keyword != null && !keyword.isBlank();
         boolean hasStatus = status != null;
 
-        // ✅ Giới hạn thời gian trong phạm vi hợp lệ của SQL Server
         LocalDateTime SQLSERVER_MIN = LocalDateTime.of(1753, 1, 1, 0, 0);
         LocalDateTime SQLSERVER_MAX = LocalDateTime.of(9999, 12, 31, 23, 59, 59, 999_000_000);
 
-        // ✅ Chuẩn hóa mốc thời gian (bao phủ trọn ngày)
         LocalDateTime start = (fromDate != null) ? fromDate.atStartOfDay() : SQLSERVER_MIN;
         LocalDateTime end = (toDate != null)
                 ? toDate.plusDays(1).atStartOfDay().minusNanos(1)
                 : SQLSERVER_MAX;
 
-        // ✅ Gọi native query trong repository
-        Page<OwnershipGroup> page = repo.findSortedGroups(
+        return repo.findSortedGroups(
                 hasKeyword ? keyword : null,
-                hasStatus && status != null ? status.name() : null,
+                hasStatus ? status.name() : null,
                 start,
                 end,
                 pageable
         );
-
-        return page.map(this::toStaffDto);
     }
 
 

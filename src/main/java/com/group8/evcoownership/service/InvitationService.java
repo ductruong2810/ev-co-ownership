@@ -19,12 +19,12 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -95,11 +95,10 @@ public class InvitationService {
                     existing.getInviteeEmail(),
                     group.getGroupName(),
                     inviter.getFullName(),
-                    existing.getToken(), // giữ token cũ để user cũ vẫn valid link
+                    // giữ token cũ để user cũ vẫn valid link
                     otp,
                     expiresAt,
-                    existing.getSuggestedPercentage(),
-                    null
+                    existing.getSuggestedPercentage()
             );
 
             // Ghi log cho dễ debug
@@ -130,52 +129,15 @@ public class InvitationService {
                 req.inviteeEmail(),
                 group.getGroupName(),
                 inviter.getFullName(),
-                token,
                 otp,
                 expiresAt,
-                req.suggestedPercentage(),
-                null
+                req.suggestedPercentage()
         );
 
         System.out.printf("Sent new invitation to %s (group %s)%n",
                 req.inviteeEmail(), group.getGroupName());
 
         return toDto(saved);
-    }
-
-    // =========================================================
-    // =================== LIST & VALIDATE =====================
-    // =========================================================
-
-    /**
-     * Chỉ member group (hoặc staff/admin) được xem danh sách lời mời của group.
-     */
-    public Page<InvitationResponseDTO> listByGroupSecured(Long groupId, Pageable pageable, Authentication auth) {
-        User viewer = userRepo.findByEmail(auth.getName())
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
-
-        boolean canView =
-                shareRepo.existsByGroup_GroupIdAndUser_UserId(groupId, viewer.getUserId())
-                        || isStaffOrAdmin(viewer);
-
-        if (!canView) throw new AccessDeniedException("Forbidden");
-
-        if (!groupRepo.existsById(groupId)) throw new EntityNotFoundException("Group not found");
-
-        return invitationRepo.findByGroup_GroupId(groupId, pageable).map(this::toDto);
-    }
-
-    /**
-     * Kiểm tra token còn hợp lệ (FE gọi để preload form accept).
-     */
-    public InvitationResponseDTO validateToken(String token) {
-        Invitation inv = invitationRepo.findByToken(token)
-                .orElseThrow(() -> new EntityNotFoundException("Invitation not found"));
-        if (inv.getStatus() != InvitationStatus.PENDING)
-            throw new IllegalStateException("Invitation is not PENDING");
-        if (isExpired(inv))
-            throw new IllegalStateException("Invitation expired");
-        return toDto(inv);
     }
 
     // =========================================================
@@ -210,11 +172,9 @@ public class InvitationService {
                 inv.getInviteeEmail(),
                 inv.getGroup().getGroupName(),
                 inv.getInviter() != null ? inv.getInviter().getFullName() : "A group member",
-                inv.getToken(),
                 newOtp,
                 inv.getExpiresAt(),
-                inv.getSuggestedPercentage(),
-                null
+                inv.getSuggestedPercentage()
         );
 
         System.out.printf("Manual resend invitation #%d to %s%n", inv.getInvitationId(), inv.getInviteeEmail());
@@ -310,7 +270,7 @@ public class InvitationService {
 
         // Thêm user vào group với % sở hữu tạm = 0%
         var addReq = new OwnershipShareCreateRequestDTO(
-                user.getUserId(), group.getGroupId(), java.math.BigDecimal.ZERO
+                user.getUserId(), group.getGroupId(), BigDecimal.ZERO
         );
         shareService.addGroupShare(addReq);
 

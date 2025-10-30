@@ -4,6 +4,7 @@ import com.group8.evcoownership.dto.DepositPaymentRequestDTO;
 import com.group8.evcoownership.dto.DepositPaymentResponseDTO;
 import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.enums.DepositStatus;
+import com.group8.evcoownership.enums.ContractApprovalStatus;
 import com.group8.evcoownership.enums.PaymentStatus;
 import com.group8.evcoownership.enums.PaymentType;
 import com.group8.evcoownership.exception.DepositPaymentException;
@@ -16,12 +17,16 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.math.BigDecimal;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.time.ZoneId;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -234,9 +239,10 @@ public class DepositPaymentService {
         info.put("depositStatus", share.getDepositStatus());
         info.put("requiredAmount", requiredAmount);
         info.put("ownershipPercentage", share.getOwnershipPercentage());
-        info.put("contractSigned", contract.getTerms() != null && contract.getTerms().contains("[ĐÃ KÝ]"));
-        info.put("canPay", contract.getTerms() != null && contract.getTerms().contains("[ĐÃ KÝ]")
-                && share.getDepositStatus() == DepositStatus.PENDING);
+        boolean isSignedOrApproved = contract.getApprovalStatus() == ContractApprovalStatus.SIGNED
+                || contract.getApprovalStatus() == ContractApprovalStatus.APPROVED;
+        info.put("contractSigned", isSignedOrApproved);
+        info.put("canPay", isSignedOrApproved && share.getDepositStatus() == DepositStatus.PENDING);
 
         // Thêm contract status
         info.put("contractStatus", getContractStatus(groupId));
@@ -317,7 +323,7 @@ public class DepositPaymentService {
     }
 
     /**
-     * ✅ Lấy thông tin chi tiết của thanh toán dựa theo mã giao dịch (txnRef)
+     * Lấy thông tin chi tiết của thanh toán dựa theo mã giao dịch (txnRef)
      */
     public DepositPaymentResponseDTO getDepositInfoByTxn(String txnRef) {
         Payment payment = paymentRepository.findByTransactionCode(txnRef)
@@ -378,7 +384,7 @@ public class DepositPaymentService {
      *
      * @param payment Payment cần hoàn tiền
      */
-    private void refundSinglePayment(Payment payment) throws java.io.IOException {
+    private void refundSinglePayment(Payment payment) throws IOException {
         // Parse vnp_TransactionNo từ providerResponse
         String vnpTransactionNo = VnPay_PaymentService.extractTransactionNo(payment.getProviderResponse());
         if (vnpTransactionNo == null) {
@@ -387,10 +393,10 @@ public class DepositPaymentService {
         }
 
         // Format vnp_TransactionDate từ payment.paymentDate
-        java.text.SimpleDateFormat formatter = new java.text.SimpleDateFormat("yyyyMMddHHmmss");
-        formatter.setTimeZone(java.util.TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
+        formatter.setTimeZone(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
         String vnpTransactionDate = formatter.format(
-                java.util.Date.from(payment.getPaymentDate().atZone(java.time.ZoneId.systemDefault()).toInstant())
+                Date.from(payment.getPaymentDate().atZone(ZoneId.systemDefault()).toInstant())
         );
 
         // Tạo refund request URL từ VNPay
@@ -404,8 +410,8 @@ public class DepositPaymentService {
         log.info("VNPay Refund URL created for payment {}: {}", payment.getId(), refundUrl);
 
         // Gọi HTTP GET đến VNPay để thực hiện refund
-        java.net.URL url = new java.net.URL(refundUrl);
-        java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+        URL url = new URL(refundUrl);
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("GET");
         conn.setConnectTimeout(10000);
         conn.setReadTimeout(10000);
@@ -414,8 +420,8 @@ public class DepositPaymentService {
         log.info("VNPay Refund Response Code for payment {}: {}", payment.getId(), responseCode);
 
         // Đọc response
-        try (java.io.BufferedReader in = new java.io.BufferedReader(
-                new java.io.InputStreamReader(conn.getInputStream()))) {
+        try (BufferedReader in = new BufferedReader(
+                new InputStreamReader(conn.getInputStream()))) {
             String inputLine;
             StringBuilder response = new StringBuilder();
             while ((inputLine = in.readLine()) != null) {
