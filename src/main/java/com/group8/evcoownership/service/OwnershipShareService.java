@@ -32,8 +32,8 @@ public class OwnershipShareService {
     private final UserDocumentValidationService userDocumentValidationService;
 
     // ------- mapping -------
-    private OwnershipShareResponse toDto(OwnershipShare s) {
-        return new OwnershipShareResponse(
+    private OwnershipShareResponseDTO toDto(OwnershipShare s) {
+        return new OwnershipShareResponseDTO(
                 s.getUser().getUserId(),
                 s.getGroup().getGroupId(),
                 s.getGroupRole(),
@@ -50,7 +50,7 @@ public class OwnershipShareService {
      * Thêm thành viên + % sở hữu (FE kiểm quyền). Người đầu tiên = ADMIN, còn lại = MEMBER.
      */
     @Transactional
-    public OwnershipShareResponse addGroupShare(OwnershipShareCreateRequest req) {
+    public OwnershipShareResponseDTO addGroupShare(OwnershipShareCreateRequestDTO req) {
         var user = userRepo.findById(req.userId())
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
         var group = groupRepo.findById(req.groupId())
@@ -118,12 +118,12 @@ public class OwnershipShareService {
 //        tryActivate(groupId);
     }
 
-    public List<OwnershipShareResponse> listByGroup(Long groupId) {
+    public List<OwnershipShareResponseDTO> listByGroup(Long groupId) {
         if (!groupRepo.existsById(groupId)) throw new EntityNotFoundException("Group not found");
         return shareRepo.findByGroup_GroupId(groupId).stream().map(this::toDto).toList();
     }
 
-    public List<OwnershipShareResponse> listByUser(Long userId) {
+    public List<OwnershipShareResponseDTO> listByUser(Long userId) {
         if (!userRepo.existsById(userId)) throw new EntityNotFoundException("User not found");
         return shareRepo.findByUser_UserId(userId).stream().map(this::toDto).toList();
     }
@@ -160,7 +160,7 @@ public class OwnershipShareService {
      * Lấy thông tin tỷ lệ sở hữu của user trong group (cho trang nhập tỷ lệ)
      */
     @Transactional
-    public OwnershipPercentageResponse getOwnershipPercentage(Long userId, Long groupId) {
+    public OwnershipPercentageResponseDTO getOwnershipPercentage(Long userId, Long groupId) {
         var user = userRepo.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + userId));
 
@@ -193,7 +193,7 @@ public class OwnershipShareService {
             ownershipStatus = "LOCKED"; // Locked, cannot be edited
         }
 
-        return OwnershipPercentageResponse.builder()
+        return OwnershipPercentageResponseDTO.builder()
                 .userId(userId)
                 .groupId(groupId)
                 .userName(user.getFullName())
@@ -212,8 +212,8 @@ public class OwnershipShareService {
      * Cập nhật tỷ lệ sở hữu của user (cho trang nhập tỷ lệ)
      */
     @Transactional
-    public OwnershipPercentageResponse updateOwnershipPercentage(Long userId, Long groupId,
-                                                                 OwnershipPercentageRequest request) {
+    public OwnershipPercentageResponseDTO updateOwnershipPercentage(Long userId, Long groupId,
+                                                                    OwnershipPercentageRequestDTO request) {
         var user = userRepo.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + userId));
 
@@ -261,7 +261,7 @@ public class OwnershipShareService {
             ownershipStatus = "LOCKED"; // Đã khóa, không thể chỉnh sửa
         }
 
-        return OwnershipPercentageResponse.builder()
+        return OwnershipPercentageResponseDTO.builder()
                 .userId(userId)
                 .groupId(groupId)
                 .userName(user.getFullName())
@@ -280,7 +280,7 @@ public class OwnershipShareService {
      * Lấy tổng quan tỷ lệ sở hữu của group
      */
     @Transactional
-    public GroupOwnershipSummaryResponse getGroupOwnershipSummary(Long groupId, Long currentUserId) {
+    public GroupOwnershipSummaryResponseDTO getGroupOwnershipSummary(Long groupId, Long currentUserId) {
         var group = groupRepo.findById(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
 
@@ -319,7 +319,7 @@ public class OwnershipShareService {
                         memberStatus = "LOCKED"; // Đã khóa, không thể chỉnh sửa
                     }
 
-                    return GroupOwnershipSummaryResponse.MemberOwnershipInfo.builder()
+                    return GroupOwnershipSummaryResponseDTO.MemberOwnershipInfo.builder()
                             .userId(share.getUser().getUserId())
                             .userName(share.getUser().getFullName())
                             .userEmail(share.getUser().getEmail())
@@ -332,7 +332,7 @@ public class OwnershipShareService {
                 })
                 .toList();
 
-        return GroupOwnershipSummaryResponse.builder()
+        return GroupOwnershipSummaryResponseDTO.builder()
                 .groupId(groupId)
                 .groupName(group.getGroupName())
                 .vehicleValue(vehicle.getVehicleValue())
@@ -350,7 +350,7 @@ public class OwnershipShareService {
      * Reset tỷ lệ sở hữu của user về 0%
      */
     @Transactional
-    public OwnershipPercentageResponse resetOwnershipPercentage(Long userId, Long groupId) {
+    public OwnershipPercentageResponseDTO resetOwnershipPercentage(Long userId, Long groupId) {
         var group = groupRepo.findById(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
 
@@ -373,7 +373,7 @@ public class OwnershipShareService {
         // Sau khi reset về 0%, status sẽ là PENDING
         String ownershipStatus = "PENDING"; // Đã reset về 0%, chưa nhập tỷ lệ
 
-        return OwnershipPercentageResponse.builder()
+        return OwnershipPercentageResponseDTO.builder()
                 .userId(userId)
                 .groupId(groupId)
                 .userName(share.getUser().getFullName())
@@ -473,14 +473,14 @@ public class OwnershipShareService {
     /**
      * Lấy thông tin xe của group (bao gồm biển số)
      */
-    public VehicleResponse getVehicleInfo(Long groupId) {
+    public VehicleResponseDTO getVehicleInfo(Long groupId) {
         var group = groupRepo.findById(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
 
         var vehicle = vehicleRepository.findByOwnershipGroup(group)
                 .orElseThrow(() -> new EntityNotFoundException("Vehicle not found for group: " + groupId));
 
-        return new VehicleResponse(
+        return new VehicleResponseDTO(
                 vehicle.getId(),
                 vehicle.getBrand(),
                 vehicle.getModel(),

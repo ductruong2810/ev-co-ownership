@@ -1,6 +1,6 @@
 package com.group8.evcoownership.controller;
 
-import com.group8.evcoownership.dto.VehicleImageResponse;
+import com.group8.evcoownership.dto.VehicleImageResponseDTO;
 import com.group8.evcoownership.service.VehicleImageApprovalService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -23,13 +23,13 @@ public class VehicleImageController {
 
     @GetMapping("/groups/{groupId}")
     @Operation(summary = "Hình ảnh theo nhóm", description = "Lấy danh sách hình ảnh phương tiện của một nhóm")
-    public ResponseEntity<List<VehicleImageResponse>> getImagesByGroupId(@PathVariable Long groupId) {
+    public ResponseEntity<List<VehicleImageResponseDTO>> getImagesByGroupId(@PathVariable Long groupId) {
         return ResponseEntity.ok(approvalService.getImagesByGroupId(groupId));
     }
 
     @GetMapping("/vehicle/{vehicleId}")
     @Operation(summary = "Hình ảnh theo phương tiện", description = "Lấy danh sách hình ảnh của một phương tiện cụ thể")
-    public ResponseEntity<List<VehicleImageResponse>> getImagesByVehicleId(@PathVariable Long vehicleId) {
+    public ResponseEntity<List<VehicleImageResponseDTO>> getImagesByVehicleId(@PathVariable Long vehicleId) {
         return ResponseEntity.ok(approvalService.getImagesByVehicleId(vehicleId));
     }
 }

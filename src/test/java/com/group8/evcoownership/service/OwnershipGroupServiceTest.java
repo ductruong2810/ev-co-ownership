@@ -1,7 +1,7 @@
 package com.group8.evcoownership.service;
 
-import com.group8.evcoownership.dto.OwnershipGroupCreateRequest;
-import com.group8.evcoownership.dto.OwnershipGroupResponse;
+import com.group8.evcoownership.dto.OwnershipGroupCreateRequestDTO;
+import com.group8.evcoownership.dto.OwnershipGroupResponseDTO;
 import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.enums.DepositStatus;
 import com.group8.evcoownership.enums.GroupRole;
@@ -99,7 +99,7 @@ class OwnershipGroupServiceTest {
     @Test
     void create_ShouldCreateGroupAndFund_Success() {
         // Given
-        OwnershipGroupCreateRequest request = new OwnershipGroupCreateRequest(
+        OwnershipGroupCreateRequestDTO request = new OwnershipGroupCreateRequestDTO(
                 "Test Group", "Test Description", 5);
         String userEmail = "test@example.com";
 
@@ -110,7 +110,7 @@ class OwnershipGroupServiceTest {
         when(fundService.createOrGroup(1L)).thenReturn(testFund);
 
         // When
-        OwnershipGroupResponse result = ownershipGroupService.create(request, userEmail);
+        OwnershipGroupResponseDTO result = ownershipGroupService.create(request, userEmail);
 
         // Then
         assertNotNull(result);
@@ -129,7 +129,7 @@ class OwnershipGroupServiceTest {
     @Test
     void create_GroupNameAlreadyExists_ShouldThrowException() {
         // Given
-        OwnershipGroupCreateRequest request = new OwnershipGroupCreateRequest(
+        OwnershipGroupCreateRequestDTO request = new OwnershipGroupCreateRequestDTO(
                 "Existing Group", "Test Description", 5);
         String userEmail = "test@example.com";
 
@@ -147,7 +147,7 @@ class OwnershipGroupServiceTest {
     @Test
     void create_UserNotFound_ShouldThrowException() {
         // Given
-        OwnershipGroupCreateRequest request = new OwnershipGroupCreateRequest(
+        OwnershipGroupCreateRequestDTO request = new OwnershipGroupCreateRequestDTO(
                 "Test Group", "Test Description", 5);
         String userEmail = "nonexistent@example.com";
 

@@ -28,21 +28,21 @@ public class OwnershipShareController {
     // Thêm member + % sở hữu -> auto tryActivate
     @PostMapping
     @Operation(summary = "Thêm thành viên", description = "Thêm thành viên mới với tỷ lệ sở hữu và tự động kích hoạt nhóm")
-    public OwnershipShareResponse addMember(@RequestBody @Valid OwnershipShareCreateRequest req) {
+    public OwnershipShareResponseDTO addMember(@RequestBody @Valid OwnershipShareCreateRequestDTO req) {
         return service.addGroupShare(req);
     }
 
     // Danh sách theo group
     @GetMapping("/by-group/{groupId}")
     @Operation(summary = "Danh sách thành viên theo nhóm", description = "Lấy danh sách tất cả thành viên của một nhóm")
-    public List<OwnershipShareResponse> listByGroup(@PathVariable Long groupId) {
+    public List<OwnershipShareResponseDTO> listByGroup(@PathVariable Long groupId) {
         return service.listByGroup(groupId);
     }
 
     // Danh sách theo user
     @GetMapping("/my-groups")
     @Operation(summary = "Danh sách nhóm của tôi", description = "Lấy danh sách tất cả nhóm của người dùng hiện tại")
-    public List<OwnershipShareResponse> getMyGroups(@AuthenticationPrincipal String userEmail) {
+    public List<OwnershipShareResponseDTO> getMyGroups(@AuthenticationPrincipal String userEmail) {
         Long userId = userProfileService.getUserProfile(userEmail).getUserId();
         return service.listByUser(userId);
     }
@@ -63,7 +63,7 @@ public class OwnershipShareController {
      */
     @GetMapping("/page-data/{groupId}")
     @Operation(summary = "Dữ liệu trang tỷ lệ sở hữu", description = "Lấy tất cả dữ liệu cần thiết cho trang nhập tỷ lệ sở hữu bao gồm thông tin xe")
-    public ResponseEntity<OwnershipPageDataResponse> getOwnershipPageData(
+    public ResponseEntity<OwnershipPageDataResponseDTO> getOwnershipPageData(
             @PathVariable Long groupId,
             @AuthenticationPrincipal String userEmail) {
 
@@ -71,18 +71,18 @@ public class OwnershipShareController {
         Long userId = userProfileService.getUserProfile(userEmail).getUserId();
 
         // Lấy thông tin user ownership
-        OwnershipPercentageResponse userOwnership = service.getOwnershipPercentage(userId, groupId);
+        OwnershipPercentageResponseDTO userOwnership = service.getOwnershipPercentage(userId, groupId);
 
         // Lấy tổng quan group
-        GroupOwnershipSummaryResponse groupSummary = service.getGroupOwnershipSummary(groupId, userId);
+        GroupOwnershipSummaryResponseDTO groupSummary = service.getGroupOwnershipSummary(groupId, userId);
 
         // Lấy gợi ý tỷ lệ
         List<BigDecimal> suggestions = service.getOwnershipSuggestions(groupId);
 
         // Lấy thông tin xe (bao gồm biển số)
-        VehicleResponse vehicleInfo = service.getVehicleInfo(groupId);
+        VehicleResponseDTO vehicleInfo = service.getVehicleInfo(groupId);
 
-        OwnershipPageDataResponse response = OwnershipPageDataResponse.builder()
+        OwnershipPageDataResponseDTO response = OwnershipPageDataResponseDTO.builder()
                 .userOwnership(userOwnership)
                 .groupSummary(groupSummary)
                 .suggestions(suggestions)
@@ -98,15 +98,15 @@ public class OwnershipShareController {
      */
     @PutMapping("/my-percentage/{groupId}")
     @Operation(summary = "Cập nhật tỷ lệ sở hữu của tôi", description = "Cập nhật tỷ lệ sở hữu của người dùng trong nhóm")
-    public ResponseEntity<OwnershipPercentageResponse> updateMyOwnershipPercentage(
+    public ResponseEntity<OwnershipPercentageResponseDTO> updateMyOwnershipPercentage(
             @PathVariable Long groupId,
             @AuthenticationPrincipal String userEmail,
-            @Valid @RequestBody OwnershipPercentageRequest request) {
+            @Valid @RequestBody OwnershipPercentageRequestDTO request) {
 
         // Lấy userId từ email
         Long userId = userProfileService.getUserProfile(userEmail).getUserId();
 
-        OwnershipPercentageResponse response = service.updateOwnershipPercentage(
+        OwnershipPercentageResponseDTO response = service.updateOwnershipPercentage(
                 userId, groupId, request);
         return ResponseEntity.ok(response);
     }
@@ -118,9 +118,9 @@ public class OwnershipShareController {
     @PutMapping("/{groupId}/percentage")
     @Operation(summary = "Cập nhật tỷ lệ sở hữu thành viên",
             description = "Cập nhật tỷ lệ sở hữu của thành viên")
-    public OwnershipPercentageResponse updateMemberOwnershipPercentage(@PathVariable Long groupId,
-                                                                       @AuthenticationPrincipal String userEmail,
-                                                                       @RequestBody @Valid OwnershipPercentageRequest req) {
+    public OwnershipPercentageResponseDTO updateMemberOwnershipPercentage(@PathVariable Long groupId,
+                                                                          @AuthenticationPrincipal String userEmail,
+                                                                          @RequestBody @Valid OwnershipPercentageRequestDTO req) {
         // Lấy userId từ JWT token
         Long userId = userProfileService.getUserProfile(userEmail).getUserId();
         return service.updateOwnershipPercentage(userId, groupId, req);
@@ -132,14 +132,14 @@ public class OwnershipShareController {
      */
     @GetMapping("/group/{groupId}/summary")
     @Operation(summary = "Tổng quan tỷ lệ nhóm", description = "Lấy tổng quan tỷ lệ sở hữu của tất cả thành viên trong nhóm")
-    public ResponseEntity<GroupOwnershipSummaryResponse> getGroupOwnershipSummary(
+    public ResponseEntity<GroupOwnershipSummaryResponseDTO> getGroupOwnershipSummary(
             @PathVariable Long groupId,
             @AuthenticationPrincipal String userEmail) {
 
         // Lấy userId từ email
         Long userId = userProfileService.getUserProfile(userEmail).getUserId();
 
-        GroupOwnershipSummaryResponse response = service.getGroupOwnershipSummary(
+        GroupOwnershipSummaryResponseDTO response = service.getGroupOwnershipSummary(
                 groupId, userId);
         return ResponseEntity.ok(response);
     }
@@ -150,14 +150,14 @@ public class OwnershipShareController {
      */
     @PostMapping("/my-percentage/{groupId}/reset")
     @Operation(summary = "Reset tỷ lệ sở hữu", description = "Reset tỷ lệ sở hữu của người dùng về 0%")
-    public ResponseEntity<OwnershipPercentageResponse> resetMyOwnershipPercentage(
+    public ResponseEntity<OwnershipPercentageResponseDTO> resetMyOwnershipPercentage(
             @PathVariable Long groupId,
             @AuthenticationPrincipal String userEmail) {
 
         // Lấy userId từ email
         Long userId = userProfileService.getUserProfile(userEmail).getUserId();
 
-        OwnershipPercentageResponse response = service.resetOwnershipPercentage(userId, groupId);
+        OwnershipPercentageResponseDTO response = service.resetOwnershipPercentage(userId, groupId);
         return ResponseEntity.ok(response);
     }
 
@@ -167,10 +167,10 @@ public class OwnershipShareController {
      */
     @PostMapping("/my-percentage/{groupId}/validate")
     @Operation(summary = "Kiểm tra tỷ lệ sở hữu", description = "Kiểm tra tính hợp lệ của tỷ lệ sở hữu trước khi lưu")
-    public ResponseEntity<ValidationResponse> validateMyOwnershipPercentage(
+    public ResponseEntity<ValidationResponseDTO> validateMyOwnershipPercentage(
             @PathVariable Long groupId,
             @AuthenticationPrincipal String userEmail,
-            @Valid @RequestBody OwnershipPercentageRequest request) {
+            @Valid @RequestBody OwnershipPercentageRequestDTO request) {
 
         // Lấy userId từ email
         Long userId = userProfileService.getUserProfile(userEmail).getUserId();
@@ -178,7 +178,7 @@ public class OwnershipShareController {
         // Gọi service để validate
         service.updateOwnershipPercentage(userId, groupId, request);
 
-        return ResponseEntity.ok(ValidationResponse.builder()
+        return ResponseEntity.ok(ValidationResponseDTO.builder()
                 .valid(true)
                 .message("Tỷ lệ sở hữu hợp lệ")
                 .build());

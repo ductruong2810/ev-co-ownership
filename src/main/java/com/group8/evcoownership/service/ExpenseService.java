@@ -1,9 +1,9 @@
 package com.group8.evcoownership.service;
 
 
-import com.group8.evcoownership.dto.ExpenseCreateRequest;
-import com.group8.evcoownership.dto.ExpenseResponse;
-import com.group8.evcoownership.dto.ExpenseUpdateRequest;
+import com.group8.evcoownership.dto.ExpenseCreateRequestDTO;
+import com.group8.evcoownership.dto.ExpenseResponseDTO;
+import com.group8.evcoownership.dto.ExpenseUpdateRequestDTO;
 import com.group8.evcoownership.entity.Expense;
 import com.group8.evcoownership.entity.SharedFund;
 import com.group8.evcoownership.repository.ExpenseRepository;
@@ -26,7 +26,7 @@ public class ExpenseService {
     private final SharedFundRepository sharedFundRepository;
 
     /* ---------- Create ---------- */
-    public ExpenseResponse create(ExpenseCreateRequest req) {
+    public ExpenseResponseDTO create(ExpenseCreateRequestDTO req) {
         if (req.getAmount() == null) {
             throw new IllegalArgumentException("Amount is required");
         }
@@ -55,14 +55,14 @@ public class ExpenseService {
     }
 
     /* ---------- Read one ---------- */
-    public ExpenseResponse getById(Long id) {
+    public ExpenseResponseDTO getById(Long id) {
         Expense e = expenseRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Expense not found: " + id));
         return toResponse(e);
     }
 
     /* ---------- Patch update ---------- */
-    public ExpenseResponse update(Long id, ExpenseUpdateRequest req) {
+    public ExpenseResponseDTO update(Long id, ExpenseUpdateRequestDTO req) {
         Expense e = expenseRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Expense not found: " + id));
 
@@ -89,7 +89,7 @@ public class ExpenseService {
     }
 
     /* ---------- List + filters ---------- */
-    public Page<ExpenseResponse> list(
+    public Page<ExpenseResponseDTO> list(
             Long fundId,
             String sourceType,
             LocalDateTime from,
@@ -123,8 +123,8 @@ public class ExpenseService {
     }
 
     /* ---------- Mapper ---------- */
-    private ExpenseResponse toResponse(Expense e) {
-        return ExpenseResponse.builder()
+    private ExpenseResponseDTO toResponse(Expense e) {
+        return ExpenseResponseDTO.builder()
                 .id(e.getId())
                 .fundId(e.getFund() != null ? e.getFund().getFundId() : null) // nếu SharedFund là fundId -> đổi sang getFundId()
                 .sourceType(e.getSourceType())

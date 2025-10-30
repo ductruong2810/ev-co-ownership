@@ -6,8 +6,8 @@ import com.azure.ai.vision.imageanalysis.models.ImageAnalysisResult;
 import com.azure.ai.vision.imageanalysis.models.VisualFeatures;
 import com.azure.core.credential.AzureKeyCredential;
 import com.azure.core.util.BinaryData;
-import com.group8.evcoownership.dto.GroupWithVehicleResponse;
-import com.group8.evcoownership.dto.VehicleInfoDto;
+import com.group8.evcoownership.dto.GroupWithVehicleResponseDTO;
+import com.group8.evcoownership.dto.VehicleInfoDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -218,14 +218,14 @@ public class OcrService {
      * Shared method to process OCR and extract vehicle information from image
      * This method consolidates the common logic used by both OcrController and OwnershipGroupService
      */
-    public CompletableFuture<GroupWithVehicleResponse.AutoFillInfo> processVehicleInfoFromImage(
+    public CompletableFuture<GroupWithVehicleResponseDTO.AutoFillInfo> processVehicleInfoFromImage(
             MultipartFile image, long startTime) {
 
         return extractTextFromImage(image)
                 .thenApply(extractedText -> {
                     try {
                         if (extractedText == null || extractedText.trim().isEmpty()) {
-                            return new GroupWithVehicleResponse.AutoFillInfo(
+                            return new GroupWithVehicleResponseDTO.AutoFillInfo(
                                     true, "", "", "", "", "", false, "No text extracted",
                                     System.currentTimeMillis() - startTime + "ms"
                             );
@@ -235,12 +235,12 @@ public class OcrService {
                         boolean isRegistrationDocument = isVehicleRegistrationDocument(extractedText);
 
                         // Extract vehicle information
-                        VehicleInfoDto vehicleInfo =
+                        VehicleInfoDTO vehicleInfo =
                                 vehicleInfoExtractionService.extractVehicleInfo(extractedText);
 
                         long processingTime = System.currentTimeMillis() - startTime;
 
-                        return new GroupWithVehicleResponse.AutoFillInfo(
+                        return new GroupWithVehicleResponseDTO.AutoFillInfo(
                                 true,
                                 vehicleInfo.brand(),
                                 vehicleInfo.model(),
@@ -254,7 +254,7 @@ public class OcrService {
 
                     } catch (Exception e) {
                         long processingTime = System.currentTimeMillis() - startTime;
-                        return new GroupWithVehicleResponse.AutoFillInfo(
+                        return new GroupWithVehicleResponseDTO.AutoFillInfo(
                                 true, "", "", "", "", "", false, "Processing failed: " + e.getMessage(),
                                 processingTime + "ms"
                         );

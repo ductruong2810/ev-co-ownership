@@ -1,6 +1,6 @@
 package com.group8.evcoownership.service;
 
-import com.group8.evcoownership.dto.VehicleInfoDto;
+import com.group8.evcoownership.dto.VehicleInfoDTO;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -40,7 +40,7 @@ public class VehicleInfoExtractionServiceTest {
                 5/06/2012
                 """;
 
-        VehicleInfoDto result = service.extractVehicleInfo(ocrText);
+        VehicleInfoDTO result = service.extractVehicleInfo(ocrText);
 
         System.out.println("=== EXTRACTION RESULT ===");
         System.out.println("Brand: " + result.brand());
@@ -95,7 +95,7 @@ public class VehicleInfoExtractionServiceTest {
                 15/03/2020
                 """;
 
-        VehicleInfoDto result = service.extractVehicleInfo(carOcrText);
+        VehicleInfoDTO result = service.extractVehicleInfo(carOcrText);
 
         System.out.println("=== CAR EXTRACTION RESULT ===");
         System.out.println("Brand: " + result.brand());
