@@ -3,6 +3,7 @@ package com.group8.evcoownership.controller;
 import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.service.AuthService;
 import com.group8.evcoownership.service.LogoutService;
+import com.group8.evcoownership.utils.AuthUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -95,7 +96,7 @@ public class AuthController {
             throw new IllegalStateException("You need to login to perform this action");
         }
 
-        String email = com.group8.evcoownership.util.AuthUtils.getCurrentUserEmail(authentication);
+        String email = AuthUtils.getCurrentUserEmail(authentication);
 
         if (email == null || email.trim().isEmpty()) {
             throw new IllegalStateException("Unable to authenticate user");
