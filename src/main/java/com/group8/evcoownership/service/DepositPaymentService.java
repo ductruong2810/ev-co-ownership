@@ -1,7 +1,7 @@
 package com.group8.evcoownership.service;
 
-import com.group8.evcoownership.dto.DepositPaymentRequest;
-import com.group8.evcoownership.dto.DepositPaymentResponse;
+import com.group8.evcoownership.dto.DepositPaymentRequestDTO;
+import com.group8.evcoownership.dto.DepositPaymentResponseDTO;
 import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.enums.DepositStatus;
 import com.group8.evcoownership.enums.ContractApprovalStatus;
@@ -58,9 +58,9 @@ public class DepositPaymentService {
      * Tạo payment mới → sinh URL thanh toán VNPay
      */
     @Transactional
-    public DepositPaymentResponse createDepositPayment(DepositPaymentRequest request,
-                                                       HttpServletRequest servletRequest,
-                                                       Authentication authentication) {
+    public DepositPaymentResponseDTO createDepositPayment(DepositPaymentRequestDTO request,
+                                                          HttpServletRequest servletRequest,
+                                                          Authentication authentication) {
 
         Long userId = parseId(request.userId(), "userId");
         Long groupId = parseId(request.groupId(), "groupId");
@@ -127,7 +127,7 @@ public class DepositPaymentService {
         String paymentUrl = vnPayPaymentService.createDepositPaymentUrl(requiredAmount.longValue(), servletRequest, txnRef, groupId);
 
 
-        return DepositPaymentResponse.builder()
+        return DepositPaymentResponseDTO.builder()
                 .paymentId(payment.getId())
                 .userId(user.getUserId())
                 .groupId(group != null ? group.getGroupId() : null)
@@ -146,7 +146,7 @@ public class DepositPaymentService {
      * Xác nhận callback từ VNPay → cập nhật Payment COMPLETED
      */
     @Transactional
-    public DepositPaymentResponse confirmDepositPayment(String txnRef, String transactionNo) {
+    public DepositPaymentResponseDTO confirmDepositPayment(String txnRef, String transactionNo) {
         Payment payment = paymentRepository.findByTransactionCode(txnRef)
                 .orElseThrow(() -> new RuntimeException("Payment not found for txnRef: " + txnRef));
 
@@ -200,14 +200,14 @@ public class DepositPaymentService {
     /**
      * API cho frontend kiểm tra trạng thái thanh toán
      */
-    public DepositPaymentResponse getByTxnRef(String txnRef) {
+    public DepositPaymentResponseDTO getByTxnRef(String txnRef) {
         Payment payment = paymentRepository.findByTransactionCode(txnRef)
                 .orElseThrow(() -> new RuntimeException("Payment not found for txnRef: " + txnRef));
         return convertToResponse(payment);
     }
 
-    private DepositPaymentResponse convertToResponse(Payment p) {
-        return DepositPaymentResponse.builder()
+    private DepositPaymentResponseDTO convertToResponse(Payment p) {
+        return DepositPaymentResponseDTO.builder()
                 .paymentId(p.getId())
                 .userId(p.getPayer() != null ? p.getPayer().getUserId() : null)
                 .groupId(p.getFund() != null && p.getFund().getGroup() != null ? p.getFund().getGroup().getGroupId() : null)
@@ -325,7 +325,7 @@ public class DepositPaymentService {
     /**
      * Lấy thông tin chi tiết của thanh toán dựa theo mã giao dịch (txnRef)
      */
-    public DepositPaymentResponse getDepositInfoByTxn(String txnRef) {
+    public DepositPaymentResponseDTO getDepositInfoByTxn(String txnRef) {
         Payment payment = paymentRepository.findByTransactionCode(txnRef)
                 .orElseThrow(() -> new RuntimeException("Payment not found for txnRef: " + txnRef));
 

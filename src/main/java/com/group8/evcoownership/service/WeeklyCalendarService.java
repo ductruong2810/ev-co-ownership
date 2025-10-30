@@ -5,6 +5,7 @@ import com.group8.evcoownership.entity.OwnershipGroup;
 import com.group8.evcoownership.entity.UsageBooking;
 import com.group8.evcoownership.entity.Vehicle;
 import com.group8.evcoownership.enums.BookingStatus;
+import com.group8.evcoownership.exception.BookingValidationException;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
 import com.group8.evcoownership.repository.UsageBookingRepository;
 import com.group8.evcoownership.repository.UserRepository;
@@ -32,7 +33,12 @@ public class WeeklyCalendarService {
     /**
      * Lấy lịch tuần cho group với thông tin quota của user
      */
-    public WeeklyCalendarResponse getWeeklyCalendar(Long groupId, Long userId, LocalDate weekStart) {
+    public WeeklyCalendarResponseDTO getWeeklyCalendar(Long groupId, Long userId) {
+
+        // Nếu không có weekStart, dùng tuần hiện tại
+
+         LocalDate weekStart = LocalDate.now().with(DayOfWeek.MONDAY);
+
         // Validate group tồn tại
         OwnershipGroup group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new IllegalArgumentException("Group not found"));
@@ -48,17 +54,17 @@ public class WeeklyCalendarService {
         long remainingHours = totalQuota - usedHours;
 
         // Tạo daily slots cho 7 ngày
-        List<DailySlotResponse> dailySlots = new ArrayList<>();
+        List<DailySlotResponseDTO> dailySlots = new ArrayList<>();
         for (int i = 0; i < 7; i++) {
             LocalDate date = weekStart.plusDays(i);
-            DailySlotResponse dailySlot = createDailySlot(vehicle.getId(), date, userId);
+            DailySlotResponseDTO dailySlot = createDailySlot(vehicle.getId(), date, userId);
             dailySlots.add(dailySlot);
         }
 
-        return WeeklyCalendarResponse.builder()
+        return WeeklyCalendarResponseDTO.builder()
                 .weekStart(weekStart)
                 .weekEnd(weekStart.plusDays(6))
-                .userQuota(UserQuotaResponse.builder()
+                .userQuota(UserQuotaResponseDTO.builder()
                         .totalHours(totalQuota)
                         .usedHours(usedHours)
                         .remainingHours(Math.max(0, remainingHours))
@@ -70,8 +76,8 @@ public class WeeklyCalendarService {
     /**
      * Tạo daily slot cho một ngày cụ thể (24/7)
      */
-    private DailySlotResponse createDailySlot(Long vehicleId, LocalDate date, Long userId) {
-        List<TimeSlotResponse> slots = new ArrayList<>();
+    private DailySlotResponseDTO createDailySlot(Long vehicleId, LocalDate date, Long userId) {
+        List<TimeSlotResponseDTO> slots = new ArrayList<>();
 
         // Tạo 12 slot theo layout UI: 00-03, 03-04, 04-07, 07-08, 08-11, 11-12, 12-15, 15-16, 16-19, 19-20, 20-23, 23-24
         int[][] ranges = new int[][]{
@@ -81,11 +87,11 @@ public class WeeklyCalendarService {
         for (int[] r : ranges) {
             LocalDateTime slotStart = date.atTime(r[0], 0);
             LocalDateTime slotEnd = (r[1] == 24) ? date.plusDays(1).atTime(0, 0) : date.atTime(r[1], 0);
-            TimeSlotResponse slot = createTimeSlot(vehicleId, slotStart, slotEnd, userId);
+            TimeSlotResponseDTO slot = createTimeSlot(vehicleId, slotStart, slotEnd, userId);
             slots.add(slot);
         }
 
-        return DailySlotResponse.builder()
+        return DailySlotResponseDTO.builder()
                 .date(date)
                 .dayOfWeek(date.getDayOfWeek().name())
                 .slots(slots)
@@ -95,7 +101,7 @@ public class WeeklyCalendarService {
     /**
      * Tạo time slot với thông tin booking (hỗ trợ overnight)
      */
-    private TimeSlotResponse createTimeSlot(Long vehicleId, LocalDateTime start, LocalDateTime end, Long userId) {
+    private TimeSlotResponseDTO createTimeSlot(Long vehicleId, LocalDateTime start, LocalDateTime end, Long userId) {
         // Kiểm tra slot này có bị book chưa - hỗ trợ overnight booking
 
         // Lấy bookings từ ngày bắt đầu
@@ -112,13 +118,12 @@ public class WeeklyCalendarService {
                 .toList();
 
         String timeDisplay = formatTimeSlot(start, end);
-
-        // Ưu tiên hiển thị: MAINTENANCE (BUFFER, user=null) → LOCKED (BUFFER, user!=null) → BOOKED (CONFIRMED)
+        // 1. MAINTENANCE (BUFFER, user=null)
         UsageBooking maintenance = overlapping.stream()
                 .filter(b -> b.getStatus() == BookingStatus.BUFFER && b.getUser() == null)
                 .findFirst().orElse(null);
         if (maintenance != null) {
-            return TimeSlotResponse.builder()
+            return TimeSlotResponseDTO.builder()
                     .time(timeDisplay)
                     .status("BOOKED")
                     .type("MAINTENANCE")
@@ -126,12 +131,12 @@ public class WeeklyCalendarService {
                     .bookable(false)
                     .build();
         }
-
+        // 2. LOCKED (BUFFER, user!=null)
         UsageBooking locked = overlapping.stream()
                 .filter(b -> b.getStatus() == BookingStatus.BUFFER && b.getUser() != null)
                 .findFirst().orElse(null);
         if (locked != null) {
-            return TimeSlotResponse.builder()
+            return TimeSlotResponseDTO.builder()
                     .time(timeDisplay)
                     .status("BOOKED")
                     .type("LOCKED")
@@ -140,21 +145,24 @@ public class WeeklyCalendarService {
                     .build();
         }
 
-        UsageBooking confirmed = overlapping.stream()
-                .filter(b -> b.getStatus() == BookingStatus.CONFIRMED)
+        // 3. CONFIRMED hoặc PENDING booking
+        UsageBooking booking = overlapping.stream()
+                .filter(b -> b.getStatus() == BookingStatus.CONFIRMED || b.getStatus() == BookingStatus.PENDING)
                 .findFirst().orElse(null);
-        if (confirmed != null) {
-            boolean bookedBySelf = confirmed.getUser() != null && confirmed.getUser().getUserId().equals(userId);
-            return TimeSlotResponse.builder()
+        if (booking != null) {
+            boolean bookedBySelf = booking.getUser() != null && booking.getUser().getUserId().equals(userId);
+            String statusPrefix = booking.getStatus() == BookingStatus.PENDING ? "PENDING_" : "";
+
+            return TimeSlotResponseDTO.builder()
                     .time(timeDisplay)
-                    .status("BOOKED")
-                    .type(bookedBySelf ? "BOOKED_SELF" : "BOOKED_OTHER")
-                    .bookedBy(confirmed.getUser() != null ? confirmed.getUser().getFullName() : "Unknown")
+                    .status(booking.getStatus().name())
+                    .type(statusPrefix + (bookedBySelf ? "BOOKED_SELF" : "BOOKED_OTHER"))
+                    .bookedBy(booking.getUser() != null ? booking.getUser().getFullName() : "Unknown")
                     .bookable(false)
                     .build();
         }
 
-        return TimeSlotResponse.builder()
+        return TimeSlotResponseDTO.builder()
                 .time(timeDisplay)
                 .status("AVAILABLE")
                 .type("AVAILABLE")
@@ -180,10 +188,10 @@ public class WeeklyCalendarService {
     /**
      * Lấy suggestions cho user dựa trên quota và availability
      */
-    public List<String> getBookingSuggestions(Long groupId, Long userId, LocalDate weekStart) {
+    public List<String> getBookingSuggestions(Long groupId, Long userId) {
         List<String> suggestions = new ArrayList<>();
 
-        WeeklyCalendarResponse calendar = getWeeklyCalendar(groupId, userId, weekStart);
+        WeeklyCalendarResponseDTO calendar = getWeeklyCalendar(groupId, userId);
 
         // Suggestion dựa trên quota
         if (calendar.getUserQuota().getRemainingHours() > 20) {
@@ -199,7 +207,7 @@ public class WeeklyCalendarService {
         // Suggestion dựa trên availability
         long availableSlots = calendar.getDailySlots().stream()
                 .flatMap(daily -> daily.getSlots().stream())
-                .filter(TimeSlotResponse::isBookable)
+                .filter(TimeSlotResponseDTO::isBookable)
                 .count();
 
         if (availableSlots < 5) {
@@ -213,21 +221,50 @@ public class WeeklyCalendarService {
      * Tạo flexible booking (hỗ trợ overnight và custom duration)
      */
     @Transactional
-    public FlexibleBookingResponse createFlexibleBooking(FlexibleBookingRequest request) {
+    public FlexibleBookingResponseDTO createFlexibleBooking(FlexibleBookingRequestDTO request, String userEmail) {
         // Validate user và vehicle
-        var user = userRepository.findById(request.getUserId())
+        var user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
         var vehicle = vehicleRepository.findById(request.getVehicleId())
                 .orElseThrow(() -> new EntityNotFoundException("Vehicle not found"));
 
+        if (request.getStartDateTime() == null || request.getEndDateTime() == null) {
+            throw new BookingValidationException("Start time and end time are required");
+        }
+
+        if (request.getStartDateTime().equals(request.getEndDateTime())) {
+            throw new BookingValidationException("Start time and end time cannot be the same");
+        }
+
+        if (request.getStartDateTime().isAfter(request.getEndDateTime())) {
+            throw new BookingValidationException("Start time must be before end time");
+        }
+
+        ZonedDateTime nowVietnam = ZonedDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+        LocalDateTime now = nowVietnam.toLocalDateTime();
+
+        if (request.getStartDateTime().isBefore(now)) {
+            throw new BookingValidationException("Cannot book in the past. Start time must be in the future");
+        }
+
+        long durationMinutes = Duration.between(request.getStartDateTime(), request.getEndDateTime()).toMinutes();
+        if (durationMinutes < 60) {
+            throw new BookingValidationException("Booking duration must be at least 1 hour");
+        }
+
+        LocalDateTime maxFutureDate = now.plusMonths(3);
+        if (request.getStartDateTime().isAfter(maxFutureDate)) {
+            throw new BookingValidationException("Cannot book more than 3 months in advance");
+        }
+
         // Kiểm tra quota
         LocalDateTime weekStart = request.getStartDateTime().with(DayOfWeek.MONDAY).with(LocalTime.MIN);
         long bookedHours = usageBookingRepository.getTotalBookedHoursThisWeek(
-                request.getUserId(), request.getVehicleId(), weekStart);
+                user.getUserId(), request.getVehicleId(), weekStart);
         long newBookingHours = Duration.between(request.getStartDateTime(), request.getEndDateTime()).toHours();
 
         Long quotaLimit = usageBookingRepository.getQuotaLimitByOwnershipPercentage(
-                request.getUserId(), request.getVehicleId());
+                user.getUserId(), request.getVehicleId());
 
         if (quotaLimit == null) {
             throw new IllegalStateException("User is not a member of the vehicle's ownership group.");
@@ -261,7 +298,7 @@ public class WeeklyCalendarService {
         boolean overnightBooking = !request.getStartDateTime().toLocalDate()
                 .equals(request.getEndDateTime().toLocalDate());
 
-        return FlexibleBookingResponse.builder()
+        return FlexibleBookingResponseDTO.builder()
                 .bookingId(savedBooking.getId())
                 .status("PENDING")
                 .message(overnightBooking ? "Overnight booking created successfully" : "Booking created successfully")

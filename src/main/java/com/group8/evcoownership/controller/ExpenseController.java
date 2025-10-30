@@ -1,8 +1,8 @@
 package com.group8.evcoownership.controller;
 
-import com.group8.evcoownership.dto.ExpenseCreateRequest;
-import com.group8.evcoownership.dto.ExpenseResponse;
-import com.group8.evcoownership.dto.ExpenseUpdateRequest;
+import com.group8.evcoownership.dto.ExpenseCreateRequestDTO;
+import com.group8.evcoownership.dto.ExpenseResponseDTO;
+import com.group8.evcoownership.dto.ExpenseUpdateRequestDTO;
 import com.group8.evcoownership.service.ExpenseService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -31,21 +31,21 @@ public class ExpenseController {
 
     @PostMapping
     @Operation(summary = "Tạo chi phí mới", description = "Tạo một khoản chi phí mới trong hệ thống")
-    public ResponseEntity<ExpenseResponse> create(@Valid @RequestBody ExpenseCreateRequest req) {
+    public ResponseEntity<ExpenseResponseDTO> create(@Valid @RequestBody ExpenseCreateRequestDTO req) {
         return ResponseEntity.status(HttpStatus.CREATED).body(expenseService.create(req));
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Chi tiết chi phí", description = "Lấy thông tin chi tiết của một khoản chi phí theo ID")
-    public ResponseEntity<ExpenseResponse> getById(@PathVariable Long id) {
+    public ResponseEntity<ExpenseResponseDTO> getById(@PathVariable Long id) {
         return ResponseEntity.ok(expenseService.getById(id));
     }
 
     @PatchMapping("/{id}")
     @Operation(summary = "Cập nhật chi phí", description = "Cập nhật thông tin của một khoản chi phí")
-    public ResponseEntity<ExpenseResponse> update(
+    public ResponseEntity<ExpenseResponseDTO> update(
             @PathVariable Long id,
-            @RequestBody ExpenseUpdateRequest req
+            @RequestBody ExpenseUpdateRequestDTO req
     ) {
         return ResponseEntity.ok(expenseService.update(id, req));
     }
@@ -63,7 +63,7 @@ public class ExpenseController {
      */
     @GetMapping
     @Operation(summary = "Danh sách chi phí", description = "Lấy danh sách chi phí với khả năng lọc theo quỹ, loại nguồn và khoảng thời gian")
-    public ResponseEntity<Page<ExpenseResponse>> list(
+    public ResponseEntity<Page<ExpenseResponseDTO>> list(
             @RequestParam(required = false) Long fundId,
             @RequestParam(required = false) String sourceType,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,

@@ -1,6 +1,6 @@
 package com.group8.evcoownership.service;
 
-import com.group8.evcoownership.dto.WebSocketNotificationDto;
+import com.group8.evcoownership.dto.WebSocketNotificationDTO;
 import com.group8.evcoownership.enums.NotificationType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -30,7 +30,7 @@ public class WebSocketNotificationService {
     public void sendToUser(Long userId, NotificationType type, String title, String message,
                            String priority, String actionUrl, Map<String, Object> data) {
 
-        WebSocketNotificationDto notification = WebSocketNotificationDto.builder()
+        WebSocketNotificationDTO notification = WebSocketNotificationDTO.builder()
                 .id(UUID.randomUUID().toString())
                 .userId(userId)
                 .title(title)
@@ -57,7 +57,7 @@ public class WebSocketNotificationService {
         Map<String, Object> data = new HashMap<>();
         data.put("groupId", groupId);
 
-        WebSocketNotificationDto notification = WebSocketNotificationDto.builder()
+        WebSocketNotificationDTO notification = WebSocketNotificationDTO.builder()
                 .id(UUID.randomUUID().toString())
                 .title(title)
                 .message(message)
@@ -75,7 +75,7 @@ public class WebSocketNotificationService {
      * Send notification to all online users (system-wide)
      */
     public void sendToAll(NotificationType type, String title, String message) {
-        WebSocketNotificationDto notification = WebSocketNotificationDto.builder()
+        WebSocketNotificationDTO notification = WebSocketNotificationDTO.builder()
                 .id(UUID.randomUUID().toString())
                 .title(title)
                 .message(message)

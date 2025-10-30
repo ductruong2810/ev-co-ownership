@@ -1,8 +1,9 @@
 package com.group8.evcoownership.service;
 
-import com.group8.evcoownership.dto.InvitationAcceptRequest;
-import com.group8.evcoownership.dto.InvitationCreateRequest;
-import com.group8.evcoownership.dto.InvitationResponse;
+import com.group8.evcoownership.dto.InvitationAcceptRequestDTO;
+import com.group8.evcoownership.dto.InvitationCreateRequestDTO;
+import com.group8.evcoownership.dto.InvitationResponseDTO;
+import com.group8.evcoownership.dto.OwnershipShareCreateRequestDTO;
 import com.group8.evcoownership.entity.Invitation;
 import com.group8.evcoownership.entity.OwnershipGroup;
 import com.group8.evcoownership.entity.User;
@@ -52,9 +53,9 @@ public class InvitationService {
      * - Nếu đã có lời mời PENDING → cập nhật resendCount, OTP, expiresAt, rồi gửi lại mail
      */
     @Transactional
-    public InvitationResponse create(Long groupId,
-                                     InvitationCreateRequest req,
-                                     Authentication auth) {
+    public InvitationResponseDTO create(Long groupId,
+                                        InvitationCreateRequestDTO req,
+                                        Authentication auth) {
 
         // Lấy group + kiểm tra tồn tại và trạng thái ACTIVE
         OwnershipGroup group = groupRepo.findById(groupId)
@@ -199,7 +200,7 @@ public class InvitationService {
 
     // --- lay danh sach invitation theo groupId
     @Transactional
-    public Page<InvitationResponse> listByGroup(Long groupId, int page, int size, Authentication auth) {
+    public Page<InvitationResponseDTO> listByGroup(Long groupId, int page, int size, Authentication auth) {
         // Kiểm tra quyền xem danh sách
         validateListPermission(groupId, auth);
 
@@ -215,7 +216,7 @@ public class InvitationService {
      * 🔍 Lấy chi tiết 1 lời mời (Invitation) theo ID.
      * - Chỉ cho phép người có quyền xem: người mời (inviter), admin group, hoặc staff/admin.
      */
-    public InvitationResponse getOne(Long invitationId, Authentication auth) {
+    public InvitationResponseDTO getOne(Long invitationId, Authentication auth) {
         // 1️⃣ Tìm lời mời trong DB
         Invitation inv = invitationRepo.findById(invitationId)
                 .orElseThrow(() -> new EntityNotFoundException("Invitation not found"));
@@ -236,7 +237,7 @@ public class InvitationService {
      * User nhập OTP để chấp nhận lời mời (đã login).
      */
     @Transactional
-    public InvitationResponse accept(InvitationAcceptRequest req, Authentication auth) {
+    public InvitationResponseDTO accept(InvitationAcceptRequestDTO req, Authentication auth) {
         Invitation inv = invitationRepo.findByOtpCodeAndStatus(
                 req.otp(), InvitationStatus.PENDING
         ).orElseThrow(() -> new EntityNotFoundException("Invitation not found"));
@@ -268,7 +269,7 @@ public class InvitationService {
         userDocumentValidationService.validateUserDocuments(user.getUserId());
 
         // Thêm user vào group với % sở hữu tạm = 0%
-        var addReq = new com.group8.evcoownership.dto.OwnershipShareCreateRequest(
+        var addReq = new OwnershipShareCreateRequestDTO(
                 user.getUserId(), group.getGroupId(), BigDecimal.ZERO
         );
         shareService.addGroupShare(addReq);
@@ -316,8 +317,8 @@ public class InvitationService {
                 || u.getRole().getRoleName().name().equalsIgnoreCase("ADMIN"));
     }
 
-    private InvitationResponse toDto(Invitation i) {
-        return new InvitationResponse(
+    private InvitationResponseDTO toDto(Invitation i) {
+        return new InvitationResponseDTO(
                 i.getInvitationId(),
                 i.getGroup().getGroupId(),
                 i.getInviteeEmail(),

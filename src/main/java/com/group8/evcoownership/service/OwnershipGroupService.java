@@ -52,8 +52,8 @@ public class OwnershipGroupService {
     private boolean validationEnabled;
 
     // ---- mapping ----
-    private OwnershipGroupResponse toDto(OwnershipGroup e) {
-        return new OwnershipGroupResponse(
+    private OwnershipGroupResponseDTO toDto(OwnershipGroup e) {
+        return new OwnershipGroupResponseDTO(
                 e.getGroupId(),
                 e.getGroupName(),
                 e.getDescription(),
@@ -65,9 +65,9 @@ public class OwnershipGroupService {
     }
 
     /**
-     * Convert OwnershipGroup thành StaffOwnershipGroupResponse với custom vehicle description
+     * Convert OwnershipGroup thành StaffOwnershipGroupResponseDTO với custom vehicle description
      */
-    private StaffOwnershipGroupResponse toStaffDto(OwnershipGroup e) {
+    private StaffOwnershipGroupResponseDTO toStaffDto(OwnershipGroup e) {
         String vehicleDescription = getCustomVehicleDescription(e.getStatus());
         String rejectionReason = null;
 
@@ -76,7 +76,7 @@ public class OwnershipGroupService {
             rejectionReason = e.getRejectionReason();
         }
 
-        return new StaffOwnershipGroupResponse(
+        return new StaffOwnershipGroupResponseDTO(
                 e.getGroupId(),
                 e.getGroupName(),
                 e.getDescription(),
@@ -161,7 +161,7 @@ public class OwnershipGroupService {
 
     // ---- CRUD ----
     @Transactional
-    public OwnershipGroupResponse create(OwnershipGroupCreateRequest req, String userEmail) {
+    public OwnershipGroupResponseDTO create(OwnershipGroupCreateRequestDTO req, String userEmail) {
         if (repo.existsByGroupNameIgnoreCase(req.groupName())) {
             throw new IllegalStateException("GroupName already exists");
         }
@@ -214,14 +214,14 @@ public class OwnershipGroupService {
     }
 
     @Transactional
-    public GroupWithVehicleResponse createGroupWithVehicle(
+    public GroupWithVehicleResponseDTO createGroupWithVehicle(
             String groupName, String description, Integer memberCapacity,
             BigDecimal vehicleValue, String licensePlate, String chassisNumber,
             MultipartFile[] vehicleImages, String[] imageTypes, String userEmail,
             String brand, String model, Boolean enableAutoFill) {
 
         long startTime = currentTimeMillis();
-        GroupWithVehicleResponse.AutoFillInfo autoFillInfo = null;
+        GroupWithVehicleResponseDTO.AutoFillInfo autoFillInfo = null;
 
         // Step 1: Process OCR if autofill is enabled (default true)
         boolean shouldProcessOcr = enableAutoFill == null || enableAutoFill;
@@ -285,23 +285,23 @@ public class OwnershipGroupService {
         }
 
         // Step 3: Create ownership group với userEmail (quỹ sẽ được tạo tự động)
-        OwnershipGroupCreateRequest groupRequest = new OwnershipGroupCreateRequest(
+        OwnershipGroupCreateRequestDTO groupRequest = new OwnershipGroupCreateRequestDTO(
                 groupName, description, memberCapacity);
-        OwnershipGroupResponse groupResponse = create(groupRequest, userEmail);
+        OwnershipGroupResponseDTO groupResponse = create(groupRequest, userEmail);
 
         // Step 4: Create vehicle using VehicleService with extracted or provided brand/model
-        VehicleCreateRequest vehicleRequest = new VehicleCreateRequest(
+        VehicleCreateRequestDTO vehicleRequest = new VehicleCreateRequestDTO(
                 brand != null && !brand.isEmpty() ? brand : "Unknown",
                 model != null && !model.isEmpty() ? model : "Unknown",
                 licensePlate, chassisNumber, vehicleValue, groupResponse.groupId());
-        VehicleResponse vehicleResponse = vehicleService.create(vehicleRequest);
+        VehicleResponseDTO vehicleResponse = vehicleService.create(vehicleRequest);
 
         // Step 5: Upload multiple vehicle images using VehicleService
         Map<String, Object> uploadedImages = vehicleService.uploadMultipleVehicleImages(
                 vehicleResponse.vehicleId(), vehicleImages, imageTypes);
 
         // Step 6: Return combined response with auto-fill info
-        return new GroupWithVehicleResponse(
+        return new GroupWithVehicleResponseDTO(
                 groupResponse.groupId(),
                 groupResponse.groupName(),
                 groupResponse.description(),
@@ -324,7 +324,7 @@ public class OwnershipGroupService {
     /**
      * Check if uploaded document is likely invalid (not a vehicle registration document)
      */
-    private boolean isLikelyInvalidDocument(GroupWithVehicleResponse.AutoFillInfo autoFillInfo) {
+    private boolean isLikelyInvalidDocument(GroupWithVehicleResponseDTO.AutoFillInfo autoFillInfo) {
         if (autoFillInfo == null) {
             return true;
         }
@@ -351,7 +351,7 @@ public class OwnershipGroupService {
      * Uses hybrid approach: strict validation for critical fields, flexible for others
      */
     private void validateUserInputAgainstOcr(String brand, String model, String licensePlate, String chassisNumber,
-                                             GroupWithVehicleResponse.AutoFillInfo autoFillInfo) {
+                                             GroupWithVehicleResponseDTO.AutoFillInfo autoFillInfo) {
         StringBuilder errors = new StringBuilder();
         StringBuilder warnings = new StringBuilder();
 
@@ -436,7 +436,7 @@ public class OwnershipGroupService {
     /**
      * Process OCR auto-fill for vehicle information
      */
-    private GroupWithVehicleResponse.AutoFillInfo processOcrAutoFill(
+    private GroupWithVehicleResponseDTO.AutoFillInfo processOcrAutoFill(
             MultipartFile[] vehicleImages, String[] imageTypes, long startTime) {
 
         try {
@@ -444,7 +444,7 @@ public class OwnershipGroupService {
             MultipartFile registrationImage = findRegistrationImage(vehicleImages, imageTypes);
 
             if (registrationImage == null) {
-                return new GroupWithVehicleResponse.AutoFillInfo(
+                return new GroupWithVehicleResponseDTO.AutoFillInfo(
                         true, "", "", "", "", "", false, "No registration document found",
                         currentTimeMillis() - startTime + "ms"
                 );
@@ -455,7 +455,7 @@ public class OwnershipGroupService {
 
         } catch (Exception e) {
             long processingTime = currentTimeMillis() - startTime;
-            return new GroupWithVehicleResponse.AutoFillInfo(
+            return new GroupWithVehicleResponseDTO.AutoFillInfo(
                     true, "", "", "", "", "", false, "OCR processing failed: " + e.getMessage(),
                     processingTime + "ms"
             );
@@ -479,7 +479,7 @@ public class OwnershipGroupService {
     }
 
     @Transactional
-    public OwnershipGroupResponse updateByUser(Long groupId, OwnershipGroupUpdateRequest req) {
+    public OwnershipGroupResponseDTO updateByUser(Long groupId, OwnershipGroupUpdateRequestDTO req) {
         var e = repo.findById(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Group not found"));
 
@@ -496,7 +496,7 @@ public class OwnershipGroupService {
     }
 
     @Transactional
-    public OwnershipGroupResponse updateStatus(Long groupId, OwnershipGroupStatusUpdateRequest req) {
+    public OwnershipGroupResponseDTO updateStatus(Long groupId, OwnershipGroupStatusUpdateRequestDTO req) {
         var e = repo.findById(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Group not found"));
 
@@ -522,7 +522,7 @@ public class OwnershipGroupService {
         return toDto(repo.save(e));
     }
 
-    public OwnershipGroupResponse getById(Long groupId) {
+    public OwnershipGroupResponseDTO getById(Long groupId) {
         return repo.findById(groupId)
                 .map(this::toDto)
                 .orElseThrow(() -> new EntityNotFoundException("Group not found"));
@@ -531,11 +531,11 @@ public class OwnershipGroupService {
     /**
      * Lấy thông tin group với role của user hiện tại
      */
-    public OwnershipGroupResponse getByIdWithUserRole(Long groupId, String userEmail) {
+    public OwnershipGroupResponseDTO getByIdWithUserRole(Long groupId, String userEmail) {
         var entity = repo.findById(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
 
-        OwnershipGroupResponse response = toDto(entity);
+        OwnershipGroupResponseDTO response = toDto(entity);
 
         // Thêm thông tin role của user
         try {
@@ -546,7 +546,7 @@ public class OwnershipGroupService {
                     .orElse(null);
 
             if (ownershipShare != null) {
-                response = new OwnershipGroupResponse(
+                response = new OwnershipGroupResponseDTO(
                         response.groupId(),
                         response.groupName(),
                         response.description(),
@@ -560,7 +560,7 @@ public class OwnershipGroupService {
                         ownershipShare.getOwnershipPercentage()
                 );
             } else {
-                response = new OwnershipGroupResponse(
+                response = new OwnershipGroupResponseDTO(
                         response.groupId(),
                         response.groupName(),
                         response.description(),
@@ -576,7 +576,7 @@ public class OwnershipGroupService {
             }
         } catch (Exception e) {
             // Nếu có lỗi, trả về response không có thông tin user
-            response = new OwnershipGroupResponse(
+            response = new OwnershipGroupResponseDTO(
                     response.groupId(),
                     response.groupName(),
                     response.description(),
@@ -600,7 +600,7 @@ public class OwnershipGroupService {
      * - status: PENDING/ACTIVE/INACTIVE
      * - fromDate/toDate: lọc theo CreatedAt (inclusive), dùng BETWEEN các method đã khai báo
      */
-    public Page<OwnershipGroupResponse> list(String keyword,
+    public Page<OwnershipGroupResponseDTO> list(String keyword,
                                              GroupStatus status,
                                              LocalDate fromDate,
                                              LocalDate toDate,
@@ -612,7 +612,7 @@ public class OwnershipGroupService {
     /**
      * listForStaff: API dành cho staff với custom vehicle description
      */
-    public Page<StaffOwnershipGroupResponse> listForStaff(String keyword,
+    public Page<StaffOwnershipGroupResponseDTO> listForStaff(String keyword,
                                                           GroupStatus status,
                                                           LocalDate fromDate,
                                                           LocalDate toDate,
@@ -662,7 +662,7 @@ public class OwnershipGroupService {
     /**
      * Lấy tất cả groups mà user đã tạo và tham gia (bao gồm cả ADMIN và MEMBER)
      */
-    public List<OwnershipGroupResponse> getGroupsByUser(String userEmail) {
+    public List<OwnershipGroupResponseDTO> getGroupsByUser(String userEmail) {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + userEmail));
 

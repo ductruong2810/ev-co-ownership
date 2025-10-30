@@ -1,6 +1,6 @@
 package com.group8.evcoownership.service;
 
-import com.group8.evcoownership.dto.VehicleInfoDto;
+import com.group8.evcoownership.dto.VehicleInfoDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -63,9 +63,9 @@ public class VehicleInfoExtractionService {
     /**
      * Extract thông tin xe từ text OCR
      */
-    public VehicleInfoDto extractVehicleInfo(String ocrText) {
+    public VehicleInfoDTO extractVehicleInfo(String ocrText) {
         if (ocrText == null || ocrText.trim().isEmpty()) {
-            return new VehicleInfoDto("", "", "", "", "");
+            return new VehicleInfoDTO("", "", "", "", "");
         }
 
         log.info("Extracting vehicle info from OCR text: {}", ocrText.substring(0, Math.min(200, ocrText.length())));
@@ -76,7 +76,7 @@ public class VehicleInfoExtractionService {
         String licensePlate = extractLicensePlate(ocrText);
         String chassisNumber = extractChassisNumber(ocrText);
 
-        VehicleInfoDto result = new VehicleInfoDto(brand, model, year, licensePlate, chassisNumber);
+        VehicleInfoDTO result = new VehicleInfoDTO(brand, model, year, licensePlate, chassisNumber);
         log.info("Extracted vehicle info: {}", result);
         log.info("Full OCR text for debugging: {}", ocrText);
 

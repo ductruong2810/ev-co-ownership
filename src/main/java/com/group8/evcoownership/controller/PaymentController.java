@@ -1,9 +1,9 @@
 package com.group8.evcoownership.controller;
 
-import com.group8.evcoownership.dto.PaymentRequest;
-import com.group8.evcoownership.dto.PaymentResponse;
-import com.group8.evcoownership.dto.PaymentStatusUpdateRequest;
-import com.group8.evcoownership.dto.UpdatePaymentRequest;
+import com.group8.evcoownership.dto.PaymentRequestDTO;
+import com.group8.evcoownership.dto.PaymentResponseDTO;
+import com.group8.evcoownership.dto.PaymentStatusUpdateRequestDTO;
+import com.group8.evcoownership.dto.UpdatePaymentRequestDTO;
 import com.group8.evcoownership.service.PaymentService;
 import com.group8.evcoownership.service.VnPay_PaymentService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,25 +25,18 @@ import java.util.Map;
 public class PaymentController {
 
     private final PaymentService paymentService;
-
-    // CREATE
-//    @PostMapping
-//    @ResponseStatus(HttpStatus.CREATED)
-//    public PaymentResponse create(@Valid @RequestBody CreatePaymentRequest req) {
-//        return paymentService.create(req);
-//    }
     private final VnPay_PaymentService vnPayService;
 
     @PostMapping
     @Operation(summary = "Tạo thanh toán", description = "Tạo một giao dịch thanh toán mới và sinh URL thanh toán VNPay")
-    public ResponseEntity<?> createPayment(@RequestBody PaymentRequest request, HttpServletRequest servletRequest) {
+    public ResponseEntity<?> createPayment(@RequestBody PaymentRequestDTO request, HttpServletRequest servletRequest) {
 
         Long groupId = request.getGroupId();
 
-        // 1️⃣ Lưu payment vào DB
-        PaymentResponse payment = paymentService.create(request);
+        // Lưu payment vào DB
+        PaymentResponseDTO payment = paymentService.create(request);
 
-        // 2️⃣ Sinh URL VNPay
+        //Sinh URL VNPay
         String paymentUrl = vnPayService.createPaymentUrl(
                 request.getAmount().longValue(),
                 servletRequest,
@@ -53,7 +46,7 @@ public class PaymentController {
         );
 
 
-        // 3️⃣ Trả về cho FE
+        //Trả về cho FE
         return ResponseEntity.ok(Map.of(
                 "payment", payment,
                 "paymentUrl", paymentUrl
@@ -63,14 +56,14 @@ public class PaymentController {
     // READ - by id
     @GetMapping("/{id}")
     @Operation(summary = "Lấy thông tin thanh toán", description = "Lấy thông tin chi tiết của một giao dịch thanh toán theo ID")
-    public PaymentResponse getById(@PathVariable Long id) {
+    public PaymentResponseDTO getById(@PathVariable Long id) {
         return paymentService.getById(id);
     }
 
     // LIST (trả List, có page/size/sort/asc để limit/offset)
     @GetMapping
     @Operation(summary = "Tìm kiếm thanh toán", description = "Tìm kiếm và lọc danh sách giao dịch thanh toán với phân trang")
-    public List<PaymentResponse> search(
+    public List<PaymentResponseDTO> search(
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String type,
@@ -85,15 +78,15 @@ public class PaymentController {
     // UPDATE
     @PutMapping("/{id}")
     @Operation(summary = "Cập nhật thanh toán", description = "Cập nhật thông tin của một giao dịch thanh toán")
-    public PaymentResponse update(@PathVariable Long id,
-                                  @Valid @RequestBody UpdatePaymentRequest req) {
+    public PaymentResponseDTO update(@PathVariable Long id,
+                                  @Valid @RequestBody UpdatePaymentRequestDTO req) {
         return paymentService.update(id, req);
     }
 
     @PutMapping("/{id}/status")
     @Operation(summary = "Cập nhật trạng thái thanh toán", description = "Cập nhật trạng thái của giao dịch thanh toán")
-    public PaymentResponse updateStatus(@PathVariable Long id,
-                                        @Valid @RequestBody PaymentStatusUpdateRequest req) {
+    public PaymentResponseDTO updateStatus(@PathVariable Long id,
+                                           @Valid @RequestBody PaymentStatusUpdateRequestDTO req) {
         return paymentService.updateStatus(id, req.status(), req.transactionCode(), req.providerResponseJson());
     }
 
@@ -108,7 +101,7 @@ public class PaymentController {
     // MARK PAID (ví dụ gọi từ VNPay return/IPN sau khi verify)
     @PostMapping("/{id}/mark-paid")
     @Operation(summary = "Đánh dấu đã thanh toán", description = "Đánh dấu giao dịch đã được thanh toán thành công")
-    public PaymentResponse markPaid(@PathVariable Long id,
+    public PaymentResponseDTO markPaid(@PathVariable Long id,
                                     @RequestParam(required = false) String transactionCode,
                                     @RequestBody(required = false) String providerResponseJson) {
         return paymentService.markPaid(id, transactionCode, providerResponseJson);
@@ -117,7 +110,7 @@ public class PaymentController {
     // MARK FAILED
     @PostMapping("/{id}/mark-failed")
     @Operation(summary = "Đánh dấu thanh toán thất bại", description = "Đánh dấu giao dịch thanh toán thất bại")
-    public PaymentResponse markFailed(@PathVariable Long id,
+    public PaymentResponseDTO markFailed(@PathVariable Long id,
                                       @RequestBody(required = false) String providerResponseJson) {
         return paymentService.markFailed(id, providerResponseJson);
     }
@@ -125,7 +118,7 @@ public class PaymentController {
     // MARK REFUNDED (nếu có luồng hoàn tiền)
     @PostMapping("/{id}/mark-refunded")
     @Operation(summary = "Đánh dấu đã hoàn tiền", description = "Đánh dấu giao dịch đã được hoàn tiền")
-    public PaymentResponse markRefunded(@PathVariable Long id,
+    public PaymentResponseDTO markRefunded(@PathVariable Long id,
                                         @RequestBody(required = false) String providerResponseJson) {
         return paymentService.markRefunded(id, providerResponseJson);
     }

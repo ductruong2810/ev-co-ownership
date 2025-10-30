@@ -1,8 +1,8 @@
 package com.group8.evcoownership.service;
 
-import com.group8.evcoownership.dto.PaymentRequest;
-import com.group8.evcoownership.dto.PaymentResponse;
-import com.group8.evcoownership.dto.UpdatePaymentRequest;
+import com.group8.evcoownership.dto.PaymentRequestDTO;
+import com.group8.evcoownership.dto.PaymentResponseDTO;
+import com.group8.evcoownership.dto.UpdatePaymentRequestDTO;
 import com.group8.evcoownership.entity.Payment;
 import com.group8.evcoownership.entity.SharedFund;
 import com.group8.evcoownership.entity.User;
@@ -39,7 +39,7 @@ public class PaymentService {
     private final NotificationOrchestrator notificationOrchestrator;
 
     // Map Entity -> DTO
-    private PaymentResponse toDto(Payment p) {
+    private PaymentResponseDTO toDto(Payment p) {
         Long uId = null;
         Long fId = null;
         String uName = null;
@@ -51,7 +51,7 @@ public class PaymentService {
         if (p.getFund() != null && isInitialized(p.getFund())) {
             fId = p.getFund().getFundId();
         }
-        return PaymentResponse.builder()
+        return PaymentResponseDTO.builder()
                 .id(p.getId())
                 .userId(uId)
                 .fundId(fId)
@@ -67,7 +67,7 @@ public class PaymentService {
     }
 
     @Transactional
-    public PaymentResponse create(PaymentRequest req) {
+    public PaymentResponseDTO create(PaymentRequestDTO req) {
         User user = userRepo.findById(req.getUserId())
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + req.getUserId()));
 
@@ -89,14 +89,14 @@ public class PaymentService {
     }
 
     @Transactional(readOnly = true)
-    public PaymentResponse getById(Long id) {
+    public PaymentResponseDTO getById(Long id) {
         Payment p = paymentRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Payment not found: " + id));
         return toDto(p);
     }
 
     @Transactional(readOnly = true)
-    public List<PaymentResponse> search(Long userId, String status, String type,
+    public List<PaymentResponseDTO> search(Long userId, String status, String type,
                                         int page, int size, String sort, boolean asc) {
         // sort: dùng tên field của entity Payment (vd: id, paymentDate, amount)
         Sort sortObj = asc ? Sort.by(sort).ascending() : Sort.by(sort).descending();
@@ -118,7 +118,7 @@ public class PaymentService {
     }
 
     @Transactional
-    public PaymentResponse update(Long id, UpdatePaymentRequest req) {
+    public PaymentResponseDTO update(Long id, UpdatePaymentRequestDTO req) {
         Payment p = paymentRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Payment not found: " + id));
 
@@ -150,7 +150,7 @@ public class PaymentService {
     }
 
     @Transactional
-    public PaymentResponse markPaid(Long id, String transactionCode, String providerResponseJson) {
+    public PaymentResponseDTO markPaid(Long id, String transactionCode, String providerResponseJson) {
         Payment p = paymentRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Payment not found: " + id));
 
@@ -185,7 +185,7 @@ public class PaymentService {
     }
 
     @Transactional
-    public PaymentResponse markFailed(Long id, String providerResponseJson) {
+    public PaymentResponseDTO markFailed(Long id, String providerResponseJson) {
         Payment p = paymentRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Payment not found: " + id));
 
@@ -207,7 +207,7 @@ public class PaymentService {
     }
 
     @Transactional
-    public PaymentResponse markRefunded(Long id, String providerResponseJson) {
+    public PaymentResponseDTO markRefunded(Long id, String providerResponseJson) {
         Payment p = paymentRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Payment not found: " + id));
 
@@ -231,7 +231,7 @@ public class PaymentService {
     }
 
     @Transactional
-    public PaymentResponse updateStatus(Long paymentId, PaymentStatus target,
+    public PaymentResponseDTO updateStatus(Long paymentId, PaymentStatus target,
                                         String transactionCode, String providerResponseJson) {
 
         Payment p = paymentRepo.findById(paymentId)

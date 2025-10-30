@@ -1,13 +1,13 @@
 package com.group8.evcoownership.validation;
 
-import com.group8.evcoownership.dto.CreateGroupWithVehicleRequest;
+import com.group8.evcoownership.dto.CreateGroupWithVehicleRequestDTO;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Arrays;
 
-public class CreateGroupWithVehicleValidator implements ConstraintValidator<ValidCreateGroupWithVehicle, CreateGroupWithVehicleRequest> {
+public class CreateGroupWithVehicleValidator implements ConstraintValidator<ValidCreateGroupWithVehicle, CreateGroupWithVehicleRequestDTO> {
 
     private static final String[] VALID_IMAGE_TYPES = {
             "VEHICLE", "FRONT", "BACK", "LEFT", "RIGHT",
@@ -20,7 +20,7 @@ public class CreateGroupWithVehicleValidator implements ConstraintValidator<Vali
     }
 
     @Override
-    public boolean isValid(CreateGroupWithVehicleRequest request, ConstraintValidatorContext context) {
+    public boolean isValid(CreateGroupWithVehicleRequestDTO request, ConstraintValidatorContext context) {
         boolean isValid = true;
 
         // Validate image types match

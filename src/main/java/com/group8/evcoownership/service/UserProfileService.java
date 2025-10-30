@@ -1,6 +1,10 @@
 package com.group8.evcoownership.service;
 
 import com.group8.evcoownership.dto.UserProfileResponseDTO;
+import com.group8.evcoownership.dto.DocumentsDTO;
+import com.group8.evcoownership.dto.DocumentTypeDTO;
+import com.group8.evcoownership.dto.DocumentDetailDTO;
+import com.group8.evcoownership.dto.StatisticsDTO;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.entity.UserDocument;
 import com.group8.evcoownership.exception.ResourceNotFoundException;
@@ -50,8 +54,8 @@ public class UserProfileService {
     private UserProfileResponseDTO buildProfileResponse(User user) {
         List<UserDocument> allDocuments = userDocumentRepository.findByUserId(user.getUserId());
 
-        UserProfileResponseDTO.DocumentTypeDTO citizenId = buildDocumentType(allDocuments, "CITIZEN_ID");
-        UserProfileResponseDTO.DocumentTypeDTO driverLicense = buildDocumentType(allDocuments, "DRIVER_LICENSE");
+        DocumentTypeDTO citizenId = buildDocumentType(allDocuments, "CITIZEN_ID");
+        DocumentTypeDTO driverLicense = buildDocumentType(allDocuments, "DRIVER_LICENSE");
 
         return UserProfileResponseDTO.builder()
                 .userId(user.getUserId())
@@ -62,11 +66,11 @@ public class UserProfileService {
                 .roleName(user.getRole().getRoleName().name())
                 .status(user.getStatus().name())
                 .createdAt(user.getCreatedAt())
-                .documents(UserProfileResponseDTO.DocumentsDTO.builder()
+                .documents(DocumentsDTO.builder()
                         .citizenIdImages(citizenId)
                         .driverLicenseImages(driverLicense)
                         .build())
-                .statistics(UserProfileResponseDTO.StatisticsDTO.builder()
+                .statistics(StatisticsDTO.builder()
                         .groupsJoined(getGroupsCount(user.getUserId()))
                         .accountStatus(user.getStatus().name())
                         .memberSince(user.getCreatedAt())
@@ -74,7 +78,7 @@ public class UserProfileService {
                 .build();
     }
 
-    private UserProfileResponseDTO.DocumentTypeDTO buildDocumentType(
+    private DocumentTypeDTO buildDocumentType(
             List<UserDocument> allDocuments,
             String documentType) {
 
@@ -82,11 +86,11 @@ public class UserProfileService {
                 .filter(doc -> documentType.equals(doc.getDocumentType()))
                 .toList();
 
-        UserProfileResponseDTO.DocumentDetailDTO frontDetail = null;
-        UserProfileResponseDTO.DocumentDetailDTO backDetail = null;
+        DocumentDetailDTO frontDetail = null;
+        DocumentDetailDTO backDetail = null;
 
         for (UserDocument doc : typeDocs) {
-            UserProfileResponseDTO.DocumentDetailDTO detail = UserProfileResponseDTO.DocumentDetailDTO.builder()
+            DocumentDetailDTO detail = DocumentDetailDTO.builder()
                     .documentId(doc.getDocumentId())
                     .imageUrl(doc.getImageUrl())
                     .status(doc.getStatus())
@@ -101,7 +105,7 @@ public class UserProfileService {
             }
         }
 
-        return UserProfileResponseDTO.DocumentTypeDTO.builder()
+        return DocumentTypeDTO.builder()
                 .front(frontDetail)
                 .back(backDetail)
                 .build();

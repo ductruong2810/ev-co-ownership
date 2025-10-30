@@ -1,5 +1,6 @@
 package com.group8.evcoownership.service;
 
+import com.group8.evcoownership.dto.DocumentDetailDTO;
 import com.group8.evcoownership.dto.ReviewDocumentRequestDTO;
 import com.group8.evcoownership.dto.UserProfileResponseDTO;
 import com.group8.evcoownership.entity.User;
@@ -155,7 +156,7 @@ public class StaffService {
         return hasCitizenId || hasDriverLicense;
     }
 
-    private boolean hasStatus(UserProfileResponseDTO.DocumentDetailDTO doc, String status) {
+    private boolean hasStatus(DocumentDetailDTO doc, String status) {
         return doc != null && status.equalsIgnoreCase(doc.getStatus());
     }
 }

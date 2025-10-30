@@ -1,7 +1,7 @@
 package com.group8.evcoownership.controller;
 
-import com.group8.evcoownership.dto.DepositPaymentRequest;
-import com.group8.evcoownership.dto.DepositPaymentResponse;
+import com.group8.evcoownership.dto.DepositPaymentRequestDTO;
+import com.group8.evcoownership.dto.DepositPaymentResponseDTO;
 import com.group8.evcoownership.service.DepositPaymentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -37,12 +37,12 @@ public class DepositPaymentController {
      */
     @PostMapping("/create")
     @Operation(summary = "Tạo thanh toán tiền cọc", description = "Tạo giao dịch thanh toán tiền cọc với tích hợp VNPay")
-    public ResponseEntity<DepositPaymentResponse> createDepositPayment(
-            @Valid @RequestBody DepositPaymentRequest request,
+    public ResponseEntity<DepositPaymentResponseDTO> createDepositPayment(
+            @Valid @RequestBody DepositPaymentRequestDTO request,
             HttpServletRequest httpRequest,
             Authentication authentication) {
 
-        DepositPaymentResponse response =
+        DepositPaymentResponseDTO response =
                 depositPaymentService.createDepositPayment(request, httpRequest, authentication);
         return ResponseEntity.ok(response);
     }
@@ -52,11 +52,11 @@ public class DepositPaymentController {
      */
     @PostMapping("/confirm")
     @Operation(summary = "Xác nhận thanh toán", description = "Xác nhận giao dịch thanh toán VNPay thành công")
-    public ResponseEntity<DepositPaymentResponse> confirmDepositPayment(
+    public ResponseEntity<DepositPaymentResponseDTO> confirmDepositPayment(
             @RequestParam("vnp_TxnRef") String txnRef,
             @RequestParam("vnp_TxnRef") String transactionNo) {
 
-        DepositPaymentResponse response = depositPaymentService.confirmDepositPayment(txnRef, transactionNo);
+        DepositPaymentResponseDTO response = depositPaymentService.confirmDepositPayment(txnRef, transactionNo);
         return ResponseEntity.ok(response);
     }
 
@@ -66,8 +66,8 @@ public class DepositPaymentController {
      */
     @GetMapping("/info-by-txn")
     @Operation(summary = "Thông tin thanh toán theo mã giao dịch", description = "Trả về thông tin chi tiết của giao dịch dựa trên mã tham chiếu (txnRef)")
-    public ResponseEntity<DepositPaymentResponse> getDepositInfoByTxn(@RequestParam String txnRef) {
-        DepositPaymentResponse response = depositPaymentService.getDepositInfoByTxn(txnRef);
+    public ResponseEntity<DepositPaymentResponseDTO> getDepositInfoByTxn(@RequestParam String txnRef) {
+        DepositPaymentResponseDTO response = depositPaymentService.getDepositInfoByTxn(txnRef);
         return ResponseEntity.ok(response);
     }
 

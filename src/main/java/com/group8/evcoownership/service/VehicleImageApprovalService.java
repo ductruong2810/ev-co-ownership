@@ -38,7 +38,7 @@ public class VehicleImageApprovalService {
     /**
      * Lấy danh sách hình ảnh chờ duyệt
      */
-    public Page<VehicleImageResponse> getPendingImages(Pageable pageable) {
+    public Page<VehicleImageResponseDTO> getPendingImages(Pageable pageable) {
         return vehicleImageRepository.findByApprovalStatus(ImageApprovalStatus.PENDING, pageable)
                 .map(this::toResponse);
     }
@@ -46,7 +46,7 @@ public class VehicleImageApprovalService {
     /**
      * Lấy thông tin đầy đủ của xe và hình ảnh theo group ID
      */
-    public VehicleWithImagesResponse getVehicleWithImagesByGroupId(Long groupId) {
+    public VehicleWithImagesResponseDTO getVehicleWithImagesByGroupId(Long groupId) {
         // Lấy vehicle của group
         Vehicle vehicle = vehicleRepository.findByOwnershipGroup_GroupId(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Vehicle not found for group"));
@@ -56,7 +56,7 @@ public class VehicleImageApprovalService {
         List<VehicleImageResponse> imageResponses = mapToResponses(images);
         ImageCountsDTO counts = computeCounts(images);
 
-        return VehicleWithImagesResponse.builder()
+        return VehicleWithImagesResponseDTO.builder()
                 // Vehicle information
                 .vehicleId(vehicle.getId())
                 .brand(vehicle.getBrand())
@@ -86,21 +86,21 @@ public class VehicleImageApprovalService {
     /**
      * Lấy danh sách hình ảnh của một group (backward compatibility)
      */
-    public List<VehicleImageResponse> getImagesByGroupId(Long groupId) {
+    public List<VehicleImageResponseDTO> getImagesByGroupId(Long groupId) {
         return mapToResponses(vehicleImageRepository.findByVehicle_OwnershipGroup_GroupId(groupId));
     }
 
     /**
      * Lấy danh sách hình ảnh theo vehicle ID (backward compatibility)
      */
-    public List<VehicleImageResponse> getImagesByVehicleId(Long vehicleId) {
+    public List<VehicleImageResponseDTO> getImagesByVehicleId(Long vehicleId) {
         return mapToResponses(vehicleImageRepository.findByVehicleId(vehicleId));
     }
 
     /**
      * Lấy danh sách group có hình ảnh chờ duyệt
      */
-    public List<GroupImageApprovalSummary> getGroupsWithPendingImages() {
+    public List<GroupImageApprovalSummaryDTO> getGroupsWithPendingImages() {
         return vehicleImageRepository.findGroupsWithPendingImages()
                 .stream()
                 .map(this::toGroupSummary)
@@ -111,7 +111,7 @@ public class VehicleImageApprovalService {
      * Duyệt tất cả hình ảnh của một group
      */
     @Transactional
-    public GroupApprovalResult approveGroupImages(Long groupId, VehicleImageApprovalRequest request, String staffEmail) {
+    public GroupApprovalResultDTO approveGroupImages(Long groupId, VehicleImageApprovalRequestDTO request, String staffEmail) {
         // Kiểm tra quyền staff
         User staff = userRepository.findByEmail(staffEmail)
                 .orElseThrow(() -> new EntityNotFoundException("Staff not found"));
@@ -162,7 +162,7 @@ public class VehicleImageApprovalService {
             }
         }
 
-        return GroupApprovalResult.builder()
+        return GroupApprovalResultDTO.builder()
                 .groupId(groupId)
                 .totalImages(groupImages.size())
                 .approvedImages(request.status() == ImageApprovalStatus.APPROVED ? groupImages.size() : 0)
@@ -175,7 +175,7 @@ public class VehicleImageApprovalService {
      * Staff duyệt/từ chối hình ảnh
      */
     @Transactional
-    public VehicleImageResponse approveImage(Long imageId, VehicleImageApprovalRequest request, String staffEmail) {
+    public VehicleImageResponseDTO approveImage(Long imageId, VehicleImageApprovalRequestDTO request, String staffEmail) {
         // Kiểm tra quyền staff
         User staff = userRepository.findByEmail(staffEmail)
                 .orElseThrow(() -> new EntityNotFoundException("Staff not found"));
@@ -259,8 +259,8 @@ public class VehicleImageApprovalService {
     /**
      * Convert entity to response DTO
      */
-    private VehicleImageResponse toResponse(VehicleImage image) {
-        return VehicleImageResponse.builder()
+    private VehicleImageResponseDTO toResponse(VehicleImage image) {
+        return VehicleImageResponseDTO.builder()
                 .imageId(image.getImageId())
                 .vehicleId(image.getVehicle().getId())
                 .imageUrl(image.getImageUrl())
@@ -276,11 +276,11 @@ public class VehicleImageApprovalService {
     /**
      * Convert OwnershipGroup to GroupImageApprovalSummary
      */
-    private GroupImageApprovalSummary toGroupSummary(OwnershipGroup group) {
+    private GroupImageApprovalSummaryDTO toGroupSummary(OwnershipGroup group) {
         List<VehicleImage> groupImages = vehicleImageRepository.findByVehicle_OwnershipGroup_GroupId(group.getGroupId());
         ImageCountsDTO counts = computeCounts(groupImages);
 
-        return GroupImageApprovalSummary.builder()
+        return GroupImageApprovalSummaryDTO.builder()
                 .groupId(group.getGroupId())
                 .groupName(group.getGroupName())
                 .totalImages(groupImages.size())
