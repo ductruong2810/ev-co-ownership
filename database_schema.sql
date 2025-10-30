@@ -846,6 +846,21 @@ VALUES (1, 'INCIDENT', 1, 1, N'Reimburse user for headlight repair (incident #1)
        (1, 'MAINTENANCE', 2, NULL, N'Brake and tire maintenance by technician', 500000, 'COMPLETED', 3);
 GO
 
+-- 1️⃣ Thêm cột
+ALTER TABLE Expense
+    ADD ExpenseDate DATETIME2(7) NULL;
+GO
+
+-- 2️⃣ Gán giá trị cho bản ghi cũ
+UPDATE Expense
+SET ExpenseDate = CreatedAt
+WHERE ExpenseDate IS NULL;
+GO
+
+-- 3️⃣ Tạo default cho bản ghi mới
+ALTER TABLE Expense
+    ADD CONSTRAINT DF_Expense_ExpenseDate DEFAULT SYSUTCDATETIME() FOR ExpenseDate;
+GO
 
 
 
