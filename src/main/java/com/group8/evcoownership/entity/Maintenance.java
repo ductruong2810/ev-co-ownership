@@ -6,6 +6,7 @@ import lombok.*;
 import org.hibernate.annotations.Nationalized;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -49,6 +50,32 @@ public class Maintenance {
     @Column(name = "Status", length = 20, nullable = false)
     private String status; // PENDING | APPROVED | REJECTED
 
+    // Ngày dự kiến bảo dưỡng (do technician chọn)
+    @Column(name = "MaintenanceDate", nullable = true)
+    private LocalDate maintenanceDate;
+
+    // Ngày tạo yêu cầu bảo trì
     @Column(name = "CreatedAt", nullable = false)
     private LocalDateTime createdAt;
+
+    // Ngày cập nhật (staff duyệt hoặc thay đổi trạng thái)
+    @Column(name = "UpdatedAt", nullable = false)
+    private LocalDateTime updatedAt;
+
+    // =======================
+    // Lifecycle hooks
+    // =======================
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+        if (this.status == null)
+            this.status = "PENDING";
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
 }
