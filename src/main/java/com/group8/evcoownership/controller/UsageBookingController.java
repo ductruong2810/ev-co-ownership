@@ -28,11 +28,6 @@ public class UsageBookingController {
     private final UsageBookingService usageBookingService;
     private final UserRepository userRepository;
 
-    // Removed deprecated create endpoint. Use /api/calendar/flexible-booking instead.
-
-
-    // Removed per simplification; weekly calendar covers this use case.
-
     /**
      * Lấy danh sách booking của user (có thể lọc theo tuần hoặc lấy tất cả upcoming)
      * Example:
@@ -154,7 +149,6 @@ public class UsageBookingController {
     @Operation(summary = "Hoàn thành đặt xe", description = "Hoàn thành booking và tự động tạo buffer time cho kiểm tra kỹ thuật và sạc")
     public ResponseEntity<Map<String, Object>> completeBooking(@PathVariable Long bookingId) {
         UsageBooking booking = usageBookingService.completeBooking(bookingId);
-        UsageBooking bufferBooking = usageBookingService.createBufferBooking(bookingId);
 
         var vehicle = booking.getVehicle();
         BookingResponseDTO bookingResponse = new BookingResponseDTO(
@@ -167,21 +161,9 @@ public class UsageBookingController {
                 booking.getStatus().name()
         );
 
-        BookingResponseDTO bufferResponse = new BookingResponseDTO(
-                bufferBooking.getId(),
-                vehicle.getLicensePlate(),
-                vehicle.getBrand(),
-                vehicle.getModel(),
-                bufferBooking.getStartDateTime(),
-                bufferBooking.getEndDateTime(),
-                bufferBooking.getStatus().name()
-        );
-
         Map<String, Object> result = new HashMap<>();
         result.put("completedBooking", bookingResponse);
-        result.put("bufferBooking", bufferResponse);
-        result.put("message", "Booking completed. 1-hour buffer period created for technical inspection and charging.");
-
+        result.put("message", "Booking completed.");
         return ResponseEntity.ok(result);
     }
 }

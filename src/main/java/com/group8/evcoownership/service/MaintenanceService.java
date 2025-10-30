@@ -38,10 +38,12 @@ public class MaintenanceService {
         User technician = userRepository.findById(technicianId)
                 .orElseThrow(() -> new EntityNotFoundException("Technician not found"));
 
+        LocalDateTime now = LocalDateTime.now();
         Maintenance maintenance = Maintenance.builder()
                 .vehicle(vehicle)
                 .requestedBy(technician)
-                .createdAt(LocalDateTime.now())
+                .requestDate(now)
+                .createdAt(now)
                 .description(description)
                 .actualCost(estimatedCost)
                 .status("PENDING")
@@ -79,7 +81,9 @@ public class MaintenanceService {
                 .orElseThrow(() -> new EntityNotFoundException("Approver not found"));
 
         // Update maintenance status
+        LocalDateTime now = LocalDateTime.now();
         maintenance.setApprovedBy(approver);
+        maintenance.setApprovalDate(now);
         maintenance.setStatus("APPROVED");
         maintenanceRepository.save(maintenance);
 

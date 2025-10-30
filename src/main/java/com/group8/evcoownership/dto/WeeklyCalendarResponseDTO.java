@@ -13,4 +13,5 @@ public class WeeklyCalendarResponseDTO {
     private LocalDate weekEnd;
     private UserQuotaResponseDTO userQuota;
     private List<DailySlotResponseDTO> dailySlots;
+    private WeeklyCalendarDashboardDTO dashboardSummary;
 }
