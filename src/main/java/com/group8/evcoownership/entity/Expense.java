@@ -55,6 +55,9 @@ public class Expense {
     @Column(name = "CreatedAt", nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "ExpenseDate")
+    private LocalDateTime expenseDate;
+
     // FK -> Users (admin duyệt)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ApprovedBy")
