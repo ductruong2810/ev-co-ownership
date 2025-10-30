@@ -2,14 +2,10 @@ package com.group8.evcoownership.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.Nationalized;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -19,44 +15,40 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class Maintenance {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "MaintenanceId", nullable = false)
     private Long id;
 
+    // FK → Vehicle (NOT NULL)
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "VehicleId", nullable = false)
     private Vehicle vehicle;
 
-    @Column(name = "RequestedBy", nullable = false)
-    private Long requestedBy;
+    // FK → Users (technician phát hiện)
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "RequestedBy", nullable = false)
+    private User requestedBy;
 
+    // FK → Users (staff duyệt, có thể null)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ApprovedBy")
     private User approvedBy;
-
-    @Column(name = "RequestDate")
-    private LocalDateTime requestDate;
-
-    @Column(name = "ApprovalDate")
-    private LocalDateTime approvalDate;
-
-    @Column(name = "NextDueDate")
-    private LocalDate nextDueDate;
 
     @Nationalized
     @Lob
     @Column(name = "Description")
     private String description;
 
-    @Column(name = "EstimatedCost", precision = 12, scale = 2)
-    private BigDecimal estimatedCost;
-
     @Column(name = "ActualCost", precision = 12, scale = 2)
     private BigDecimal actualCost;
 
-    @Column(name = "MaintenanceStatus", length = 20)
-    private String maintenanceStatus; // PENDING, APPROVED, IN_PROGRESS, COMPLETED, CANCELLED
+    @Column(name = "Status", length = 20, nullable = false)
+    private String status; // PENDING | APPROVED | REJECTED
 
+    @Column(name = "CreatedAt", nullable = false)
+    private LocalDateTime createdAt;
 }
