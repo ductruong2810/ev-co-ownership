@@ -59,11 +59,11 @@ public class VnPay_PaymentService {
 
         String returnUrl = isDeposit ? this.vnp_DepositReturnUrl : this.vnp_ReturnUrl;
 
-        // ✅ Nếu là deposit thì thêm groupId (ưu tiên từ param truyền vào)
+        // Nếu là deposit thì thêm groupId (ưu tiên từ param truyền vào)
         if (isDeposit) {
             String effectiveGroupId = (groupId != null) ? String.valueOf(groupId) : request.getParameter("groupId");
             if (effectiveGroupId == null || effectiveGroupId.isEmpty()) {
-                System.err.println("⚠️ [VNPay] groupId missing — fallback to 0");
+                System.err.println("[VNPay] groupId missing — fallback to 0");
                 effectiveGroupId = "0";
             }
             returnUrl = returnUrl + "?groupId=" + effectiveGroupId;
@@ -93,7 +93,7 @@ public class VnPay_PaymentService {
         String txnRef = request.getParameter("vnp_TxnRef");
         String groupId = request.getParameter("groupId");
 
-        // ✅ Dựa theo groupId redirect về đúng trang FE trong dashboard
+        // Dựa theo groupId redirect về đúng trang FE trong dashboard
         String redirectUrl = String.format(
                 "%s/dashboard/viewGroups/%s/payment-result?status=%s&txnRef=%s",
                 frontendUrl,
@@ -127,7 +127,7 @@ public class VnPay_PaymentService {
 
         Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
         SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
-        formatter.setTimeZone(TimeZone.getTimeZone("Asia/Ho_Chi_Minh")); // ✅ thêm dòng này
+        formatter.setTimeZone(TimeZone.getTimeZone("Asia/Ho_Chi_Minh")); //thêm dòng này
 
         String vnp_CreateDate = formatter.format(calendar.getTime());
         vnpParamsMap.put("vnp_CreateDate", vnp_CreateDate);
@@ -181,7 +181,7 @@ public class VnPay_PaymentService {
             ipAddress = request.getRemoteAddr();
         }
 
-        // ✅ FIX: chuyển IPv6 localhost (::1) về IPv4 127.0.0.1
+        // FIX: chuyển IPv6 localhost (::1) về IPv4 127.0.0.1
         if ("0:0:0:0:0:0:0:1".equals(ipAddress)) {
             ipAddress = "127.0.0.1";
         }
@@ -214,7 +214,7 @@ public class VnPay_PaymentService {
     }
 
     /**
-     * 4️⃣ Tạo yêu cầu hoàn tiền qua VNPay API
+     * Tạo yêu cầu hoàn tiền qua VNPay API
      *
      * @param amount             Số tiền cần hoàn (VND)
      * @param vnpTxnRef          Mã giao dịch nội bộ
