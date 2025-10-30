@@ -213,6 +213,22 @@ public class GlobalExceptionHandler {
         return "general";
     }
 
+    // ========== 400 - BOOKING VALIDATION ==========
+    @ExceptionHandler(BookingValidationException.class)
+    public ResponseEntity<ValidationErrorResponseDTO> handleBookingValidation(
+            BookingValidationException ex, WebRequest request) {
+
+        logger.warn("Booking validation failed: {}", ex.getMessage());
+
+        String field = determineFieldFromBookingMessage(ex.getMessage());
+
+        return ResponseEntity.badRequest().body(
+                ValidationErrorResponseDTO.singleError(400, "Booking Validation Failed",
+                        ex.getMessage(), field,
+                        request.getDescription(false).replace("uri=", ""))
+        );
+    }
+
 
     // ========== FILE UPLOAD - SIZE EXCEEDED ==========
     @ExceptionHandler(MaxUploadSizeExceededException.class)
