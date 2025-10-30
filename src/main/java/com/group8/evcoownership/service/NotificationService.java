@@ -45,7 +45,7 @@ public class NotificationService {
 
     // Gửi notification cho technicians
     public void sendNotificationToTechnicians(String title, String message) {
-        // Query users with technician role
+        // Query users with a technician role
         List<User> technicians = userRepository.findByRoleRoleName(RoleName.TECHNICIAN);
 
         if (!technicians.isEmpty()) {

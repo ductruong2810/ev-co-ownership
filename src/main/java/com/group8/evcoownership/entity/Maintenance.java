@@ -6,6 +6,7 @@ import lombok.*;
 import org.hibernate.annotations.Nationalized;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -49,6 +50,43 @@ public class Maintenance {
     @Column(name = "Status", length = 20, nullable = false)
     private String status; // PENDING | APPROVED | REJECTED
 
+    @Column(name = "RequestDate", nullable = false)
+    private LocalDateTime requestDate;
+
+    @Column(name = "ApprovalDate")
+    private LocalDateTime approvalDate;
+
+    @Column(name = "NextDueDate")
+    private LocalDate nextDueDate;
+
     @Column(name = "CreatedAt", nullable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "UpdatedAt", nullable = false)
+    private LocalDateTime updatedAt;
+
+    // =======================
+    // Lifecycle hooks
+    // =======================
+
+    @PrePersist
+    protected void onCreate() {
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+        if (this.updatedAt == null) {
+            this.updatedAt = LocalDateTime.now();
+        }
+        if (this.requestDate == null) {
+            this.requestDate = LocalDateTime.now();
+        }
+        if (this.status == null) {
+            this.status = "PENDING";
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
 }

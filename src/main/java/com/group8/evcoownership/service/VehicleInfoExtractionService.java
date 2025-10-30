@@ -135,7 +135,7 @@ public class VehicleInfoExtractionService {
             if (line.toLowerCase().contains("nhãn hiệu") || line.toLowerCase().contains("brand")) {
                 log.info("Found brand line: {}", line);
                 // Tìm từ sau dấu : hoặc sau "brand"
-                String[] parts = line.split("[:]");
+                String[] parts = line.split(":");
                 if (parts.length > 1) {
                     String brand = parts[1].trim();
                     if (isValidBrand(brand)) {
@@ -194,7 +194,7 @@ public class VehicleInfoExtractionService {
             if (line.toLowerCase().contains("số loại") || line.toLowerCase().contains("model")) {
                 log.info("Found model line: {}", line);
                 // Tìm từ sau dấu : hoặc sau "model"
-                String[] parts = line.split("[:]");
+                String[] parts = line.split(":");
                 if (parts.length > 1) {
                     String model = parts[1].trim();
                     if (isValidModel(model)) {

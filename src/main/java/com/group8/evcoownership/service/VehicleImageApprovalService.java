@@ -2,6 +2,7 @@ package com.group8.evcoownership.service;
 
 import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.entity.OwnershipGroup;
+import com.group8.evcoownership.dto.ImageCountsDTO;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.entity.Vehicle;
 import com.group8.evcoownership.entity.VehicleImage;
@@ -52,22 +53,8 @@ public class VehicleImageApprovalService {
 
         // Lấy tất cả hình ảnh của vehicle
         List<VehicleImage> images = vehicleImageRepository.findByVehicleId(vehicle.getId());
-
-        // Convert images to response DTOs
-        List<VehicleImageResponseDTO> imageResponses = images.stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
-
-        // Đếm số lượng hình ảnh theo trạng thái
-        long pendingCount = images.stream()
-                .filter(img -> img.getApprovalStatus() == ImageApprovalStatus.PENDING)
-                .count();
-        long approvedCount = images.stream()
-                .filter(img -> img.getApprovalStatus() == ImageApprovalStatus.APPROVED)
-                .count();
-        long rejectedCount = images.stream()
-                .filter(img -> img.getApprovalStatus() == ImageApprovalStatus.REJECTED)
-                .count();
+        List<VehicleImageResponseDTO> imageResponses = mapToResponses(images);
+        ImageCountsDTO counts = computeCounts(images);
 
         return VehicleWithImagesResponseDTO.builder()
                 // Vehicle information
@@ -90,9 +77,9 @@ public class VehicleImageApprovalService {
 
                 // Summary
                 .totalImages(images.size())
-                .pendingImages((int) pendingCount)
-                .approvedImages((int) approvedCount)
-                .rejectedImages((int) rejectedCount)
+                .pendingImages((int) counts.getPending())
+                .approvedImages((int) counts.getApproved())
+                .rejectedImages((int) counts.getRejected())
                 .build();
     }
 
@@ -100,20 +87,14 @@ public class VehicleImageApprovalService {
      * Lấy danh sách hình ảnh của một group (backward compatibility)
      */
     public List<VehicleImageResponseDTO> getImagesByGroupId(Long groupId) {
-        return vehicleImageRepository.findByVehicle_OwnershipGroup_GroupId(groupId)
-                .stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+        return mapToResponses(vehicleImageRepository.findByVehicle_OwnershipGroup_GroupId(groupId));
     }
 
     /**
      * Lấy danh sách hình ảnh theo vehicle ID (backward compatibility)
      */
     public List<VehicleImageResponseDTO> getImagesByVehicleId(Long vehicleId) {
-        return vehicleImageRepository.findByVehicleId(vehicleId)
-                .stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+        return mapToResponses(vehicleImageRepository.findByVehicleId(vehicleId));
     }
 
     /**
@@ -134,11 +115,7 @@ public class VehicleImageApprovalService {
         // Kiểm tra quyền staff
         User staff = userRepository.findByEmail(staffEmail)
                 .orElseThrow(() -> new EntityNotFoundException("Staff not found"));
-
-        if (staff.getRole().getRoleName() != RoleName.STAFF &&
-                staff.getRole().getRoleName() != RoleName.ADMIN) {
-            throw new IllegalStateException("Only staff can approve images");
-        }
+        assertStaffPermissions(staff);
 
         // Lấy tất cả hình ảnh của group
         List<VehicleImage> groupImages = vehicleImageRepository.findByVehicle_OwnershipGroup_GroupId(groupId);
@@ -173,7 +150,7 @@ public class VehicleImageApprovalService {
                 group.setStatus(GroupStatus.ACTIVE);
                 group.setRejectionReason(null); // Xóa lý do từ chối khi duyệt
                 ownershipGroupRepository.save(group);
-                log.info("Group {} status updated to ACTIVE after all images approved", groupId);
+                logGroupStatusUpdate(groupId, GroupStatus.ACTIVE, null);
             }
         } else if (request.status() == ImageApprovalStatus.REJECTED) {
             // Nếu có hình bị từ chối, chuyển group thành INACTIVE và lưu lý do từ chối
@@ -181,7 +158,7 @@ public class VehicleImageApprovalService {
                 group.setStatus(GroupStatus.INACTIVE);
                 group.setRejectionReason(request.rejectionReason()); // Lưu lý do từ chối hình ảnh làm lý do INACTIVE của group
                 ownershipGroupRepository.save(group);
-                log.info("Group {} status updated to INACTIVE after images rejected. Reason: {}", groupId, request.rejectionReason());
+                logGroupStatusUpdate(groupId, GroupStatus.INACTIVE, request.rejectionReason());
             }
         }
 
@@ -202,11 +179,7 @@ public class VehicleImageApprovalService {
         // Kiểm tra quyền staff
         User staff = userRepository.findByEmail(staffEmail)
                 .orElseThrow(() -> new EntityNotFoundException("Staff not found"));
-
-        if (staff.getRole().getRoleName() != RoleName.STAFF &&
-                staff.getRole().getRoleName() != RoleName.ADMIN) {
-            throw new IllegalStateException("Only staff can approve images");
-        }
+        assertStaffPermissions(staff);
 
         VehicleImage image = vehicleImageRepository.findById(imageId)
                 .orElseThrow(() -> new EntityNotFoundException("Image not found"));
@@ -257,7 +230,7 @@ public class VehicleImageApprovalService {
             group.setStatus(GroupStatus.ACTIVE);
             group.setRejectionReason(null); // Xóa lý do từ chối khi duyệt
             ownershipGroupRepository.save(group);
-            log.info("Group {} status updated to ACTIVE after all images approved", groupId);
+            logGroupStatusUpdate(groupId, GroupStatus.ACTIVE, null);
         }
         // Nếu có hình ảnh bị từ chối và group đang ở trạng thái PENDING
         else if (rejectedImages > 0 && group.getStatus() == GroupStatus.PENDING) {
@@ -265,13 +238,12 @@ public class VehicleImageApprovalService {
 
             // Lấy lý do từ chối từ hình ảnh bị từ chối đầu tiên
             List<VehicleImage> rejectedImagesList = vehicleImageRepository.findByVehicleIdAndApprovalStatus(vehicleId, ImageApprovalStatus.REJECTED);
+            String rejectionReason = null;
             if (!rejectedImagesList.isEmpty()) {
-                String rejectionReason = rejectedImagesList.get(0).getRejectionReason();
+                rejectionReason = rejectedImagesList.get(0).getRejectionReason();
                 group.setRejectionReason(rejectionReason);
-                log.info("Group {} status updated to INACTIVE after images rejected. Reason: {}", groupId, rejectionReason);
-            } else {
-                log.info("Group {} status updated to INACTIVE after images rejected", groupId);
             }
+            logGroupStatusUpdate(groupId, GroupStatus.INACTIVE, rejectionReason);
 
             ownershipGroupRepository.save(group);
         }
@@ -306,25 +278,41 @@ public class VehicleImageApprovalService {
      */
     private GroupImageApprovalSummaryDTO toGroupSummary(OwnershipGroup group) {
         List<VehicleImage> groupImages = vehicleImageRepository.findByVehicle_OwnershipGroup_GroupId(group.getGroupId());
-
-        long pendingCount = groupImages.stream()
-                .filter(img -> img.getApprovalStatus() == ImageApprovalStatus.PENDING)
-                .count();
-        long approvedCount = groupImages.stream()
-                .filter(img -> img.getApprovalStatus() == ImageApprovalStatus.APPROVED)
-                .count();
-        long rejectedCount = groupImages.stream()
-                .filter(img -> img.getApprovalStatus() == ImageApprovalStatus.REJECTED)
-                .count();
+        ImageCountsDTO counts = computeCounts(groupImages);
 
         return GroupImageApprovalSummaryDTO.builder()
                 .groupId(group.getGroupId())
                 .groupName(group.getGroupName())
                 .totalImages(groupImages.size())
-                .pendingImages((int) pendingCount)
-                .approvedImages((int) approvedCount)
-                .rejectedImages((int) rejectedCount)
+                .pendingImages((int) counts.getPending())
+                .approvedImages((int) counts.getApproved())
+                .rejectedImages((int) counts.getRejected())
                 .groupStatus(group.getStatus())
                 .build();
+    }
+
+    private void logGroupStatusUpdate(Long groupId, GroupStatus status, String reason) {
+        if (reason == null || reason.isBlank()) {
+            log.info("Group {} status updated to {}", groupId, status);
+        } else {
+            log.info("Group {} status updated to {}. Reason: {}", groupId, status, reason);
+        }
+    }
+
+    private void assertStaffPermissions(User staff) {
+        if (staff.getRole().getRoleName() != RoleName.STAFF && staff.getRole().getRoleName() != RoleName.ADMIN) {
+            throw new IllegalStateException("Only staff can approve images");
+        }
+    }
+
+    private List<VehicleImageResponseDTO> mapToResponses(List<VehicleImage> images) {
+        return images.stream().map(this::toResponse).collect(Collectors.toList());
+    }
+
+    private ImageCountsDTO computeCounts(List<VehicleImage> images) {
+        long pending = images.stream().filter(img -> img.getApprovalStatus() == ImageApprovalStatus.PENDING).count();
+        long approved = images.stream().filter(img -> img.getApprovalStatus() == ImageApprovalStatus.APPROVED).count();
+        long rejected = images.stream().filter(img -> img.getApprovalStatus() == ImageApprovalStatus.REJECTED).count();
+        return ImageCountsDTO.builder().pending(pending).approved(approved).rejected(rejected).build();
     }
 }

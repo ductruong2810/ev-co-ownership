@@ -3,7 +3,7 @@ package com.group8.evcoownership.controller;
 import com.group8.evcoownership.dto.ReviewDocumentRequestDTO;
 import com.group8.evcoownership.dto.UserProfileResponseDTO;
 import com.group8.evcoownership.service.StaffService;
-import com.group8.evcoownership.util.AuthUtils;
+import com.group8.evcoownership.utils.AuthUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;

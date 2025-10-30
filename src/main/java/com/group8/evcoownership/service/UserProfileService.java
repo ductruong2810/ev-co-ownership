@@ -35,7 +35,7 @@ public class UserProfileService {
         log.info("Fetching profile for user: {}", email);
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         return buildProfileResponse(user);
     }
@@ -45,7 +45,7 @@ public class UserProfileService {
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        String.format("Không tìm thấy người dùng với ID: %d", userId)
+                        String.format("User not found with ID: %d", userId)
                 ));
 
         return buildProfileResponse(user);

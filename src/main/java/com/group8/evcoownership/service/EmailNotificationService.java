@@ -71,7 +71,7 @@ public class EmailNotificationService {
     }
 
     /**
-     * Send monthly report email
+     * Send a monthly report email
      */
     public void sendMonthlyReport(String toEmail, String userName, Map<String, Object> reportData) {
         String subject = "Monthly Report - EV Co-ownership";
@@ -253,7 +253,7 @@ public class EmailNotificationService {
     }
 
     /**
-     * Get email subject based on notification type
+     * Get an email subject based on a notification type
      */
     private String getEmailSubject(NotificationType type) {
         return switch (type) {
