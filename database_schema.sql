@@ -862,5 +862,25 @@ ALTER TABLE Expense
     ADD CONSTRAINT DF_Expense_ExpenseDate DEFAULT SYSUTCDATETIME() FOR ExpenseDate;
 GO
 
+---------------------------- tạo maintenanceDate
+ALTER TABLE Maintenance ADD MaintenanceDate DATE NULL;
+
+UPDATE Maintenance
+SET MaintenanceDate = DATEADD(DAY, 7, CAST(SYSUTCDATETIME() AS DATE))
+WHERE MaintenanceDate IS NULL;
+
+
+ALTER TABLE Maintenance
+    ADD CONSTRAINT CK_Maintenance_FutureDate
+        CHECK (MaintenanceDate > CAST(CreatedAt AS DATE));
+GO
+
+-- Thêm cột UpdatedAt
+ALTER TABLE Maintenance
+    ADD UpdatedAt DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME();
+GO
+
+
+
 
 
