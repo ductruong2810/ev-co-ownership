@@ -11,6 +11,9 @@ import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -44,7 +47,7 @@ public class EmailService {
             String htmlContent = templateEngine.process("otp-registration-email", context);
 
             helper.setTo(to);
-            helper.setSubject("Xác minh đăng ký tài khoản EV Co-ownership");
+            helper.setSubject("Account Registration Verification - EV Co-ownership");
             helper.setText(htmlContent, true);
 
             mailSender.send(message);
@@ -52,7 +55,7 @@ public class EmailService {
 
         } catch (MessagingException e) {
             log.error("Failed to send OTP email to: {}", to, e);
-            throw new RuntimeException("Không thể gửi email. Vui lòng thử lại sau.");
+            throw new RuntimeException("Unable to send email. Please try again later.");
         }
     }
 
@@ -61,11 +64,9 @@ public class EmailService {
             String to,
             String groupName,
             String inviterName,
-            String token,
             String otp,
-            java.time.LocalDateTime expiresAt,
-            java.math.BigDecimal suggestedPercentage, // có thể null
-            String acceptUrl // URL FE: ví dụ https://app.xyz/invitations/accept?token=...
+            LocalDateTime expiresAt,
+            BigDecimal suggestedPercentage // có thể null
     ) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
@@ -82,14 +83,14 @@ public class EmailService {
             String htmlContent = templateEngine.process("invitation-email", context);
 
             helper.setTo(to);
-            helper.setSubject("Lời mời tham gia nhóm EV: " + groupName);
+            helper.setSubject("Group Invitation - EV Co-ownership: " + groupName);
             helper.setText(htmlContent, true);
 
             mailSender.send(message);
             log.info("Invitation email sent successfully to: {}", to);
         } catch (MessagingException e) {
             log.error("Failed to send invitation email to: {}", to, e);
-            throw new RuntimeException("Không thể gửi email. Vui lòng thử lại sau.");
+            throw new RuntimeException("Unable to send email. Please try again later.");
         }
     }
 
@@ -116,7 +117,7 @@ public class EmailService {
             String htmlContent = templateEngine.process("otp-password-reset-email", context);
 
             helper.setTo(to);
-            helper.setSubject("Đặt lại mật khẩu - Mã OTP");
+            helper.setSubject("Password Reset - OTP Code");
             helper.setText(htmlContent, true);
 
             mailSender.send(message);
@@ -124,7 +125,7 @@ public class EmailService {
 
         } catch (MessagingException e) {
             log.error("Failed to send password reset email to: {}", to, e);
-            throw new RuntimeException("Không thể gửi email. Vui lòng thử lại sau.");
+            throw new RuntimeException("Unable to send email. Please try again later.");
         }
     }
 }

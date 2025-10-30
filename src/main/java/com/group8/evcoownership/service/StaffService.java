@@ -37,7 +37,7 @@ public class StaffService {
             UserStatus userStatus = UserStatus.valueOf(status.toUpperCase());
             users = users.stream()
                     .filter(user -> user.getStatus() == userStatus)
-                    .collect(Collectors.toList());
+                    .toList();
         }
 
         if (documentStatus != null) {
@@ -89,7 +89,6 @@ public class StaffService {
         document.setReviewedBy(staff);
         userDocumentRepository.save(document);
 
-        log.info("Document {} {} by staff {}", documentId, action, staffEmail);
         return String.format("Document %s successfully", action.toLowerCase());
     }
 

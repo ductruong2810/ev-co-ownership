@@ -124,51 +124,6 @@ public class VehicleService {
         vehicleRepo.delete(v);
     }
 
-    // ======== Upload Vehicle Images ==============
-    @Transactional
-    public Map<String, String> uploadVehicleImages(Long vehicleId, MultipartFile vehicleImage, MultipartFile registrationImage) {
-        Map<String, String> uploadedImages = new HashMap<>();
-
-        try {
-            // Upload vehicle image
-            String vehicleImageUrl = azureBlobStorageService.uploadFile(vehicleImage);
-            VehicleImage vehicleImg = VehicleImage.builder()
-                    .imageUrl(vehicleImageUrl)
-                    .imageType("VEHICLE")
-                    .approvalStatus(ImageApprovalStatus.PENDING)
-                    .build();
-            Vehicle vehicle = new Vehicle();
-            vehicle.setId(vehicleId);
-            vehicleImg.setVehicle(vehicle);
-            vehicleImageRepository.save(vehicleImg);
-            uploadedImages.put("vehicleImage", vehicleImageUrl);
-
-            // Upload registration image
-            String registrationImageUrl = azureBlobStorageService.uploadFile(registrationImage);
-            VehicleImage registrationImg = VehicleImage.builder()
-                    .imageUrl(registrationImageUrl)
-                    .imageType("LICENSE")
-                    .approvalStatus(ImageApprovalStatus.PENDING)
-                    .build();
-            registrationImg.setVehicle(vehicle);
-            vehicleImageRepository.save(registrationImg);
-            uploadedImages.put("registrationImage", registrationImageUrl);
-
-        } catch (Exception e) {
-            // Cleanup uploaded files if any
-            uploadedImages.values().forEach(url -> {
-                try {
-                    azureBlobStorageService.deleteFile(url);
-                } catch (Exception cleanupError) {
-                    // Log cleanup error but don't throw
-                }
-            });
-            throw new RuntimeException("Failed to upload vehicle images: " + e.getMessage(), e);
-        }
-
-        return uploadedImages;
-    }
-
     // ======== Upload Multiple Vehicle Images ==============
     @Transactional
     public Map<String, Object> uploadMultipleVehicleImages(Long vehicleId, MultipartFile[] images, String[] imageTypes) {

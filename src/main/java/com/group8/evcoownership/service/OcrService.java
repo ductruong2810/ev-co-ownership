@@ -115,7 +115,7 @@ public class OcrService {
             BinaryData imageData;
             try {
                 // Try different approaches to convert MultipartFile to BinaryData
-                if (imageFile.getBytes() != null && imageFile.getBytes().length > 0) {
+                if (imageFile.getBytes().length > 0) {
                     log.info("Using imageFile.getBytes() method");
                     imageData = BinaryData.fromBytes(imageFile.getBytes());
                 } else {
@@ -144,9 +144,7 @@ public class OcrService {
             if (result.getRead() != null && result.getRead().getBlocks() != null) {
                 result.getRead().getBlocks().forEach(block -> {
                     if (block.getLines() != null) {
-                        block.getLines().forEach(line -> {
-                            extractedText.append(line.getText()).append("\n");
-                        });
+                        block.getLines().forEach(line -> extractedText.append(line.getText()).append("\n"));
                     }
                 });
             }

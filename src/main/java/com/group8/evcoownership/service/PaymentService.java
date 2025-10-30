@@ -14,7 +14,6 @@ import com.group8.evcoownership.repository.SharedFundRepository;
 import com.group8.evcoownership.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.hibernate.Hibernate;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -22,8 +21,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+
+import static org.hibernate.Hibernate.isInitialized;
 
 @Service
 @RequiredArgsConstructor
@@ -41,11 +44,11 @@ public class PaymentService {
         Long fId = null;
         String uName = null;
         User u = p.getPayer();
-        if (u != null && Hibernate.isInitialized(u)) {
+        if (u != null && isInitialized(u)) {
             uId = u.getUserId();
             uName = u.getFullName();
         }
-        if (p.getFund() != null && Hibernate.isInitialized(p.getFund())) {
+        if (p.getFund() != null && isInitialized(p.getFund())) {
             fId = p.getFund().getFundId();
         }
         return PaymentResponse.builder()
@@ -255,22 +258,12 @@ public class PaymentService {
                 if (providerResponseJson != null) p.setProviderResponse(providerResponseJson);
                 paymentRepo.save(p);
 
-                // Send payment failed notification with rich email data
-                java.util.Map<String, Object> emailDataFailed = new java.util.HashMap<>();
-                emailDataFailed.put("paymentId", p.getId());
-                emailDataFailed.put("transactionCode", p.getTransactionCode());
-                emailDataFailed.put("amount", p.getAmount());
-                emailDataFailed.put("paymentMethod", p.getPaymentMethod());
-                emailDataFailed.put("paymentType", p.getPaymentType());
-                emailDataFailed.put("paymentDate", p.getPaymentDate());
-                emailDataFailed.put("status", PaymentStatus.FAILED.name());
-
                 notificationOrchestrator.sendComprehensiveNotification(
                         p.getPayer().getUserId(),
                         NotificationType.PAYMENT_FAILED,
                         "Payment Failed",
                         String.format("Your payment of %s VND has failed. Please try again.", p.getAmount()),
-                        emailDataFailed
+                        buildEmailData(p, PaymentStatus.FAILED)
                 );
             }
             case COMPLETED -> {
@@ -287,22 +280,12 @@ public class PaymentService {
                 // Cộng quỹ đúng 1 lần khi chốt Completed
                 fundService.increaseBalance(p.getFund().getFundId(), p.getAmount());
 
-                // Send payment success notification with rich email data
-                java.util.Map<String, Object> emailDataSuccess = new java.util.HashMap<>();
-                emailDataSuccess.put("paymentId", p.getId());
-                emailDataSuccess.put("transactionCode", p.getTransactionCode());
-                emailDataSuccess.put("amount", p.getAmount());
-                emailDataSuccess.put("paymentMethod", p.getPaymentMethod());
-                emailDataSuccess.put("paymentType", p.getPaymentType());
-                emailDataSuccess.put("paymentDate", p.getPaymentDate());
-                emailDataSuccess.put("status", PaymentStatus.COMPLETED.name());
-
                 notificationOrchestrator.sendComprehensiveNotification(
                         p.getPayer().getUserId(),
                         NotificationType.PAYMENT_SUCCESS,
                         "Payment Successful",
                         String.format("Your payment of %s VND has been processed successfully", p.getAmount()),
-                        emailDataSuccess
+                        buildEmailData(p, PaymentStatus.COMPLETED)
                 );
             }
             case REFUNDED -> {
@@ -318,6 +301,18 @@ public class PaymentService {
         }
 
         return toDto(paymentRepo.save(p));
+    }
+
+    private Map<String, Object> buildEmailData(Payment payment, PaymentStatus status) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("paymentId", payment.getId());
+        data.put("transactionCode", payment.getTransactionCode());
+        data.put("amount", payment.getAmount());
+        data.put("paymentMethod", payment.getPaymentMethod());
+        data.put("paymentType", payment.getPaymentType());
+        data.put("paymentDate", payment.getPaymentDate());
+        data.put("status", status.name());
+        return data;
     }
 
 }

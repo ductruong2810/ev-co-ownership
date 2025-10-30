@@ -2,11 +2,13 @@ package com.group8.evcoownership.service;
 
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.enums.NotificationType;
+import com.group8.evcoownership.entity.Contract;
 import com.group8.evcoownership.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -21,7 +23,7 @@ public class NotificationOrchestrator {
     private final UserRepository userRepository;
 
     /**
-     * Send comprehensive notification (In-app + WebSocket + Email)
+     * Send a comprehensive notification (In-app + WebSocket + Email)
      */
     public void sendComprehensiveNotification(Long userId, NotificationType type, String title, String message,
                                               Map<String, Object> additionalData) {
@@ -60,6 +62,19 @@ public class NotificationOrchestrator {
         }
     }
 
+    public Map<String, Object> buildContractEmailData(Contract contract) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("groupId", contract.getGroup().getGroupId());
+        data.put("contractId", contract.getId());
+        data.put("groupName", contract.getGroup().getGroupName());
+        data.put("startDate", contract.getStartDate());
+        data.put("endDate", contract.getEndDate());
+        data.put("depositAmount", contract.getRequiredDepositAmount());
+        data.put("status", contract.getApprovalStatus());
+        data.put("rejectionReason", contract.getRejectionReason());
+        return data;
+    }
+
     /**
      * Send contract notification
      */
@@ -94,16 +109,16 @@ public class NotificationOrchestrator {
      * Send group notification to all members
      */
     public void sendGroupNotification(Long groupId, NotificationType type, String title, String message) {
-        sendGroupNotification(groupId, type, title, message, java.util.Map.of("groupId", groupId));
+        sendGroupNotification(groupId, type, title, message, Map.of("groupId", groupId));
     }
 
     public void sendGroupNotification(Long groupId, NotificationType type, String title, String message,
-                                      java.util.Map<String, Object> data) {
+                                      Map<String, Object> data) {
         List<User> groupMembers = userRepository.findUsersByGroupId(groupId);
 
         // Ensure groupId present in data for routing
         if (data == null) {
-            data = new java.util.HashMap<>();
+            data = new HashMap<>();
         }
         data.putIfAbsent("groupId", groupId);
 
@@ -177,7 +192,7 @@ public class NotificationOrchestrator {
     }
 
     /**
-     * Send monthly report to all users
+     * Send a monthly report to all users
      */
     public void sendMonthlyReport(Long userId, Map<String, Object> reportData) {
         User user = userRepository.findById(userId).orElseThrow();
@@ -204,7 +219,7 @@ public class NotificationOrchestrator {
     }
 
     /**
-     * Get action URL based on notification type
+     * Get action URL based on a notification type
      */
     private String getActionUrl(NotificationType type, Map<String, Object> data) {
         return switch (type) {

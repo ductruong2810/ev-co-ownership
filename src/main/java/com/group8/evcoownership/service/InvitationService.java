@@ -18,12 +18,12 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -56,32 +56,32 @@ public class InvitationService {
                                      InvitationCreateRequest req,
                                      Authentication auth) {
 
-        // 1️⃣ Lấy group + kiểm tra tồn tại và trạng thái ACTIVE
+        // Lấy group + kiểm tra tồn tại và trạng thái ACTIVE
         OwnershipGroup group = groupRepo.findById(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Group not found"));
         ensureGroupActive(group);
 
-        // 2️⃣ Lấy inviter từ token (email trong Authentication)
+        // Lấy inviter từ token (email trong Authentication)
         User inviter = userRepo.findByEmail(auth.getName())
                 .orElseThrow(() -> new EntityNotFoundException("Inviter not found"));
 
-        // 3️⃣ Kiểm tra inviter có thuộc group không
+        // Kiểm tra inviter có thuộc group không
         boolean isMember = shareRepo.existsByGroup_GroupIdAndUser_UserId(groupId, inviter.getUserId());
         if (!isMember) throw new AccessDeniedException("Not a member of this group");
 
-        // 4️⃣ Kiểm tra có invitation PENDING nào đã tồn tại cho email này trong group
+        // Kiểm tra có invitation PENDING nào đã tồn tại cho email này trong group
         Invitation existing = invitationRepo
                 .findByGroup_GroupIdAndInviteeEmailIgnoreCaseAndStatus(
                         groupId, req.inviteeEmail(), InvitationStatus.PENDING)
                 .orElse(null);
 
-        // 5️⃣ Tạo token/OTP mới và thời hạn mới
+        // Tạo token/OTP mới và thời hạn mới
         String otp = genOtp();
         String token = genToken();
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime expiresAt = now.plusHours(DEFAULT_INVITE_TTL_HOURS);
 
-        // 6️⃣ Nếu có invitation PENDING → resend (update lại)
+        // Nếu có invitation PENDING → resend (update lại)
         if (existing != null) {
             existing.setOtpCode(otp);
             existing.setExpiresAt(expiresAt);
@@ -94,11 +94,10 @@ public class InvitationService {
                     existing.getInviteeEmail(),
                     group.getGroupName(),
                     inviter.getFullName(),
-                    existing.getToken(), // giữ token cũ để user cũ vẫn valid link
+                    // giữ token cũ để user cũ vẫn valid link
                     otp,
                     expiresAt,
-                    existing.getSuggestedPercentage(),
-                    null
+                    existing.getSuggestedPercentage()
             );
 
             // Ghi log cho dễ debug
@@ -129,52 +128,15 @@ public class InvitationService {
                 req.inviteeEmail(),
                 group.getGroupName(),
                 inviter.getFullName(),
-                token,
                 otp,
                 expiresAt,
-                req.suggestedPercentage(),
-                null
+                req.suggestedPercentage()
         );
 
-        System.out.printf("✅ Sent new invitation to %s (group %s)%n",
+        System.out.printf("Sent new invitation to %s (group %s)%n",
                 req.inviteeEmail(), group.getGroupName());
 
         return toDto(saved);
-    }
-
-    // =========================================================
-    // =================== LIST & VALIDATE =====================
-    // =========================================================
-
-    /**
-     * Chỉ member group (hoặc staff/admin) được xem danh sách lời mời của group.
-     */
-    public Page<InvitationResponse> listByGroupSecured(Long groupId, Pageable pageable, Authentication auth) {
-        User viewer = userRepo.findByEmail(auth.getName())
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
-
-        boolean canView =
-                shareRepo.existsByGroup_GroupIdAndUser_UserId(groupId, viewer.getUserId())
-                        || isStaffOrAdmin(viewer);
-
-        if (!canView) throw new AccessDeniedException("Forbidden");
-
-        if (!groupRepo.existsById(groupId)) throw new EntityNotFoundException("Group not found");
-
-        return invitationRepo.findByGroup_GroupId(groupId, pageable).map(this::toDto);
-    }
-
-    /**
-     * Kiểm tra token còn hợp lệ (FE gọi để preload form accept).
-     */
-    public InvitationResponse validateToken(String token) {
-        Invitation inv = invitationRepo.findByToken(token)
-                .orElseThrow(() -> new EntityNotFoundException("Invitation not found"));
-        if (inv.getStatus() != InvitationStatus.PENDING)
-            throw new IllegalStateException("Invitation is not PENDING");
-        if (isExpired(inv))
-            throw new IllegalStateException("Invitation expired");
-        return toDto(inv);
     }
 
     // =========================================================
@@ -209,11 +171,9 @@ public class InvitationService {
                 inv.getInviteeEmail(),
                 inv.getGroup().getGroupName(),
                 inv.getInviter() != null ? inv.getInviter().getFullName() : "A group member",
-                inv.getToken(),
                 newOtp,
                 inv.getExpiresAt(),
-                inv.getSuggestedPercentage(),
-                null
+                inv.getSuggestedPercentage()
         );
 
         System.out.printf("📨 Manual resend invitation #%d to %s%n", inv.getInvitationId(), inv.getInviteeEmail());
@@ -309,7 +269,7 @@ public class InvitationService {
 
         // Thêm user vào group với % sở hữu tạm = 0%
         var addReq = new com.group8.evcoownership.dto.OwnershipShareCreateRequest(
-                user.getUserId(), group.getGroupId(), java.math.BigDecimal.ZERO
+                user.getUserId(), group.getGroupId(), BigDecimal.ZERO
         );
         shareService.addGroupShare(addReq);
 
