@@ -5,6 +5,7 @@ import com.group8.evcoownership.entity.OwnershipGroup;
 import com.group8.evcoownership.entity.UsageBooking;
 import com.group8.evcoownership.entity.Vehicle;
 import com.group8.evcoownership.enums.BookingStatus;
+import com.group8.evcoownership.exception.BookingValidationException;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
 import com.group8.evcoownership.repository.UsageBookingRepository;
 import com.group8.evcoownership.repository.UserRepository;
@@ -117,8 +118,7 @@ public class WeeklyCalendarService {
                 .toList();
 
         String timeDisplay = formatTimeSlot(start, end);
-
-        // Ưu tiên hiển thị: MAINTENANCE (BUFFER, user=null) → LOCKED (BUFFER, user!=null) → BOOKED (CONFIRMED)
+        // 1. MAINTENANCE (BUFFER, user=null)
         UsageBooking maintenance = overlapping.stream()
                 .filter(b -> b.getStatus() == BookingStatus.BUFFER && b.getUser() == null)
                 .findFirst().orElse(null);
@@ -131,7 +131,7 @@ public class WeeklyCalendarService {
                     .bookable(false)
                     .build();
         }
-
+        // 2. LOCKED (BUFFER, user!=null)
         UsageBooking locked = overlapping.stream()
                 .filter(b -> b.getStatus() == BookingStatus.BUFFER && b.getUser() != null)
                 .findFirst().orElse(null);
@@ -145,16 +145,19 @@ public class WeeklyCalendarService {
                     .build();
         }
 
-        UsageBooking confirmed = overlapping.stream()
-                .filter(b -> b.getStatus() == BookingStatus.CONFIRMED)
+        // 3. CONFIRMED hoặc PENDING booking
+        UsageBooking booking = overlapping.stream()
+                .filter(b -> b.getStatus() == BookingStatus.CONFIRMED || b.getStatus() == BookingStatus.PENDING)
                 .findFirst().orElse(null);
-        if (confirmed != null) {
-            boolean bookedBySelf = confirmed.getUser() != null && confirmed.getUser().getUserId().equals(userId);
+        if (booking != null) {
+            boolean bookedBySelf = booking.getUser() != null && booking.getUser().getUserId().equals(userId);
+            String statusPrefix = booking.getStatus() == BookingStatus.PENDING ? "PENDING_" : "";
+
             return TimeSlotResponseDTO.builder()
                     .time(timeDisplay)
-                    .status("BOOKED")
-                    .type(bookedBySelf ? "BOOKED_SELF" : "BOOKED_OTHER")
-                    .bookedBy(confirmed.getUser() != null ? confirmed.getUser().getFullName() : "Unknown")
+                    .status(booking.getStatus().name())
+                    .type(statusPrefix + (bookedBySelf ? "BOOKED_SELF" : "BOOKED_OTHER"))
+                    .bookedBy(booking.getUser() != null ? booking.getUser().getFullName() : "Unknown")
                     .bookable(false)
                     .build();
         }
@@ -224,6 +227,35 @@ public class WeeklyCalendarService {
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
         var vehicle = vehicleRepository.findById(request.getVehicleId())
                 .orElseThrow(() -> new EntityNotFoundException("Vehicle not found"));
+
+        if (request.getStartDateTime() == null || request.getEndDateTime() == null) {
+            throw new BookingValidationException("Start time and end time are required");
+        }
+
+        if (request.getStartDateTime().equals(request.getEndDateTime())) {
+            throw new BookingValidationException("Start time and end time cannot be the same");
+        }
+
+        if (request.getStartDateTime().isAfter(request.getEndDateTime())) {
+            throw new BookingValidationException("Start time must be before end time");
+        }
+
+        ZonedDateTime nowVietnam = ZonedDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+        LocalDateTime now = nowVietnam.toLocalDateTime();
+
+        if (request.getStartDateTime().isBefore(now)) {
+            throw new BookingValidationException("Cannot book in the past. Start time must be in the future");
+        }
+
+        long durationMinutes = Duration.between(request.getStartDateTime(), request.getEndDateTime()).toMinutes();
+        if (durationMinutes < 60) {
+            throw new BookingValidationException("Booking duration must be at least 1 hour");
+        }
+
+        LocalDateTime maxFutureDate = now.plusMonths(3);
+        if (request.getStartDateTime().isAfter(maxFutureDate)) {
+            throw new BookingValidationException("Cannot book more than 3 months in advance");
+        }
 
         // Kiểm tra quota
         LocalDateTime weekStart = request.getStartDateTime().with(DayOfWeek.MONDAY).with(LocalTime.MIN);
