@@ -57,32 +57,32 @@ public class InvitationService {
                                         InvitationCreateRequestDTO req,
                                         Authentication auth) {
 
-        // 1️⃣ Lấy group + kiểm tra tồn tại và trạng thái ACTIVE
+        // Lấy group + kiểm tra tồn tại và trạng thái ACTIVE
         OwnershipGroup group = groupRepo.findById(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Group not found"));
         ensureGroupActive(group);
 
-        // 2️⃣ Lấy inviter từ token (email trong Authentication)
+        // Lấy inviter từ token (email trong Authentication)
         User inviter = userRepo.findByEmail(auth.getName())
                 .orElseThrow(() -> new EntityNotFoundException("Inviter not found"));
 
-        // 3️⃣ Kiểm tra inviter có thuộc group không
+        // Kiểm tra inviter có thuộc group không
         boolean isMember = shareRepo.existsByGroup_GroupIdAndUser_UserId(groupId, inviter.getUserId());
         if (!isMember) throw new AccessDeniedException("Not a member of this group");
 
-        // 4️⃣ Kiểm tra có invitation PENDING nào đã tồn tại cho email này trong group
+        // Kiểm tra có invitation PENDING nào đã tồn tại cho email này trong group
         Invitation existing = invitationRepo
                 .findByGroup_GroupIdAndInviteeEmailIgnoreCaseAndStatus(
                         groupId, req.inviteeEmail(), InvitationStatus.PENDING)
                 .orElse(null);
 
-        // 5️⃣ Tạo token/OTP mới và thời hạn mới
+        // Tạo token/OTP mới và thời hạn mới
         String otp = genOtp();
         String token = genToken();
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime expiresAt = now.plusHours(DEFAULT_INVITE_TTL_HOURS);
 
-        // 6️⃣ Nếu có invitation PENDING → resend (update lại)
+        // Nếu có invitation PENDING → resend (update lại)
         if (existing != null) {
             existing.setOtpCode(otp);
             existing.setExpiresAt(expiresAt);
@@ -109,7 +109,7 @@ public class InvitationService {
             return toDto(existing);
         }
 
-        // 7️⃣ Nếu chưa có invitation PENDING → tạo mới
+        // Nếu chưa có invitation PENDING → tạo mới
         Invitation inv = Invitation.builder()
                 .group(group)
                 .inviter(inviter)
@@ -137,7 +137,7 @@ public class InvitationService {
                 null
         );
 
-        System.out.printf("✅ Sent new invitation to %s (group %s)%n",
+        System.out.printf("Sent new invitation to %s (group %s)%n",
                 req.inviteeEmail(), group.getGroupName());
 
         return toDto(saved);
@@ -217,7 +217,7 @@ public class InvitationService {
                 null
         );
 
-        System.out.printf("📨 Manual resend invitation #%d to %s%n", inv.getInvitationId(), inv.getInviteeEmail());
+        System.out.printf("Manual resend invitation #%d to %s%n", inv.getInvitationId(), inv.getInviteeEmail());
     }
 
     /**
@@ -235,7 +235,7 @@ public class InvitationService {
         inv.setStatus(InvitationStatus.EXPIRED);
         invitationRepo.save(inv);
 
-        System.out.printf("⏳ Expired invitation #%d manually%n", inv.getInvitationId());
+        System.out.printf("Expired invitation #%d manually%n", inv.getInvitationId());
     }
 
     // --- lay danh sach invitation theo groupId
@@ -253,18 +253,18 @@ public class InvitationService {
     }
 
     /**
-     * 🔍 Lấy chi tiết 1 lời mời (Invitation) theo ID.
+     * Lấy chi tiết 1 lời mời (Invitation) theo ID.
      * - Chỉ cho phép người có quyền xem: người mời (inviter), admin group, hoặc staff/admin.
      */
     public InvitationResponseDTO getOne(Long invitationId, Authentication auth) {
-        // 1️⃣ Tìm lời mời trong DB
+        // Tìm lời mời trong DB
         Invitation inv = invitationRepo.findById(invitationId)
                 .orElseThrow(() -> new EntityNotFoundException("Invitation not found"));
 
-        // 2️⃣ Kiểm tra quyền xem (dùng helper validateViewPermission bên dưới)
+        // Kiểm tra quyền xem (dùng helper validateViewPermission bên dưới)
         validateViewPermission(inv, auth);
 
-        // 3️⃣ Trả về DTO (ẩn bớt thông tin nhạy cảm nếu cần)
+        // Trả về DTO (ẩn bớt thông tin nhạy cảm nếu cần)
         return toDto(inv);
     }
 
