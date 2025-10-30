@@ -1,6 +1,6 @@
 package com.group8.evcoownership.controller;
 
-import com.group8.evcoownership.dto.NotificationDto;
+import com.group8.evcoownership.dto.NotificationDTO;
 import com.group8.evcoownership.entity.Notification;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.enums.NotificationType;
@@ -30,7 +30,7 @@ public class NotificationController {
 
     @GetMapping
     @Operation(summary = "Danh sách thông báo", description = "Lấy danh sách thông báo của người dùng hiện tại")
-    public ResponseEntity<List<NotificationDto>> getNotifications(
+    public ResponseEntity<List<NotificationDTO>> getNotifications(
             @AuthenticationPrincipal String email,
             @RequestParam(required = false) Boolean isRead) {
         User user = getUserByEmail(email);
@@ -39,7 +39,7 @@ public class NotificationController {
                 ? notificationRepository.findByUserAndIsReadOrderByCreatedAtDesc(user, isRead)
                 : notificationRepository.findByUserOrderByUnreadThenCreatedAtDesc(user);
 
-        List<NotificationDto> notificationDtos = notifications.stream()
+        List<NotificationDTO> notificationDtos = notifications.stream()
                 .map(this::convertToDto)
                 .toList();
 
@@ -102,8 +102,8 @@ public class NotificationController {
         return ResponseEntity.ok().build();
     }
 
-    private NotificationDto convertToDto(Notification notification) {
-        return NotificationDto.builder()
+    private NotificationDTO convertToDto(Notification notification) {
+        return NotificationDTO.builder()
                 .id(notification.getId())
                 .userId(notification.getUser().getUserId())
                 .title(notification.getTitle())

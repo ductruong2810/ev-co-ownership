@@ -27,7 +27,7 @@ public class VehicleImageApprovalController {
 
     @GetMapping("/pending")
     @Operation(summary = "Hình ảnh chờ duyệt", description = "Lấy danh sách hình ảnh phương tiện chờ duyệt với phân trang")
-    public ResponseEntity<Page<VehicleImageResponse>> getPendingImages(
+    public ResponseEntity<Page<VehicleImageResponseDTO>> getPendingImages(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size);
@@ -36,36 +36,36 @@ public class VehicleImageApprovalController {
 
     @GetMapping("/groups/pending")
     @Operation(summary = "Nhóm có hình ảnh chờ duyệt", description = "Lấy danh sách các nhóm có hình ảnh phương tiện chờ duyệt")
-    public ResponseEntity<List<GroupImageApprovalSummary>> getGroupsWithPendingImages() {
+    public ResponseEntity<List<GroupImageApprovalSummaryDTO>> getGroupsWithPendingImages() {
         return ResponseEntity.ok(approvalService.getGroupsWithPendingImages());
     }
 
     @GetMapping("/groups/{groupId}/images")
     @Operation(summary = "Hình ảnh theo nhóm", description = "Lấy danh sách hình ảnh phương tiện của một nhóm cụ thể")
-    public ResponseEntity<List<VehicleImageResponse>> getImagesByGroupId(@PathVariable Long groupId) {
+    public ResponseEntity<List<VehicleImageResponseDTO>> getImagesByGroupId(@PathVariable Long groupId) {
         return ResponseEntity.ok(approvalService.getImagesByGroupId(groupId));
     }
 
     @GetMapping("/groups/{groupId}/vehicle-with-images")
     @Operation(summary = "Phương tiện với hình ảnh", description = "Lấy thông tin phương tiện cùng với tất cả hình ảnh của nhóm")
-    public ResponseEntity<VehicleWithImagesResponse> getVehicleWithImagesByGroupId(@PathVariable Long groupId) {
+    public ResponseEntity<VehicleWithImagesResponseDTO> getVehicleWithImagesByGroupId(@PathVariable Long groupId) {
         return ResponseEntity.ok(approvalService.getVehicleWithImagesByGroupId(groupId));
     }
 
     @PatchMapping("/groups/{groupId}/review")
     @Operation(summary = "Duyệt hình ảnh nhóm", description = "Staff duyệt tất cả hình ảnh phương tiện của một nhóm")
-    public ResponseEntity<GroupApprovalResult> reviewGroupImages(
+    public ResponseEntity<GroupApprovalResultDTO> reviewGroupImages(
             @PathVariable Long groupId,
-            @RequestBody @Valid VehicleImageApprovalRequest request,
+            @RequestBody @Valid VehicleImageApprovalRequestDTO request,
             @AuthenticationPrincipal String staffEmail) {
         return ResponseEntity.ok(approvalService.approveGroupImages(groupId, request, staffEmail));
     }
 
     @PatchMapping("/{imageId}/review")
     @Operation(summary = "Duyệt hình ảnh đơn lẻ", description = "Staff duyệt một hình ảnh phương tiện cụ thể")
-    public ResponseEntity<VehicleImageResponse> reviewImage(
+    public ResponseEntity<VehicleImageResponseDTO> reviewImage(
             @PathVariable Long imageId,
-            @RequestBody @Valid VehicleImageApprovalRequest request,
+            @RequestBody @Valid VehicleImageApprovalRequestDTO request,
             @AuthenticationPrincipal String staffEmail) {
         return ResponseEntity.ok(approvalService.approveImage(imageId, request, staffEmail));
     }

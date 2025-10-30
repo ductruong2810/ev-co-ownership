@@ -4,6 +4,7 @@ import com.azure.storage.blob.BlobClient;
 import com.azure.storage.blob.BlobContainerClient;
 import com.azure.storage.blob.models.BlobHttpHeaders;
 import com.azure.storage.blob.models.BlobStorageException;
+import com.group8.evcoownership.dto.FileInfoDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -137,7 +138,7 @@ public class AzureBlobStorageService {
     }
 
     // GET FILE INFO
-    public FileInfo getFileInfo(String fileUrl) {
+    public FileInfoDTO getFileInfo(String fileUrl) {
         try {
             String blobName = extractBlobName(fileUrl);
             BlobClient blobClient = blobContainerClient.getBlobClient(blobName);
@@ -148,7 +149,7 @@ public class AzureBlobStorageService {
 
             var properties = blobClient.getProperties();
 
-            return FileInfo.builder()
+            return FileInfoDTO.builder()
                     .blobName(blobName)
                     .url(fileUrl)
                     .size(properties.getBlobSize())
@@ -176,15 +177,4 @@ public class AzureBlobStorageService {
         return fileUrl.substring(fileUrl.lastIndexOf("/") + 1);
     }
 
-    // DTO FOR FILE INFO
-    @lombok.Data
-    @lombok.Builder
-    public static class FileInfo {
-        private String blobName;
-        private String url;
-        private Long size;
-        private String contentType;
-        private java.time.OffsetDateTime lastModified;
-        private boolean exists;
-    }
 }
