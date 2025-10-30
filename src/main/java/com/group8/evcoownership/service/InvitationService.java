@@ -108,7 +108,7 @@ public class InvitationService {
             return toDto(existing);
         }
 
-        // 7️⃣ Nếu chưa có invitation PENDING → tạo mới
+        // Nếu chưa có invitation PENDING → tạo mới
         Invitation inv = Invitation.builder()
                 .group(group)
                 .inviter(inviter)
@@ -177,7 +177,7 @@ public class InvitationService {
                 inv.getSuggestedPercentage()
         );
 
-        System.out.printf("📨 Manual resend invitation #%d to %s%n", inv.getInvitationId(), inv.getInviteeEmail());
+        System.out.printf("Manual resend invitation #%d to %s%n", inv.getInvitationId(), inv.getInviteeEmail());
     }
 
     /**
@@ -195,7 +195,7 @@ public class InvitationService {
         inv.setStatus(InvitationStatus.EXPIRED);
         invitationRepo.save(inv);
 
-        System.out.printf("⏳ Expired invitation #%d manually%n", inv.getInvitationId());
+        System.out.printf("Expired invitation #%d manually%n", inv.getInvitationId());
     }
 
     // --- lay danh sach invitation theo groupId
@@ -213,18 +213,18 @@ public class InvitationService {
     }
 
     /**
-     * 🔍 Lấy chi tiết 1 lời mời (Invitation) theo ID.
+     * Lấy chi tiết 1 lời mời (Invitation) theo ID.
      * - Chỉ cho phép người có quyền xem: người mời (inviter), admin group, hoặc staff/admin.
      */
     public InvitationResponseDTO getOne(Long invitationId, Authentication auth) {
-        // 1️⃣ Tìm lời mời trong DB
+        // Tìm lời mời trong DB
         Invitation inv = invitationRepo.findById(invitationId)
                 .orElseThrow(() -> new EntityNotFoundException("Invitation not found"));
 
-        // 2️⃣ Kiểm tra quyền xem (dùng helper validateViewPermission bên dưới)
+        // Kiểm tra quyền xem (dùng helper validateViewPermission bên dưới)
         validateViewPermission(inv, auth);
 
-        // 3️⃣ Trả về DTO (ẩn bớt thông tin nhạy cảm nếu cần)
+        // Trả về DTO (ẩn bớt thông tin nhạy cảm nếu cần)
         return toDto(inv);
     }
 

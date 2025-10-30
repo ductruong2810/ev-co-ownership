@@ -33,11 +33,13 @@ public class WeeklyCalendarService {
     /**
      * Lấy lịch tuần cho group với thông tin quota của user
      */
-    public WeeklyCalendarResponseDTO getWeeklyCalendar(Long groupId, Long userId) {
+    public WeeklyCalendarResponseDTO getWeeklyCalendar(Long groupId, Long userId, LocalDate weekStart) {
 
         // Nếu không có weekStart, dùng tuần hiện tại
 
-         LocalDate weekStart = LocalDate.now().with(DayOfWeek.MONDAY);
+        if (weekStart == null) {
+            weekStart = LocalDate.now().with(DayOfWeek.MONDAY);
+        }
 
         // Validate group tồn tại
         OwnershipGroup group = groupRepository.findById(groupId)
@@ -188,10 +190,10 @@ public class WeeklyCalendarService {
     /**
      * Lấy suggestions cho user dựa trên quota và availability
      */
-    public List<String> getBookingSuggestions(Long groupId, Long userId) {
+    public List<String> getBookingSuggestions(Long groupId, Long userId, LocalDate weekStart) {
         List<String> suggestions = new ArrayList<>();
 
-        WeeklyCalendarResponseDTO calendar = getWeeklyCalendar(groupId, userId);
+        WeeklyCalendarResponseDTO calendar = getWeeklyCalendar(groupId, userId, weekStart);
 
         // Suggestion dựa trên quota
         if (calendar.getUserQuota().getRemainingHours() > 20) {
@@ -290,7 +292,7 @@ public class WeeklyCalendarService {
         booking.setVehicle(vehicle);
         booking.setStartDateTime(request.getStartDateTime());
         booking.setEndDateTime(request.getEndDateTime());
-        booking.setStatus(BookingStatus.PENDING);
+        booking.setStatus(BookingStatus.CONFIRMED);
 
         UsageBooking savedBooking = usageBookingRepository.save(booking);
 
@@ -300,7 +302,7 @@ public class WeeklyCalendarService {
 
         return FlexibleBookingResponseDTO.builder()
                 .bookingId(savedBooking.getId())
-                .status("PENDING")
+                .status("CONFIRMED")
                 .message(overnightBooking ? "Overnight booking created successfully" : "Booking created successfully")
                 .totalHours(newBookingHours)
                 .overnightBooking(overnightBooking)

@@ -8,10 +8,12 @@ import com.group8.evcoownership.service.WeeklyCalendarService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -27,6 +29,7 @@ public class WeeklyCalendarController {
     @Operation(summary = "Lấy lịch tuần", description = "Hiển thị lịch tuần với các slot đã book và quota của user")
     public ResponseEntity<WeeklyCalendarResponseDTO> getWeeklyCalendar(
             @PathVariable Long groupId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart,
             @AuthenticationPrincipal String email) {
 
         // Lấy userId từ JWT
@@ -35,7 +38,7 @@ public class WeeklyCalendarController {
 
 
 
-        WeeklyCalendarResponseDTO response = weeklyCalendarService.getWeeklyCalendar(groupId, userId);
+        WeeklyCalendarResponseDTO response = weeklyCalendarService.getWeeklyCalendar(groupId, userId, weekStart);
         return ResponseEntity.ok(response);
     }
 
@@ -43,13 +46,14 @@ public class WeeklyCalendarController {
     @Operation(summary = "Lấy gợi ý booking", description = "Gợi ý booking dựa trên quota và availability")
     public ResponseEntity<List<String>> getBookingSuggestions(
             @PathVariable Long groupId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart,
             @AuthenticationPrincipal String email) {
 
         // Lấy userId từ JWT
         Long userId = userRepository.findByEmail(email)
                 .orElseThrow().getUserId();
 
-        List<String> suggestions = weeklyCalendarService.getBookingSuggestions(groupId, userId);
+        List<String> suggestions = weeklyCalendarService.getBookingSuggestions(groupId, userId, weekStart);
         return ResponseEntity.ok(suggestions);
     }
 
