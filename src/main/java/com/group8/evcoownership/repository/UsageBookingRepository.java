@@ -17,7 +17,7 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
                 FROM UsageBooking
                 WHERE UserId = :userId
                   AND VehicleId = :vehicleId
-                  AND Status IN ('Pending', 'Confirmed')
+                  AND Status = 'CONFIRMED'
                   AND DATEPART(ISO_WEEK, StartDateTime) = DATEPART(ISO_WEEK, :weekStart)
                   AND YEAR(StartDateTime) = YEAR(:weekStart)
             """, nativeQuery = true)
@@ -41,7 +41,7 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
                 FROM UsageBooking
                 WHERE VehicleId = :vehicleId
                   AND BookingId != :excludeBookingId
-                  AND Status IN ('Pending', 'Confirmed', 'Buffer')
+                  AND Status = 'CONFIRMED'
                   AND (
                       (:start BETWEEN StartDateTime AND DATEADD(HOUR, 1, EndDateTime))
                       OR (:end BETWEEN StartDateTime AND DATEADD(HOUR, 1, EndDateTime))
@@ -60,7 +60,7 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
                 FROM UsageBooking ub
                 JOIN FETCH ub.user u
                 WHERE ub.vehicle.Id = :vehicleId
-                  AND ub.status IN ('Pending', 'Confirmed')
+                  AND ub.status = 'CONFIRMED'
                   AND CAST(ub.startDateTime AS date) = :date
                 ORDER BY ub.startDateTime
             """)
@@ -73,7 +73,7 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
                 SELECT ub
                 FROM UsageBooking ub
                 WHERE ub.user.userId = :userId
-                  AND ub.status IN ('Pending', 'Confirmed')
+                  AND ub.status = 'CONFIRMED'
                   AND ub.startDateTime > CURRENT_TIMESTAMP
                 ORDER BY ub.startDateTime ASC
             """)
@@ -100,7 +100,7 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
                 FROM UsageBooking ub
                 JOIN FETCH ub.user u
                 WHERE ub.vehicle.Id = :vehicleId
-                  AND ub.status IN ('Pending', 'Confirmed')
+                  AND ub.status = 'CONFIRMED'
                   AND (
                       (ub.startDateTime BETWEEN :startDateTime AND :endDateTime)
                       OR (ub.endDateTime BETWEEN :startDateTime AND :endDateTime)
@@ -131,7 +131,7 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
                 FROM UsageBooking ub
                 WHERE ub.user.userId = :userId
                   AND ub.vehicle.Id = :vehicleId
-                  AND ub.status = 'Confirmed'
+                  AND ub.status = 'CONFIRMED'
                   AND ub.startDateTime <= CURRENT_TIMESTAMP
                   AND ub.endDateTime >= CURRENT_TIMESTAMP
                 ORDER BY ub.startDateTime DESC
