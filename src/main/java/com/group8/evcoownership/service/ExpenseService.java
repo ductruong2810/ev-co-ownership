@@ -1,137 +1,117 @@
 package com.group8.evcoownership.service;
 
 
-import com.group8.evcoownership.dto.ExpenseCreateRequestDTO;
 import com.group8.evcoownership.dto.ExpenseResponseDTO;
-import com.group8.evcoownership.dto.ExpenseUpdateRequestDTO;
-import com.group8.evcoownership.entity.Expense;
-import com.group8.evcoownership.entity.SharedFund;
-import com.group8.evcoownership.repository.ExpenseRepository;
-import com.group8.evcoownership.repository.SharedFundRepository;
-import jakarta.persistence.EntityNotFoundException;
-import jakarta.transaction.Transactional;
+import com.group8.evcoownership.dto.ExpenseCreateRequestDTO;
+import com.group8.evcoownership.entity.*;
+import com.group8.evcoownership.repository.*;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@Transactional
 public class ExpenseService {
 
     private final ExpenseRepository expenseRepository;
     private final SharedFundRepository sharedFundRepository;
+    private final UserRepository userRepository;
 
-    /* ---------- Create ---------- */
-    public ExpenseResponseDTO create(ExpenseCreateRequestDTO req) {
-        if (req.getAmount() == null) {
-            throw new IllegalArgumentException("Amount is required");
-        }
-        if (req.getAmount().signum() < 0) {
-            throw new IllegalArgumentException("Amount must be >= 0");
-        }
-
+    // =============== CREATE ===============
+    @Transactional
+    public ExpenseResponseDTO create(ExpenseCreateRequestDTO req, String username) {
         SharedFund fund = sharedFundRepository.findById(req.getFundId())
-                .orElseThrow(() -> new EntityNotFoundException("SharedFund not found: " + req.getFundId()));
+                .orElseThrow(() -> new RuntimeException("Fund not found"));
+        User approver = userRepository.findByEmail(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        User recipient = req.getRecipientUserId() != null
+                ? userRepository.findById(req.getRecipientUserId())
+                .orElseThrow(() -> new RuntimeException("Recipient not found"))
+                : null;
 
-        Expense e = Expense.builder()
+        Expense expense = Expense.builder()
                 .fund(fund)
-                .amount(req.getAmount())
                 .sourceType(req.getSourceType())
                 .sourceId(req.getSourceId())
                 .description(req.getDescription())
-                // nếu client gửi expenseDate thì set, nếu không để null để @CreationTimestamp tự gán
+                .amount(req.getAmount())
+                .recipientUser(recipient)
+                .status("PENDING")
+                .approvedBy(null)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
                 .build();
 
-        if (req.getExpenseDate() != null) {
-            e.setExpenseDate(req.getExpenseDate());
+        expenseRepository.save(expense);
+        return mapToDTO(expense);
+    }
+
+    // =============== APPROVE ===============
+    @Transactional
+    public ExpenseResponseDTO approve(Long expenseId, String username) {
+        Expense expense = expenseRepository.findById(expenseId)
+                .orElseThrow(() -> new RuntimeException("Expense not found"));
+        if (!"PENDING".equals(expense.getStatus())) {
+            throw new RuntimeException("Expense already processed");
         }
 
-        e = expenseRepository.save(e);
-        return toResponse(e);
-    }
-
-    /* ---------- Read one ---------- */
-    public ExpenseResponseDTO getById(Long id) {
-        Expense e = expenseRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Expense not found: " + id));
-        return toResponse(e);
-    }
-
-    /* ---------- Patch update ---------- */
-    public ExpenseResponseDTO update(Long id, ExpenseUpdateRequestDTO req) {
-        Expense e = expenseRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Expense not found: " + id));
-
-        if (req.getAmount() != null) {
-            if (req.getAmount().signum() < 0) {
-                throw new IllegalArgumentException("Amount must be >= 0");
-            }
-            e.setAmount(req.getAmount());
-        }
-        if (req.getSourceType() != null) e.setSourceType(req.getSourceType());
-        if (req.getSourceId() != null) e.setSourceId(req.getSourceId());
-        if (req.getDescription() != null) e.setDescription(req.getDescription());
-        if (req.getExpenseDate() != null) e.setExpenseDate(req.getExpenseDate());
-
-        e = expenseRepository.save(e);
-        return toResponse(e);
-    }
-
-    /* ---------- Delete ---------- */
-    public void delete(Long id) {
-        Expense e = expenseRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Expense not found: " + id));
-        expenseRepository.delete(e);
-    }
-
-    /* ---------- List + filters ---------- */
-    public Page<ExpenseResponseDTO> list(
-            Long fundId,
-            String sourceType,
-            LocalDateTime from,
-            LocalDateTime to,
-            Pageable pageable
-    ) {
-        boolean hasFund = fundId != null;
-        boolean hasSourceType = sourceType != null && !sourceType.isBlank();
-        boolean hasRange = from != null && to != null;
-
-        if (hasFund && hasSourceType) {
-            return expenseRepository
-                    .findByFund_FundIdAndSourceType(fundId, sourceType, pageable)
-                    .map(this::toResponse);
-        } else if (hasFund && hasRange) {
-            return expenseRepository
-                    .findByFund_FundIdAndExpenseDateBetween(fundId, from, to, pageable)
-                    .map(this::toResponse);
-        } else if (hasRange) {
-            return expenseRepository
-                    .findByExpenseDateBetween(from, to, pageable)
-                    .map(this::toResponse);
-        } else if (hasFund) {
-            return expenseRepository
-                    .findByFund_FundId(fundId, pageable)
-                    .map(this::toResponse);
-        } else {
-            return expenseRepository.findAll(pageable).map(this::toResponse);
+        SharedFund fund = expense.getFund();
+        if (fund.getBalance().compareTo(expense.getAmount()) < 0) {
+            throw new RuntimeException("Insufficient fund balance");
         }
 
+        fund.setBalance(fund.getBalance().subtract(expense.getAmount()));
+        expense.setStatus("COMPLETED");
+        expense.setExpenseDate(LocalDateTime.now());
+        expense.setUpdatedAt(LocalDateTime.now());
+        expense.setFundBalanceAfter(fund.getBalance());
+
+        User approver = userRepository.findByEmail(username)
+                .orElseThrow(() -> new RuntimeException("Approver not found"));
+        expense.setApprovedBy(approver);
+
+        sharedFundRepository.save(fund);
+        expenseRepository.save(expense);
+
+        return mapToDTO(expense);
     }
 
-    /* ---------- Mapper ---------- */
-    private ExpenseResponseDTO toResponse(Expense e) {
+    // =============== GET ONE ===============
+    public ExpenseResponseDTO getOne(Long id) {
+        return expenseRepository.findById(id)
+                .map(this::mapToDTO)
+                .orElseThrow(() -> new RuntimeException("Expense not found"));
+    }
+
+    // =============== LIST BY GROUP ===============
+    public List<ExpenseResponseDTO> getByGroup(Long groupId) {
+        return expenseRepository.findByFund_Group_GroupId(groupId)
+                .stream().map(this::mapToDTO)
+                .collect(Collectors.toList());
+    }
+
+    // =============== MAPPING ===============
+    private ExpenseResponseDTO mapToDTO(Expense e) {
         return ExpenseResponseDTO.builder()
                 .id(e.getId())
-                .fundId(e.getFund() != null ? e.getFund().getFundId() : null) // nếu SharedFund là fundId -> đổi sang getFundId()
                 .sourceType(e.getSourceType())
                 .sourceId(e.getSourceId())
                 .description(e.getDescription())
                 .amount(e.getAmount())
+                .status(e.getStatus())
+                .createdAt(e.getCreatedAt())
+                .updatedAt(e.getUpdatedAt())
                 .expenseDate(e.getExpenseDate())
+                .fundBalanceAfter(e.getFundBalanceAfter())
+                .approvedById(e.getApprovedBy() != null ? e.getApprovedBy().getUserId() : null)
+                .recipientUserId(e.getRecipientUser() != null ? e.getRecipientUser().getUserId() : null)
                 .build();
     }
 }
+
+
