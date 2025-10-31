@@ -50,19 +50,19 @@ public class Maintenance {
     @Column(name = "Status", length = 20, nullable = false)
     private String status; // PENDING | APPROVED | REJECTED
 
-    @Column(name = "RequestDate", nullable = false)
+    @Column(name = "RequestDate", nullable = false) // ngay technician tao request
     private LocalDateTime requestDate;
 
-    @Column(name = "ApprovalDate")
+    @Column(name = "ApprovalDate") // ngay staff duyet
     private LocalDateTime approvalDate;
 
     @Column(name = "NextDueDate")
     private LocalDate nextDueDate;
 
-    @Column(name = "CreatedAt", nullable = false)
+    @Column(name = "CreatedAt", nullable = false) // ngay tao bao cao
     private LocalDateTime createdAt;
 
-    @Column(name = "UpdatedAt", nullable = false)
+    @Column(name = "UpdatedAt", nullable = false) // ngay update bao cao
     private LocalDateTime updatedAt;
 
     // =======================
