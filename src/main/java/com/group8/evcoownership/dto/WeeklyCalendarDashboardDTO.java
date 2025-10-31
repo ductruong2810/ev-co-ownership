@@ -30,5 +30,5 @@ public class WeeklyCalendarDashboardDTO {
     // Booking statistics for the week
     private Integer totalBookings;        // Total bookings this week
     private Integer userBookings;         // User's bookings this week
-    private Double bookingRatio;          // User's ownership percentage (tỷ lệ sở hữu), not booking ratio
+    private Double ownershipPercent;         // User's ownership percentage (tỷ lệ sở hữu), not booking ratio
 }

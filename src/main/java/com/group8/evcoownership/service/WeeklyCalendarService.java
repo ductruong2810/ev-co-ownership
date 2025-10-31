@@ -143,7 +143,7 @@ public class WeeklyCalendarService {
         int userBookings = countUserBookingsInWeek(vehicleId, userId, weekStartDateTime, weekEndDateTime);
         
         // Get user's ownership percentage (tỷ lệ sở hữu)
-        Double bookingRatio = ownershipShareRepository.findById_UserIdAndGroup_GroupId(userId, groupId)
+        Double ownershipPercent = ownershipShareRepository.findById_UserIdAndGroup_GroupId(userId, groupId)
                 .map(share -> {
                     // Convert BigDecimal to Double and round to 1 decimal place
                     double percentage = share.getOwnershipPercentage().doubleValue();
@@ -166,7 +166,7 @@ public class WeeklyCalendarService {
                 .maintenanceStatus(maintenanceStatus)
                 .totalBookings(totalBookings)
                 .userBookings(userBookings)
-                .bookingRatio(bookingRatio)
+                .ownershipPercent(ownershipPercent)
                 .build();
     }
     
@@ -250,7 +250,7 @@ public class WeeklyCalendarService {
         MaintenanceDates dates = new MaintenanceDates();
         
         Maintenance latestApprovedMaintenance = maintenanceRepository
-                .findTopByVehicle_IdAndGroupIdAndStatusApprovedOrderByCreatedAtDesc(vehicleId, groupId)
+                .findLatestApprovedMaintenance(vehicleId, groupId)
                 .orElse(null);
         
         if (latestApprovedMaintenance != null) {
@@ -303,12 +303,8 @@ public class WeeklyCalendarService {
         
         if (hasActiveMaintenance) {
             return "Under Maintenance";
-        } else if (hasVehicleCheckIssues && hasUnresolvedIncidents) {
-            return "Has Issues (Vehicle Check & Incident)";
-        } else if (hasVehicleCheckIssues) {
-            return "Has Issues (Vehicle Check)";
-        } else if (hasUnresolvedIncidents) {
-            return "Has Issues (Incident)";
+        } else if (hasVehicleCheckIssues || hasUnresolvedIncidents) {
+            return "Has Issues";
         } else {
             return "Good";
         }
