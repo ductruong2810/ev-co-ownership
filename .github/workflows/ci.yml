@@ -65,6 +65,18 @@ jobs:
         with:
           name: evcoownership-jar
 
+      - name: Prepare deployment package
+        run: |
+          set -e
+          ls -R
+          JAR_PATH=$(find evcoownership-jar -maxdepth 1 -type f -name "*.jar" | head -n 1)
+          if [ -z "$JAR_PATH" ]; then
+            echo "No JAR found in downloaded artifact"
+            exit 1
+          fi
+          echo "Using JAR: $JAR_PATH"
+          cp "$JAR_PATH" app.jar
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -77,4 +89,4 @@ jobs:
         with:
           app-name: 'evshare'
           slot-name: 'Production'
-          package: evcoownership-jar/*.jar
+          package: app.jar
