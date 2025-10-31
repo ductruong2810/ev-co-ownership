@@ -1,6 +1,6 @@
 package com.group8.evcoownership.controller;
 
-import com.group8.evcoownership.dto.MaintenanceCreateRequest;
+import com.group8.evcoownership.dto.MaintenanceCreateRequestDTO;
 import com.group8.evcoownership.dto.MaintenanceResponseDTO;
 import com.group8.evcoownership.service.MaintenanceService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -41,7 +41,7 @@ public class MaintenanceController {
                     """
     )
     public ResponseEntity<MaintenanceResponseDTO> create(
-            @Valid @RequestBody MaintenanceCreateRequest req,
+            @Valid @RequestBody MaintenanceCreateRequestDTO req,
             Authentication auth
     ) {
         return ResponseEntity.ok(maintenanceService.create(req, auth.getName()));

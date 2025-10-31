@@ -21,7 +21,7 @@ public class Expense {
     @Column(name = "ExpenseId", nullable = false)
     private Long id;
 
-    // FK -> SharedFund
+    // FK → SharedFund
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "FundId", nullable = false)
@@ -29,13 +29,13 @@ public class Expense {
 
     @NotNull
     @Column(name = "SourceType", length = 30, nullable = false)
-    private String sourceType; // 'INCIDENT' hoặc 'MAINTENANCE'
+    private String sourceType;  // 'MAINTENANCE' | 'INCIDENT'
 
     @NotNull
     @Column(name = "SourceId", nullable = false)
-    private Long sourceId; // ID logic đến Incident/Maintenance
+    private Long sourceId;      // ID của Maintenance hoặc Incident
 
-    // FK -> Users (người được hoàn tiền, nếu có)
+    // FK → Users (người được hoàn tiền nếu có)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "RecipientUserId")
     private User recipientUser;
@@ -52,21 +52,34 @@ public class Expense {
     @Column(name = "Status", length = 20, nullable = false)
     private String status; // PENDING | COMPLETED
 
-    @Column(name = "CreatedAt", nullable = false)
+    @Column(name = "CreatedAt", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "ExpenseDate")
-    private LocalDateTime expenseDate;
+    @Column(name = "UpdatedAt", nullable = false)
+    private LocalDateTime updatedAt;
 
-    // FK -> Users (admin duyệt)
+    @Column(name = "ExpenseDate")
+    private LocalDateTime expenseDate; // thời điểm chi thực tế
+
+    // FK → Users (staff/admin duyệt)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ApprovedBy")
     private User approvedBy;
 
+    // Số dư quỹ sau khi chi (snapshot)
+    @Column(name = "FundBalanceAfter", precision = 15, scale = 2)
+    private BigDecimal fundBalanceAfter;
+
+    // ====== Lifecycle Hooks ======
     @PrePersist
     public void onCreate() {
-        if (createdAt == null) {
-            createdAt = LocalDateTime.now();
-        }
+        LocalDateTime now = LocalDateTime.now();
+        this.createdAt = now;
+        this.updatedAt = now;
+    }
+
+    @PreUpdate
+    public void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
     }
 }
