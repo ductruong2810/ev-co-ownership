@@ -10,7 +10,7 @@ import java.lang.annotation.*;
 @Target({ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface PasswordConfirmation {
-    String message() default "Mật khẩu và xác nhận mật khẩu không khớp";
+    String message() default "Password and confirmation password do not match";
 
     Class<?>[] groups() default {};
 
