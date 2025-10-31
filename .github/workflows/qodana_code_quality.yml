@@ -1,11 +1,15 @@
-name: Qodana
+name: Qodana Code Quality
+
 on:
   workflow_dispatch:
   pull_request:
+    branches:
+      - main
+      - dev
   push:
-    branches: # Specify your branches here
-      - main # The 'main' branch
-      - 'releases/*' # The release branches
+    branches:
+      - main
+      - 'releases/*'
 
 jobs:
   qodana:
@@ -14,15 +18,18 @@ jobs:
       contents: write
       pull-requests: write
       checks: write
+
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}  # to check out the actual pull request commit, not the merge commit
-          fetch-depth: 0  # a full history is required for pull request analysis
-      - name: 'Qodana Scan'
+          fetch-depth: 0
+
+      - name: Run Qodana Scan
         uses: JetBrains/qodana-action@v2025.2
         with:
-          pr-mode: false
+          pr-mode: ${{ github.event_name == 'pull_request' }}
+          use-caches: true
         env:
           QODANA_TOKEN: ${{ secrets.QODANA_TOKEN_542826521 }}
           QODANA_ENDPOINT: 'https://qodana.cloud'
