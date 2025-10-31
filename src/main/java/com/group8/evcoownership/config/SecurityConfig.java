@@ -3,7 +3,7 @@ package com.group8.evcoownership.config;
 import com.group8.evcoownership.filter.JwtAuthenticationEntryPoint;
 import com.group8.evcoownership.filter.JwtAuthenticationFilter;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -24,18 +24,16 @@ import java.util.List;
 
 @Configuration
 @EnableMethodSecurity // BẮT BUỘC nếu dùng @PreAuthorize
-
+@RequiredArgsConstructor
 public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    @Autowired
-    private JwtAuthenticationFilter jwtAuthFilter;
 
-    @Autowired
-    private JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final JwtAuthenticationFilter jwtAuthFilter;
+    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
