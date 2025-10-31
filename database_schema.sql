@@ -880,6 +880,19 @@ ALTER TABLE Maintenance
     ADD UpdatedAt DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME();
 GO
 
+-- Thêm cột FundBalanceAfter
+ALTER TABLE Expense
+    ADD FundBalanceAfter DECIMAL(15,2) NULL;
+GO
+
+ALTER TABLE Expense
+    ADD UpdatedAt DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME();
+GO
+
+UPDATE Expense
+SET UpdatedAt = CreatedAt
+WHERE UpdatedAt IS NULL;
+GO
 
 
 
