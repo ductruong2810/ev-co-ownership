@@ -21,7 +21,4 @@ public class MaintenanceCreateRequest {
     @DecimalMin(value = "0.0", inclusive = false, message = "Cost must be greater than 0")
     private BigDecimal cost;
 
-    @NotNull(message = "Maintenance date is required")
-    @Future(message = "Maintenance date must be in the future")
-    private LocalDate maintenanceDate;
 }
