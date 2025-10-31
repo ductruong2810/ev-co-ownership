@@ -77,11 +77,11 @@ public class WeeklyCalendarService {
         long totalQuotaHour = totalQuota != null ? totalQuota : 0L;
         int totalQuotaSlots = (int) (totalQuotaHour / slotDurationHour);
 
-        // Count slots user has booked (CONFIRMED, PENDING, BOOKED_SELF...) this week
+        // Count slots user has booked (CONFIRMED, BOOKED_SELF...) this week
         int usedQuotaSlots = 0;
         for (DailySlotResponseDTO day : dailySlots) {
             for (TimeSlotResponseDTO slot : day.getSlots()) {
-                if (("BOOKED_SELF".equals(slot.getType()) || "PENDING_BOOKED_SELF".equals(slot.getType())) && slot.getBookedBy() != null) {
+                if ("BOOKED_SELF".equals(slot.getType()) && slot.getBookedBy() != null) {
                     usedQuotaSlots++;
                 }
             }
@@ -136,7 +136,7 @@ public class WeeklyCalendarService {
         LocalDateTime weekStartDateTime = weekStart.atStartOfDay();
         LocalDateTime weekEndDateTime = weekStart.plusDays(7).atStartOfDay();
         
-        // Count total bookings for the week (CONFIRMED and PENDING only)
+        // Count total bookings for the week (CONFIRMED only)
         int totalBookings = countTotalBookingsInWeek(vehicleId, weekStartDateTime, weekEndDateTime);
         
         // Count user bookings for the week
@@ -179,10 +179,10 @@ public class WeeklyCalendarService {
         List<UsageBooking> bookings = usageBookingRepository.findAffectedBookings(
                 vehicleId, weekStart, weekEnd);
         
-        // Count unique bookings (CONFIRMED and PENDING only, exclude BUFFER)
+        // Count unique bookings (CONFIRMED only, exclude BUFFER)
         Set<Long> uniqueBookingIds = new HashSet<>();
         bookings.stream()
-                .filter(b -> b.getStatus() == BookingStatus.CONFIRMED || b.getStatus() == BookingStatus.PENDING)
+                .filter(b -> b.getStatus() == BookingStatus.CONFIRMED)
                 .forEach(b -> uniqueBookingIds.add(b.getId()));
         
         return uniqueBookingIds.size();
@@ -197,11 +197,11 @@ public class WeeklyCalendarService {
         List<UsageBooking> bookings = usageBookingRepository.findAffectedBookings(
                 vehicleId, weekStart, weekEnd);
         
-        // Filter by user and count unique bookings (CONFIRMED and PENDING only)
+        // Filter by user and count unique bookings (CONFIRMED only)
         Set<Long> uniqueBookingIds = new HashSet<>();
         bookings.stream()
                 .filter(b -> b.getUser() != null && b.getUser().getUserId().equals(userId))
-                .filter(b -> b.getStatus() == BookingStatus.CONFIRMED || b.getStatus() == BookingStatus.PENDING)
+                .filter(b -> b.getStatus() == BookingStatus.CONFIRMED)
                 .forEach(b -> uniqueBookingIds.add(b.getId()));
         
         return uniqueBookingIds.size();
@@ -397,18 +397,17 @@ public class WeeklyCalendarService {
                     .build();
         }
 
-        // 3. CONFIRMED or PENDING booking
+        // 3. CONFIRMED booking
         UsageBooking booking = overlapping.stream()
-                .filter(b -> b.getStatus() == BookingStatus.CONFIRMED || b.getStatus() == BookingStatus.PENDING)
+                .filter(b -> b.getStatus() == BookingStatus.CONFIRMED)
                 .findFirst().orElse(null);
         if (booking != null) {
             boolean bookedBySelf = booking.getUser() != null && booking.getUser().getUserId().equals(userId);
-            String statusPrefix = booking.getStatus() == BookingStatus.PENDING ? "PENDING_" : "";
 
             return TimeSlotResponseDTO.builder()
                     .time(timeDisplay)
                     .status(booking.getStatus().name())
-                    .type(statusPrefix + (bookedBySelf ? "BOOKED_SELF" : "BOOKED_OTHER"))
+                    .type(bookedBySelf ? "BOOKED_SELF" : "BOOKED_OTHER")
                     .bookedBy(booking.getUser() != null ? booking.getUser().getFullName() : "Unknown")
                     .bookable(false)
                     .build();
