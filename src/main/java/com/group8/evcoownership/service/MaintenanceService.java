@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -42,7 +43,6 @@ public class MaintenanceService {
                 .actualCost(req.getCost())
                 .status("PENDING")
                 .requestDate(now)
-                .nextDueDate(req.getMaintenanceDate()) // Map maintenanceDate từ request vào nextDueDate
                 .build();
 
         maintenance = maintenanceRepository.save(maintenance);
@@ -63,27 +63,38 @@ public class MaintenanceService {
                 .collect(Collectors.toList());
     }
     // =================== APPROVE ===================
-    public MaintenanceResponseDTO approve(Long id, String staffEmail) {
+    public MaintenanceResponseDTO approve(Long id, String staffEmail, LocalDate nextDueDate) {
         Maintenance maintenance = maintenanceRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Maintenance not found"));
 
         User staff = userRepository.findByEmail(staffEmail)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
+        // Chỉ được duyệt khi đang ở trạng thái PENDING
+        if (!"PENDING".equals(maintenance.getStatus())) {
+            throw new IllegalStateException("Only PENDING maintenance requests can be approved.");
+        }
+
+        // Bắt buộc staff phải nhập nextDueDate
+        if (nextDueDate == null) {
+            throw new IllegalArgumentException("Next due date must be provided when approving maintenance.");
+        }
+        if (nextDueDate.isBefore(LocalDate.now())) {
+            throw new IllegalArgumentException("Next due date must be in the future.");
+        }
+
+        // Cập nhật trạng thái
         LocalDateTime now = LocalDateTime.now();
         maintenance.setStatus("APPROVED");
         maintenance.setApprovedBy(staff);
         maintenance.setApprovalDate(now);
-        
-        // If nextDueDate is not set, calculate it from approvalDate + 3 months
-        if (maintenance.getNextDueDate() == null) {
-            maintenance.setNextDueDate(now.toLocalDate().plusMonths(3));
-        }
-        
+        maintenance.setNextDueDate(nextDueDate);
+
         maintenanceRepository.save(maintenance);
 
         return mapToDTO(maintenance);
     }
+
     // =================== REJECT ===================
     public MaintenanceResponseDTO reject(Long id, String staffEmail) {
         Maintenance maintenance = maintenanceRepository.findById(id)
@@ -91,6 +102,10 @@ public class MaintenanceService {
 
         User staff = userRepository.findByEmail(staffEmail)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+        if (!"PENDING".equals(maintenance.getStatus())) {
+            throw new IllegalStateException("Only PENDING maintenance requests can be rejected.");
+        }
 
         LocalDateTime now = LocalDateTime.now();
         maintenance.setStatus("REJECTED");
@@ -112,9 +127,12 @@ public class MaintenanceService {
                 .description(m.getDescription())
                 .actualCost(m.getActualCost())
                 .status(m.getStatus())
-                .maintenanceDate(m.getNextDueDate()) // Map nextDueDate to maintenanceDate for backward compatibility
+                .requestDate(m.getRequestDate())
+                .approvalDate(m.getApprovalDate())
+                .nextDueDate(m.getNextDueDate())
                 .createdAt(m.getCreatedAt())
                 .updatedAt(m.getUpdatedAt())
                 .build();
     }
+
 }
