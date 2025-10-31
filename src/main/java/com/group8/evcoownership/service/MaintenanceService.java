@@ -1,6 +1,6 @@
 package com.group8.evcoownership.service;
 
-import com.group8.evcoownership.dto.MaintenanceCreateRequest;
+import com.group8.evcoownership.dto.MaintenanceCreateRequestDTO;
 import com.group8.evcoownership.dto.MaintenanceResponseDTO;
 import com.group8.evcoownership.entity.Maintenance;
 import com.group8.evcoownership.entity.User;
@@ -28,7 +28,7 @@ public class MaintenanceService {
     private final UserRepository userRepository;
 
     // =================== CREATE ===================
-    public MaintenanceResponseDTO create(MaintenanceCreateRequest req, String username){
+    public MaintenanceResponseDTO create(MaintenanceCreateRequestDTO req, String username){
         User technician = userRepository.findByEmail(username)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
