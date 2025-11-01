@@ -5,7 +5,10 @@ import com.group8.evcoownership.dto.ExpenseResponseDTO;
 import com.group8.evcoownership.dto.ExpenseCreateRequestDTO;
 import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.repository.*;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,18 +24,27 @@ public class ExpenseService {
     private final ExpenseRepository expenseRepository;
     private final SharedFundRepository sharedFundRepository;
     private final UserRepository userRepository;
+    private final IncidentRepository incidentRepository;
 
     // =============== CREATE ===============
     @Transactional
     public ExpenseResponseDTO create(ExpenseCreateRequestDTO req, String username) {
         SharedFund fund = sharedFundRepository.findById(req.getFundId())
-                .orElseThrow(() -> new RuntimeException("Fund not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Fund not found"));
+
         User approver = userRepository.findByEmail(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        User recipient = req.getRecipientUserId() != null
-                ? userRepository.findById(req.getRecipientUserId())
-                .orElseThrow(() -> new RuntimeException("Recipient not found"))
-                : null;
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+        User recipient = null;
+
+        // 🔍 Nếu sourceType = INCIDENT → lấy user từ Incident
+        if ("INCIDENT".equalsIgnoreCase(req.getSourceType())) {
+            Incident incident = incidentRepository.findById(req.getSourceId())
+                    .orElseThrow(() -> new EntityNotFoundException("Incident not found"));
+            recipient = incident.getBooking().getUser(); // hoặc incident.getReportedBy() tuỳ cấu trúc entity
+        }
+
+        // 🔧 Nếu là Maintenance thì để recipient = null
 
         Expense expense = Expense.builder()
                 .fund(fund)
@@ -51,18 +63,19 @@ public class ExpenseService {
         return mapToDTO(expense);
     }
 
+
     // =============== APPROVE ===============
     @Transactional
     public ExpenseResponseDTO approve(Long expenseId, String username) {
         Expense expense = expenseRepository.findById(expenseId)
-                .orElseThrow(() -> new RuntimeException("Expense not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Expense not found"));
         if (!"PENDING".equals(expense.getStatus())) {
-            throw new RuntimeException("Expense already processed");
+            throw new IllegalStateException("Expense already processed");
         }
 
         SharedFund fund = expense.getFund();
         if (fund.getBalance().compareTo(expense.getAmount()) < 0) {
-            throw new RuntimeException("Insufficient fund balance");
+            throw new IllegalStateException("Insufficient fund balance");
         }
 
         fund.setBalance(fund.getBalance().subtract(expense.getAmount()));
@@ -72,7 +85,7 @@ public class ExpenseService {
         expense.setFundBalanceAfter(fund.getBalance());
 
         User approver = userRepository.findByEmail(username)
-                .orElseThrow(() -> new RuntimeException("Approver not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Approver not found"));
         expense.setApprovedBy(approver);
 
         sharedFundRepository.save(fund);
@@ -81,11 +94,28 @@ public class ExpenseService {
         return mapToDTO(expense);
     }
 
+    // =============== GET ALL ===============
+    public Page<ExpenseResponseDTO> getAll(
+            Long fundId,
+            String sourceType,
+            String status,
+            Long approvedById,
+            Long recipientUserId,
+            Pageable pageable
+    ) {
+        Page<Expense> page = expenseRepository.findFiltered(
+                fundId, sourceType, status, approvedById, recipientUserId, pageable
+        );
+        return page.map(this::mapToDTO);
+    }
+
+
+
     // =============== GET ONE ===============
     public ExpenseResponseDTO getOne(Long id) {
         return expenseRepository.findById(id)
                 .map(this::mapToDTO)
-                .orElseThrow(() -> new RuntimeException("Expense not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Expense not found"));
     }
 
     // =============== LIST BY GROUP ===============
