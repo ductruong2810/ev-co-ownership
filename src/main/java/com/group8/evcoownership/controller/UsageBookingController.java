@@ -107,8 +107,14 @@ public class UsageBookingController {
      */
     @PutMapping("/{bookingId}/cancel")
     @Operation(summary = "Hủy đặt xe", description = "Hủy booking và chuyển sang trạng thái Cancelled")
-    public ResponseEntity<BookingResponseDTO> cancelBooking(@PathVariable Long bookingId) {
-        UsageBooking booking = usageBookingService.cancelBooking(bookingId);
+    public ResponseEntity<BookingResponseDTO> cancelBooking(
+            @PathVariable Long bookingId,
+            @AuthenticationPrincipal String email) {
+
+        Long userId = userRepository.findByEmail(email)
+                .orElseThrow().getUserId();
+
+        UsageBooking booking = usageBookingService.cancelBooking(bookingId, userId);
 
         var vehicle = booking.getVehicle();
         BookingResponseDTO response = new BookingResponseDTO(
