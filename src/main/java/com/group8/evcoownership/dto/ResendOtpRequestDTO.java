@@ -15,11 +15,11 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ResendOtpRequestDTO {
 
-    @NotBlank(message = "Email không được để trống")
-    @Email(message = "Email không hợp lệ")
+    @NotBlank(message = "Email cannot be blank")
+    @Email(message = "Email is not valid")
     private String email;
 
-    @NotNull(message = "Type không được để trống")
+    @NotNull(message = "Type cannot be blank")
     private OtpType type;  // REGISTRATION hoặc PASSWORD_RESET
 }
 

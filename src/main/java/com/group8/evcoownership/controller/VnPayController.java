@@ -26,10 +26,10 @@ public class VnPayController {
     public ResponseEntity<Map<String, String>> createPaymentUrl(@PathVariable long fee, HttpServletRequest request) {
         Map<String, String> map = new HashMap<>();
 
-        // ✅ Tạo mã giao dịch nội bộ (txnRef)
+        // Tạo mã giao dịch nội bộ (txnRef)
         String txnRef = String.valueOf(System.currentTimeMillis());
 
-        // ✅ Gọi đúng method có 3 tham số
+        // Gọi đúng method có 3 tham số
         String url = VnPay_PaymentService.createPaymentUrl(fee, request, txnRef, null);
 
         map.put("url", url);

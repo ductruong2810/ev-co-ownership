@@ -7,7 +7,7 @@ import lombok.Data;
 @Data
 public class ForgotPasswordRequestDTO {
 
-    @NotBlank(message = "Email không được để trống")
-    @Email(message = "Email không hợp lệ")
+    @NotBlank(message = "Email cannot be blank!!")
+    @Email(message = "Invalid email!!")
     private String email;
 }
