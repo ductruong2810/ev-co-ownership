@@ -3,7 +3,6 @@ package com.group8.evcoownership.filter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.group8.evcoownership.dto.ErrorResponseDTO;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.MediaType;
@@ -27,13 +26,13 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
     @Override
     public void commence(HttpServletRequest request,
                          HttpServletResponse response,
-                         AuthenticationException authException) throws IOException, ServletException {
+                         AuthenticationException authException) throws IOException {
 
         // Lấy JWT error message từ request attribute
         String errorMessage = (String) request.getAttribute("jwt_error");
 
         if (errorMessage == null) {
-            errorMessage = "Bạn cần đăng nhập để truy cập tài nguyên này";
+            errorMessage = "You need to log in to access this resource";
         }
 
         // Build error response

@@ -1,4 +1,4 @@
-package com.group8.evcoownership.util;
+package com.group8.evcoownership.utils;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -16,5 +16,4 @@ public final class AuthUtils {
         return ctxAuth != null ? ctxAuth.getName() : null;
     }
 }
-
 

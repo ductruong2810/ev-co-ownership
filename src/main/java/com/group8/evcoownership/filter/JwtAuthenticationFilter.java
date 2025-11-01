@@ -51,13 +51,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (token.trim().isEmpty()) {
             log.warn("Empty token detected");
-            request.setAttribute("jwt_error", "Token không được để trống");
+            request.setAttribute("jwt_error", "Token must not be empty");
             filterChain.doFilter(request, response);
             return;
         }
 
         if (logoutService.isTokenBlacklisted(token)) {
-            request.setAttribute("jwt_error", "Token đã bị thu hồi. Vui lòng đăng nhập lại");
+            request.setAttribute("jwt_error", "Token has been revoked. Please log in again");
             filterChain.doFilter(request, response);
             return;
         }
@@ -83,38 +83,38 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(auth);
                 } else {
                     log.error("User not found for email: {}", email);
-                    request.setAttribute("jwt_error", "Người dùng không tồn tại");
+                    request.setAttribute("jwt_error", "User does not exist");
                 }
             } else {
-                request.setAttribute("jwt_error", "Token không hợp lệ");
+                request.setAttribute("jwt_error", "Invalid token");
             }
 
         } catch (ExpiredJwtException e) {
             log.warn("JWT token expired: {}", e.getMessage());
-            request.setAttribute("jwt_error", "Token đã hết hạn. Vui lòng đăng nhập lại");
+            request.setAttribute("jwt_error", "Token has expired. Please log in again");
 
         } catch (MalformedJwtException e) {
             log.warn("Invalid JWT token: {}", e.getMessage());
-            request.setAttribute("jwt_error", "Token không đúng định dạng");
+            request.setAttribute("jwt_error", "Token is not in the correct format");
 
         } catch (SignatureException e) {
             log.warn("Invalid JWT signature: {}", e.getMessage());
-            request.setAttribute("jwt_error", "Chữ ký token không hợp lệ");
+            request.setAttribute("jwt_error", "Invalid token signature");
 
         } catch (IllegalArgumentException e) {
             log.warn("JWT token is empty: {}", e.getMessage());
-            request.setAttribute("jwt_error", "Token không được để trống");
+            request.setAttribute("jwt_error", "Token must not be empty");
 
         } catch (Exception e) {
             log.error("Cannot set user authentication: {}", e.getMessage());
-            request.setAttribute("jwt_error", "Xác thực token thất bại");
+            request.setAttribute("jwt_error", "Token authentication failed");
         }
 
         filterChain.doFilter(request, response);
     }
 
     @Override
-    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) throws ServletException {
+    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
         String path = request.getServletPath();
         return path.startsWith("/api/auth/register")
                 || path.startsWith("/api/auth/login")

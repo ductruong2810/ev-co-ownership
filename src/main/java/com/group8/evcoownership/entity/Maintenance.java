@@ -50,16 +50,19 @@ public class Maintenance {
     @Column(name = "Status", length = 20, nullable = false)
     private String status; // PENDING | APPROVED | REJECTED
 
-    // Ngày dự kiến bảo dưỡng (do technician chọn)
-    @Column(name = "MaintenanceDate", nullable = true)
-    private LocalDate maintenanceDate;
+    @Column(name = "RequestDate", nullable = false) // ngay technician tao request
+    private LocalDateTime requestDate;
 
-    // Ngày tạo yêu cầu bảo trì
-    @Column(name = "CreatedAt", nullable = false)
+    @Column(name = "ApprovalDate") // ngay staff duyet
+    private LocalDateTime approvalDate;
+
+    @Column(name = "NextDueDate")
+    private LocalDate nextDueDate;
+
+    @Column(name = "CreatedAt", nullable = false) // ngay tao bao cao
     private LocalDateTime createdAt;
 
-    // Ngày cập nhật (staff duyệt hoặc thay đổi trạng thái)
-    @Column(name = "UpdatedAt", nullable = false)
+    @Column(name = "UpdatedAt", nullable = false) // ngay update bao cao
     private LocalDateTime updatedAt;
 
     // =======================
@@ -68,10 +71,18 @@ public class Maintenance {
 
     @PrePersist
     protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
-        if (this.status == null)
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+        if (this.updatedAt == null) {
+            this.updatedAt = LocalDateTime.now();
+        }
+        if (this.requestDate == null) {
+            this.requestDate = LocalDateTime.now();
+        }
+        if (this.status == null) {
             this.status = "PENDING";
+        }
     }
 
     @PreUpdate

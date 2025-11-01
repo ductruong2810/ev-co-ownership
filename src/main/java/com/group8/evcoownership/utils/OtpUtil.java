@@ -37,7 +37,7 @@ public class OtpUtil {
             ).toMinutes();
             log.warn("Email {} is locked out for {} more minutes", email, minutesLeft);
             throw new RuntimeException(
-                    "Tài khoản tạm thời bị khóa do nhập sai OTP quá nhiều. Vui lòng thử lại sau " + minutesLeft + " phút"
+                    "The account is temporarily locked due to too many incorrect OTP attempts. Please try again in " + minutesLeft + " minutes"
             );
         }
 

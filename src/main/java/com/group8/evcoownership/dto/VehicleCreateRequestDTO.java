@@ -13,7 +13,7 @@ public record VehicleCreateRequestDTO(
         @NotBlank String licensePlate,
         @NotBlank String chassisNumber,
         @DecimalMin(value = "0.00")
-        @DecimalMax(value = "100000000000", message = "Vehicle value cannot exceed 100 billion VND")
+        @DecimalMax(value = "1000000000", message = "Vehicle value cannot exceed 1 billion VND")
         @NotNull BigDecimal vehicleValue,
         @NotNull Long groupId
 ) {

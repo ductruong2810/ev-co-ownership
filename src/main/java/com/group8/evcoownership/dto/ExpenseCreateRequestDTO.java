@@ -1,19 +1,18 @@
 package com.group8.evcoownership.dto;
 
-import jakarta.validation.constraints.NotNull;
-import lombok.Data;
-
+import lombok.*;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class ExpenseCreateRequestDTO {
-    @NotNull
     private Long fundId;
-    @NotNull
-    private BigDecimal amount;
     private String sourceType;
     private Long sourceId;
     private String description;
-    private LocalDateTime expenseDate;
+    private BigDecimal amount;
+    private Long recipientUserId;
 }
+

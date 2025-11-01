@@ -17,7 +17,7 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
                 FROM UsageBooking
                 WHERE UserId = :userId
                   AND VehicleId = :vehicleId
-                  AND Status IN ('Pending', 'Confirmed')
+                  AND Status = 'CONFIRMED'
                   AND DATEPART(ISO_WEEK, StartDateTime) = DATEPART(ISO_WEEK, :weekStart)
                   AND YEAR(StartDateTime) = YEAR(:weekStart)
             """, nativeQuery = true)
@@ -35,29 +35,13 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
     Long getQuotaLimitByOwnershipPercentage(@Param("userId") Long userId,
                                             @Param("vehicleId") Long vehicleId);
 
-    // Kiểm tra trùng giờ với buffer 1h sau mỗi booking (để kỹ thuật viên kiểm tra và sạc pin)
-    @Query(value = """
-                SELECT COUNT(*)
-                FROM UsageBooking
-                WHERE VehicleId = :vehicleId
-                  AND Status IN ('Pending', 'Confirmed', 'Buffer')
-                  AND (
-                      (:start BETWEEN StartDateTime AND DATEADD(HOUR, 1, EndDateTime))
-                      OR (:end BETWEEN StartDateTime AND DATEADD(HOUR, 1, EndDateTime))
-                      OR (StartDateTime BETWEEN :start AND :end)
-                  )
-            """, nativeQuery = true)
-    long countOverlappingBookingsWithBuffer(@Param("vehicleId") Long vehicleId,
-                                            @Param("start") LocalDateTime start,
-                                            @Param("end") LocalDateTime end);
-
     // Kiểm tra trùng giờ với buffer 1h (loại trừ booking hiện tại)
     @Query(value = """
                 SELECT COUNT(*)
                 FROM UsageBooking
                 WHERE VehicleId = :vehicleId
                   AND BookingId != :excludeBookingId
-                  AND Status IN ('Pending', 'Confirmed', 'Buffer')
+                  AND Status = 'CONFIRMED'
                   AND (
                       (:start BETWEEN StartDateTime AND DATEADD(HOUR, 1, EndDateTime))
                       OR (:end BETWEEN StartDateTime AND DATEADD(HOUR, 1, EndDateTime))
@@ -76,7 +60,7 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
                 FROM UsageBooking ub
                 JOIN FETCH ub.user u
                 WHERE ub.vehicle.Id = :vehicleId
-                  AND ub.status IN ('Pending', 'Confirmed')
+                  AND ub.status = 'CONFIRMED'
                   AND CAST(ub.startDateTime AS date) = :date
                 ORDER BY ub.startDateTime
             """)
@@ -89,7 +73,7 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
                 SELECT ub
                 FROM UsageBooking ub
                 WHERE ub.user.userId = :userId
-                  AND ub.status IN ('Pending', 'Confirmed')
+                  AND ub.status = 'CONFIRMED'
                   AND ub.startDateTime > CURRENT_TIMESTAMP
                 ORDER BY ub.startDateTime ASC
             """)
@@ -116,7 +100,7 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
                 FROM UsageBooking ub
                 JOIN FETCH ub.user u
                 WHERE ub.vehicle.Id = :vehicleId
-                  AND ub.status IN ('Pending', 'Confirmed')
+                  AND ub.status = 'CONFIRMED'
                   AND (
                       (ub.startDateTime BETWEEN :startDateTime AND :endDateTime)
                       OR (ub.endDateTime BETWEEN :startDateTime AND :endDateTime)
@@ -128,13 +112,26 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
                                             @Param("startDateTime") LocalDateTime startDateTime,
                                             @Param("endDateTime") LocalDateTime endDateTime);
 
-    // Tìm booking active của user cho vehicle (để QR check-in)
+    // Find latest completed booking for a vehicle and group (to get vehicle status from POST_USE check)
+    @Query("""
+                SELECT ub
+                FROM UsageBooking ub
+                JOIN FETCH ub.vehicle v
+                WHERE v.Id = :vehicleId
+                  AND v.ownershipGroup.groupId = :groupId
+                  AND ub.status IN ('CONFIRMED', 'COMPLETED')
+                  AND ub.endDateTime <= CURRENT_TIMESTAMP
+                ORDER BY ub.endDateTime DESC
+            """)
+    List<UsageBooking> findLatestCompletedBookingByVehicleAndGroup(@Param("vehicleId") Long vehicleId, @Param("groupId") Long groupId);
+
+    // Find active booking of user for vehicle (for QR check-in)
     @Query("""
                 SELECT ub
                 FROM UsageBooking ub
                 WHERE ub.user.userId = :userId
                   AND ub.vehicle.Id = :vehicleId
-                  AND ub.status = 'Confirmed'
+                  AND ub.status = 'CONFIRMED'
                   AND ub.startDateTime <= CURRENT_TIMESTAMP
                   AND ub.endDateTime >= CURRENT_TIMESTAMP
                 ORDER BY ub.startDateTime DESC

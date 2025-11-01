@@ -10,13 +10,13 @@ env:
   MAVEN_OPTS: "-Xmx1024m -XX:+UseG1GC"
 
 jobs:
-  test:
+  build-test:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       checks: write
       pull-requests: write
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -34,15 +34,8 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
 
-      - name: Cache Maven wrapper
-        uses: actions/cache@v3
-        with:
-          path: ~/.m2/wrapper
-          key: ${{ runner.os }}-maven-wrapper-${{ hashFiles('**/.mvn/wrapper/maven-wrapper.jar') }}
-          restore-keys: ${{ runner.os }}-maven-wrapper-
-
-      - name: Run tests with Maven
-        run: ./mvnw clean test -Dspring.profiles.active=test
+      - name: Verify with Maven (tests + package)
+        run: ./mvnw -B clean verify -Dspring.profiles.active=test
 
       - name: Generate test report
         uses: dorny/test-reporter@v1
@@ -52,38 +45,14 @@ jobs:
           path: target/surefire-reports/*.xml
           reporter: java-junit
 
-  build:
-    needs: test
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: Cache Maven dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
-
-      - name: Build with Maven
-        run: ./mvnw clean package -DskipTests
-
-      - name: Upload build artifacts
+      - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: jar-artifact
-          path: target/*.jar
+          name: evcoownership-jar
+          path: target/ev-co-ownership-*.jar
 
   deploy:
-    needs: build
+    needs: build-test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     permissions:
@@ -94,7 +63,19 @@ jobs:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
-          name: jar-artifact
+          name: evcoownership-jar
+
+      - name: Prepare deployment package
+        run: |
+          set -e
+          ls -R
+          JAR_PATH=$(find . -maxdepth 1 -type f -name "*.jar" | head -n 1)
+          if [ -z "$JAR_PATH" ]; then
+            echo "No JAR found in downloaded artifact"
+            exit 1
+          fi
+          echo "Using JAR: $JAR_PATH"
+          cp "$JAR_PATH" app.jar
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -108,4 +89,4 @@ jobs:
         with:
           app-name: 'evshare'
           slot-name: 'Production'
-          package: '*.jar'
+          package: app.jar

@@ -61,12 +61,6 @@ public class UsageBookingService {
                     bookedHours, quotaLimit, Math.max(0, remainingHours)));
         }
 
-        // Kiểm tra trùng giờ + buffer 1h (để kỹ thuật viên kiểm tra và sạc pin)
-        long conflicts = usageBookingRepository.countOverlappingBookingsWithBuffer(vehicleId, start, end);
-        if (conflicts > 0) {
-            throw new IllegalStateException("Time slot not available. There is a 1-hour buffer period after each booking for technical inspection and charging.");
-        }
-
         // Tạo booking mới
         UsageBooking booking = new UsageBooking();
         booking.setUser(user);
@@ -125,29 +119,6 @@ public class UsageBookingService {
         return usageBookingRepository.findBookingsByUserInWeek(userId, normalizedWeekStart, weekEnd);
     }
 
-
-    //Lấy thông tin quota của user cho xe trong tuần
-    public Map<String, Object> getUserQuotaInfo(Long userId, Long vehicleId, LocalDateTime weekStart) {
-        Map<String, Object> quotaInfo = new HashMap<>();
-
-        // Lấy quota limit dựa trên ownership percentage
-        Long quotaLimit = usageBookingRepository.getQuotaLimitByOwnershipPercentage(userId, vehicleId);
-        if (quotaLimit == null) {
-            quotaInfo.put("error", "User is not a member of the vehicle's ownership group.");
-            return quotaInfo;
-        }
-
-        // Lấy số giờ đã book trong tuần
-        Long bookedHours = usageBookingRepository.getTotalBookedHoursThisWeek(userId, vehicleId, weekStart);
-        long remainingHours = quotaLimit - bookedHours;
-
-        quotaInfo.put("quotaLimit", quotaLimit);
-        quotaInfo.put("bookedHours", bookedHours);
-        quotaInfo.put("remainingHours", Math.max(0, remainingHours));
-        quotaInfo.put("percentageUsed", quotaLimit > 0 ? (bookedHours * 100.0 / quotaLimit) : 0);
-
-        return quotaInfo;
-    }
 
     //Xác nhận booking (Pending → Confirmed) - kiểm tra conflict trước khi confirm
     public UsageBooking confirmBooking(Long bookingId) {
@@ -222,29 +193,6 @@ public class UsageBookingService {
         );
 
         return savedBooking;
-    }
-
-    //Tự động tạo buffer booking sau khi booking hoàn thành (để kỹ thuật viên kiểm tra và sạc pin)
-    public UsageBooking createBufferBooking(Long completedBookingId) {
-        UsageBooking completedBooking = usageBookingRepository.findById(completedBookingId)
-                .orElseThrow(() -> new EntityNotFoundException("Booking not found"));
-
-        if (completedBooking.getStatus() != BookingStatus.COMPLETED) {
-            throw new IllegalStateException("Only completed bookings can have buffer periods");
-        }
-
-        // Tạo buffer booking 1 giờ sau booking hoàn thành
-        LocalDateTime bufferStart = completedBooking.getEndDateTime();
-        LocalDateTime bufferEnd = bufferStart.plusHours(1);
-
-        UsageBooking bufferBooking = new UsageBooking();
-        bufferBooking.setUser(completedBooking.getUser()); // Có thể là null hoặc system user
-        bufferBooking.setVehicle(completedBooking.getVehicle());
-        bufferBooking.setStartDateTime(bufferStart);
-        bufferBooking.setEndDateTime(bufferEnd);
-        bufferBooking.setStatus(BookingStatus.BUFFER);
-
-        return usageBookingRepository.save(bufferBooking);
     }
 
     //Hủy booking với lý do (dành cho admin/kỹ thuật viên)
