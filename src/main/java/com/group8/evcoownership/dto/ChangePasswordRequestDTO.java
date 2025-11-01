@@ -10,21 +10,21 @@ import lombok.Data;
 @PasswordConfirmation(
         passwordField = "newPassword",
         confirmPasswordField = "confirmPassword",
-        message = "Mật khẩu mới và xác nhận mật khẩu không khớp"
+        message = "New password and confirm password do not match!!"
 )
 public class ChangePasswordRequestDTO {
 
-    @NotBlank(message = "Mật khẩu cũ không được để trống")
+    @NotBlank(message = "Old password cannot be blank!!")
     private String oldPassword;
 
-    @NotBlank(message = "Mật khẩu mới không được để trống")
-    @Size(min = 8, max = 50, message = "Mật khẩu phải từ 8-50 ký tự")
+    @NotBlank(message = "New password cannot be blank!!")
+    @Size(min = 8, max = 50, message = "Password must be 8-50 characters")
     @Pattern(
             regexp = "^(?!.*[<>])(?!.*(?i)script)(?!.*(?i)javascript)(?!.*(?i)onerror)(?!.*(?i)onload)[a-zA-Z0-9!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,./?~`]+$",
-            message = "Mật khẩu phải có 5-50 ký tự, ít nhất 1 chữ hoa và 1 ký tự đặc biệt"
+            message = "Password must be 5-50 characters, at least 1 uppercase letter and 1 special character"
     )
     private String newPassword;
 
-    @NotBlank(message = "Xác nhận mật khẩu không được để trống")
+    @NotBlank(message = "Confirm password cannot be blank!!")
     private String confirmPassword;
 }

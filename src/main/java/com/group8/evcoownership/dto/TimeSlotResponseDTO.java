@@ -12,4 +12,5 @@ public class TimeSlotResponseDTO {
     private boolean bookable;
     // Detailed type for FE rendering: AVAILABLE | BOOKED_SELF | BOOKED_OTHER | MAINTENANCE | LOCKED
     private String type;
+    private Long bookingId;
 }

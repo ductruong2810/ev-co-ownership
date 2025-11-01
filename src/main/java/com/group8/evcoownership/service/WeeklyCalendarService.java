@@ -394,6 +394,7 @@ public class WeeklyCalendarService {
                     .type("LOCKED")
                     .bookedBy(locked.getUser() != null ? locked.getUser().getFullName() : null)
                     .bookable(false)
+                    .bookingId(locked.getId())
                     .build();
         }
 
@@ -410,6 +411,7 @@ public class WeeklyCalendarService {
                     .type(bookedBySelf ? "BOOKED_SELF" : "BOOKED_OTHER")
                     .bookedBy(booking.getUser() != null ? booking.getUser().getFullName() : "Unknown")
                     .bookable(false)
+                    .bookingId(booking.getId())
                     .build();
         }
 

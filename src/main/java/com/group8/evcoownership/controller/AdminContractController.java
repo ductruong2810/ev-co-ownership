@@ -26,29 +26,6 @@ public class AdminContractController {
     private final ContractService contractService;
     private final UserService userService;
 
-//    @PutMapping("/{contractId}/approve")
-//    @PreAuthorize("hasRole('ADMIN')")
-//    public ResponseEntity<?> approveContract(
-//            @PathVariable Long contractId,
-//            @AuthenticationPrincipal UserDetails userDetails) {
-//
-//        User admin = userService.findByEmail(userDetails.getUsername());
-//        ContractDTO approvedContract = contractService.approveContract(contractId, admin);
-//        return ResponseEntity.ok(approvedContract);
-//    }
-//
-//    @PutMapping("/{contractId}/reject")
-//    @PreAuthorize("hasRole('ADMIN')")
-//    public ResponseEntity<?> rejectContract(
-//            @PathVariable Long contractId,
-//            @RequestParam String reason,
-//            @AuthenticationPrincipal UserDetails userDetails) {
-//
-//        User admin = userService.findByEmail(userDetails.getUsername());
-//        ContractDTO rejectedContract = contractService.rejectContract(contractId, reason, admin);
-//        return ResponseEntity.ok(rejectedContract);
-//    }
-
     @PutMapping("/approve")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ContractDTO> processContractApproval(
@@ -88,7 +65,6 @@ public class AdminContractController {
                     "Invalid action. Only 'APPROVE' or 'REJECT' are allowed"
             );
         }
-
         return ResponseEntity.ok(contract);
     }
 
