@@ -4,6 +4,7 @@ import com.group8.evcoownership.dto.ContractDTO;
 import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.enums.ContractApprovalStatus;
 import com.group8.evcoownership.enums.NotificationType;
+import com.group8.evcoownership.enums.DepositStatus;
 import com.group8.evcoownership.exception.ResourceNotFoundException;
 import com.group8.evcoownership.repository.*;
 import jakarta.persistence.EntityNotFoundException;
@@ -725,6 +726,24 @@ public class ContractService {
         // Chỉ duyệt contract ở trạng thái SIGNED
         if (contract.getApprovalStatus() != ContractApprovalStatus.SIGNED) {
             throw new IllegalStateException("Only signed contracts can be approved");
+        }
+
+        List<OwnershipShare> shares = getSharesByGroupId(contract.getGroup().getGroupId());
+        List<OwnershipShare> unpaidShares = shares.stream()
+                .filter(share -> share.getDepositStatus() != DepositStatus.PAID)
+                .toList();
+
+        if (!unpaidShares.isEmpty()) {
+            String unpaidMembers = unpaidShares.stream()
+                    .map(share -> Optional.ofNullable(share.getUser())
+                            .map(User::getFullName)
+                            .orElse("User " + share.getId().getUserId()))
+                    .collect(Collectors.joining(", "));
+
+            throw new IllegalStateException(String.format(
+                    "Cannot approve contract: deposit pending for %s",
+                    unpaidMembers.isBlank() ? "one or more members" : unpaidMembers
+            ));
         }
 
         contract.setApprovalStatus(ContractApprovalStatus.APPROVED);
