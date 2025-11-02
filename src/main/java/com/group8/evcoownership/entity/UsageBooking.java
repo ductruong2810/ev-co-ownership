@@ -75,4 +75,7 @@ public class UsageBooking {
     public void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
+
+
+
 }
