@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -28,9 +29,9 @@ public class IncidentController {
     @PreAuthorize("hasRole('CO_OWNER')")
     public ResponseEntity<IncidentResponseDTO> createIncident(
             @RequestBody IncidentCreateRequestDTO request,
-            @RequestHeader("Authorization") String authHeader
+            Authentication auth
     ) {
-        String username = extractUsername(authHeader);
+        String username = auth.getName();
         return ResponseEntity.ok(incidentService.create(request, username));
     }
 
@@ -46,9 +47,9 @@ public class IncidentController {
     public ResponseEntity<IncidentResponseDTO> updateIncident(
             @PathVariable Long id,
             @RequestBody IncidentUpdateRequestDTO request,
-            @RequestHeader("Authorization") String authHeader
+            Authentication auth
     ) {
-        String username = extractUsername(authHeader);
+        String username = auth.getName();
         return ResponseEntity.ok(incidentService.update(id, request, username));
     }
 
@@ -64,9 +65,9 @@ public class IncidentController {
 //    public ResponseEntity<IncidentResponseDTO> updateStatus(
 //            @PathVariable Long id,
 //            @RequestBody IncidentStatusUpdateDTO request,
-//            @RequestHeader("Authorization") String authHeader
+//            Authentication auth
 //    ) {
-//        String username = extractUsername(authHeader);
+//        String username = auth.getName();
 //        return ResponseEntity.ok(incidentService.updateStatus(id, request, username));
 //    }
 
@@ -79,10 +80,8 @@ public class IncidentController {
             description = "Returns the list of incidents created by the logged-in user."
     )
     @PreAuthorize("hasRole('CO_OWNER')")
-    public ResponseEntity<List<IncidentResponseDTO>> getMyIncidents(
-            @RequestHeader("Authorization") String authHeader
-    ) {
-        String username = extractUsername(authHeader);
+    public ResponseEntity<List<IncidentResponseDTO>> getMyIncidents(Authentication auth) {
+        String username = auth.getName();
         return ResponseEntity.ok(incidentService.getMyIncidents(username));
     }
 
@@ -110,14 +109,5 @@ public class IncidentController {
     @PreAuthorize("hasAnyRole('CO_OWNER','STAFF','ADMIN')")
     public ResponseEntity<IncidentResponseDTO> getIncidentById(@PathVariable Long id) {
         return ResponseEntity.ok(incidentService.getOne(id));
-    }
-
-    // ===============================================================
-    // Helper: Tách username từ Authorization header (JWT)
-    // ===============================================================
-    private String extractUsername(String authHeader) {
-        // Trong thực tế, JWT đã được filter xử lý → auth.getName()
-        // Ở đây bạn có thể đổi thành SecurityContextHolder.getContext().getAuthentication().getName();
-        return authHeader; // Giả định placeholder cho ví dụ này
     }
 }
