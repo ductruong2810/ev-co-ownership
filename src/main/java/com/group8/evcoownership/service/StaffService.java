@@ -1,17 +1,23 @@
 package com.group8.evcoownership.service;
 
-import com.group8.evcoownership.dto.DocumentDetailDTO;
-import com.group8.evcoownership.dto.ReviewDocumentRequestDTO;
-import com.group8.evcoownership.dto.UserProfileResponseDTO;
+import com.group8.evcoownership.dto.*;
+import com.group8.evcoownership.entity.OwnershipGroup;
+import com.group8.evcoownership.entity.UsageBooking;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.entity.UserDocument;
 import com.group8.evcoownership.enums.RoleName;
 import com.group8.evcoownership.enums.UserStatus;
 import com.group8.evcoownership.exception.ResourceNotFoundException;
+import com.group8.evcoownership.repository.OwnershipGroupRepository;
+import com.group8.evcoownership.repository.UsageBookingRepository;
 import com.group8.evcoownership.repository.UserDocumentRepository;
 import com.group8.evcoownership.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +36,14 @@ public class StaffService {
 
     @Autowired
     private UserProfileService userProfileService;
+
+    @Autowired
+    private OwnershipGroupRepository ownershipGroupRepository;
+
+    @Autowired
+    private UsageBookingRepository usageBookingRepository;
+
+
 
     public List<UserProfileResponseDTO> getAllUsers(String status, String documentStatus) {
         List<User> users = userRepository.findByRoleRoleName(RoleName.CO_OWNER);
@@ -159,4 +173,48 @@ public class StaffService {
     private boolean hasStatus(DocumentDetailDTO doc, String status) {
         return doc != null && status.equalsIgnoreCase(doc.getStatus());
     }
+
+    public Page<UserGroupBookingsResponseDTO> getAllUsersQRCode(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<User> userPage = userRepository.findByRoleRoleName(RoleName.CO_OWNER, pageable);
+
+        List<UserGroupBookingsResponseDTO> usersWithQRCodes = userPage.getContent().stream()
+                .map(user -> {
+                    List<OwnershipGroup> groups = ownershipGroupRepository.findByMembersUserId(user.getUserId());
+
+                    List<GroupBookingDTO> groupBookings = groups.stream()
+                            .map(group -> {
+                                List<UsageBooking> bookings = usageBookingRepository.findAllBookingsByGroupId(group.getGroupId());
+
+                                List<BookingQRCodeDTO> bookingDTOs = bookings.stream()
+                                        .map(booking -> new BookingQRCodeDTO(
+                                                booking.getId(),
+                                                booking.getQrCode(),
+                                                booking.getStartDateTime() != null ? booking.getStartDateTime().toString() : null,
+                                                booking.getEndDateTime() != null ? booking.getEndDateTime().toString() : null
+                                        ))
+                                        .toList();
+
+                                return new GroupBookingDTO(
+                                        group.getGroupId(),
+                                        group.getGroupName(),
+                                        bookingDTOs
+                                );
+                            })
+                            .toList();
+
+                    return new UserGroupBookingsResponseDTO(
+                            user.getUserId(),
+                            user.getFullName(),
+                            groupBookings
+                    );
+                })
+                .filter(user -> !user.getGroups().isEmpty())
+                .toList();
+
+        return new PageImpl<>(usersWithQRCodes, pageable, userPage.getTotalElements());
+    }
+
+
 }
+

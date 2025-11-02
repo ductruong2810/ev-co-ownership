@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long> {
 
@@ -163,6 +164,27 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
             @Param("weekStart") LocalDateTime weekStart,
             @Param("weekEnd") LocalDateTime weekEnd
     );
+
+    @Query("""
+    SELECT ub
+    FROM UsageBooking ub
+    WHERE ub.vehicle.ownershipGroup.groupId = :groupId
+    ORDER BY ub.startDateTime DESC
+    LIMIT 1
+    """)
+    Optional<UsageBooking> findLatestBookingByGroupId(@Param("groupId") Long groupId);
+
+    @Query("""
+    SELECT ub
+    FROM UsageBooking ub
+    WHERE ub.vehicle.ownershipGroup.groupId = :groupId
+    ORDER BY ub.startDateTime DESC
+    """)
+    List<UsageBooking> findAllBookingsByGroupId(@Param("groupId") Long groupId);
+
+
+
+
 
 }
 

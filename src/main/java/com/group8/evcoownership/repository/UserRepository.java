@@ -3,6 +3,8 @@ package com.group8.evcoownership.repository;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.enums.RoleName;
 import com.group8.evcoownership.enums.UserStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -19,7 +21,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // Find users by role name
     List<User> findByRoleRoleName(RoleName roleName);
-
+    Page<User> findByRoleRoleName(RoleName roleName, Pageable pageable);
     List<User> findByStatus(UserStatus status);
 
     // Find all users who belong to a given ownership group
