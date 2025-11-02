@@ -69,16 +69,22 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
                                                       @Param("date") LocalDate date);
 
 
-    // Lấy booking sắp tới của user (để hiển thị trong dashboard)
+    /// Lấy tất cả booking của user trong tuần
     @Query("""
-                SELECT ub
-                FROM UsageBooking ub
-                WHERE ub.user.userId = :userId
-                  AND ub.status = 'CONFIRMED'
-                  AND ub.startDateTime > CURRENT_TIMESTAMP
-                ORDER BY ub.startDateTime ASC
-            """)
-    List<UsageBooking> findUpcomingBookingsByUser(@Param("userId") Long userId);
+            SELECT ub
+            FROM UsageBooking ub
+            WHERE ub.user.userId = :userId
+              AND ub.status = 'CONFIRMED'
+              AND ub.startDateTime >= :weekStart
+              AND ub.startDateTime < :weekEnd
+            ORDER BY ub.startDateTime ASC
+        """)
+    List<UsageBooking> findUpcomingBookingsByUser(@Param("userId") Long userId,
+                                                  @Param("weekStart") LocalDateTime weekStart,
+                                                  @Param("weekEnd") LocalDateTime weekEnd);
+
+
+
 
 
     @Query("""
@@ -93,7 +99,6 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
             @Param("weekStart") LocalDateTime weekStart,
             @Param("weekEnd") LocalDateTime weekEnd
     );
-
 
     // Tìm các booking bị ảnh hưởng bởi maintenance period
     @Query("""
