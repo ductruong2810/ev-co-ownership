@@ -94,6 +94,29 @@ public class ExpenseService {
         return mapToDTO(expense);
     }
 
+    // =============== REJECT ===============
+    @Transactional
+    public ExpenseResponseDTO reject(Long expenseId, String username) {
+        Expense expense = expenseRepository.findById(expenseId)
+                .orElseThrow(() -> new EntityNotFoundException("Expense not found"));
+
+        if (!"PENDING".equals(expense.getStatus())) {
+            throw new IllegalStateException("Only PENDING expenses can be rejected");
+        }
+
+        User approver = userRepository.findByEmail(username)
+                .orElseThrow(() -> new EntityNotFoundException("Approver not found"));
+
+        expense.setStatus("REJECTED");
+        expense.setApprovedBy(approver);
+        expense.setUpdatedAt(LocalDateTime.now());
+
+        expenseRepository.save(expense);
+
+        return mapToDTO(expense);
+    }
+
+
     // =============== GET ALL ===============
     public Page<ExpenseResponseDTO> getAll(
             Long fundId,
