@@ -54,7 +54,7 @@ public class OwnershipGroup {
     @Column(name = "RejectionReason")
     private String rejectionReason;
 
-    // ✅ thêm quan hệ tới quỹ
+    //thêm quan hệ tới quỹ
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "FundId", referencedColumnName = "FundId")
     private SharedFund fund;
