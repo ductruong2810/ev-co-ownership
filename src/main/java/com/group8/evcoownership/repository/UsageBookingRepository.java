@@ -1,6 +1,7 @@
 package com.group8.evcoownership.repository;
 
 import com.group8.evcoownership.entity.UsageBooking;
+import com.group8.evcoownership.enums.BookingStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -127,17 +128,18 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
 
     // Find active booking of user for vehicle (for QR check-in)
     @Query("""
-                SELECT ub
-                FROM UsageBooking ub
-                WHERE ub.user.userId = :userId
-                  AND ub.vehicle.Id = :vehicleId
-                  AND ub.status = 'CONFIRMED'
-                  AND ub.startDateTime <= CURRENT_TIMESTAMP
-                  AND ub.endDateTime >= CURRENT_TIMESTAMP
-                ORDER BY ub.startDateTime DESC
-            """)
-    List<UsageBooking> findActiveBookingsByUserAndVehicle(@Param("userId") Long userId,
-                                                          @Param("vehicleId") Long vehicleId);
+    SELECT ub
+    FROM UsageBooking ub
+    WHERE ub.user.userId = :userId
+      AND ub.vehicle.Id = :vehicleId
+      AND ub.status = :status
+    ORDER BY ub.startDateTime ASC
+    """)
+    List<UsageBooking> findByUserUserIdAndVehicleIdAndStatus(@Param("userId") Long userId,
+                                                             @Param("vehicleId") Long vehicleId,
+                                                             @Param("status") BookingStatus status);
+
+
 
 }
 

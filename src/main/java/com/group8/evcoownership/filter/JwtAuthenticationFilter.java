@@ -68,6 +68,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 log.info("Extracted email from token: {}", email);
                 User user = userRepository.findByEmail(email).orElse(null);
 
+                log.info("User found: {} with role: {}", user.getEmail(), user.getRole().getRoleName());
+                log.info("Authority created: ROLE_{}", user.getRole().getRoleName()); // ← Thêm dòng này
                 if (user != null) {
                     log.info("User found: {} with role: {}", user.getEmail(), user.getRole().getRoleName());
                     SimpleGrantedAuthority authority = new SimpleGrantedAuthority(

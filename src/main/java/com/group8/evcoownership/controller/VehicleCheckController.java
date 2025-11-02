@@ -174,7 +174,7 @@ public class VehicleCheckController {
      * POST /api/vehicle-checks/qr-checkin
      */
     @PostMapping("/qr-checkin")
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("hasRole('CO_OWNER')")
     @Operation(summary = "Check-in bằng QR code", description = "Quét QR code để check-in và tìm booking đang hoạt động")
     public ResponseEntity<Map<String, Object>> qrCheckIn(@RequestParam String qrCode) {
         // Lấy user từ JWT token
