@@ -2,6 +2,7 @@ package com.group8.evcoownership.controller;
 
 import com.group8.evcoownership.dto.MaintenanceCreateRequestDTO;
 import com.group8.evcoownership.dto.MaintenanceResponseDTO;
+import com.group8.evcoownership.dto.MaintenanceUpdateRequestDTO;
 import com.group8.evcoownership.service.MaintenanceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -33,7 +34,7 @@ public class MaintenanceController {
     @PostMapping
     @PreAuthorize("hasAnyRole('TECHNICIAN', 'STAFF', 'ADMIN')")
     @Operation(
-            summary = "[Technician/Staff/Admin] Tạo yêu cầu bảo trì",
+            summary = "[Technician] Tạo yêu cầu bảo trì",
             description = """
                     Người dùng kỹ thuật hoặc nhân viên/staff có thể mở yêu cầu bảo trì mới cho xe.
                     - Nhập ngày dự kiến bảo dưỡng (phải là tương lai).
@@ -46,6 +47,29 @@ public class MaintenanceController {
     ) {
         return ResponseEntity.ok(maintenanceService.create(req, auth.getName()));
     }
+    // ==================== UPDATE ==========================
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('TECHNICIAN', 'STAFF', 'ADMIN')")
+    @Operation(summary = "[Technician]Cập nhật yêu cầu bảo trì",
+            description = "Chỉ cho phép cập nhật khi trạng thái là PENDING. Cho phép TECHNICIAN, STAFF, ADMIN.")
+    public ResponseEntity<MaintenanceResponseDTO> update(
+            @PathVariable Long id,
+            @Valid @RequestBody MaintenanceUpdateRequestDTO req,
+            Authentication auth
+    ) {
+        return ResponseEntity.ok(maintenanceService.update(id, req, auth.getName()));
+    }
+
+    // ==================== Technician get his Maintenance requests =============
+    @GetMapping("/my-requests")
+    @PreAuthorize("hasAnyRole('TECHNICIAN', 'STAFF', 'ADMIN')")
+    @Operation(summary = "[Technician] Xem yêu cầu bảo trì của chính mình",
+            description = "Dành cho technician xem lại các yêu cầu bảo trì do họ đã tạo.")
+    public ResponseEntity<List<MaintenanceResponseDTO>> getMyRequests(Authentication auth) {
+        return ResponseEntity.ok(maintenanceService.getMyRequests(auth.getName()));
+    }
+
+
 
     // ======================================================
     // ===================== STAFF / ADMIN ==================
