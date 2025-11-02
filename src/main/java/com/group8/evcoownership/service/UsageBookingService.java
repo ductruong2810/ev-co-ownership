@@ -5,7 +5,6 @@ import com.group8.evcoownership.dto.MaintenanceBookingRequestDTO;
 import com.group8.evcoownership.entity.UsageBooking;
 import com.group8.evcoownership.enums.BookingStatus;
 import com.group8.evcoownership.enums.NotificationType;
-import com.group8.evcoownership.exception.InvalidBookingException;
 import com.group8.evcoownership.repository.UsageBookingRepository;
 import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.repository.VehicleRepository;
@@ -90,34 +89,22 @@ public class UsageBookingService {
     }
 
     //Lấy các booking sắp tới của user
+    //Lấy các booking sắp tới của user trong tuần hiện tại
     public List<UsageBooking> getUpcomingBookings(Long userId) {
-        return usageBookingRepository.findUpcomingBookingsByUser(userId);
+        // Tính weekStart (đầu tuần hiện tại - Thứ 2 00:00:00)
+        LocalDateTime weekStart = LocalDateTime.now()
+                .with(DayOfWeek.MONDAY)
+                .withHour(0)
+                .withMinute(0)
+                .withSecond(0);
+
+        // Tính weekEnd (7 ngày sau weekStart)
+        LocalDateTime weekEnd = weekStart.plusWeeks(1);
+
+        // Gọi repository với 3 tham số
+        return usageBookingRepository.findBookingsByUserInWeek(userId, weekStart, weekEnd);
     }
 
-
-    //Lấy tất cả booking của user trong tuần chứa weekStart
-    //Lấy tất cả booking của user trong tuần chứa weekStart
-    public List<UsageBooking> getBookingsByUserInWeek(Long userId, LocalDateTime weekStart) {
-        if (userId == null) {
-            throw new InvalidBookingException("User ID is required");
-        }
-        if (weekStart == null) {
-            throw new InvalidBookingException("Week start date is required");
-        }
-
-        // Giữ nguyên ngày, chỉ chuẩn hóa về 00:00:00
-        LocalDateTime normalizedWeekStart = weekStart.toLocalDate().atStartOfDay();
-
-        // Tính 7 ngày từ ngày được chọn
-        LocalDateTime weekEnd = normalizedWeekStart.plusDays(7);
-
-        // DEBUG: In ra console
-        System.out.println("DEBUG - userId: " + userId);
-        System.out.println("DEBUG - normalizedWeekStart: " + normalizedWeekStart);
-        System.out.println("DEBUG - weekEnd: " + weekEnd);
-        // Truyền đủ 3 tham số: userId, weekStart, weekEnd
-        return usageBookingRepository.findBookingsByUserInWeek(userId, normalizedWeekStart, weekEnd);
-    }
 
 
     //Xác nhận booking (Pending → Confirmed) - kiểm tra conflict trước khi confirm
