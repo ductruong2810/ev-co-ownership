@@ -2,6 +2,7 @@ package com.group8.evcoownership.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.group8.evcoownership.dto.QrCheckOutRequestDTO;
 import com.group8.evcoownership.entity.UsageBooking;
 import com.group8.evcoownership.entity.Vehicle;
 import com.group8.evcoownership.entity.VehicleCheck;
@@ -10,15 +11,19 @@ import com.group8.evcoownership.repository.UsageBookingRepository;
 import com.group8.evcoownership.repository.VehicleCheckRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -205,15 +210,13 @@ public class VehicleCheckService {
         Map<String, Object> result = new HashMap<>();
 
         try {
-            BookingQrData qrData = parseBookingQr(qrCode);
-            if (qrData == null) {
-                result.put("success", false);
-                result.put("message", "Invalid QR code format");
+            BookingContext context = validateBookingQr(qrCode, userId, result);
+            if (context == null) {
                 return result;
             }
 
-            UsageBooking booking = usageBookingRepository.findById(qrData.bookingId())
-                    .orElseThrow(() -> new EntityNotFoundException("Booking not found"));
+            UsageBooking booking = context.booking();
+            BookingQrData qrData = context.qrData();
 
             if (booking.getStatus() != BookingStatus.CONFIRMED) {
                 result.put("success", false);
@@ -221,19 +224,12 @@ public class VehicleCheckService {
                 return result;
             }
 
-            if (!booking.getVehicle().getId().equals(qrData.vehicleId())) {
-                result.put("success", false);
-                result.put("message", "QR code does not match vehicle");
-                return result;
-            }
-
-            if (!booking.getUser().getUserId().equals(userId)) {
-                result.put("success", false);
-                result.put("message", "QR code does not belong to current user");
-                return result;
-            }
-
             Vehicle vehicle = booking.getVehicle();
+
+            VehicleCheck latestTechnicianCheck = findLatestTechnicianCheck(vehicle);
+            if (latestTechnicianCheck != null) {
+                result.put("latestVehicleCheck", buildVehicleCheckSummary(latestTechnicianCheck));
+            }
 
             LocalDateTime now = LocalDateTime.now();
             LocalDateTime earliestCheckIn = booking.getStartDateTime().minusMinutes(10);
@@ -253,6 +249,12 @@ public class VehicleCheckService {
             } else {
                 result.put("success", true);
                 result.put("message", "Ready for check-in");
+
+                String checkoutQr = generateCheckOutQrPayload(booking);
+                booking.setQrCode(checkoutQr);
+                usageBookingRepository.save(booking);
+                result.put("qrUpdatedForCheckout", true);
+                result.put("checkoutQrCode", checkoutQr);
             }
 
             result.put("bookingId", booking.getId());
@@ -278,6 +280,213 @@ public class VehicleCheckService {
         }
 
         return result;
+    }
+
+
+    public Map<String, Object> processQrCheckOut(QrCheckOutRequestDTO request, Long userId) {
+        Map<String, Object> result = new HashMap<>();
+
+        try {
+            BookingContext context = validateBookingQr(request.qrCode(), userId, result);
+            if (context == null) {
+                return result;
+            }
+
+            UsageBooking booking = context.booking();
+
+            if (booking.getStatus() == BookingStatus.COMPLETED) {
+                result.put("success", true);
+                result.put("alreadyCompleted", true);
+                result.put("message", "Booking already completed");
+                result.put("bookingId", booking.getId());
+                result.put("bookingStatus", booking.getStatus().name());
+                return result;
+            }
+
+            if (booking.getStatus() != BookingStatus.CONFIRMED) {
+                result.put("success", false);
+                result.put("message", "Booking is not in a checkout-ready state");
+                return result;
+            }
+
+            LocalDateTime now = LocalDateTime.now();
+            if (booking.getStartDateTime() != null && now.isBefore(booking.getStartDateTime())) {
+                result.put("success", false);
+                result.put("message", "Cannot checkout before booking start time");
+                return result;
+            }
+
+            if (booking.getEndDateTime() != null && now.isAfter(booking.getEndDateTime().plusHours(4))) {
+                result.put("success", false);
+                result.put("message", "Checkout window has expired");
+                return result;
+            }
+
+            if (!hasCheck(booking.getId(), "PRE_USE")) {
+                result.put("success", false);
+                result.put("message", "Must complete pre-use check before checkout");
+                return result;
+            }
+
+            VehicleCheck postUseCheck;
+            boolean alreadyPostUse = hasCheck(booking.getId(), "POST_USE");
+            if (alreadyPostUse) {
+                postUseCheck = vehicleCheckRepository.findByBookingId(booking.getId())
+                        .stream()
+                        .filter(check -> "POST_USE".equals(check.getCheckType()))
+                        .findFirst()
+                        .orElse(null);
+            } else {
+                postUseCheck = createPostUseCheck(
+                        booking.getId(),
+                        userId,
+                        request.odometer(),
+                        request.batteryLevel(),
+                        request.cleanliness(),
+                        request.notes(),
+                        request.issues()
+                );
+            }
+
+            booking.setStatus(BookingStatus.COMPLETED);
+            booking.setQrCode(generateCompletedQrPayload(booking));
+            usageBookingRepository.save(booking);
+
+            result.put("success", true);
+            result.put("message", "Checkout recorded successfully");
+            result.put("bookingId", booking.getId());
+            result.put("bookingStatus", booking.getStatus().name());
+            result.put("postUseCheckId", postUseCheck != null ? postUseCheck.getId() : null);
+            result.put("postUseCheck", postUseCheck != null ? buildVehicleCheckSummary(postUseCheck) : null);
+            result.put("hasPostUseCheck", true);
+            result.put("maintenanceSuggested", hasReportedIssues(request));
+
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("message", "Error processing QR checkout: " + e.getMessage());
+        }
+
+        return result;
+    }
+
+
+    private VehicleCheck findLatestTechnicianCheck(Vehicle vehicle) {
+        if (vehicle == null || vehicle.getOwnershipGroup() == null || vehicle.getOwnershipGroup().getGroupId() == null) {
+            return null;
+        }
+
+        List<VehicleCheck> checks = vehicleCheckRepository.findLatestPostUseCheckByVehicleAndGroup(
+                vehicle.getId(),
+                vehicle.getOwnershipGroup().getGroupId(),
+                PageRequest.of(0, 1)
+        );
+        if (!checks.isEmpty()) {
+            return checks.get(0);
+        }
+
+        return vehicleCheckRepository.findByVehicleId(vehicle.getId()).stream()
+                .filter(check -> "POST_USE".equals(check.getCheckType()))
+                .max(Comparator.comparing(VehicleCheck::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())))
+                .orElse(null);
+    }
+
+
+    private Map<String, Object> buildVehicleCheckSummary(VehicleCheck check) {
+        Map<String, Object> summary = new HashMap<>();
+        summary.put("checkId", check.getId());
+        summary.put("checkType", check.getCheckType());
+        summary.put("status", check.getStatus());
+        summary.put("odometer", check.getOdometer());
+        summary.put("batteryLevel", check.getBatteryLevel());
+        summary.put("cleanliness", check.getCleanliness());
+        summary.put("notes", check.getNotes());
+        summary.put("issues", check.getIssues());
+        summary.put("createdAt", check.getCreatedAt());
+        summary.put("bookingId", check.getBooking() != null ? check.getBooking().getId() : null);
+        return summary;
+    }
+
+
+    private String generateCheckOutQrPayload(UsageBooking booking) {
+        String startTime = booking.getStartDateTime() != null ? "\"" + booking.getStartDateTime() + "\"" : "null";
+        String endTime = booking.getEndDateTime() != null ? "\"" + booking.getEndDateTime() + "\"" : "null";
+
+        return String.format(
+                "{\"bookingId\":%d,\"userId\":%d,\"vehicleId\":%d,\"phase\":\"CHECKOUT\",\"startTime\":%s,\"endTime\":%s,\"nonce\":\"%s\",\"timestamp\":\"%s\"}",
+                booking.getId(),
+                booking.getUser() != null ? booking.getUser().getUserId() : null,
+                booking.getVehicle() != null ? booking.getVehicle().getId() : null,
+                startTime,
+                endTime,
+                UUID.randomUUID(),
+                LocalDateTime.now()
+        );
+    }
+
+
+    private String generateCompletedQrPayload(UsageBooking booking) {
+        String startTime = booking.getStartDateTime() != null ? "\"" + booking.getStartDateTime() + "\"" : "null";
+        String endTime = booking.getEndDateTime() != null ? "\"" + booking.getEndDateTime() + "\"" : "null";
+
+        return String.format(
+                "{\"bookingId\":%d,\"userId\":%d,\"vehicleId\":%d,\"phase\":\"COMPLETED\",\"status\":\"COMPLETED\",\"startTime\":%s,\"endTime\":%s,\"nonce\":\"%s\",\"timestamp\":\"%s\"}",
+                booking.getId(),
+                booking.getUser() != null ? booking.getUser().getUserId() : null,
+                booking.getVehicle() != null ? booking.getVehicle().getId() : null,
+                startTime,
+                endTime,
+                UUID.randomUUID(),
+                LocalDateTime.now()
+        );
+    }
+
+
+    private boolean hasReportedIssues(QrCheckOutRequestDTO request) {
+        if (request == null) {
+            return false;
+        }
+
+        boolean hasIssuesText = request.issues() != null && !request.issues().isBlank();
+        boolean cleanlinessProblem = request.cleanliness() != null && !"CLEAN".equalsIgnoreCase(request.cleanliness());
+
+        return hasIssuesText || cleanlinessProblem;
+    }
+
+
+    private BookingContext validateBookingQr(String rawQr,
+                                             Long userId,
+                                             Map<String, Object> result) throws IOException {
+        String normalizedQr = rawQr != null ? rawQr.trim() : null;
+        BookingQrData qrData = parseBookingQr(normalizedQr);
+        if (qrData == null) {
+            result.put("success", false);
+            result.put("message", "Invalid QR code format");
+            return null;
+        }
+
+        UsageBooking booking = usageBookingRepository.findById(qrData.bookingId())
+                .orElseThrow(() -> new EntityNotFoundException("Booking not found"));
+
+        if (!Objects.equals(booking.getQrCode(), normalizedQr)) {
+            result.put("success", false);
+            result.put("message", "QR code is outdated. Please refresh and try again");
+            result.put("requiresUpdatedQr", true);
+            return null;
+        }
+
+        if (!booking.getVehicle().getId().equals(qrData.vehicleId())) {
+            result.put("success", false);
+            result.put("message", "QR code does not match vehicle");
+            return null;
+        }
+
+        if (!booking.getUser().getUserId().equals(userId)) {
+            result.put("success", false);
+            result.put("message", "QR code does not belong to current user");
+            return null;
+        }
+
+        return new BookingContext(booking, qrData);
     }
 
 
@@ -327,5 +536,9 @@ public class VehicleCheckService {
                                  Long userId,
                                  LocalDateTime startTime,
                                  LocalDateTime endTime) {
+    }
+
+
+    private record BookingContext(UsageBooking booking, BookingQrData qrData) {
     }
 }
