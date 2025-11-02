@@ -9,7 +9,6 @@ public record VehicleResponseDTO(
         String model,
         String licensePlate,
         String chassisNumber,
-        String qrCode,
         Long groupId,
         BigDecimal vehicleValue,
         LocalDateTime createdAt,

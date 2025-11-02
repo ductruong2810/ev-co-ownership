@@ -370,35 +370,9 @@ public class WeeklyCalendarService {
                 .toList();
 
         String timeDisplay = formatTimeSlot(start, end);
-        // 1. MAINTENANCE (BUFFER, user=null)
-        UsageBooking maintenance = overlapping.stream()
-                .filter(b -> b.getStatus() == BookingStatus.BUFFER && b.getUser() == null)
-                .findFirst().orElse(null);
-        if (maintenance != null) {
-            return TimeSlotResponseDTO.builder()
-                    .time(timeDisplay)
-                    .status("BOOKED")
-                    .type("MAINTENANCE")
-                    .bookedBy("Maintenance")
-                    .bookable(false)
-                    .build();
-        }
-        // 2. LOCKED (BUFFER, user!=null)
-        UsageBooking locked = overlapping.stream()
-                .filter(b -> b.getStatus() == BookingStatus.BUFFER && b.getUser() != null)
-                .findFirst().orElse(null);
-        if (locked != null) {
-            return TimeSlotResponseDTO.builder()
-                    .time(timeDisplay)
-                    .status("BOOKED")
-                    .type("LOCKED")
-                    .bookedBy(locked.getUser() != null ? locked.getUser().getFullName() : null)
-                    .bookable(false)
-                    .bookingId(locked.getId())
-                    .build();
-        }
-
-        // 3. CONFIRMED booking
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime lockThreshold = start.plusMinutes(20);
+        // CONFIRMED booking
         UsageBooking booking = overlapping.stream()
                 .filter(b -> b.getStatus() == BookingStatus.CONFIRMED)
                 .findFirst().orElse(null);
@@ -412,6 +386,24 @@ public class WeeklyCalendarService {
                     .bookedBy(booking.getUser() != null ? booking.getUser().getFullName() : "Unknown")
                     .bookable(false)
                     .bookingId(booking.getId())
+                    .build();
+        }
+
+        if (now.isAfter(lockThreshold) && now.isBefore(end)) {
+            return TimeSlotResponseDTO.builder()
+                    .time(timeDisplay)
+                    .status("LOCKED")
+                    .type("LOCKED")
+                    .bookable(false)
+                    .build();
+        }
+
+        if (!end.isAfter(now)) {
+            return TimeSlotResponseDTO.builder()
+                    .time(timeDisplay)
+                    .status("LOCKED")
+                    .type("LOCKED")
+                    .bookable(false)
                     .build();
         }
 

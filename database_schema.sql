@@ -91,7 +91,6 @@ CREATE TABLE Vehicle
     Model         NVARCHAR(100),
     LicensePlate  NVARCHAR(20),
     ChassisNumber NVARCHAR(30),
-    QrCode        NVARCHAR(255),
     VehicleValue  DECIMAL(15, 2) NULL,
     GroupId       BIGINT,
     CreatedAt     DATETIME2(7)   NOT NULL DEFAULT SYSUTCDATETIME(),
