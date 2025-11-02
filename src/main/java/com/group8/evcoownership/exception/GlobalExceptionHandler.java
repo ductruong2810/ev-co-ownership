@@ -163,6 +163,27 @@ public class GlobalExceptionHandler {
         );
     }
 
+    // ========== 400 - VEHICLE CHECK ERRORS ==========
+    //them de check loi cho pre-use
+    @ExceptionHandler(SecurityException.class)
+    public ResponseEntity<ValidationErrorResponseDTO> handleSecurityException(
+            SecurityException ex, WebRequest request) {
+
+        logger.warn("Security violation: {}", ex.getMessage());
+
+        String field = "authorization";
+        if (ex.getMessage().contains("booking")) {
+            field = "bookingId";
+        }
+
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                ValidationErrorResponseDTO.singleError(403, "Forbidden",
+                        ex.getMessage(), field,
+                        request.getDescription(false).replace("uri=", ""))
+        );
+    }
+
+
     // ========== 400 - NULL POINTER (Missing required fields) ==========
     @ExceptionHandler(NullPointerException.class)
     public ResponseEntity<ValidationErrorResponseDTO> handleNullPointer(
