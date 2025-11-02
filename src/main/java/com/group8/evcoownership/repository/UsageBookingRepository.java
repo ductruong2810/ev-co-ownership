@@ -1,7 +1,8 @@
 package com.group8.evcoownership.repository;
 
 import com.group8.evcoownership.entity.UsageBooking;
-import com.group8.evcoownership.enums.BookingStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -9,7 +10,6 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long> {
 
@@ -37,24 +37,6 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
     Long getQuotaLimitByOwnershipPercentage(@Param("userId") Long userId,
                                             @Param("vehicleId") Long vehicleId);
 
-    // Kiểm tra trùng giờ với buffer 1h (loại trừ booking hiện tại)
-    @Query(value = """
-                SELECT COUNT(*)
-                FROM UsageBooking
-                WHERE VehicleId = :vehicleId
-                  AND BookingId != :excludeBookingId
-                  AND Status = 'CONFIRMED'
-                  AND (
-                      (:start BETWEEN StartDateTime AND DATEADD(HOUR, 1, EndDateTime))
-                      OR (:end BETWEEN StartDateTime AND DATEADD(HOUR, 1, EndDateTime))
-                      OR (StartDateTime BETWEEN :start AND :end)
-                  )
-            """, nativeQuery = true)
-    long countOverlappingBookingsWithBufferExcluding(@Param("vehicleId") Long vehicleId,
-                                                     @Param("excludeBookingId") Long excludeBookingId,
-                                                     @Param("start") LocalDateTime start,
-                                                     @Param("end") LocalDateTime end);
-
 
     // Lấy danh sách booking của xe trong 1 ngày với thông tin co-owner (để hiển thị slot trống)
     @Query("""
@@ -69,37 +51,6 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
     List<UsageBooking> findByVehicleIdAndDateWithUser(@Param("vehicleId") Long vehicleId,
                                                       @Param("date") LocalDate date);
 
-
-    /// Lấy tất cả booking của user trong tuần
-    @Query("""
-            SELECT ub
-            FROM UsageBooking ub
-            WHERE ub.user.userId = :userId
-              AND ub.status = 'CONFIRMED'
-              AND ub.startDateTime >= :weekStart
-              AND ub.startDateTime < :weekEnd
-            ORDER BY ub.startDateTime ASC
-        """)
-    List<UsageBooking> findUpcomingBookingsByUser(@Param("userId") Long userId,
-                                                  @Param("weekStart") LocalDateTime weekStart,
-                                                  @Param("weekEnd") LocalDateTime weekEnd);
-
-
-
-
-
-    @Query("""
-            SELECT b FROM UsageBooking b
-            WHERE b.user.userId = :userId
-            AND b.startDateTime >= :weekStart
-            AND b.startDateTime < :weekEnd
-            ORDER BY b.startDateTime
-            """)
-    List<UsageBooking> findBookingsByUserInWeek(
-            @Param("userId") Long userId,
-            @Param("weekStart") LocalDateTime weekStart,
-            @Param("weekEnd") LocalDateTime weekEnd
-    );
 
     // Tìm các booking bị ảnh hưởng bởi maintenance period
     @Query("""
@@ -132,19 +83,6 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
             """)
     List<UsageBooking> findLatestCompletedBookingByVehicleAndGroup(@Param("vehicleId") Long vehicleId, @Param("groupId") Long groupId);
 
-    // Find active booking of user for vehicle (for QR check-in)
-    @Query("""
-    SELECT ub
-    FROM UsageBooking ub
-    WHERE ub.user.userId = :userId
-      AND ub.vehicle.Id = :vehicleId
-      AND ub.status = :status
-    ORDER BY ub.startDateTime ASC
-    """)
-    List<UsageBooking> findByUserUserIdAndVehicleIdAndStatus(@Param("userId") Long userId,
-                                                             @Param("vehicleId") Long vehicleId,
-                                                             @Param("status") BookingStatus status);
-
 
     // lay tat ca cac booking cua co-owner trong tuan nhung chia ra
     // theo tung group
@@ -166,13 +104,15 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
     );
 
     @Query("""
-    SELECT ub
-    FROM UsageBooking ub
-    WHERE ub.vehicle.ownershipGroup.groupId = :groupId
-    ORDER BY ub.startDateTime DESC
-    LIMIT 1
-    """)
-    Optional<UsageBooking> findLatestBookingByGroupId(@Param("groupId") Long groupId);
+            SELECT ub
+            FROM UsageBooking ub
+            WHERE ub.user.userId = :userId
+              AND ub.vehicle.ownershipGroup.groupId = :groupId
+            ORDER BY ub.startDateTime DESC
+            """)
+    Page<UsageBooking> findBookingsByUserAndGroup(@Param("userId") Long userId,
+                                                  @Param("groupId") Long groupId,
+                                                  Pageable pageable);
 
     @Query("""
     SELECT ub
@@ -181,10 +121,5 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
     ORDER BY ub.startDateTime DESC
     """)
     List<UsageBooking> findAllBookingsByGroupId(@Param("groupId") Long groupId);
-
-
-
-
-
 }
 
