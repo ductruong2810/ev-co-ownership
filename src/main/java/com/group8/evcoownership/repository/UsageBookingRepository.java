@@ -1,7 +1,6 @@
 package com.group8.evcoownership.repository;
 
 import com.group8.evcoownership.entity.UsageBooking;
-import com.group8.evcoownership.enums.BookingStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -38,24 +37,6 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
     Long getQuotaLimitByOwnershipPercentage(@Param("userId") Long userId,
                                             @Param("vehicleId") Long vehicleId);
 
-    // Kiểm tra trùng giờ với buffer 1h (loại trừ booking hiện tại)
-    @Query(value = """
-                SELECT COUNT(*)
-                FROM UsageBooking
-                WHERE VehicleId = :vehicleId
-                  AND BookingId != :excludeBookingId
-                  AND Status = 'CONFIRMED'
-                  AND (
-                      (:start BETWEEN StartDateTime AND DATEADD(HOUR, 1, EndDateTime))
-                      OR (:end BETWEEN StartDateTime AND DATEADD(HOUR, 1, EndDateTime))
-                      OR (StartDateTime BETWEEN :start AND :end)
-                  )
-            """, nativeQuery = true)
-    long countOverlappingBookingsWithBufferExcluding(@Param("vehicleId") Long vehicleId,
-                                                     @Param("excludeBookingId") Long excludeBookingId,
-                                                     @Param("start") LocalDateTime start,
-                                                     @Param("end") LocalDateTime end);
-
 
     // Lấy danh sách booking của xe trong 1 ngày với thông tin co-owner (để hiển thị slot trống)
     @Query("""
@@ -69,24 +50,6 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
             """)
     List<UsageBooking> findByVehicleIdAndDateWithUser(@Param("vehicleId") Long vehicleId,
                                                       @Param("date") LocalDate date);
-
-
-    /// Lấy tất cả booking của user trong tuần
-    @Query("""
-            SELECT ub
-            FROM UsageBooking ub
-            WHERE ub.user.userId = :userId
-              AND ub.status = 'CONFIRMED'
-              AND ub.startDateTime >= :weekStart
-              AND ub.startDateTime < :weekEnd
-            ORDER BY ub.startDateTime ASC
-        """)
-    List<UsageBooking> findUpcomingBookingsByUser(@Param("userId") Long userId,
-                                                  @Param("weekStart") LocalDateTime weekStart,
-                                                  @Param("weekEnd") LocalDateTime weekEnd);
-
-
-
 
 
     @Query("""
@@ -132,19 +95,6 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
                 ORDER BY ub.endDateTime DESC
             """)
     List<UsageBooking> findLatestCompletedBookingByVehicleAndGroup(@Param("vehicleId") Long vehicleId, @Param("groupId") Long groupId);
-
-    // Find active booking of user for vehicle (for QR check-in)
-    @Query("""
-    SELECT ub
-    FROM UsageBooking ub
-    WHERE ub.user.userId = :userId
-      AND ub.vehicle.Id = :vehicleId
-      AND ub.status = :status
-    ORDER BY ub.startDateTime ASC
-    """)
-    List<UsageBooking> findByUserUserIdAndVehicleIdAndStatus(@Param("userId") Long userId,
-                                                             @Param("vehicleId") Long vehicleId,
-                                                             @Param("status") BookingStatus status);
 
 
     // lay tat ca cac booking cua co-owner trong tuan nhung chia ra
