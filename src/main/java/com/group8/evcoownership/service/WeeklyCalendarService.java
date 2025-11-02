@@ -540,6 +540,20 @@ public class WeeklyCalendarService {
 
         UsageBooking savedBooking = usageBookingRepository.save(booking);
 
+        // tao qr code json string
+        String qrCodeData = String.format(
+                "{\"bookingId\":%d,\"userId\":%d,\"vehicleId\":%d,\"startTime\":\"%s\",\"endTime\":\"%s\"}",
+                savedBooking.getId(),
+                user.getUserId(),
+                vehicle.getId(),
+                savedBooking.getStartDateTime().toString(),
+                savedBooking.getEndDateTime().toString()
+        );
+
+        // luu qr code vao database
+        savedBooking.setQrCode(qrCodeData);
+        usageBookingRepository.save(savedBooking);
+
         // Determine if this is an overnight booking
         boolean overnightBooking = !request.getStartDateTime().toLocalDate()
                 .equals(request.getEndDateTime().toLocalDate());
@@ -550,6 +564,8 @@ public class WeeklyCalendarService {
                 .message(overnightBooking ? "Overnight booking created successfully" : "Booking created successfully")
                 .totalHours(newBookingHours)
                 .overnightBooking(overnightBooking)
+                //tra ve qr code string
+                .qrCode(qrCodeData)
                 .build();
     }
 }
