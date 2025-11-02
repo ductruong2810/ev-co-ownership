@@ -2,9 +2,12 @@ package com.group8.evcoownership.service;
 
 import com.group8.evcoownership.dto.MaintenanceCreateRequestDTO;
 import com.group8.evcoownership.dto.MaintenanceResponseDTO;
+import com.group8.evcoownership.dto.MaintenanceUpdateRequestDTO;
+import com.group8.evcoownership.entity.Expense;
 import com.group8.evcoownership.entity.Maintenance;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.entity.Vehicle;
+import com.group8.evcoownership.repository.ExpenseRepository;
 import com.group8.evcoownership.repository.MaintenanceRepository;
 import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.repository.VehicleRepository;
@@ -13,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -26,6 +30,7 @@ public class MaintenanceService {
     private final MaintenanceRepository maintenanceRepository;
     private final VehicleRepository vehicleRepository;
     private final UserRepository userRepository;
+    private final ExpenseRepository expenseRepository;
 
     // =================== CREATE ===================
     public MaintenanceResponseDTO create(MaintenanceCreateRequestDTO req, String username){
@@ -62,6 +67,38 @@ public class MaintenanceService {
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
     }
+
+    // =================== UPDATE ===================
+    public MaintenanceResponseDTO update(Long id, MaintenanceUpdateRequestDTO req, String username) {
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+        Maintenance maintenance = maintenanceRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Maintenance not found"));
+
+        if (!"PENDING".equals(maintenance.getStatus())) {
+            throw new IllegalStateException("Only PENDING maintenance requests can be updated.");
+        }
+
+        if (req.getDescription() != null && !req.getDescription().isBlank()) {
+            maintenance.setDescription(req.getDescription());
+        }
+
+        if (req.getCost() != null && req.getCost().compareTo(BigDecimal.ZERO) > 0) {
+            maintenance.setActualCost(req.getCost());
+        }
+
+        if (req.getNextDueDate() != null && req.getNextDueDate().isAfter(LocalDate.now())) {
+            maintenance.setNextDueDate(req.getNextDueDate());
+        }
+
+        maintenance.setUpdatedAt(LocalDateTime.now());
+        maintenanceRepository.save(maintenance);
+
+        return mapToDTO(maintenance);
+    }
+
+
     // =================== APPROVE ===================
     public MaintenanceResponseDTO approve(Long id, String staffEmail, LocalDate nextDueDate) {
         Maintenance maintenance = maintenanceRepository.findById(id)
@@ -91,6 +128,18 @@ public class MaintenanceService {
         maintenance.setNextDueDate(nextDueDate);
 
         maintenanceRepository.save(maintenance);
+
+        Expense expense = Expense.builder()
+                .fund(maintenance.getVehicle().getOwnershipGroup().getFund())
+                .sourceType("MAINTENANCE")
+                .sourceId(maintenance.getId())
+                .description(maintenance.getDescription())
+                .amount(maintenance.getActualCost())
+                .status("PENDING")
+                .createdAt(now)
+                .build();
+
+        expenseRepository.save(expense);
 
         return mapToDTO(maintenance);
     }

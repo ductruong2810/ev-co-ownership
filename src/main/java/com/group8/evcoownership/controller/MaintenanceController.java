@@ -2,6 +2,7 @@ package com.group8.evcoownership.controller;
 
 import com.group8.evcoownership.dto.MaintenanceCreateRequestDTO;
 import com.group8.evcoownership.dto.MaintenanceResponseDTO;
+import com.group8.evcoownership.dto.MaintenanceUpdateRequestDTO;
 import com.group8.evcoownership.service.MaintenanceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -46,6 +47,19 @@ public class MaintenanceController {
     ) {
         return ResponseEntity.ok(maintenanceService.create(req, auth.getName()));
     }
+    // ==================== UPDATE ==========================
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('TECHNICIAN', 'STAFF', 'ADMIN')")
+    @Operation(summary = "Cập nhật yêu cầu bảo trì",
+            description = "Chỉ cho phép cập nhật khi trạng thái là PENDING. Cho phép TECHNICIAN, STAFF, ADMIN.")
+    public ResponseEntity<MaintenanceResponseDTO> update(
+            @PathVariable Long id,
+            @Valid @RequestBody MaintenanceUpdateRequestDTO req,
+            Authentication auth
+    ) {
+        return ResponseEntity.ok(maintenanceService.update(id, req, auth.getName()));
+    }
+
 
     // ======================================================
     // ===================== STAFF / ADMIN ==================

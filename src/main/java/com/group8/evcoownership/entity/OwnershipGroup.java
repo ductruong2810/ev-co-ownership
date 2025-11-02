@@ -54,6 +54,11 @@ public class OwnershipGroup {
     @Column(name = "RejectionReason")
     private String rejectionReason;
 
+    // ✅ thêm quan hệ tới quỹ
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "FundId", referencedColumnName = "FundId")
+    private SharedFund fund;
+
     @Column(name = "CreatedAt", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
