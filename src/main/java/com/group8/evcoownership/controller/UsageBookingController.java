@@ -48,7 +48,7 @@ public class UsageBookingController {
         if (weekStart != null) {
             // Convert LocalDate to LocalDateTime at start of day
             LocalDateTime weekStartDateTime = weekStart.atStartOfDay();
-            bookings = usageBookingService.getBookingsByUserInWeek(userId, weekStartDateTime);
+            bookings = usageBookingService.getUpcomingBookings(userId);
         } else {
             bookings = usageBookingService.getUpcomingBookings(userId);
         }
