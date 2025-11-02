@@ -3,6 +3,7 @@ package com.group8.evcoownership.controller;
 import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.service.IncidentService;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,7 +29,7 @@ public class IncidentController {
     )
     @PreAuthorize("hasRole('CO_OWNER')")
     public ResponseEntity<IncidentResponseDTO> createIncident(
-            @RequestBody IncidentCreateRequestDTO request,
+           @Valid @RequestBody IncidentCreateRequestDTO request,
             Authentication auth
     ) {
         String username = auth.getName();
@@ -81,7 +82,7 @@ public class IncidentController {
     @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     public ResponseEntity<IncidentResponseDTO> rejectIncident(
             @PathVariable Long id,
-            @RequestBody IncidentRejectRequestDTO request,
+             @Valid @RequestBody IncidentRejectRequestDTO request,
             Authentication auth
     ) {
         String username = auth.getName();

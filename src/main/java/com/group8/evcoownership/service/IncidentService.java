@@ -143,8 +143,8 @@ public class IncidentService {
             throw new IllegalStateException("Only PENDING incidents can be rejected.");
         }
 
-        if (req.getRejectionCategory() == null || req.getRejectionReason() == null || req.getRejectionReason().isBlank()) {
-            throw new IllegalArgumentException("Rejection category and reason are required.");
+        if (req.getRejectionCategory() == null ) {
+            throw new IllegalArgumentException("Rejection category is required.");
         }
 
         User approver = userRepository.findByEmail(username)
