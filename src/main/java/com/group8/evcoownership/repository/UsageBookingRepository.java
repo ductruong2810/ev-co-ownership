@@ -52,19 +52,6 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
                                                       @Param("date") LocalDate date);
 
 
-    @Query("""
-            SELECT b FROM UsageBooking b
-            WHERE b.user.userId = :userId
-            AND b.startDateTime >= :weekStart
-            AND b.startDateTime < :weekEnd
-            ORDER BY b.startDateTime
-            """)
-    List<UsageBooking> findBookingsByUserInWeek(
-            @Param("userId") Long userId,
-            @Param("weekStart") LocalDateTime weekStart,
-            @Param("weekEnd") LocalDateTime weekEnd
-    );
-
     // Tìm các booking bị ảnh hưởng bởi maintenance period
     @Query("""
                 SELECT ub
