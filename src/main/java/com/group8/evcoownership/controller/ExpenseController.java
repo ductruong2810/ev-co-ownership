@@ -29,7 +29,7 @@ public class ExpenseController {
     // =================== CREATE ===================
     @PostMapping
     @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
-    @Operation(summary = "Tạo expense mới (staff/admin)", description = "Dành cho staff/admin mở chi phí thủ công hoặc tự động sau maintenance/incident.")
+    @Operation(summary = "[STAFF/ADMIN]Tạo expense mới (staff/admin)", description = "Dành cho staff/admin mở chi phí thủ công hoặc tự động sau maintenance/incident.")
     public ResponseEntity<ExpenseResponseDTO> create(
             @Valid @RequestBody ExpenseCreateRequestDTO req,
             Authentication auth
@@ -40,7 +40,7 @@ public class ExpenseController {
     // =================== APPROVE ===================
     @PutMapping("/{id}/approve")
     @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
-    @Operation(summary = "Duyệt expense (approve)", description = "Staff hoặc Admin xác nhận hoàn tất chi phí (trừ quỹ nhóm).")
+    @Operation(summary = "[STAFF/ADMIN] Duyệt expense (approve)", description = "Staff hoặc Admin xác nhận hoàn tất chi phí (trừ quỹ nhóm).")
     public ResponseEntity<ExpenseResponseDTO> approve(
             @PathVariable Long id,
             Authentication auth
@@ -48,10 +48,21 @@ public class ExpenseController {
         return ResponseEntity.ok(expenseService.approve(id, auth.getName()));
     }
 
+    // =================== REJECT ===================
+    @PutMapping("/{id}/reject")
+    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
+    @Operation(summary = "[STAFF/ADMIN] Từ chối chi phí", description = "Staff/Admin từ chối expense, không trừ quỹ")
+    public ResponseEntity<ExpenseResponseDTO> rejectExpense(
+            @PathVariable Long id,
+            Authentication auth
+    ) {
+        return ResponseEntity.ok(expenseService.reject(id, auth.getName()));
+    }
+
     // ================== GET ALL ===================
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN','STAFF','TECHNICIAN')")
-    @Operation(summary = "Danh sách Expense (lọc linh hoạt)", description = """
+    @Operation(summary = "[STAFF/ADMIN] Danh sách Expense (lọc linh hoạt)", description = """
         Lấy danh sách chi phí có thể lọc theo nhiều điều kiện:
         - fundId: ID của quỹ
         - sourceType: MAINTENANCE / INCIDENT
@@ -76,7 +87,7 @@ public class ExpenseController {
     // =================== GET ONE ===================
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
-    @Operation(summary = "Xem chi tiết expense", description = "Staff hoặc Admin có thể xem thông tin chi tiết expense.")
+    @Operation(summary = "[STAFF/ADMIN] Xem chi tiết expense", description = "Staff hoặc Admin có thể xem thông tin chi tiết expense.")
     public ResponseEntity<ExpenseResponseDTO> getOne(@PathVariable Long id) {
         return ResponseEntity.ok(expenseService.getOne(id));
     }
@@ -84,7 +95,7 @@ public class ExpenseController {
     // =================== LIST BY GROUP ===================
     @GetMapping("/group/{groupId}")
     @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
-    @Operation(summary = "Danh sách expense theo group", description = "Lấy tất cả expense thuộc về group cụ thể.")
+    @Operation(summary = "[STAFF/ADMIN] Danh sách expense theo group", description = "Lấy tất cả expense thuộc về group cụ thể.")
     public ResponseEntity<List<ExpenseResponseDTO>> listByGroup(@PathVariable Long groupId) {
         return ResponseEntity.ok(expenseService.getByGroup(groupId));
     }
