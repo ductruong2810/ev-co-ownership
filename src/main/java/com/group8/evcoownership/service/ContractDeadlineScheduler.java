@@ -2,18 +2,26 @@ package com.group8.evcoownership.service;
 
 import com.group8.evcoownership.entity.Contract;
 import com.group8.evcoownership.entity.OwnershipShare;
+import com.group8.evcoownership.entity.Payment;
 import com.group8.evcoownership.enums.ContractApprovalStatus;
 import com.group8.evcoownership.enums.DepositStatus;
 import com.group8.evcoownership.enums.NotificationType;
+import com.group8.evcoownership.enums.PaymentStatus;
+import com.group8.evcoownership.enums.PaymentType;
 import com.group8.evcoownership.repository.ContractRepository;
 import com.group8.evcoownership.repository.OwnershipShareRepository;
+import com.group8.evcoownership.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -22,11 +30,14 @@ import java.util.Map;
 @Slf4j
 public class ContractDeadlineScheduler {
 
+    private static final DateTimeFormatter DEADLINE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+
     private final ContractRepository contractRepository;
     private final OwnershipShareRepository ownershipShareRepository;
     private final NotificationOrchestrator notificationOrchestrator;
     private final ContractDeadlinePolicy deadlinePolicy;
     private final DepositPaymentService depositPaymentService;
+    private final PaymentRepository paymentRepository;
 
     /**
      * Gửi thông báo nhắc nhở cho các member chưa đóng cọc khi gần hết hạn
@@ -53,12 +64,21 @@ public class ContractDeadlineScheduler {
                     if (share.getDepositStatus() != DepositStatus.PAID) {
                         try {
                             long minutesLeft = Duration.between(now, deadline).toMinutes();
+                            Map<String, Object> data = buildDepositNotificationData(
+                                    contract,
+                                    groupId,
+                                    share,
+                                    "PENDING",
+                                    deadline,
+                                    minutesLeft
+                            );
+
                             notificationOrchestrator.sendComprehensiveNotification(
                                     share.getUser().getUserId(),
                                     NotificationType.DEPOSIT_REQUIRED,
                                     "Deposit Reminder",
                                     String.format("Please complete your deposit soon! Time remaining: %d minutes. The contract will be rejected if the deadline is missed.", minutesLeft),
-                                    Map.of("groupId", groupId, "minutesLeft", minutesLeft)
+                                    data
                             );
                         } catch (Exception ex) {
                             log.error("Failed to send reminder to user {}", share.getUser().getUserId(), ex);
@@ -111,13 +131,22 @@ public class ContractDeadlineScheduler {
                 for (OwnershipShare share : shares) {
                     if (share.getDepositStatus() != DepositStatus.PAID) {
                         try {
+                            Map<String, Object> data = buildDepositNotificationData(
+                                    contract,
+                                    groupId,
+                                    share,
+                                    "OVERDUE",
+                                    deadline,
+                                    null
+                            );
+
                             assert notificationOrchestrator != null;
                             notificationOrchestrator.sendComprehensiveNotification(
                                     share.getUser().getUserId(),
                                     NotificationType.DEPOSIT_OVERDUE,
                                     "Deposit Overdue",
                                     "You have missed the deposit deadline. The contract has been rejected and deposits of other members have been refunded.",
-                                    Map.of("groupId", groupId, "contractId", contract.getId())
+                                    data
                             );
                         } catch (Exception ex) {
                             log.error("Failed to send individual notification to user {}", share.getUser().getUserId(), ex);
@@ -142,6 +171,70 @@ public class ContractDeadlineScheduler {
                 log.error("Failed to auto-reject expired contract id={}", contract.getId(), ex);
             }
         }
+    }
+
+    private Map<String, Object> buildDepositNotificationData(Contract contract,
+                                                             Long groupId,
+                                                             OwnershipShare share,
+                                                             String defaultStatus,
+                                                             LocalDateTime referenceTime,
+                                                             Long minutesLeft) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("groupId", groupId);
+        data.put("contractId", contract.getId());
+        if (minutesLeft != null) {
+            data.put("minutesLeft", minutesLeft);
+        }
+
+        Long userId = share.getUser().getUserId();
+
+        Payment payment = paymentRepository
+                .findTopByPayer_UserIdAndFund_Group_GroupIdAndPaymentTypeAndStatusOrderByPaymentDateDesc(
+                        userId, groupId, PaymentType.DEPOSIT, PaymentStatus.PENDING)
+                .or(() -> paymentRepository
+                        .findTopByPayer_UserIdAndFund_Group_GroupIdAndPaymentTypeOrderByPaymentDateDesc(
+                                userId, groupId, PaymentType.DEPOSIT))
+                .orElse(null);
+
+        if (payment != null) {
+            data.put("transactionCode", defaultString(payment.getTransactionCode()));
+            data.put("amount", payment.getAmount() != null
+                    ? payment.getAmount()
+                    : calculateMemberRequiredDeposit(contract, share));
+            data.put("paymentMethod", defaultString(payment.getPaymentMethod(), "VNPay"));
+            data.put("paymentType", payment.getPaymentType() != null ? payment.getPaymentType().name() : "DEPOSIT");
+            data.put("paymentDate", payment.getPaymentDate() != null
+                    ? DEADLINE_FORMATTER.format(payment.getPaymentDate())
+                    : referenceTime != null ? DEADLINE_FORMATTER.format(referenceTime) : "N/A");
+            data.put("status", payment.getStatus() != null ? payment.getStatus().name() : defaultStatus);
+        } else {
+            data.put("transactionCode", "N/A");
+            data.put("amount", calculateMemberRequiredDeposit(contract, share));
+            data.put("paymentMethod", "VNPay");
+            data.put("paymentType", "DEPOSIT");
+            data.put("paymentDate", referenceTime != null ? DEADLINE_FORMATTER.format(referenceTime) : "N/A");
+            data.put("status", defaultStatus);
+        }
+
+        return data;
+    }
+
+    private BigDecimal calculateMemberRequiredDeposit(Contract contract, OwnershipShare share) {
+        if (contract.getRequiredDepositAmount() == null || share.getOwnershipPercentage() == null) {
+            return BigDecimal.ZERO;
+        }
+
+        return contract.getRequiredDepositAmount()
+                .multiply(share.getOwnershipPercentage())
+                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+    }
+
+    private String defaultString(String value) {
+        return defaultString(value, "N/A");
+    }
+
+    private String defaultString(String value, String fallback) {
+        return (value == null || value.isBlank()) ? fallback : value;
     }
 }
 
