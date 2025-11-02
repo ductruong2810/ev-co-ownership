@@ -68,6 +68,19 @@ public class MaintenanceService {
                 .collect(Collectors.toList());
     }
 
+    // ================ GET MY MAINTENANCE ===========
+    public List<MaintenanceResponseDTO> getMyRequests(String username) {
+        User technician = userRepository.findByEmail(username)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+        List<Maintenance> maintenances = maintenanceRepository.findByRequestedBy(technician);
+
+        return maintenances.stream()
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
+    }
+
+
     // =================== UPDATE ===================
     public MaintenanceResponseDTO update(Long id, MaintenanceUpdateRequestDTO req, String username) {
         User user = userRepository.findByEmail(username)

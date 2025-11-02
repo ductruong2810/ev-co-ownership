@@ -1,14 +1,19 @@
 package com.group8.evcoownership.repository;
 
 import com.group8.evcoownership.entity.Maintenance;
+import com.group8.evcoownership.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
+import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface MaintenanceRepository extends JpaRepository<Maintenance, Long> {
+    List<Maintenance> findByRequestedBy(User user);
+
     Optional<Maintenance> findFirstByVehicle_IdAndVehicle_OwnershipGroup_GroupIdAndStatusOrderByApprovalDateDescRequestDateDescCreatedAtDesc(
             Long vehicleId,
             Long groupId,
