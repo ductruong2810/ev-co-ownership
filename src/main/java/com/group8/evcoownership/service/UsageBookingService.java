@@ -3,7 +3,6 @@ package com.group8.evcoownership.service;
 import com.group8.evcoownership.dto.CancelBookingRequestDTO;
 import com.group8.evcoownership.entity.UsageBooking;
 import com.group8.evcoownership.enums.BookingStatus;
-import com.group8.evcoownership.enums.NotificationType;
 import com.group8.evcoownership.repository.UsageBookingRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -39,31 +38,6 @@ public class UsageBookingService {
 
         booking.setStatus(BookingStatus.CANCELLED);
         return usageBookingRepository.save(booking);
-    }
-
-    //Hoàn thành booking (Confirmed → Completed)
-    public UsageBooking completeBooking(Long bookingId) {
-        UsageBooking booking = usageBookingRepository.findById(bookingId)
-                .orElseThrow(() -> new EntityNotFoundException("Booking not found"));
-
-        if (booking.getStatus() != BookingStatus.CONFIRMED) {
-            throw new IllegalStateException("Only confirmed bookings can be completed");
-        }
-
-        booking.setStatus(BookingStatus.COMPLETED);
-        UsageBooking savedBooking = usageBookingRepository.save(booking);
-
-        // Send booking completed notification (reuse BOOKING_CREATED type for completed event)
-        notificationOrchestrator.sendBookingNotification(
-                booking.getUser().getUserId(),
-                NotificationType.BOOKING_CREATED,
-                "Booking Completed",
-                String.format("Your booking for %s %s has been completed",
-                        booking.getVehicle().getBrand(), booking.getVehicle().getModel()),
-                savedBooking.getId()
-        );
-
-        return savedBooking;
     }
 
     //Hủy booking với lý do (dành cho admin/kỹ thuật viên)

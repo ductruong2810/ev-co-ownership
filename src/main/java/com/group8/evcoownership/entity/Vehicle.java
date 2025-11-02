@@ -35,9 +35,6 @@ public class Vehicle {
     @Column(name = "ChassisNumber", length = 30)
     private String chassisNumber;
 
-    @Column(name = "QrCode", length = 255)
-    private String qrCode;
-
     @Column(name = "VehicleValue", precision = 15, scale = 2)
     private BigDecimal vehicleValue;
 
