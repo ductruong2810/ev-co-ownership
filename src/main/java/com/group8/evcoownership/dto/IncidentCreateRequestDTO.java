@@ -1,5 +1,7 @@
 package com.group8.evcoownership.dto;
 
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import java.math.BigDecimal;
 
@@ -8,8 +10,15 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Builder
 public class IncidentCreateRequestDTO {
-    private Long bookingId;            // Bắt buộc
-    private String description;        // Mô tả sự cố
-    private BigDecimal actualCost;     // Chi phí thực tế user trả
-    private String imageUrls;          // Ảnh xe hư + hóa đơn
+
+    @NotNull(message = "BookingId is required")
+    private Long bookingId;
+
+    private String description;
+
+    @NotNull(message = "Actual cost is required")
+    @DecimalMin(value = "0.01", inclusive = true, message = "Actual cost must be greater than 0")
+    private BigDecimal actualCost;
+
+    private String imageUrls; // optional
 }

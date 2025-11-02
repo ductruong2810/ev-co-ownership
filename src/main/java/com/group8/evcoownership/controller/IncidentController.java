@@ -3,7 +3,9 @@ package com.group8.evcoownership.controller;
 import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.service.IncidentService;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -28,7 +30,7 @@ public class IncidentController {
     )
     @PreAuthorize("hasRole('CO_OWNER')")
     public ResponseEntity<IncidentResponseDTO> createIncident(
-            @RequestBody IncidentCreateRequestDTO request,
+           @Valid @RequestBody IncidentCreateRequestDTO request,
             Authentication auth
     ) {
         String username = auth.getName();
@@ -81,12 +83,35 @@ public class IncidentController {
     @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     public ResponseEntity<IncidentResponseDTO> rejectIncident(
             @PathVariable Long id,
-            @RequestBody IncidentRejectRequestDTO request,
+             @Valid @RequestBody IncidentRejectRequestDTO request,
             Authentication auth
     ) {
         String username = auth.getName();
         return ResponseEntity.ok(incidentService.rejectIncident(id, request, username));
     }
+
+
+    // ===========================
+    @GetMapping
+    @Operation(
+            summary = "[STAFF / ADMIN] Get incidents (ordered by status & date)",
+            description = """
+        Returns paginated incidents filtered by status/date.
+        Always sorted by business logic:
+        PENDING → APPROVED → REJECTED → others, then newest first.
+        """
+    )
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    public ResponseEntity<Page<IncidentResponseDTO>> getIncidents(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size
+    ) {
+        return ResponseEntity.ok(incidentService.getFiltered(status, startDate, endDate, page, size));
+    }
+
 
 
     // ===============================================================
@@ -106,15 +131,15 @@ public class IncidentController {
     // ===============================================================
     // [STAFF / ADMIN] — Xem tất cả incident trong hệ thống
     // ===============================================================
-    @GetMapping
-    @Operation(
-            summary = "[STAFF / ADMIN] Get all incidents",
-            description = "Returns all incidents for review and verification."
-    )
-    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
-    public ResponseEntity<List<IncidentResponseDTO>> getAllIncidents() {
-        return ResponseEntity.ok(incidentService.getAll());
-    }
+//    @GetMapping
+//    @Operation(
+//            summary = "[STAFF / ADMIN] Get all incidents",
+//            description = "Returns all incidents for review and verification."
+//    )
+//    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+//    public ResponseEntity<List<IncidentResponseDTO>> getAllIncidents() {
+//        return ResponseEntity.ok(incidentService.getAll());
+//    }
 
     // ===============================================================
     // [ALL ROLES: CO_OWNER / STAFF / ADMIN] — Xem chi tiết 1 incident
