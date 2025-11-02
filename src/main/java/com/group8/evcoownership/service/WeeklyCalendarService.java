@@ -556,8 +556,6 @@ public class WeeklyCalendarService {
                 .message(overnightBooking ? "Overnight booking created successfully" : "Booking created successfully")
                 .totalHours(newBookingHours)
                 .overnightBooking(overnightBooking)
-                //tra ve qr code string
-                .qrCode(qrCodeData)
                 .build();
     }
 }

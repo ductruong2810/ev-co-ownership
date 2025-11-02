@@ -1,5 +1,6 @@
 package com.group8.evcoownership.controller;
 
+import com.group8.evcoownership.dto.BookingDetailResponseDTO;
 import com.group8.evcoownership.dto.BookingResponseDTO;
 import com.group8.evcoownership.dto.CancelBookingRequestDTO;
 import com.group8.evcoownership.entity.UsageBooking;
@@ -8,8 +9,11 @@ import com.group8.evcoownership.service.UsageBookingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -69,6 +73,27 @@ public class UsageBookingController {
                 .toList();
 
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/admin/search")
+    @PreAuthorize("hasRole('STAFF') or hasRole('ADMIN')")
+    @Operation(summary = "Danh sách booking theo user và group", description = "Dành cho STAFF/ADMIN xem danh sách booking của một user trong một group")
+    public ResponseEntity<Page<BookingResponseDTO>> getBookingsForStaff(
+            @RequestParam Long userId,
+            @RequestParam Long groupId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "30") int size
+    ) {
+        Page<BookingResponseDTO> bookings = usageBookingService.getBookingsForStaff(userId, groupId, PageRequest.of(page, size));
+        return ResponseEntity.ok(bookings);
+    }
+
+    @GetMapping("/admin/{bookingId}")
+    @PreAuthorize("hasRole('STAFF') or hasRole('ADMIN')")
+    @Operation(summary = "Chi tiết booking (bao gồm QR)", description = "Dành cho STAFF/ADMIN xem chi tiết một booking, bao gồm QR code")
+    public ResponseEntity<BookingDetailResponseDTO> getBookingDetailForStaff(@PathVariable Long bookingId) {
+        BookingDetailResponseDTO detail = usageBookingService.getBookingDetailForStaff(bookingId);
+        return ResponseEntity.ok(detail);
     }
 
     /**

@@ -2,6 +2,8 @@ package com.group8.evcoownership.repository;
 
 import com.group8.evcoownership.entity.UsageBooking;
 import com.group8.evcoownership.enums.BookingStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -163,6 +165,17 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
             @Param("weekStart") LocalDateTime weekStart,
             @Param("weekEnd") LocalDateTime weekEnd
     );
+
+    @Query("""
+            SELECT ub
+            FROM UsageBooking ub
+            WHERE ub.user.userId = :userId
+              AND ub.vehicle.ownershipGroup.groupId = :groupId
+            ORDER BY ub.startDateTime DESC
+            """)
+    Page<UsageBooking> findBookingsByUserAndGroup(@Param("userId") Long userId,
+                                                  @Param("groupId") Long groupId,
+                                                  Pageable pageable);
 
 }
 
