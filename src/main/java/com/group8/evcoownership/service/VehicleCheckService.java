@@ -236,20 +236,27 @@ public class VehicleCheckService {
             Vehicle vehicle = booking.getVehicle();
 
             LocalDateTime now = LocalDateTime.now();
-            LocalDateTime earliestCheckIn = booking.getStartDateTime().minusMinutes(15);
-            boolean canCheckIn = !now.isBefore(earliestCheckIn) && !now.isAfter(booking.getEndDateTime());
+            LocalDateTime earliestCheckIn = booking.getStartDateTime().minusMinutes(10);
+            LocalDateTime lockTime = booking.getStartDateTime().plusMinutes(20);
+            boolean withinCheckInWindow = !now.isBefore(earliestCheckIn) && now.isBefore(lockTime);
 
 
-            if (!canCheckIn) {
+            if (!withinCheckInWindow) {
                 result.put("success", false);
-                result.put("message", "Booking time is not valid for check-in");
+                if (now.isBefore(earliestCheckIn)) {
+                    result.put("message", "Too early for check-in");
+                } else if (now.isAfter(lockTime)) {
+                    result.put("message", "Check-in window closed");
+                } else {
+                    result.put("message", "Booking time is not valid for check-in");
+                }
             } else {
                 result.put("success", true);
                 result.put("message", "Ready for check-in");
             }
 
             result.put("bookingId", booking.getId());
-            result.put("canCheckIn", canCheckIn);
+            result.put("canCheckIn", withinCheckInWindow);
             result.put("vehicleInfo", Map.of(
                     "vehicleId", vehicle.getId(),
                     "brand", vehicle.getBrand(),
