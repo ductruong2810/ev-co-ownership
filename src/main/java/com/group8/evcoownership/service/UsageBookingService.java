@@ -158,12 +158,16 @@ public class UsageBookingService {
     }
 
     //Hủy booking (bất kỳ status nào → Cancelled)
-    public UsageBooking cancelBooking(Long bookingId) {
+    public UsageBooking cancelBooking(Long bookingId, Long userId) {
         UsageBooking booking = usageBookingRepository.findById(bookingId)
                 .orElseThrow(() -> new EntityNotFoundException("Booking not found"));
 
         if (booking.getStatus() == BookingStatus.COMPLETED) {
             throw new IllegalStateException("Cannot cancel completed bookings");
+        }
+
+        if (booking.getUser() == null || !booking.getUser().getUserId().equals(userId)) {
+            throw new IllegalStateException("You can only cancel your own bookings");
         }
 
         booking.setStatus(BookingStatus.CANCELLED);
