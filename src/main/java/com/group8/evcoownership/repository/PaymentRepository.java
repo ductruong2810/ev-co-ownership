@@ -32,4 +32,10 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     Optional<Payment> findByTransactionCode(String transactionCode);
 
     boolean existsByTransactionCode(String transactionCode);
+
+    Optional<Payment> findTopByPayer_UserIdAndFund_Group_GroupIdAndPaymentTypeOrderByPaymentDateDesc(
+            Long userId, Long groupId, PaymentType paymentType);
+
+    Optional<Payment> findTopByPayer_UserIdAndFund_Group_GroupIdAndPaymentTypeAndStatusOrderByPaymentDateDesc(
+            Long userId, Long groupId, PaymentType paymentType, PaymentStatus status);
 }

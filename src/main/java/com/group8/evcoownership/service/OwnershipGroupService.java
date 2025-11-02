@@ -314,7 +314,6 @@ public class OwnershipGroupService {
                 vehicleResponse.model(),
                 vehicleResponse.licensePlate(),
                 vehicleResponse.chassisNumber(),
-                vehicleResponse.qrCode(),
                 vehicleResponse.vehicleValue(),
                 uploadedImages,
                 autoFillInfo

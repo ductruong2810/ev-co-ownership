@@ -22,7 +22,6 @@ public record GroupWithVehicleResponseDTO(
         String model,
         String licensePlate,
         String chassisNumber,
-        String qrCode,
         BigDecimal vehicleValue,
         Map<String, Object> uploadedImages,
         // Thông tin OCR auto-fill (có thể null)
