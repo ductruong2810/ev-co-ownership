@@ -14,7 +14,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -72,31 +71,6 @@ public class UsageBookingController {
         return ResponseEntity.ok(response);
     }
 
-
-    /**
-     * Xác nhận booking (chuyển từ Pending → Confirmed)
-     * Example:
-     * PUT /api/bookings/1/confirm
-     */
-    @PutMapping("/{bookingId}/confirm")
-    @Operation(summary = "Xác nhận đặt xe", description = "Xác nhận booking từ trạng thái Pending sang Confirmed")
-    public ResponseEntity<BookingResponseDTO> confirmBooking(@PathVariable Long bookingId) {
-        UsageBooking booking = usageBookingService.confirmBooking(bookingId);
-
-        var vehicle = booking.getVehicle();
-        BookingResponseDTO response = new BookingResponseDTO(
-                booking.getId(),
-                vehicle.getLicensePlate(),
-                vehicle.getBrand(),
-                vehicle.getModel(),
-                booking.getStartDateTime(),
-                booking.getEndDateTime(),
-                booking.getStatus().name()
-        );
-
-        return ResponseEntity.ok(response);
-    }
-
     /**
      * Hủy booking (chuyển sang Cancelled)
      * Example:
@@ -138,35 +112,6 @@ public class UsageBookingController {
             @PathVariable Long bookingId,
             @RequestBody CancelBookingRequestDTO request) {
         Map<String, Object> result = usageBookingService.cancelBookingWithReason(bookingId, request);
-        return ResponseEntity.ok(result);
-    }
-
-    // Removed to avoid duplication. Use MaintenanceController under /api/maintenance instead.
-
-    /**
-     * Hoàn thành booking và tạo buffer time (chuyển sang Completed + tạo Buffer)
-     * Example:
-     * PUT /api/bookings/1/complete
-     */
-    @PutMapping("/{bookingId}/complete")
-    @Operation(summary = "Hoàn thành đặt xe", description = "Hoàn thành booking và tự động tạo buffer time cho kiểm tra kỹ thuật và sạc")
-    public ResponseEntity<Map<String, Object>> completeBooking(@PathVariable Long bookingId) {
-        UsageBooking booking = usageBookingService.completeBooking(bookingId);
-
-        var vehicle = booking.getVehicle();
-        BookingResponseDTO bookingResponse = new BookingResponseDTO(
-                booking.getId(),
-                vehicle.getLicensePlate(),
-                vehicle.getBrand(),
-                vehicle.getModel(),
-                booking.getStartDateTime(),
-                booking.getEndDateTime(),
-                booking.getStatus().name()
-        );
-
-        Map<String, Object> result = new HashMap<>();
-        result.put("completedBooking", bookingResponse);
-        result.put("message", "Booking completed.");
         return ResponseEntity.ok(result);
     }
 }

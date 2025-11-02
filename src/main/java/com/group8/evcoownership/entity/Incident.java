@@ -1,5 +1,6 @@
 package com.group8.evcoownership.entity;
 
+import com.group8.evcoownership.enums.RejectionCategory;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -53,6 +54,16 @@ public class Incident {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ApprovedBy")
     private User approvedBy;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "RejectionCategory", length = 50)
+    private RejectionCategory rejectionCategory; // loại lý do từ chối (enum chuẩn)
+
+    @Nationalized
+    @Lob
+    @Column(name = "RejectionReason")
+    private String rejectionReason; // ghi chú chi tiết do staff nhập
+
 
     @Column(name = "CreatedAt", nullable = false)
     private LocalDateTime createdAt;

@@ -1,17 +1,19 @@
 package com.group8.evcoownership.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.group8.evcoownership.entity.UsageBooking;
 import com.group8.evcoownership.entity.Vehicle;
 import com.group8.evcoownership.entity.VehicleCheck;
 import com.group8.evcoownership.enums.BookingStatus;
 import com.group8.evcoownership.repository.UsageBookingRepository;
 import com.group8.evcoownership.repository.VehicleCheckRepository;
-import com.group8.evcoownership.repository.VehicleRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -25,14 +27,22 @@ public class VehicleCheckService {
 
     private final VehicleCheckRepository vehicleCheckRepository;
     private final UsageBookingRepository usageBookingRepository;
-    private final VehicleRepository vehicleRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     // User tạo pre-use check với validation
     public VehicleCheck createPreUseCheck(Long bookingId, Long userId, Integer odometer,
                                           BigDecimal batteryLevel, String cleanliness,
                                           String notes, String issues) {
+        // Validate inputs
+        if (bookingId == null) {
+            throw new IllegalArgumentException("Booking ID is required");
+        }
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID is required");
+        }
+
         UsageBooking booking = usageBookingRepository.findById(bookingId)
-                .orElseThrow(() -> new EntityNotFoundException("Booking not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Booking not found with ID: " + bookingId));
 
         // VALIDATION: Kiểm tra booking có thuộc về user không
         if (!booking.getUser().getUserId().equals(userId)) {
@@ -41,7 +51,7 @@ public class VehicleCheckService {
 
         // VALIDATION: Kiểm tra booking status
         if (booking.getStatus() != BookingStatus.CONFIRMED) {
-            throw new IllegalStateException("Only confirmed bookings can be checked-in");
+            throw new IllegalStateException("Only confirmed bookings can be checked-in. Current status: " + booking.getStatus());
         }
 
         // VALIDATION: Kiểm tra thời gian check-in
@@ -72,21 +82,30 @@ public class VehicleCheckService {
         return vehicleCheckRepository.save(check);
     }
 
+
     // User tạo post-use check với validation
     public VehicleCheck createPostUseCheck(Long bookingId, Long userId, Integer odometer,
                                            BigDecimal batteryLevel, String cleanliness,
                                            String notes, String issues) {
+        // Validate inputs
+        if (bookingId == null) {
+            throw new IllegalArgumentException("Booking ID is required");
+        }
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID is required");
+        }
+
         UsageBooking booking = usageBookingRepository.findById(bookingId)
-                .orElseThrow(() -> new EntityNotFoundException("Booking not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Booking not found with ID: " + bookingId));
 
         // VALIDATION: Kiểm tra booking có thuộc về user không
         if (!booking.getUser().getUserId().equals(userId)) {
-            throw new SecurityException("You can only check-in your own bookings");
+            throw new SecurityException("You can only check-out your own bookings");
         }
 
         // VALIDATION: Kiểm tra booking status
         if (booking.getStatus() != BookingStatus.CONFIRMED) {
-            throw new IllegalStateException("Only confirmed bookings can be checked-out");
+            throw new IllegalStateException("Only confirmed bookings can be checked-out. Current status: " + booking.getStatus());
         }
 
         // VALIDATION: Kiểm tra đã làm pre-use check chưa
@@ -112,6 +131,7 @@ public class VehicleCheckService {
 
         return vehicleCheckRepository.save(check);
     }
+
 
     // User từ chối xe với validation
     public VehicleCheck rejectVehicle(Long bookingId, Long userId, String issues, String notes) {
@@ -185,57 +205,58 @@ public class VehicleCheckService {
         Map<String, Object> result = new HashMap<>();
 
         try {
-            // Parse QR code để lấy vehicle/group info
-            Long vehicleId = parseQrCode(qrCode);
-            if (vehicleId == null) {
+            BookingQrData qrData = parseBookingQr(qrCode);
+            if (qrData == null) {
                 result.put("success", false);
                 result.put("message", "Invalid QR code format");
                 return result;
             }
 
-            // Tìm vehicle
-            Vehicle vehicle = vehicleRepository.findById(vehicleId)
-                    .orElseThrow(() -> new EntityNotFoundException("Vehicle not found"));
+            UsageBooking booking = usageBookingRepository.findById(qrData.bookingId())
+                    .orElseThrow(() -> new EntityNotFoundException("Booking not found"));
 
-            // Lấy tất cả bookings confirmed của user cho vehicle
-            List<UsageBooking> allBookings = usageBookingRepository
-                    .findByUserUserIdAndVehicleIdAndStatus(userId, vehicleId, BookingStatus.CONFIRMED);
-
-            // Filter trong Java - tìm booking active (đang diễn ra hoặc sắp bắt đầu trong 15 phút)
-            LocalDateTime now = LocalDateTime.now();
-            LocalDateTime checkInWindow = now.plusMinutes(15);
-
-            List<UsageBooking> activeBookings = allBookings.stream()
-                    .filter(b ->
-                            (b.getStartDateTime().isBefore(checkInWindow) ||
-                                    b.getStartDateTime().isEqual(checkInWindow)) &&
-                                    (b.getEndDateTime().isAfter(now) ||
-                                            b.getEndDateTime().isEqual(now))
-                    )
-                    .sorted(java.util.Comparator.comparing(UsageBooking::getStartDateTime))
-                    .toList();
-
-            if (activeBookings.isEmpty()) {
+            if (booking.getStatus() != BookingStatus.CONFIRMED) {
                 result.put("success", false);
-                result.put("message", "No active booking found for this vehicle");
-                result.put("vehicleInfo", Map.of(
-                        "vehicleId", vehicle.getId(),
-                        "brand", vehicle.getBrand(),
-                        "model", vehicle.getModel(),
-                        "licensePlate", vehicle.getLicensePlate()
-                ));
+                result.put("message", "Booking is not confirmed");
                 return result;
             }
 
-            // Lấy booking gần nhất
-            UsageBooking booking = activeBookings.get(0);
+            if (!booking.getVehicle().getId().equals(qrData.vehicleId())) {
+                result.put("success", false);
+                result.put("message", "QR code does not match vehicle");
+                return result;
+            }
 
-            // Kiểm tra thời gian
-            boolean canCheckIn = now.isAfter(booking.getStartDateTime().minusMinutes(15))
-                    && now.isBefore(booking.getEndDateTime());
+            if (!booking.getUser().getUserId().equals(userId)) {
+                result.put("success", false);
+                result.put("message", "QR code does not belong to current user");
+                return result;
+            }
 
-            result.put("success", true);
+            Vehicle vehicle = booking.getVehicle();
+
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime earliestCheckIn = booking.getStartDateTime().minusMinutes(10);
+            LocalDateTime lockTime = booking.getStartDateTime().plusMinutes(20);
+            boolean withinCheckInWindow = !now.isBefore(earliestCheckIn) && now.isBefore(lockTime);
+
+
+            if (!withinCheckInWindow) {
+                result.put("success", false);
+                if (now.isBefore(earliestCheckIn)) {
+                    result.put("message", "Too early for check-in");
+                } else if (now.isAfter(lockTime)) {
+                    result.put("message", "Check-in window closed");
+                } else {
+                    result.put("message", "Booking time is not valid for check-in");
+                }
+            } else {
+                result.put("success", true);
+                result.put("message", "Ready for check-in");
+            }
+
             result.put("bookingId", booking.getId());
+            result.put("canCheckIn", withinCheckInWindow);
             result.put("vehicleInfo", Map.of(
                     "vehicleId", vehicle.getId(),
                     "brand", vehicle.getBrand(),
@@ -247,15 +268,9 @@ public class VehicleCheckService {
                     "endTime", booking.getEndDateTime(),
                     "status", booking.getStatus().toString()
             ));
-            result.put("canCheckIn", canCheckIn);
             result.put("hasPreUseCheck", hasCheck(booking.getId(), "PRE_USE"));
             result.put("hasPostUseCheck", hasCheck(booking.getId(), "POST_USE"));
-
-            if (!canCheckIn) {
-                result.put("message", "Booking time is not valid for check-in");
-            } else {
-                result.put("message", "Ready for check-in");
-            }
+            result.put("qrUserId", qrData.userId());
 
         } catch (Exception e) {
             result.put("success", false);
@@ -266,29 +281,51 @@ public class VehicleCheckService {
     }
 
 
-    /**
-     * Parse QR code để lấy vehicle ID
-     * QR format: "GROUP:groupId" hoặc "VEHICLE:vehicleId"
-     */
-    private Long parseQrCode(String qrCode) {
+    private BookingQrData parseBookingQr(String qrCode) throws IOException {
         if (qrCode == null || qrCode.trim().isEmpty()) {
             return null;
         }
 
-        try {
-            if (qrCode.startsWith("GROUP:")) {
-                Long groupId = Long.parseLong(qrCode.substring(6));
-                // Tìm vehicle theo group ID
-                return vehicleRepository.findByOwnershipGroup_GroupId(groupId)
-                        .map(Vehicle::getId)
-                        .orElse(null);
-            } else if (qrCode.startsWith("VEHICLE:")) {
-                return Long.parseLong(qrCode.substring(8));
-            }
-        } catch (NumberFormatException e) {
-            // Invalid format
+        JsonNode root = objectMapper.readTree(qrCode);
+
+        if (root == null) {
+            return null;
         }
 
-        return null;
+        JsonNode bookingNode = root.get("bookingId");
+        JsonNode vehicleNode = root.get("vehicleId");
+
+        if (bookingNode == null || vehicleNode == null || !bookingNode.canConvertToLong() || !vehicleNode.canConvertToLong()) {
+            return null;
+        }
+
+        Long bookingId = bookingNode.asLong();
+        Long vehicleId = vehicleNode.asLong();
+
+        Long qrUserId = root.hasNonNull("userId") ? root.get("userId").asLong() : null;
+        LocalDateTime startTime = parseLocalDateTime(root.path("startTime"));
+        LocalDateTime endTime = parseLocalDateTime(root.path("endTime"));
+
+        return new BookingQrData(bookingId, vehicleId, qrUserId, startTime, endTime);
+    }
+
+    private LocalDateTime parseLocalDateTime(JsonNode node) {
+        if (node == null || node.isMissingNode() || node.isNull()) {
+            return null;
+        }
+
+        String value = node.asText();
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        return LocalDateTime.parse(value);
+    }
+
+    private record BookingQrData(Long bookingId,
+                                 Long vehicleId,
+                                 Long userId,
+                                 LocalDateTime startTime,
+                                 LocalDateTime endTime) {
     }
 }

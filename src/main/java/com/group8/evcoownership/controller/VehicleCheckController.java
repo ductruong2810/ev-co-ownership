@@ -1,11 +1,13 @@
 package com.group8.evcoownership.controller;
 
+import com.group8.evcoownership.dto.VehicleCheckRequestDTO;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.entity.VehicleCheck;
 import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.service.VehicleCheckService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -31,23 +33,23 @@ public class VehicleCheckController {
      * POST /api/vehicle-checks/pre-use
      */
     @PostMapping("/pre-use")
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("hasRole('CO_OWNER')")
     @Operation(summary = "Kiểm tra trước sử dụng", description = "Người dùng tạo báo cáo kiểm tra phương tiện trước khi sử dụng")
-    public ResponseEntity<VehicleCheck> createPreUseCheck(
-            @RequestParam Long bookingId,
-            @RequestParam(required = false) Integer odometer,
-            @RequestParam(required = false) BigDecimal batteryLevel,
-            @RequestParam(required = false) String cleanliness,
-            @RequestParam(required = false) String notes,
-            @RequestParam(required = false) String issues) {
-
+    public ResponseEntity<VehicleCheck> createPreUseCheck(@Valid @RequestBody VehicleCheckRequestDTO request) {
         // Lấy user từ JWT token
         String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
         User currentUser = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         VehicleCheck check = vehicleCheckService.createPreUseCheck(
-                bookingId, currentUser.getUserId(), odometer, batteryLevel, cleanliness, notes, issues);
+                request.getBookingId(),
+                currentUser.getUserId(),
+                request.getOdometer(),
+                request.getBatteryLevel(),
+                request.getCleanliness(),
+                request.getNotes(),
+                request.getIssues()
+        );
 
         return ResponseEntity.ok(check);
     }
@@ -58,23 +60,23 @@ public class VehicleCheckController {
      * POST /api/vehicle-checks/post-use
      */
     @PostMapping("/post-use")
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("hasRole('CO_OWNER')")
     @Operation(summary = "Kiểm tra sau sử dụng", description = "Người dùng tạo báo cáo kiểm tra phương tiện sau khi sử dụng")
-    public ResponseEntity<VehicleCheck> createPostUseCheck(
-            @RequestParam Long bookingId,
-            @RequestParam(required = false) Integer odometer,
-            @RequestParam(required = false) BigDecimal batteryLevel,
-            @RequestParam(required = false) String cleanliness,
-            @RequestParam(required = false) String notes,
-            @RequestParam(required = false) String issues) {
-
+    public ResponseEntity<VehicleCheck> createPostUseCheck(@Valid @RequestBody VehicleCheckRequestDTO request) {
         // Lấy user từ JWT token
         String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
         User currentUser = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         VehicleCheck check = vehicleCheckService.createPostUseCheck(
-                bookingId, currentUser.getUserId(), odometer, batteryLevel, cleanliness, notes, issues);
+                request.getBookingId(),
+                currentUser.getUserId(),
+                request.getOdometer(),
+                request.getBatteryLevel(),
+                request.getCleanliness(),
+                request.getNotes(),
+                request.getIssues()
+        );
 
         return ResponseEntity.ok(check);
     }

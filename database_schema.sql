@@ -91,7 +91,6 @@ CREATE TABLE Vehicle
     Model         NVARCHAR(100),
     LicensePlate  NVARCHAR(20),
     ChassisNumber NVARCHAR(30),
-    QrCode        NVARCHAR(255),
     VehicleValue  DECIMAL(15, 2) NULL,
     GroupId       BIGINT,
     CreatedAt     DATETIME2(7)   NOT NULL DEFAULT SYSUTCDATETIME(),
@@ -895,5 +894,13 @@ WHERE UpdatedAt IS NULL;
 GO
 
 
-
+--------------------------------------------------------
+-- them QrCode vao Usage
+ALTER TABLE UsageBooking
+    ADD QrCode VARCHAR(255) NULL;
+-- them RejectionCategory va RejectionReason vao Incident
+ALTER TABLE Incident
+    ADD
+        RejectionCategory VARCHAR(50) NULL,
+        RejectionReason NVARCHAR(MAX) NULL;
 

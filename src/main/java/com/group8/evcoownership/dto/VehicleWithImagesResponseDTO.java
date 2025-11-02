@@ -14,7 +14,6 @@ public record VehicleWithImagesResponseDTO(
         String model,
         String licensePlate,
         String chassisNumber,
-        String qrCode,
         BigDecimal vehicleValue,
         LocalDateTime vehicleCreatedAt,
         LocalDateTime vehicleUpdatedAt,

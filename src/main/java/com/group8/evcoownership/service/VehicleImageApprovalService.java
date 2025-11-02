@@ -63,7 +63,6 @@ public class VehicleImageApprovalService {
                 .model(vehicle.getModel())
                 .licensePlate(vehicle.getLicensePlate())
                 .chassisNumber(vehicle.getChassisNumber())
-                .qrCode(vehicle.getQrCode())
                 .vehicleValue(vehicle.getVehicleValue())
                 .vehicleCreatedAt(vehicle.getCreatedAt())
                 .vehicleUpdatedAt(vehicle.getUpdatedAt())

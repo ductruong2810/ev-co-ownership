@@ -486,7 +486,6 @@ public class OwnershipShareService {
                 vehicle.getModel(),
                 vehicle.getLicensePlate(), // Biển số xe
                 vehicle.getChassisNumber(),
-                vehicle.getQrCode(),
                 vehicle.getOwnershipGroup().getGroupId(),
                 vehicle.getVehicleValue(),
                 vehicle.getCreatedAt(),

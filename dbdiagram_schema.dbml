@@ -49,7 +49,6 @@ Table Vehicle {
   Model varchar(100)
   LicensePlate varchar(20)
   ChassisNumber varchar(30)
-  QrCode varchar(255)
   VehicleValue decimal(15,2)
   GroupId bigint [ref: - OwnershipGroup.GroupId]
   CreatedAt datetime [default: `now()`]
@@ -111,6 +110,7 @@ Table UsageBooking {
   Status varchar(20) [default: 'PENDING']
   TotalDuration int
   Priority int
+  QrCode varchar(255)
   CreatedAt datetime [default: `now()`]
   UpdatedAt datetime [default: `now()`]
 }
