@@ -114,5 +114,12 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
                                                   @Param("groupId") Long groupId,
                                                   Pageable pageable);
 
+    @Query("""
+    SELECT ub
+    FROM UsageBooking ub
+    WHERE ub.vehicle.ownershipGroup.groupId = :groupId
+    ORDER BY ub.startDateTime DESC
+    """)
+    List<UsageBooking> findAllBookingsByGroupId(@Param("groupId") Long groupId);
 }
 
