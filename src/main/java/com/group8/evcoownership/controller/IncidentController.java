@@ -54,22 +54,40 @@ public class IncidentController {
     }
 
     // ===============================================================
-    // [STAFF / ADMIN] — Duyệt hoặc từ chối incident
+// [STAFF / ADMIN] — Approve an incident
+// ===============================================================
+    @PutMapping("/{id}/approve")
+    @Operation(
+            summary = "[STAFF / ADMIN] Approve an incident",
+            description = "Approve a pending incident and automatically create a related Expense entry."
+    )
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    public ResponseEntity<IncidentResponseDTO> approveIncident(
+            @PathVariable Long id,
+            Authentication auth
+    ) {
+        String username = auth.getName();
+        return ResponseEntity.ok(incidentService.approveIncident(id, username));
+    }
+
     // ===============================================================
-//    @PutMapping("/{id}/status")
-//    @Operation(
-//            summary = "[STAFF / ADMIN] Approve or reject incident",
-//            description = "Staff or admin updates the incident status (APPROVED / REJECTED) and can set rejection reason or category."
-//    )
-//    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
-//    public ResponseEntity<IncidentResponseDTO> updateStatus(
-//            @PathVariable Long id,
-//            @RequestBody IncidentStatusUpdateDTO request,
-//            Authentication auth
-//    ) {
-//        String username = auth.getName();
-//        return ResponseEntity.ok(incidentService.updateStatus(id, request, username));
-//    }
+// [STAFF / ADMIN] — Reject an incident
+// ===============================================================
+    @PutMapping("/{id}/reject")
+    @Operation(
+            summary = "[STAFF / ADMIN] Reject an incident",
+            description = "Reject a pending incident with a specified rejection category and reason."
+    )
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    public ResponseEntity<IncidentResponseDTO> rejectIncident(
+            @PathVariable Long id,
+            @RequestBody IncidentRejectRequestDTO request,
+            Authentication auth
+    ) {
+        String username = auth.getName();
+        return ResponseEntity.ok(incidentService.rejectIncident(id, request, username));
+    }
+
 
     // ===============================================================
     // [CO_OWNER] — Xem tất cả incident do chính mình tạo
