@@ -1,7 +1,6 @@
 package com.group8.evcoownership.controller;
 
-import com.group8.evcoownership.dto.ReviewDocumentRequestDTO;
-import com.group8.evcoownership.dto.UserProfileResponseDTO;
+import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.service.StaffService;
 import com.group8.evcoownership.utils.AuthUtils;
 import io.swagger.v3.oas.annotations.Operation;
@@ -9,6 +8,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -107,4 +107,22 @@ public class StaffController {
         String message = staffService.deleteUser(userId);
         return ResponseEntity.ok(Map.of("message", message));
     }
+
+    @GetMapping("/users/qrcodes")
+    @PreAuthorize("hasRole('STAFF') or hasRole('ADMIN')")
+    @Operation(summary = "Lấy QR Code tất cả users", description = "Lấy tất cả QR Code của tất cả users từ các group và booking (mỗi trang tối đa 10 users)")
+    public ResponseEntity<Page<UserGroupBookingsResponseDTO>> getAllUsersQRCode(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        // Đảm bảo size không vượt quá 10
+        if (size > 10) {
+            size = 10;
+        }
+
+        log.info("Staff fetching all users QR codes - page: {}, size: {}", page, size);
+        Page<UserGroupBookingsResponseDTO> response = staffService.getAllUsersQRCode(page, size);
+        return ResponseEntity.ok(response);
+    }
+
 }
