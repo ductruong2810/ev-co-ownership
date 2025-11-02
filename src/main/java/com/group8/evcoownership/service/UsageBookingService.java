@@ -5,7 +5,6 @@ import com.group8.evcoownership.dto.MaintenanceBookingRequestDTO;
 import com.group8.evcoownership.entity.UsageBooking;
 import com.group8.evcoownership.enums.BookingStatus;
 import com.group8.evcoownership.enums.NotificationType;
-import com.group8.evcoownership.exception.InvalidBookingException;
 import com.group8.evcoownership.repository.UsageBookingRepository;
 import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.repository.VehicleRepository;
