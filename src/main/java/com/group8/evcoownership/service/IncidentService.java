@@ -8,6 +8,9 @@ import com.group8.evcoownership.enums.RejectionCategory;
 import com.group8.evcoownership.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -143,8 +146,8 @@ public class IncidentService {
             throw new IllegalStateException("Only PENDING incidents can be rejected.");
         }
 
-        if (req.getRejectionCategory() == null || req.getRejectionReason() == null || req.getRejectionReason().isBlank()) {
-            throw new IllegalArgumentException("Rejection category and reason are required.");
+        if (req.getRejectionCategory() == null ) {
+            throw new IllegalArgumentException("Rejection category is required.");
         }
 
         User approver = userRepository.findByEmail(username)
@@ -183,6 +186,26 @@ public class IncidentService {
                 .orElseThrow(() -> new EntityNotFoundException("Incident not found"));
         return mapToDTO(incident);
     }
+
+    // Get Filtered
+    public Page<IncidentResponseDTO> getFiltered(String status, String startDate, String endDate, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size); // sort đã nằm trong query nên không cần thêm Sort ở đây
+
+        Page<Incident> incidents;
+
+        boolean noFilter = (status == null || status.isBlank()) &&
+                (startDate == null || startDate.isBlank()) &&
+                (endDate == null || endDate.isBlank());
+
+        if (noFilter) {
+            incidents = incidentRepository.findAll(pageable); // vẫn sort theo ID mặc định
+        } else {
+            incidents = incidentRepository.findByFiltersOrdered(status, startDate, endDate, pageable);
+        }
+
+        return incidents.map(this::mapToDTO);
+    }
+
 
     // Mapping helper
     private IncidentResponseDTO mapToDTO(Incident i) {
