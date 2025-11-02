@@ -29,14 +29,15 @@ public class UsageBookingController {
     private final UserRepository userRepository;
 
     /**
-     * Lấy danh sách booking của user (có thể lọc theo tuần hoặc lấy tất cả upcoming)
+     * Lấy danh sách booking của co-owner theo nhóm (có thể lọc theo tuần hoặc lấy tất cả upcoming)
      * Example:
-     * GET /api/bookings/user-bookings?userId=1
-     * GET /api/bookings/user-bookings?userId=1&weekStart=2025-10-06T00:00:00
+     * GET /api/bookings/user-bookings?groupId=1
+     * GET /api/bookings/user-bookings?groupId=1&weekStart=2025-10-06
      */
     @GetMapping("/user-bookings")
-    @Operation(summary = "Đặt xe của tôi", description = "Lấy danh sách booking của người dùng, có thể lọc theo tuần hoặc lấy tất cả sắp tới")
+    @Operation(summary = "Đặt xe của tôi", description = "Lấy danh sách booking của người dùng theo nhóm, có thể lọc theo tuần")
     public ResponseEntity<?> getUserBookings(
+            @RequestParam Long groupId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart,
             @AuthenticationPrincipal String email
     ) {
@@ -45,18 +46,13 @@ public class UsageBookingController {
 
         List<UsageBooking> bookings;
 
-        if (weekStart != null) {
-            // Convert LocalDate to LocalDateTime at start of day
-            LocalDateTime weekStartDateTime = weekStart.atStartOfDay();
-            bookings = usageBookingService.getUpcomingBookings(userId);
-        } else {
-            bookings = usageBookingService.getUpcomingBookings(userId);
-        }
+        // Luôn lấy theo groupId
+        bookings = usageBookingService.getUpcomingBookingsByGroup(userId, groupId);
 
         // Nếu không có booking, trả về message
         if (bookings.isEmpty()) {
             Map<String, Object> response = new HashMap<>();
-            response.put("message", "No bookings found for this period");
+            response.put("message", "No bookings found for this group and period");
             response.put("bookings", List.of());
             return ResponseEntity.ok(response);
         }
@@ -75,6 +71,7 @@ public class UsageBookingController {
 
         return ResponseEntity.ok(response);
     }
+
 
     /**
      * Xác nhận booking (chuyển từ Pending → Confirmed)

@@ -282,8 +282,24 @@ public class UsageBookingService {
                 result.put("notificationMessage", "Your booking has been cancelled due to vehicle maintenance: " + request.getReason());
             }
         }
-
         return result;
     }
+
+    // lấy booking của co-owner trong tuần theo groupId
+    public List<UsageBooking> getUpcomingBookingsByGroup(Long userId, Long groupId) {
+        // Tính weekStart (đầu tuần hiện tại - Thứ 2 00:00:00)
+        LocalDateTime weekStart = LocalDateTime.now()
+                .with(DayOfWeek.MONDAY)
+                .withHour(0)
+                .withMinute(0)
+                .withSecond(0);
+
+        // Tính weekEnd (7 ngày sau weekStart)
+        LocalDateTime weekEnd = weekStart.plusWeeks(1);
+
+        // Gọi repository với 4 tham số
+        return usageBookingRepository.findBookingsByUserInWeekAndGroup(userId, groupId, weekStart, weekEnd);
+    }
+
 }
 

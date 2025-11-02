@@ -145,6 +145,24 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
                                                              @Param("status") BookingStatus status);
 
 
+    // lay tat ca cac booking cua co-owner trong tuan nhung chia ra
+    // theo tung group
+    @Query("""
+    SELECT ub
+    FROM UsageBooking ub
+    WHERE ub.user.userId = :userId
+      AND ub.vehicle.ownershipGroup.groupId = :groupId
+      AND ub.status = 'CONFIRMED'
+      AND ub.startDateTime >= :weekStart
+      AND ub.startDateTime < :weekEnd
+    ORDER BY ub.startDateTime ASC
+    """)
+    List<UsageBooking> findBookingsByUserInWeekAndGroup(
+            @Param("userId") Long userId,
+            @Param("groupId") Long groupId,
+            @Param("weekStart") LocalDateTime weekStart,
+            @Param("weekEnd") LocalDateTime weekEnd
+    );
 
 }
 
