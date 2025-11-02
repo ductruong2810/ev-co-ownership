@@ -197,8 +197,23 @@ public class VehicleCheckService {
             Vehicle vehicle = vehicleRepository.findById(vehicleId)
                     .orElseThrow(() -> new EntityNotFoundException("Vehicle not found"));
 
-            // Tìm booking active của user cho vehicle này
-            List<UsageBooking> activeBookings = usageBookingRepository.findActiveBookingsByUserAndVehicle(userId, vehicleId);
+            // Lấy tất cả bookings confirmed của user cho vehicle
+            List<UsageBooking> allBookings = usageBookingRepository
+                    .findByUserUserIdAndVehicleIdAndStatus(userId, vehicleId, BookingStatus.CONFIRMED);
+
+            // Filter trong Java - tìm booking active (đang diễn ra hoặc sắp bắt đầu trong 15 phút)
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime checkInWindow = now.plusMinutes(15);
+
+            List<UsageBooking> activeBookings = allBookings.stream()
+                    .filter(b ->
+                            (b.getStartDateTime().isBefore(checkInWindow) ||
+                                    b.getStartDateTime().isEqual(checkInWindow)) &&
+                                    (b.getEndDateTime().isAfter(now) ||
+                                            b.getEndDateTime().isEqual(now))
+                    )
+                    .sorted(java.util.Comparator.comparing(UsageBooking::getStartDateTime))
+                    .toList();
 
             if (activeBookings.isEmpty()) {
                 result.put("success", false);
@@ -216,7 +231,6 @@ public class VehicleCheckService {
             UsageBooking booking = activeBookings.get(0);
 
             // Kiểm tra thời gian
-            LocalDateTime now = LocalDateTime.now();
             boolean canCheckIn = now.isAfter(booking.getStartDateTime().minusMinutes(15))
                     && now.isBefore(booking.getEndDateTime());
 
@@ -250,6 +264,7 @@ public class VehicleCheckService {
 
         return result;
     }
+
 
     /**
      * Parse QR code để lấy vehicle ID
