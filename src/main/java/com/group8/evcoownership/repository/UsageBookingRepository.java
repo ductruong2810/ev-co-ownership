@@ -55,7 +55,7 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
                                                      @Param("end") LocalDateTime end);
 
 
-    // Lấy danh sách booking của xe trong 1 ngày với thông tin user (để hiển thị slot trống)
+    // Lấy danh sách booking của xe trong 1 ngày với thông tin co-owner (để hiển thị slot trống)
     @Query("""
                 SELECT ub
                 FROM UsageBooking ub

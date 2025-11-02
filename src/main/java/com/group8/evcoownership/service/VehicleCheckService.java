@@ -31,8 +31,16 @@ public class VehicleCheckService {
     public VehicleCheck createPreUseCheck(Long bookingId, Long userId, Integer odometer,
                                           BigDecimal batteryLevel, String cleanliness,
                                           String notes, String issues) {
+        // Validate inputs
+        if (bookingId == null) {
+            throw new IllegalArgumentException("Booking ID is required");
+        }
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID is required");
+        }
+
         UsageBooking booking = usageBookingRepository.findById(bookingId)
-                .orElseThrow(() -> new EntityNotFoundException("Booking not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Booking not found with ID: " + bookingId));
 
         // VALIDATION: Kiểm tra booking có thuộc về user không
         if (!booking.getUser().getUserId().equals(userId)) {
@@ -41,7 +49,7 @@ public class VehicleCheckService {
 
         // VALIDATION: Kiểm tra booking status
         if (booking.getStatus() != BookingStatus.CONFIRMED) {
-            throw new IllegalStateException("Only confirmed bookings can be checked-in");
+            throw new IllegalStateException("Only confirmed bookings can be checked-in. Current status: " + booking.getStatus());
         }
 
         // VALIDATION: Kiểm tra thời gian check-in
@@ -72,21 +80,30 @@ public class VehicleCheckService {
         return vehicleCheckRepository.save(check);
     }
 
+
     // User tạo post-use check với validation
     public VehicleCheck createPostUseCheck(Long bookingId, Long userId, Integer odometer,
                                            BigDecimal batteryLevel, String cleanliness,
                                            String notes, String issues) {
+        // Validate inputs
+        if (bookingId == null) {
+            throw new IllegalArgumentException("Booking ID is required");
+        }
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID is required");
+        }
+
         UsageBooking booking = usageBookingRepository.findById(bookingId)
-                .orElseThrow(() -> new EntityNotFoundException("Booking not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Booking not found with ID: " + bookingId));
 
         // VALIDATION: Kiểm tra booking có thuộc về user không
         if (!booking.getUser().getUserId().equals(userId)) {
-            throw new SecurityException("You can only check-in your own bookings");
+            throw new SecurityException("You can only check-out your own bookings");
         }
 
         // VALIDATION: Kiểm tra booking status
         if (booking.getStatus() != BookingStatus.CONFIRMED) {
-            throw new IllegalStateException("Only confirmed bookings can be checked-out");
+            throw new IllegalStateException("Only confirmed bookings can be checked-out. Current status: " + booking.getStatus());
         }
 
         // VALIDATION: Kiểm tra đã làm pre-use check chưa
@@ -112,6 +129,7 @@ public class VehicleCheckService {
 
         return vehicleCheckRepository.save(check);
     }
+
 
     // User từ chối xe với validation
     public VehicleCheck rejectVehicle(Long bookingId, Long userId, String issues, String notes) {

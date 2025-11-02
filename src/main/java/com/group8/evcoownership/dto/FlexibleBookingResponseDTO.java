@@ -11,4 +11,5 @@ public class FlexibleBookingResponseDTO {
     private String message;
     private Long totalHours;
     private boolean overnightBooking;
+    private String qrCode; //Json String cho ma QR code
 }
