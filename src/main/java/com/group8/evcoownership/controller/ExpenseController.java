@@ -80,7 +80,7 @@ public class ExpenseController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size
     ) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Pageable pageable = PageRequest.of(page, size);
         return ResponseEntity.ok(expenseService.getAll(fundId, sourceType, status, approvedById, recipientUserId, pageable));
     }
 
