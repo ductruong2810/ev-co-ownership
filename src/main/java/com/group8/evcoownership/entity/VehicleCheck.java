@@ -1,10 +1,12 @@
 package com.group8.evcoownership.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.Nationalized;
 
 import java.math.BigDecimal;
@@ -24,6 +26,7 @@ public class VehicleCheck {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "BookingId")
+    @JsonIgnoreProperties({"vehicleChecks", "user", "vehicle", "handler", "hibernateLazyInitializer"})
     private UsageBooking booking;
 
     @Column(name = "CheckType", length = 20)
@@ -51,11 +54,7 @@ public class VehicleCheck {
     @Column(name = "Status", length = 20)
     private String status; // PASSED, REJECTED, PENDING
 
+    @CreationTimestamp
     @Column(name = "CreatedAt")
     private LocalDateTime createdAt;
-
-    @PrePersist
-    public void onCreate() {
-        createdAt = LocalDateTime.now();
-    }
 }
