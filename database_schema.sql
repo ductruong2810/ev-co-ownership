@@ -895,5 +895,13 @@ WHERE UpdatedAt IS NULL;
 GO
 
 
-
+--------------------------------------------------------
+-- them QrCode vao Usage
+ALTER TABLE UsageBooking
+    ADD QrCode VARCHAR(255) NULL;
+-- them RejectionCategory va RejectionReason vao Incident
+ALTER TABLE Incident
+    ADD
+        RejectionCategory VARCHAR(50) NULL,
+        RejectionReason NVARCHAR(MAX) NULL;
 
