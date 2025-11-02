@@ -5,7 +5,6 @@ import com.group8.evcoownership.entity.OwnershipGroup;
 import com.group8.evcoownership.entity.UsageBooking;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.entity.UserDocument;
-import com.group8.evcoownership.enums.GroupStatus;
 import com.group8.evcoownership.enums.RoleName;
 import com.group8.evcoownership.enums.UserStatus;
 import com.group8.evcoownership.exception.ResourceNotFoundException;

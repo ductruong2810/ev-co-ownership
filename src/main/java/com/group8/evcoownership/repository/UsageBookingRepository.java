@@ -1,6 +1,5 @@
 package com.group8.evcoownership.repository;
 
-import com.group8.evcoownership.entity.OwnershipGroup;
 import com.group8.evcoownership.entity.UsageBooking;
 import com.group8.evcoownership.enums.BookingStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
