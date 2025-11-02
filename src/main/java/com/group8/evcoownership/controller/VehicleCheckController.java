@@ -1,5 +1,6 @@
 package com.group8.evcoownership.controller;
 
+import com.group8.evcoownership.dto.QrCheckInRequestDTO;
 import com.group8.evcoownership.dto.VehicleCheckRequestDTO;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.entity.VehicleCheck;
@@ -14,7 +15,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -178,13 +178,13 @@ public class VehicleCheckController {
     @PostMapping("/qr-checkin")
     @PreAuthorize("hasRole('CO_OWNER')")
     @Operation(summary = "Check-in bằng QR code", description = "Quét QR code để check-in và tìm booking đang hoạt động")
-    public ResponseEntity<Map<String, Object>> qrCheckIn(@RequestParam String qrCode) {
+    public ResponseEntity<Map<String, Object>> qrCheckIn(@Valid @RequestBody QrCheckInRequestDTO request) {
         // Lấy user từ JWT token
         String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
         User currentUser = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        Map<String, Object> result = vehicleCheckService.processQrCheckIn(qrCode, currentUser.getUserId());
+        Map<String, Object> result = vehicleCheckService.processQrCheckIn(request.qrCode(), currentUser.getUserId());
         return ResponseEntity.ok(result);
     }
 }
