@@ -61,8 +61,8 @@ public class MaintenanceService {
     }
 
     // =================== GET ALL ===================
-    public List<MaintenanceResponseDTO> getAll(){
-        return maintenanceRepository.findAll()
+    public List<MaintenanceResponseDTO> getAll() {
+        return maintenanceRepository.findAllSorted()
                 .stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
@@ -70,15 +70,12 @@ public class MaintenanceService {
 
     // ================ GET MY MAINTENANCE ===========
     public List<MaintenanceResponseDTO> getMyRequests(String username) {
-        User technician = userRepository.findByEmail(username)
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
-
-        List<Maintenance> maintenances = maintenanceRepository.findByRequestedBy(technician);
-
-        return maintenances.stream()
+        return maintenanceRepository.findAllByTechnicianEmailSorted(username)
+                .stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
     }
+
 
 
     // =================== UPDATE ===================
