@@ -40,9 +40,12 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
-                // stateless cho JWT
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // 1. OPTIONS requests (CORS preflight) - ĐẶT ĐẦU
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // 2. Public endpoints
                         .requestMatchers(
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
@@ -61,8 +64,15 @@ public class SecurityConfig {
                                 "/api/ocr/**",
                                 "/api/deposits/deposit-callback"
                         ).permitAll()
-                        .requestMatchers("/api/staff/**", "/api/admin/**").hasAnyRole("STAFF", "ADMIN")
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // 3. Role-based endpoints - ĐẶT TRƯỚC .anyRequest()
+                        .requestMatchers("/api/vehicle-checks/**")
+                        .hasAnyRole("CO_OWNER", "ADMIN", "STAFF", "TECHNICIAN")
+
+                        .requestMatchers("/api/staff/**", "/api/admin/**")
+                        .hasAnyRole("STAFF", "ADMIN")
+
+                        // 4. Authenticated endpoints - ĐẶT CUỐI CÙNG
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex
@@ -73,6 +83,7 @@ public class SecurityConfig {
 
         return http.build();
     }
+
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
