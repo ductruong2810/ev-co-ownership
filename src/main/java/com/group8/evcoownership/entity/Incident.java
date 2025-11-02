@@ -30,9 +30,10 @@ public class Incident {
 
     // FK → Users (người đồng sở hữu / co-owner báo cáo sự cố)
     @NotNull
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "ReportedBy", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "UserId", nullable = false)
     private User reportedBy;
+
 
     // Mô tả chi tiết sự cố
     @Nationalized
