@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -19,6 +20,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -30,6 +33,8 @@ public class VehicleCheckController {
 
     private final VehicleCheckService vehicleCheckService;
     private final UserRepository userRepository;
+    @Value("${frontend.base.url:http://localhost:3000}")
+    private String frontendBaseUrl;
 
     /**
      * User tạo pre-use check với JWT authentication
@@ -190,14 +195,36 @@ public class VehicleCheckController {
 
         Map<String, Object> result = vehicleCheckService.processQrCheckIn(request.qrCode(), currentUser.getUserId());
         boolean success = Boolean.TRUE.equals(result.get("success"));
-        Object redirect = result.get("redirectUrl");
-        if (success && redirect instanceof String redirectUrl && !redirectUrl.isBlank()) {
+        Long groupId = result.get("groupId") instanceof Number number ? number.longValue() : null;
+        String message = result.get("message") != null ? result.get("message").toString() : "";
+        Long bookingId = result.get("bookingId") instanceof Number bk ? bk.longValue() : null;
+
+        if (groupId != null) {
+            String encodedMessage = URLEncoder.encode(message, StandardCharsets.UTF_8);
+            String basePath = String.format("%s/dashboard/viewGroups/%d/checkin-result", frontendBaseUrl, groupId);
+            String messageQuery = encodedMessage.isEmpty() ? "" : "&message=" + encodedMessage;
+            String bookingQuery = bookingId != null ? "&bookingId=" + bookingId : "";
+            String target;
+            if (success) {
+                target = String.format("%s?status=success%s%s", basePath, bookingQuery, messageQuery);
+            } else {
+                target = String.format("%s?status=fail%s%s", basePath, bookingQuery, messageQuery);
+            }
             return ResponseEntity.status(HttpStatus.SEE_OTHER)
-                    .location(URI.create(redirectUrl))
+                    .location(URI.create(target))
                     .build();
         }
 
-        return ResponseEntity.ok(result);
+        if (success) {
+            return ResponseEntity.status(HttpStatus.SEE_OTHER)
+                    .location(URI.create(frontendBaseUrl + "/dashboard?status=success"))
+                    .build();
+        }
+
+        return ResponseEntity.status(HttpStatus.SEE_OTHER)
+                .location(URI.create(String.format("%s/checkin-result?status=fail&message=%s",
+                        frontendBaseUrl, URLEncoder.encode(message, StandardCharsets.UTF_8))))
+                .build();
     }
 
     /**
