@@ -23,10 +23,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.*;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+
 import org.springframework.data.domain.PageRequest;
 
 @Service
@@ -108,11 +106,11 @@ public class WeeklyCalendarService {
     /**
      * Get dashboard summary for vehicle and group
      */
-    private WeeklyCalendarDashboardDTO getDashboardSummary(Long vehicleId, Long groupId, Vehicle vehicle, 
+    private WeeklyCalendarDashboardDTO getDashboardSummary(Long vehicleId, Long groupId, Vehicle vehicle,
                                                            LocalDate weekStart, Long userId) {
         // 1. Get vehicle status from latest POST_USE check
         VehicleCheck latestCheck = getLatestVehicleCheck(vehicleId, groupId);
-        
+
         Integer batteryPercent = null;
         Integer odometer = null;
         if (latestCheck != null) {
@@ -135,13 +133,13 @@ public class WeeklyCalendarService {
         // 5. Calculate booking statistics for the week
         LocalDateTime weekStartDateTime = weekStart.atStartOfDay();
         LocalDateTime weekEndDateTime = weekStart.plusDays(7).atStartOfDay();
-        
+
         // Count total bookings for the week (CONFIRMED only)
         int totalBookings = countTotalBookingsInWeek(vehicleId, weekStartDateTime, weekEndDateTime);
-        
+
         // Count user bookings for the week
         int userBookings = countUserBookingsInWeek(vehicleId, userId, weekStartDateTime, weekEndDateTime);
-        
+
         // Get user's ownership percentage (tỷ lệ sở hữu)
         Double ownershipPercent = ownershipShareRepository.findById_UserIdAndGroup_GroupId(userId, groupId)
                 .map(share -> {
@@ -169,7 +167,7 @@ public class WeeklyCalendarService {
                 .ownershipPercent(ownershipPercent)
                 .build();
     }
-    
+
     /**
      * Count total bookings for vehicle in the week (CONFIRMED and PENDING only)
      * Counts unique bookings that overlap with the week period
@@ -178,16 +176,16 @@ public class WeeklyCalendarService {
         // Use findAffectedBookings pattern to get all bookings that overlap with the week
         List<UsageBooking> bookings = usageBookingRepository.findAffectedBookings(
                 vehicleId, weekStart, weekEnd);
-        
+
         // Count unique bookings (CONFIRMED only, exclude BUFFER)
         Set<Long> uniqueBookingIds = new HashSet<>();
         bookings.stream()
                 .filter(b -> b.getStatus() == BookingStatus.CONFIRMED)
                 .forEach(b -> uniqueBookingIds.add(b.getId()));
-        
+
         return uniqueBookingIds.size();
     }
-    
+
     /**
      * Count user bookings for vehicle in the week
      * Counts unique bookings that overlap with the week period
@@ -196,14 +194,14 @@ public class WeeklyCalendarService {
         // Use findAffectedBookings to get all bookings for vehicle that overlap with the week
         List<UsageBooking> bookings = usageBookingRepository.findAffectedBookings(
                 vehicleId, weekStart, weekEnd);
-        
+
         // Filter by user and count unique bookings (CONFIRMED only)
         Set<Long> uniqueBookingIds = new HashSet<>();
         bookings.stream()
                 .filter(b -> b.getUser() != null && b.getUser().getUserId().equals(userId))
                 .filter(b -> b.getStatus() == BookingStatus.CONFIRMED)
                 .forEach(b -> uniqueBookingIds.add(b.getId()));
-        
+
         return uniqueBookingIds.size();
     }
 
@@ -214,7 +212,7 @@ public class WeeklyCalendarService {
         // Try to get from latest completed booking first
         List<UsageBooking> latestCompletedBookings = usageBookingRepository.findLatestCompletedBookingByVehicleAndGroup(
                 vehicleId, groupId);
-        
+
         if (!latestCompletedBookings.isEmpty()) {
             UsageBooking latestCompletedBooking = latestCompletedBookings.get(0);
             // Get POST_USE check from the latest completed booking
@@ -223,12 +221,12 @@ public class WeeklyCalendarService {
                     .filter(vc -> "POST_USE".equals(vc.getCheckType()))
                     .findFirst()
                     .orElse(null);
-            
+
             if (latestCheck != null) {
                 return latestCheck;
             }
         }
-        
+
         // Fallback: if no POST_USE check from latest booking, get latest POST_USE check from any booking of this group
         List<VehicleCheck> groupPostUseChecks = vehicleCheckRepository.findLatestPostUseCheckByVehicleAndGroup(
                 vehicleId, groupId, PageRequest.of(0, 1));
@@ -248,11 +246,11 @@ public class WeeklyCalendarService {
      */
     private MaintenanceDates getMaintenanceDates(Long vehicleId, Long groupId) {
         MaintenanceDates dates = new MaintenanceDates();
-        
+
         Maintenance latestApprovedMaintenance = maintenanceRepository
                 .findLatestApprovedMaintenance(vehicleId, groupId)
                 .orElse(null);
-        
+
         if (latestApprovedMaintenance != null) {
             // Use ApprovalDate as lastMaintenanceDate (when maintenance was approved/completed)
             if (latestApprovedMaintenance.getApprovalDate() != null) {
@@ -261,7 +259,7 @@ public class WeeklyCalendarService {
                 // Fallback to requestDate if approvalDate is null
                 dates.lastMaintenanceDate = latestApprovedMaintenance.getRequestDate().toLocalDate();
             }
-            
+
             // Use NextDueDate from database if available, otherwise calculate 3 months after approval
             if (latestApprovedMaintenance.getNextDueDate() != null) {
                 dates.nextMaintenanceDate = latestApprovedMaintenance.getNextDueDate();
@@ -270,7 +268,7 @@ public class WeeklyCalendarService {
                 dates.nextMaintenanceDate = dates.lastMaintenanceDate.plusMonths(3);
             }
         }
-        
+
         return dates;
     }
 
@@ -279,7 +277,7 @@ public class WeeklyCalendarService {
      */
     private String determineMaintenanceStatus(Long vehicleId, Long groupId, LocalDate nextMaintenanceDate) {
         boolean hasPendingMaintenance = maintenanceRepository.existsByVehicle_IdAndGroupIdAndStatusPending(vehicleId, groupId);
-        
+
         if (hasPendingMaintenance) {
             return "NEEDS_MAINTENANCE";
         } else if (nextMaintenanceDate != null && LocalDate.now().isAfter(nextMaintenanceDate.minusDays(7))) {
@@ -300,7 +298,7 @@ public class WeeklyCalendarService {
         boolean hasActiveMaintenance = maintenanceRepository.existsActiveMaintenance(vehicleId, groupId);
         boolean hasVehicleCheckIssues = vehicleCheckRepository.existsPostUseCheckWithIssuesByVehicleAndGroup(vehicleId, groupId);
         boolean hasUnresolvedIncidents = incidentRepository.existsUnresolvedIncidentsByVehicleIdAndGroupId(vehicleId, groupId);
-        
+
         if (hasActiveMaintenance) {
             return "Under Maintenance";
         } else if (hasVehicleCheckIssues || hasUnresolvedIncidents) {
@@ -546,21 +544,12 @@ public class WeeklyCalendarService {
 
         UsageBooking savedBooking = usageBookingRepository.save(booking);
 
-        // tao qr code json string
-        String qrCodeData = String.format(
-                "{\"bookingId\":%d,\"userId\":%d,\"vehicleId\":%d,\"startTime\":\"%s\",\"endTime\":\"%s\"}",
-                savedBooking.getId(),
-                user.getUserId(),
-                vehicle.getId(),
-                savedBooking.getStartDateTime().toString(),
-                savedBooking.getEndDateTime().toString()
-        );
+        // CHỈ tạo QR code check-in khi tạo booking
+        String qrCodeCheckin = generateCheckInQrPayload(savedBooking);
 
-        // luu qr code vao database
-        savedBooking.setQrCode(qrCodeData);
+        savedBooking.setQrCodeCheckin(qrCodeCheckin);
         usageBookingRepository.save(savedBooking);
 
-        // Determine if this is an overnight booking
         boolean overnightBooking = !request.getStartDateTime().toLocalDate()
                 .equals(request.getEndDateTime().toLocalDate());
 
@@ -570,8 +559,29 @@ public class WeeklyCalendarService {
                 .message(overnightBooking ? "Overnight booking created successfully" : "Booking created successfully")
                 .totalHours(newBookingHours)
                 .overnightBooking(overnightBooking)
-                //lon nao xoa t giet
-                .qrCode(qrCodeData)
+                .qrCodeCheckin(qrCodeCheckin)
+                .qrCodeCheckout(null)  // Chưa có QR checkout
+                .startDateTime(savedBooking.getStartDateTime())
+                .endDateTime(savedBooking.getEndDateTime())
+                .createdAt(savedBooking.getCreatedAt())
                 .build();
+
     }
+
+    private String generateCheckInQrPayload(UsageBooking booking) {
+        String startTime = booking.getStartDateTime() != null ? "\"" + booking.getStartDateTime() + "\"" : "null";
+        String endTime = booking.getEndDateTime() != null ? "\"" + booking.getEndDateTime() + "\"" : "null";
+
+        // Bỏ timestamp và nonce
+        return String.format(
+                "{\"bookingId\":%d,\"userId\":%d,\"vehicleId\":%d,\"phase\":\"CHECKIN\",\"startTime\":%s,\"endTime\":%s}",
+                booking.getId(),
+                booking.getUser() != null ? booking.getUser().getUserId() : null,
+                booking.getVehicle() != null ? booking.getVehicle().getId() : null,
+                startTime,
+                endTime
+        );
+    }
+
+
 }
