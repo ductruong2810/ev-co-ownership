@@ -98,7 +98,7 @@ public class DepositPaymentController {
     }
 
     /**
-     * ✅ Xử lý VNPay callback cho deposit payment
+     * Xử lý VNPay callback cho deposit payment
      */
     @GetMapping("/deposit-callback")
     public void handleDepositCallback(
