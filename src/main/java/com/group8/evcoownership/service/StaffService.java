@@ -1,6 +1,5 @@
 package com.group8.evcoownership.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.entity.OwnershipGroup;
