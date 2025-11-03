@@ -13,13 +13,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -187,8 +185,7 @@ public class VehicleCheckController {
     @PostMapping("/qr-checkin")
     @PreAuthorize("hasRole('CO_OWNER')")
     @Operation(summary = "Check-in bằng QR code", description = "Quét QR code để check-in và tìm booking đang hoạt động")
-    public ResponseEntity<?> qrCheckIn(@Valid @RequestBody QrCheckInRequestDTO request,
-                                       @RequestParam(value = "debug", defaultValue = "false") boolean debug) {
+    public ResponseEntity<?> qrCheckIn(@Valid @RequestBody QrCheckInRequestDTO request) {
         // Lấy user từ JWT token
         String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
         User currentUser = userRepository.findByEmail(userEmail)
@@ -200,9 +197,7 @@ public class VehicleCheckController {
         String message = result.get("message") != null ? result.get("message").toString() : "";
         Long bookingId = result.get("bookingId") instanceof Number bk ? bk.longValue() : null;
 
-        if (debug) {
-            return ResponseEntity.ok(result);
-        }
+        result.put("status", success ? "success" : "fail");
 
         if (groupId != null) {
             String encodedMessage = URLEncoder.encode(message, StandardCharsets.UTF_8);
@@ -215,21 +210,20 @@ public class VehicleCheckController {
             } else {
                 target = String.format("%s?status=fail%s%s", basePath, bookingQuery, messageQuery);
             }
-            return ResponseEntity.status(HttpStatus.SEE_OTHER)
-                    .location(URI.create(target))
-                    .build();
+            result.put("redirectUrl", target);
+            return ResponseEntity.ok(result);
         }
 
         if (success) {
-            return ResponseEntity.status(HttpStatus.SEE_OTHER)
-                    .location(URI.create(frontendBaseUrl + "/dashboard?status=success"))
-                    .build();
+            String target = frontendBaseUrl + "/dashboard?status=success";
+            result.put("redirectUrl", target);
+            return ResponseEntity.ok(result);
         }
 
-        return ResponseEntity.status(HttpStatus.SEE_OTHER)
-                .location(URI.create(String.format("%s/checkin-result?status=fail&message=%s",
-                        frontendBaseUrl, URLEncoder.encode(message, StandardCharsets.UTF_8))))
-                .build();
+        String target = String.format("%s/checkin-result?status=fail&message=%s",
+                frontendBaseUrl, URLEncoder.encode(message, StandardCharsets.UTF_8));
+        result.put("redirectUrl", target);
+        return ResponseEntity.ok(result);
     }
 
     /**
