@@ -1,5 +1,6 @@
 package com.group8.evcoownership.dto;
 
+import com.fasterxml.jackson.annotation.JsonRawValue;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -17,7 +18,9 @@ public class BookingResponseDTO {
     private LocalDateTime startDateTime;
     private LocalDateTime endDateTime;
     private String status;
+    @JsonRawValue
     private String qrCodeCheckin;      // Thêm
+    @JsonRawValue
     private String qrCodeCheckout;     // Thêm
     private LocalDateTime createdAt;
 }
