@@ -80,6 +80,38 @@ public class StaffService {
                 .collect(Collectors.toList());
     }
 
+    public List<GroupBookingDTO> getGroupsByUserId(Long userId) {
+        // Kiểm tra user tồn tại
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+
+        // Lấy danh sách groups của user
+        List<OwnershipGroup> groups = ownershipGroupRepository.findByMembersUserId(userId);
+
+        // Map sang DTO với bookings
+        return groups.stream()
+                .map(group -> {
+                    List<UsageBooking> bookings = usageBookingRepository.findAllBookingsByGroupId(group.getGroupId());
+
+                    List<BookingQRCodeDTO> bookingDTOs = bookings.stream()
+                            .sorted((b1, b2) -> Long.compare(b1.getId(), b2.getId()))
+                            .map(booking -> new BookingQRCodeDTO(
+                                    booking.getId(),
+                                    booking.getQrCode(),
+                                    booking.getStartDateTime() != null ? booking.getStartDateTime().toString() : null,
+                                    booking.getEndDateTime() != null ? booking.getEndDateTime().toString() : null
+                            ))
+                            .toList();
+
+                    return new GroupBookingDTO(
+                            group.getGroupId(),
+                            group.getGroupName(),
+                            bookingDTOs
+                    );
+                })
+                .toList();
+    }
+    
     @Transactional
     public String reviewDocument(Long documentId, ReviewDocumentRequestDTO request, String staffEmail) {
         UserDocument document = userDocumentRepository.findById(documentId)
@@ -187,6 +219,8 @@ public class StaffService {
                                 List<UsageBooking> bookings = usageBookingRepository.findAllBookingsByGroupId(group.getGroupId());
 
                                 List<BookingQRCodeDTO> bookingDTOs = bookings.stream()
+                                        //11/3/2025
+                                        .sorted((b1, b2) -> Long.compare(b1.getId(), b2.getId()))
                                         .map(booking -> new BookingQRCodeDTO(
                                                 booking.getId(),
                                                 booking.getQrCode(),

@@ -570,6 +570,8 @@ public class WeeklyCalendarService {
                 .message(overnightBooking ? "Overnight booking created successfully" : "Booking created successfully")
                 .totalHours(newBookingHours)
                 .overnightBooking(overnightBooking)
+                //lon nao xoa t giet
+                .qrCode(qrCodeData)
                 .build();
     }
 }
