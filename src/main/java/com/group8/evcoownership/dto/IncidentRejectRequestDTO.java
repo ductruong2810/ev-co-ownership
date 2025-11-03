@@ -14,7 +14,6 @@ public class IncidentRejectRequestDTO {
     @NotNull(message = "Rejection category is required")
     private RejectionCategory rejectionCategory; // bắt buộc chọn
 
-    @NotBlank(message = "Rejection reason is required")
-    private String rejectionReason; // bắt buộc nhập (không được để trống hoặc chỉ có khoảng trắng)
+    private String rejectionReason;
 }
 

@@ -9,20 +9,29 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-
 @Repository
 public interface ExpenseRepository extends JpaRepository<Expense, Long> {
+
     List<Expense> findByFund_Group_GroupId(Long groupId);
 
     @Query("""
-    SELECT e FROM Expense e
-    WHERE (:fundId IS NULL OR e.fund.fundId = :fundId)
-      AND (:sourceType IS NULL OR e.sourceType = :sourceType)
-      AND (:status IS NULL OR e.status = :status)
-      AND (:approvedById IS NULL OR e.approvedBy.userId = :approvedById)
-      AND (:recipientUserId IS NULL OR e.recipientUser.userId = :recipientUserId)
-""")
-    Page<Expense> findFiltered(
+        SELECT e FROM Expense e
+        WHERE (:fundId IS NULL OR e.fund.fundId = :fundId)
+          AND (:sourceType IS NULL OR e.sourceType = :sourceType)
+          AND (:status IS NULL OR e.status = :status)
+          AND (:approvedById IS NULL OR e.approvedBy.userId = :approvedById)
+          AND (:recipientUserId IS NULL OR e.recipientUser.userId = :recipientUserId)
+        ORDER BY 
+          CASE 
+            WHEN e.status = 'PENDING' THEN 1
+            WHEN e.status = 'APPROVED' THEN 2
+            WHEN e.status = 'COMPLETED' THEN 3
+            WHEN e.status = 'REJECTED' THEN 4
+            ELSE 5
+          END,
+          e.createdAt DESC
+    """)
+    Page<Expense> findAllFiltered(
             @Param("fundId") Long fundId,
             @Param("sourceType") String sourceType,
             @Param("status") String status,
@@ -30,5 +39,4 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
             @Param("recipientUserId") Long recipientUserId,
             Pageable pageable
     );
-
 }
