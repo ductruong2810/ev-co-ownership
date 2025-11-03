@@ -128,18 +128,6 @@ public class IncidentController {
         return ResponseEntity.ok(incidentService.getMyIncidents(username));
     }
 
-    // ===============================================================
-    // [STAFF / ADMIN] — Xem tất cả incident trong hệ thống
-    // ===============================================================
-//    @GetMapping
-//    @Operation(
-//            summary = "[STAFF / ADMIN] Get all incidents",
-//            description = "Returns all incidents for review and verification."
-//    )
-//    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
-//    public ResponseEntity<List<IncidentResponseDTO>> getAllIncidents() {
-//        return ResponseEntity.ok(incidentService.getAll());
-//    }
 
     // ===============================================================
     // [ALL ROLES: CO_OWNER / STAFF / ADMIN] — Xem chi tiết 1 incident
