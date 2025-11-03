@@ -10,10 +10,12 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class BookingQRCodeDTO {
     private Long bookingId;
-
+//    private String qrCode;
     @JsonRawValue
-    private String qrCode;
-
+    private String qrCodeCheckin;
+    @JsonRawValue
+    private String qrCodeCheckout;
     private String startDateTime;
     private String endDateTime;
+    private String createdAt;
 }

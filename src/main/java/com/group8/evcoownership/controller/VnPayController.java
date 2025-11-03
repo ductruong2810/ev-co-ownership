@@ -36,7 +36,6 @@ public class VnPayController {
         return ResponseEntity.ok(map);
     }
 
-
     @GetMapping("/vn-pay-callback")
     @Operation(summary = "Xử lý callback VNPay", description = "Xử lý callback từ VNPay sau khi thanh toán")
     public void payCallbackHandler(HttpServletRequest request, HttpServletResponse response) throws Exception {
