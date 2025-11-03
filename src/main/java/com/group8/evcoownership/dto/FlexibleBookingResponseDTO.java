@@ -1,5 +1,6 @@
 package com.group8.evcoownership.dto;
 
+import com.fasterxml.jackson.annotation.JsonRawValue;
 import lombok.Builder;
 import lombok.Data;
 
@@ -14,7 +15,10 @@ public class FlexibleBookingResponseDTO {
     private Long totalHours;
     private boolean overnightBooking;
 //    private String qrCode;//thinh moi them vo nha
+    @JsonRawValue
     private String qrCodeCheckin;
+
+    @JsonRawValue
     private String qrCodeCheckout;
     private LocalDateTime startDateTime;
     private LocalDateTime endDateTime;
