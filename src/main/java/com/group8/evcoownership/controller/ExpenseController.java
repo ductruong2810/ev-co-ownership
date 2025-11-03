@@ -61,7 +61,7 @@ public class ExpenseController {
 
     // ================== GET ALL ===================
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','STAFF','TECHNICIAN')")
+    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     @Operation(summary = "[STAFF/ADMIN] Danh sách Expense (lọc linh hoạt)", description = """
         Lấy danh sách chi phí có thể lọc theo nhiều điều kiện:
         - fundId: ID của quỹ
