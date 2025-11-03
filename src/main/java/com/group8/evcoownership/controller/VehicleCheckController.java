@@ -187,7 +187,8 @@ public class VehicleCheckController {
     @PostMapping("/qr-checkin")
     @PreAuthorize("hasRole('CO_OWNER')")
     @Operation(summary = "Check-in bằng QR code", description = "Quét QR code để check-in và tìm booking đang hoạt động")
-    public ResponseEntity<?> qrCheckIn(@Valid @RequestBody QrCheckInRequestDTO request) {
+    public ResponseEntity<?> qrCheckIn(@Valid @RequestBody QrCheckInRequestDTO request,
+                                       @RequestParam(value = "debug", defaultValue = "false") boolean debug) {
         // Lấy user từ JWT token
         String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
         User currentUser = userRepository.findByEmail(userEmail)
@@ -198,6 +199,10 @@ public class VehicleCheckController {
         Long groupId = result.get("groupId") instanceof Number number ? number.longValue() : null;
         String message = result.get("message") != null ? result.get("message").toString() : "";
         Long bookingId = result.get("bookingId") instanceof Number bk ? bk.longValue() : null;
+
+        if (debug) {
+            return ResponseEntity.ok(result);
+        }
 
         if (groupId != null) {
             String encodedMessage = URLEncoder.encode(message, StandardCharsets.UTF_8);
