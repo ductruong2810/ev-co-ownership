@@ -215,6 +215,5 @@ public class StaffService {
         return new PageImpl<>(usersWithQRCodes, pageable, userPage.getTotalElements());
     }
 
-
 }
 
