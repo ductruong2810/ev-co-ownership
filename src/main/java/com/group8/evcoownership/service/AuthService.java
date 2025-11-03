@@ -7,6 +7,7 @@ import com.group8.evcoownership.enums.OtpType;
 import com.group8.evcoownership.enums.RoleName;
 import com.group8.evcoownership.enums.UserStatus;
 import com.group8.evcoownership.exception.InvalidCredentialsException;
+import com.group8.evcoownership.exception.ResourceNotFoundException;
 import com.group8.evcoownership.repository.RoleRepository;
 import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.utils.JwtUtil;
@@ -88,7 +89,7 @@ public class AuthService {
 
         String email = jwtUtil.extractEmail(refreshToken);
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found for email: " + email));
 
         if (user.getStatus() != UserStatus.ACTIVE) {
             throw new IllegalStateException("Account is not activated");

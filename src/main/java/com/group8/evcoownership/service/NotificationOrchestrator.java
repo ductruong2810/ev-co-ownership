@@ -3,6 +3,7 @@ package com.group8.evcoownership.service;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.enums.NotificationType;
 import com.group8.evcoownership.entity.Contract;
+import com.group8.evcoownership.exception.ResourceNotFoundException;
 import com.group8.evcoownership.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,7 +29,7 @@ public class NotificationOrchestrator {
     public void sendComprehensiveNotification(Long userId, NotificationType type, String title, String message,
                                               Map<String, Object> additionalData) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
 
         // 1. In-app notification
         notificationService.sendNotification(user, title, message, type.getCode());
@@ -50,7 +51,8 @@ public class NotificationOrchestrator {
         Map<String, Object> data = Map.of("bookingId", bookingId);
 
         // In-app
-        User user = userRepository.findById(userId).orElseThrow();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
         notificationService.sendNotification(user, title, message, type.getCode());
 
         // WebSocket
@@ -81,7 +83,8 @@ public class NotificationOrchestrator {
     public void sendContractNotification(Long userId, NotificationType type, String title, String message, Long contractId) {
         Map<String, Object> data = Map.of("contractId", contractId);
 
-        User user = userRepository.findById(userId).orElseThrow();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
         notificationService.sendNotification(user, title, message, type.getCode());
         webSocketService.sendContractNotification(userId, type, title, message, contractId);
 
@@ -96,7 +99,8 @@ public class NotificationOrchestrator {
     public void sendPaymentNotification(Long userId, NotificationType type, String title, String message, Long paymentId) {
         Map<String, Object> data = Map.of("paymentId", paymentId);
 
-        User user = userRepository.findById(userId).orElseThrow();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
         notificationService.sendNotification(user, title, message, type.getCode());
         webSocketService.sendPaymentNotification(userId, type, title, message, paymentId);
 
@@ -153,7 +157,8 @@ public class NotificationOrchestrator {
     public void sendMaintenanceNotification(Long userId, NotificationType type, String title, String message, Long maintenanceId) {
         Map<String, Object> data = Map.of("maintenanceId", maintenanceId);
 
-        User user = userRepository.findById(userId).orElseThrow();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
         notificationService.sendNotification(user, title, message, type.getCode());
         webSocketService.sendToUser(userId, type, title, message, "HIGH",
                 "/maintenance/" + maintenanceId, data);
@@ -187,7 +192,8 @@ public class NotificationOrchestrator {
      * Send group invitation notification
      */
     public void sendGroupInvitation(Long userId, String groupName, Long groupId) {
-        User user = userRepository.findById(userId).orElseThrow();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
         String title = "Group Invitation";
         String message = String.format("You have been invited to join co-ownership group: %s", groupName);
 
@@ -206,7 +212,8 @@ public class NotificationOrchestrator {
      * Send a monthly report to all users
      */
     public void sendMonthlyReport(Long userId, Map<String, Object> reportData) {
-        User user = userRepository.findById(userId).orElseThrow();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
         String title = "Monthly Report";
         String message = "Your monthly usage and payment report is ready";
 

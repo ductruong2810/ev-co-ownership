@@ -44,7 +44,7 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
                 FROM UsageBooking ub
                 JOIN FETCH ub.user u
                 WHERE ub.vehicle.Id = :vehicleId
-                  AND ub.status = 'CONFIRMED'
+                  AND ub.status IN ('CONFIRMED', 'COMPLETED')
                   AND CAST(ub.startDateTime AS date) = :date
                 ORDER BY ub.startDateTime
             """)
