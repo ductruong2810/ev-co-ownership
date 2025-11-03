@@ -57,13 +57,13 @@ public class ContractService {
         // Nếu không tìm thấy -> ném lỗi để controller trả HTTP 404.
         Contract contract = contractRepository.findByGroupGroupId(groupId)
                 .orElseThrow(() ->
-                        new RuntimeException("Không tìm thấy hợp đồng cho groupId " + groupId));
+                        new ResourceNotFoundException("Không tìm thấy hợp đồng cho groupId " + groupId));
 
         //  Lấy thông tin nhóm sở hữu
         // ------------------------------------------------------------
         OwnershipGroup group = groupRepository.findById(groupId)
                 .orElseThrow(() ->
-                        new RuntimeException("Không tìm thấy nhóm sở hữu " + groupId));
+                        new ResourceNotFoundException("Không tìm thấy nhóm sở hữu " + groupId));
 
         //  Lấy danh sách thành viên trong nhóm
         // ------------------------------------------------------------

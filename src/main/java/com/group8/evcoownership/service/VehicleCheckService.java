@@ -225,6 +225,11 @@ public class VehicleCheckService {
             }
 
             Vehicle vehicle = booking.getVehicle();
+            Long groupId = null;
+            if (vehicle != null && vehicle.getOwnershipGroup() != null) {
+                groupId = vehicle.getOwnershipGroup().getGroupId();
+            }
+            result.put("groupId", groupId);
 
             VehicleCheck latestTechnicianCheck = findLatestTechnicianCheck(vehicle);
             if (latestTechnicianCheck != null) {
@@ -264,12 +269,14 @@ public class VehicleCheckService {
 
             result.put("bookingId", booking.getId());
             result.put("canCheckIn", withinCheckInWindow);
-            result.put("vehicleInfo", Map.of(
-                    "vehicleId", vehicle.getId(),
-                    "brand", vehicle.getBrand(),
-                    "model", vehicle.getModel(),
-                    "licensePlate", vehicle.getLicensePlate()
-            ));
+            Map<String, Object> vehicleInfo = new HashMap<>();
+            if (vehicle != null) {
+                vehicleInfo.put("vehicleId", vehicle.getId());
+                vehicleInfo.put("brand", vehicle.getBrand());
+                vehicleInfo.put("model", vehicle.getModel());
+                vehicleInfo.put("licensePlate", vehicle.getLicensePlate());
+            }
+            result.put("vehicleInfo", vehicleInfo);
             result.put("bookingInfo", Map.of(
                     "startTime", booking.getStartDateTime(),
                     "endTime", booking.getEndDateTime(),
