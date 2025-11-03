@@ -187,6 +187,8 @@ public class StaffService {
                                 List<UsageBooking> bookings = usageBookingRepository.findAllBookingsByGroupId(group.getGroupId());
 
                                 List<BookingQRCodeDTO> bookingDTOs = bookings.stream()
+                                        //11/3/2025
+                                        .sorted((b1, b2) -> Long.compare(b1.getId(), b2.getId()))
                                         .map(booking -> new BookingQRCodeDTO(
                                                 booking.getId(),
                                                 booking.getQrCode(),
