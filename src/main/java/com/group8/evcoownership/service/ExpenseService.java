@@ -119,18 +119,24 @@ public class ExpenseService {
 
     // =============== GET ALL ===============
     public Page<ExpenseResponseDTO> getAll(
-            Long fundId,
-            String sourceType,
-            String status,
-            Long approvedById,
-            Long recipientUserId,
-            Pageable pageable
-    ) {
-        Page<Expense> page = expenseRepository.findFiltered(
-                fundId, sourceType, status, approvedById, recipientUserId, pageable
-        );
-        return page.map(this::mapToDTO);
+            Long fundId, String sourceType, String status,
+            Long approvedById, Long recipientUserId, Pageable pageable) {
+
+        boolean noFilter = fundId == null && sourceType == null && status == null
+                && approvedById == null && recipientUserId == null;
+
+        Page<Expense> expenses;
+
+        if (noFilter) {
+            // vẫn nên tái sử dụng query có ORDER BY CASE để đảm bảo sort đúng business logic
+            expenses = expenseRepository.findAllFiltered(null, null, null, null, null, pageable);
+        } else {
+            expenses = expenseRepository.findAllFiltered(fundId, sourceType, status, approvedById, recipientUserId, pageable);
+        }
+
+        return expenses.map(this::mapToDTO);
     }
+
 
 
 

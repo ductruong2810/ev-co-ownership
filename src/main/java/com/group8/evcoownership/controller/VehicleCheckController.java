@@ -1,5 +1,7 @@
 package com.group8.evcoownership.controller;
 
+import com.group8.evcoownership.dto.QrCheckInRequestDTO;
+import com.group8.evcoownership.dto.QrCheckOutRequestDTO;
 import com.group8.evcoownership.dto.VehicleCheckRequestDTO;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.entity.VehicleCheck;
@@ -14,7 +16,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -178,13 +179,30 @@ public class VehicleCheckController {
     @PostMapping("/qr-checkin")
     @PreAuthorize("hasRole('CO_OWNER')")
     @Operation(summary = "Check-in bằng QR code", description = "Quét QR code để check-in và tìm booking đang hoạt động")
-    public ResponseEntity<Map<String, Object>> qrCheckIn(@RequestParam String qrCode) {
+    public ResponseEntity<Map<String, Object>> qrCheckIn(@Valid @RequestBody QrCheckInRequestDTO request) {
         // Lấy user từ JWT token
         String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
         User currentUser = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        Map<String, Object> result = vehicleCheckService.processQrCheckIn(qrCode, currentUser.getUserId());
+        Map<String, Object> result = vehicleCheckService.processQrCheckIn(request.qrCode(), currentUser.getUserId());
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * QR Code Check-out endpoint - Quét QR để hoàn tất booking và ghi nhận post-use check
+     * Example:
+     * POST /api/vehicle-checks/qr-checkout
+     */
+    @PostMapping("/qr-checkout")
+    @PreAuthorize("hasRole('CO_OWNER')")
+    @Operation(summary = "Check-out bằng QR code", description = "Quét QR code để check-out, cập nhật tình trạng xe và đóng booking")
+    public ResponseEntity<Map<String, Object>> qrCheckOut(@Valid @RequestBody QrCheckOutRequestDTO request) {
+        String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        User currentUser = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Map<String, Object> result = vehicleCheckService.processQrCheckOut(request, currentUser.getUserId());
         return ResponseEntity.ok(result);
     }
 }

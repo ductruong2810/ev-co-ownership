@@ -8,6 +8,9 @@ import com.group8.evcoownership.enums.RejectionCategory;
 import com.group8.evcoownership.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -86,8 +89,79 @@ public class IncidentService {
         return mapToDTO(incident);
     }
 
-    // STAFF/ADMIN UPDATE STATUS
+    // ===============================================================
+    // STAFF/ADMIN — UPDATE APPROVE INCIDENT
+    // ===============================================================
+    public IncidentResponseDTO approveIncident(Long id, String username) {
+        Incident incident = incidentRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Incident not found"));
 
+        if (!"PENDING".equals(incident.getStatus())) {
+            throw new IllegalStateException("Only PENDING incidents can be approved.");
+        }
+
+        User approver = userRepository.findByEmail(username)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+        // ✅ Tìm SharedFund theo group của vehicle
+        SharedFund fund = sharedFundRepository.findByGroup_GroupId(
+                incident.getBooking().getVehicle().getOwnershipGroup().getGroupId()
+        ).orElseThrow(() -> new EntityNotFoundException("Shared fund not found"));
+
+
+        // ✅ Tạo Expense, thêm recipientUserId = người báo cáo sự cố
+        Expense expense = Expense.builder()
+                .fund(fund)
+                .sourceType("INCIDENT")
+                .sourceId(incident.getId())
+                .description("Incident approved: " + incident.getDescription())
+                .amount(incident.getActualCost())
+                .approvedBy(approver)
+                .recipientUser(incident.getReportedBy())
+                .status("PENDING")
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        expenseRepository.save(expense);
+
+        // ✅ Cập nhật incident
+        incident.setStatus("APPROVED");
+        incident.setApprovedBy(approver);
+        incident.setUpdatedAt(LocalDateTime.now());
+        incidentRepository.save(incident);
+
+        return mapToDTO(incident);
+    }
+
+
+    // ===============================================================
+    // STAFF/ADMIN — UPDATE REJECT  INCIDENT
+    // ===============================================================
+    public IncidentResponseDTO rejectIncident(Long id, IncidentRejectRequestDTO req, String username) {
+        Incident incident = incidentRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Incident not found"));
+
+        if (!"PENDING".equals(incident.getStatus())) {
+            throw new IllegalStateException("Only PENDING incidents can be rejected.");
+        }
+
+        if (req.getRejectionCategory() == null ) {
+            throw new IllegalArgumentException("Rejection category is required.");
+        }
+
+        User approver = userRepository.findByEmail(username)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+        incident.setStatus("REJECTED");
+        incident.setApprovedBy(approver);
+        incident.setRejectionCategory(req.getRejectionCategory());
+        incident.setRejectionReason(req.getRejectionReason());
+        incident.setUpdatedAt(LocalDateTime.now());
+
+        incidentRepository.save(incident);
+        return mapToDTO(incident);
+    }
 
     // GET ALL (STAFF/ADMIN)
     public List<IncidentResponseDTO> getAll() {
@@ -112,6 +186,26 @@ public class IncidentService {
                 .orElseThrow(() -> new EntityNotFoundException("Incident not found"));
         return mapToDTO(incident);
     }
+
+    // Get Filtered
+    public Page<IncidentResponseDTO> getFiltered(String status, String startDate, String endDate, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size); // sort đã nằm trong query nên không cần thêm Sort ở đây
+
+        Page<Incident> incidents;
+
+        boolean noFilter = (status == null || status.isBlank()) &&
+                (startDate == null || startDate.isBlank()) &&
+                (endDate == null || endDate.isBlank());
+
+        if (noFilter) {
+            incidents = incidentRepository.findAll(pageable); // vẫn sort theo ID mặc định
+        } else {
+            incidents = incidentRepository.findByFiltersOrdered(status, startDate, endDate, pageable);
+        }
+
+        return incidents.map(this::mapToDTO);
+    }
+
 
     // Mapping helper
     private IncidentResponseDTO mapToDTO(Incident i) {

@@ -61,7 +61,7 @@ public class ExpenseController {
 
     // ================== GET ALL ===================
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','STAFF','TECHNICIAN')")
+    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     @Operation(summary = "[STAFF/ADMIN] Danh sách Expense (lọc linh hoạt)", description = """
         Lấy danh sách chi phí có thể lọc theo nhiều điều kiện:
         - fundId: ID của quỹ
@@ -80,7 +80,7 @@ public class ExpenseController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size
     ) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Pageable pageable = PageRequest.of(page, size);
         return ResponseEntity.ok(expenseService.getAll(fundId, sourceType, status, approvedById, recipientUserId, pageable));
     }
 

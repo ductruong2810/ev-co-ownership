@@ -12,6 +12,36 @@ import java.util.Optional;
 
 @Repository
 public interface MaintenanceRepository extends JpaRepository<Maintenance, Long> {
+    // ===== GET ALL (sort theo status -> createdAt DESC) =====
+    @Query("""
+        SELECT m FROM Maintenance m
+        ORDER BY
+          CASE
+            WHEN m.status = 'PENDING' THEN 1
+            WHEN m.status = 'APPROVED' THEN 2
+            WHEN m.status = 'REJECTED' THEN 3
+            ELSE 4
+          END,
+          m.createdAt DESC
+    """)
+    List<Maintenance> findAllSorted();
+
+    @Query("""
+    SELECT m FROM Maintenance m
+    WHERE m.requestedBy.email = :email
+    ORDER BY
+      CASE 
+        WHEN m.status = 'PENDING' THEN 1
+        WHEN m.status = 'APPROVED' THEN 3
+        WHEN m.status = 'REJECTED' THEN 5
+        ELSE 4
+      END,
+      m.createdAt DESC
+""")
+    List<Maintenance> findAllByTechnicianEmailSorted(@Param("email") String email);
+
+    // ===================================================
+
     List<Maintenance> findByRequestedBy(User user);
 
     Optional<Maintenance> findFirstByVehicle_IdAndVehicle_OwnershipGroup_GroupIdAndStatusOrderByApprovalDateDescRequestDateDescCreatedAtDesc(
