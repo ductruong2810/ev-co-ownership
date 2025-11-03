@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,8 +24,13 @@ public class OcrController {
     private final OcrService ocrService;
 
     @PostMapping("/extract-vehicle-info")
-    @Operation(summary = "Trích xuất thông tin xe từ hình ảnh",
-            description = "Sử dụng OCR để đọc và trích xuất thông tin brand, model từ hình ảnh cà vẹt xe")
+    @PreAuthorize("hasAnyRole('CO_OWNER','STAFF','ADMIN')")
+    @Operation(summary = "[CO_OWNER/STAFF/ADMIN] Trích xuất thông tin xe từ hình ảnh",
+            description = """
+                Sử dụng OCR để đọc và trích xuất thông tin brand, model từ hình ảnh cà vẹt xe.
+                - Co-owner: dùng khi tạo hồ sơ xe mới hoặc hợp đồng.
+                - Staff/Admin: có thể dùng để hỗ trợ xác minh hình ảnh xe.
+                """)
     public CompletableFuture<GroupWithVehicleResponseDTO.AutoFillInfo> extractVehicleInfo(
             @RequestParam("image") MultipartFile image) {
 
@@ -33,8 +39,12 @@ public class OcrController {
     }
 
     @PostMapping("/extract-text")
-    @Operation(summary = "Trích xuất text từ hình ảnh",
-            description = "Sử dụng OCR để đọc text từ hình ảnh")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    @Operation(summary = "[ADMIN/STAFF] Trích xuất text thô từ hình ảnh (debug)",
+            description = """
+                Sử dụng OCR để đọc text từ hình ảnh.
+                Dành cho mục đích kiểm thử hoặc xác minh OCR trong môi trường nội bộ.
+                """)
     public CompletableFuture<String> extractText(@RequestParam("image") MultipartFile image) {
         return ocrService.extractTextFromImage(image);
     }
@@ -91,8 +101,12 @@ public class OcrController {
     }
 
     @PostMapping("/validate-registration-document")
-    @Operation(summary = "Kiểm tra hình ảnh có phải cà vẹt xe không",
-            description = "Kiểm tra xem hình ảnh có phải là giấy đăng ký xe dựa trên keywords")
+    @PreAuthorize("hasAnyRole('CO_OWNER','STAFF','ADMIN')")
+    @Operation(summary = "[CO_OWNER/STAFF/ADMIN] Kiểm tra hình ảnh có phải cà vẹt xe không",
+            description = """
+                Kiểm tra xem hình ảnh có phải là giấy đăng ký xe dựa trên từ khóa nhận dạng.
+                - Dùng để xác thực ảnh do người dùng upload trong quá trình đăng ký xe hoặc hợp đồng.
+                """)
     public CompletableFuture<Boolean> validateRegistrationDocument(@RequestParam("image") MultipartFile image) {
         return ocrService.extractTextFromImage(image)
                 .thenApply(ocrService::isVehicleRegistrationDocument);

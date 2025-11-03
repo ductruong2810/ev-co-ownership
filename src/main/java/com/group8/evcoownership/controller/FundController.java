@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -40,17 +41,19 @@ public class FundController {
 
     //-------Read------
 
-    // Api xem so du quy theo groupId
     @GetMapping("/{groupId}")
-    @Operation(summary = "Xem số dư quỹ theo nhóm", description = "Lấy thông tin số dư quỹ của một nhóm cụ thể")
-    public FundBalanceResponseDTO getFundBalance(@PathVariable("groupId") Long groupId) {
+    @PreAuthorize("hasAnyRole('ADMIN','STAFF','CO_OWNER')")
+    @Operation(summary = "[CO_OWNER/STAFF/ADMIN] Xem số dư quỹ theo nhóm", description = """
+        Lấy thông tin số dư quỹ của nhóm cụ thể.
+        Co-owner chỉ có thể xem quỹ thuộc nhóm mình.
+        """)    public FundBalanceResponseDTO getFundBalance(@PathVariable("groupId") Long groupId) {
         return fundService.getBalanceByGroupId(groupId);
     }
 
     // Lay fund theo fundId
     @GetMapping("/id/{fundId}")
-    @Operation(summary = "Xem số dư quỹ theo ID", description = "Lấy thông tin số dư quỹ theo ID quỹ")
-    public FundBalanceResponseDTO getFundById(@PathVariable("fundId") Long fundId) {
+    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
+    @Operation(summary = "[ADMIN/STAFF] Xem số dư quỹ theo ID", description = "Lấy thông tin số dư quỹ theo fundId.")    public FundBalanceResponseDTO getFundById(@PathVariable("fundId") Long fundId) {
         return fundService.getBalanceByFundId(fundId);
     }
 
@@ -70,15 +73,16 @@ public class FundController {
 //        return fundService.list(pageable);
 //    }
     @GetMapping("/funds")
-    @Operation(summary = "Danh sách quỹ", description = "Lấy danh sách tất cả quỹ trong hệ thống với phân trang")
-    public List<SharedFundDTO> list(@ParameterObject Pageable pageable) {
+    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
+    @Operation(summary = "[ADMIN/STAFF] Danh sách quỹ", description = "Lấy danh sách tất cả quỹ trong hệ thống (phân trang).")    public List<SharedFundDTO> list(@ParameterObject Pageable pageable) {
         return fundService.list(pageable);
     }
 
 
     //------Update-----
     @PutMapping("/{fundId}")
-    @Operation(summary = "Cập nhật quỹ", description = "Cập nhật thông tin của một quỹ")
+    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
+    @Operation(summary = "[ADMIN/STAFF] Cập nhật quỹ", description = "Cập nhật thông tin chi tiết của một quỹ.")
     public SharedFund updateBalance(@PathVariable Long fundId,
                                     @Valid @RequestBody SharedFundUpdateRequestDTO req) {
         return fundService.updateBalance(fundId, req);
@@ -86,7 +90,8 @@ public class FundController {
 
     // ====== DELETE ======
     @DeleteMapping("/{fundId}")
-    @Operation(summary = "Xóa quỹ", description = "Xóa một quỹ khỏi hệ thống")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "[ADMIN] Xóa quỹ", description = "Chỉ Admin mới được phép xóa quỹ khỏi hệ thống.")
     public void delete(@PathVariable Long fundId) {
         fundService.deleteById(fundId);
     }
@@ -94,7 +99,8 @@ public class FundController {
 
     // Tăng quỹ theo fundId
     @PostMapping("/{fundId}/increase")
-    @Operation(summary = "Tăng số dư quỹ", description = "Tăng số dư của quỹ theo số tiền được chỉ định")
+    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
+    @Operation(summary = "[ADMIN/STAFF] Tăng số dư quỹ", description = "Tăng số dư quỹ với số tiền được chỉ định.")
     public FundBalanceResponseDTO increase(@PathVariable Long fundId,
                                            @Valid @RequestBody AmountRequestDTO req) {
         fundService.increaseBalance(fundId, req.amount());
@@ -103,7 +109,8 @@ public class FundController {
 
     // Giảm quỹ theo fundId
     @PostMapping("/{fundId}/decrease")
-    @Operation(summary = "Giảm số dư quỹ", description = "Giảm số dư của quỹ theo số tiền được chỉ định")
+    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
+    @Operation(summary = "[ADMIN/STAFF] Giảm số dư quỹ", description = "Giảm số dư quỹ với số tiền được chỉ định.")
     public FundBalanceResponseDTO decrease(@PathVariable Long fundId,
                                            @Valid @RequestBody AmountRequestDTO req) {
         fundService.decreaseBalance(fundId, req.amount());
