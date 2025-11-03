@@ -68,9 +68,13 @@ public class UsageBookingController {
                         b.getVehicle().getModel(),
                         b.getStartDateTime(),
                         b.getEndDateTime(),
-                        b.getStatus().name()
+                        b.getStatus().name(),
+                        b.getQrCodeCheckin(),    // Thêm
+                        b.getQrCodeCheckout(),   // Thêm
+                        b.getCreatedAt()         // Thêm
                 ))
                 .toList();
+
 
         return ResponseEntity.ok(response);
     }
@@ -119,8 +123,12 @@ public class UsageBookingController {
                 vehicle.getModel(),
                 booking.getStartDateTime(),
                 booking.getEndDateTime(),
-                booking.getStatus().name()
+                booking.getStatus().name(),
+                booking.getQrCodeCheckin(),    // Thêm
+                booking.getQrCodeCheckout(),   // Thêm
+                booking.getCreatedAt()         // Thêm
         );
+
 
         return ResponseEntity.ok(response);
     }

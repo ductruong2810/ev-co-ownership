@@ -126,9 +126,13 @@ public class UsageBookingService {
                 booking.getVehicle() != null ? booking.getVehicle().getModel() : null,
                 booking.getStartDateTime(),
                 booking.getEndDateTime(),
-                booking.getStatus() != null ? booking.getStatus().name() : null
+                booking.getStatus() != null ? booking.getStatus().name() : null,
+                booking.getQrCodeCheckin(),    // Thêm
+                booking.getQrCodeCheckout(),   // Thêm
+                booking.getCreatedAt()         // Thêm
         );
     }
+
 
 }
 
