@@ -373,19 +373,33 @@ public class WeeklyCalendarService {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime lockThreshold = start.plusMinutes(20);
         // CONFIRMED booking
-        UsageBooking booking = overlapping.stream()
+        UsageBooking confirmedBooking = overlapping.stream()
                 .filter(b -> b.getStatus() == BookingStatus.CONFIRMED)
                 .findFirst().orElse(null);
-        if (booking != null) {
-            boolean bookedBySelf = booking.getUser() != null && booking.getUser().getUserId().equals(userId);
+        if (confirmedBooking != null) {
+            boolean bookedBySelf = confirmedBooking.getUser() != null && confirmedBooking.getUser().getUserId().equals(userId);
 
             return TimeSlotResponseDTO.builder()
                     .time(timeDisplay)
-                    .status(booking.getStatus().name())
+                    .status(confirmedBooking.getStatus().name())
                     .type(bookedBySelf ? "BOOKED_SELF" : "BOOKED_OTHER")
-                    .bookedBy(booking.getUser() != null ? booking.getUser().getFullName() : "Unknown")
+                    .bookedBy(confirmedBooking.getUser() != null ? confirmedBooking.getUser().getFullName() : "Unknown")
                     .bookable(false)
-                    .bookingId(booking.getId())
+                    .bookingId(confirmedBooking.getId())
+                    .build();
+        }
+
+        UsageBooking completedBooking = overlapping.stream()
+                .filter(b -> b.getStatus() == BookingStatus.COMPLETED)
+                .findFirst().orElse(null);
+        if (completedBooking != null) {
+            return TimeSlotResponseDTO.builder()
+                    .time(timeDisplay)
+                    .status(completedBooking.getStatus().name())
+                    .type("COMPLETED")
+                    .bookedBy(completedBooking.getUser() != null ? completedBooking.getUser().getFullName() : "Unknown")
+                    .bookable(false)
+                    .bookingId(completedBooking.getId())
                     .build();
         }
 

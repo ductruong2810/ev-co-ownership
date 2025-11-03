@@ -8,6 +8,7 @@ import com.group8.evcoownership.enums.ContractApprovalStatus;
 import com.group8.evcoownership.enums.PaymentStatus;
 import com.group8.evcoownership.enums.PaymentType;
 import com.group8.evcoownership.exception.DepositPaymentException;
+import com.group8.evcoownership.exception.ResourceNotFoundException;
 import com.group8.evcoownership.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -173,7 +174,10 @@ public class DepositPaymentService {
         OwnershipShare share = shareRepository.findByUserIdAndFundId(
                 payment.getPayer().getUserId(),
                 payment.getFund().getFundId()
-        ).orElseThrow(() -> new RuntimeException("OwnershipShare not found"));
+        ).orElseThrow(() -> new EntityNotFoundException(
+                String.format("OwnershipShare not found for user %d in fund %d",
+                        payment.getPayer().getUserId(), payment.getFund().getFundId())
+        ));
 
         share.setDepositStatus(DepositStatus.PAID);
         shareRepository.save(share);
@@ -334,7 +338,7 @@ public class DepositPaymentService {
         List<Payment> payments = paymentRepository.findAllByTransactionCodeOrderByIdDesc(txnRef);
 
         if (payments.isEmpty()) {
-            throw new RuntimeException("Payment not found for txnRef: " + txnRef);
+            throw new ResourceNotFoundException("Payment not found for txnRef: " + txnRef);
         }
 
         if (payments.size() > 1) {
