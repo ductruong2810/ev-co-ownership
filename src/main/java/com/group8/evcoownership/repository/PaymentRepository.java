@@ -31,6 +31,8 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     // Nếu dùng VNPay, nên có lookup theo mã giao dịch (txnRef)
     Optional<Payment> findByTransactionCode(String transactionCode);
 
+    List<Payment> findAllByTransactionCodeOrderByIdDesc(String transactionCode);
+
     boolean existsByTransactionCode(String transactionCode);
 
     Optional<Payment> findTopByPayer_UserIdAndFund_Group_GroupIdAndPaymentTypeOrderByPaymentDateDesc(

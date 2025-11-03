@@ -27,6 +27,7 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 @RequiredArgsConstructor
@@ -107,8 +108,8 @@ public class DepositPaymentService {
                     group.getMemberCapacity()
             );
         }
-        // Tạo record Payment trong DB
-        String txnRef = String.valueOf(System.currentTimeMillis()).substring(5, 13); // 8 số ngẫu nhiên
+        // Tạo record Payment trong DB với mã giao dịch đảm bảo duy nhất
+        String txnRef = generateUniqueTxnRef();
 
         Payment payment = Payment.builder()
                 .payer(user)
@@ -147,8 +148,7 @@ public class DepositPaymentService {
      */
     @Transactional
     public DepositPaymentResponseDTO confirmDepositPayment(String txnRef, String transactionNo) {
-        Payment payment = paymentRepository.findByTransactionCode(txnRef)
-                .orElseThrow(() -> new RuntimeException("Payment not found for txnRef: " + txnRef));
+        Payment payment = getLatestPaymentByTxnRef(txnRef);
 
         // Nếu đã COMPLETED thì bỏ qua
         if (payment.getStatus() == PaymentStatus.COMPLETED) {
@@ -201,8 +201,7 @@ public class DepositPaymentService {
      * API cho frontend kiểm tra trạng thái thanh toán
      */
     public DepositPaymentResponseDTO getByTxnRef(String txnRef) {
-        Payment payment = paymentRepository.findByTransactionCode(txnRef)
-                .orElseThrow(() -> new RuntimeException("Payment not found for txnRef: " + txnRef));
+        Payment payment = getLatestPaymentByTxnRef(txnRef);
         return convertToResponse(payment);
     }
 
@@ -326,10 +325,39 @@ public class DepositPaymentService {
      * Lấy thông tin chi tiết của thanh toán dựa theo mã giao dịch (txnRef)
      */
     public DepositPaymentResponseDTO getDepositInfoByTxn(String txnRef) {
-        Payment payment = paymentRepository.findByTransactionCode(txnRef)
-                .orElseThrow(() -> new RuntimeException("Payment not found for txnRef: " + txnRef));
+        Payment payment = getLatestPaymentByTxnRef(txnRef);
 
         return convertToResponse(payment);
+    }
+
+    private Payment getLatestPaymentByTxnRef(String txnRef) {
+        List<Payment> payments = paymentRepository.findAllByTransactionCodeOrderByIdDesc(txnRef);
+
+        if (payments.isEmpty()) {
+            throw new RuntimeException("Payment not found for txnRef: " + txnRef);
+        }
+
+        if (payments.size() > 1) {
+            log.warn("Multiple payments ({}) found for txnRef {}. Using the most recent entry with id {}.",
+                    payments.size(), txnRef, payments.get(0).getId());
+        }
+
+        return payments.get(0);
+    }
+
+    private String generateUniqueTxnRef() {
+        final int maxAttempts = 10;
+
+        for (int attempt = 0; attempt < maxAttempts; attempt++) {
+            long randomNumber = ThreadLocalRandom.current().nextLong(1_000_000_000_000L);
+            String candidate = String.format("%012d", randomNumber);
+
+            if (!paymentRepository.existsByTransactionCode(candidate)) {
+                return candidate;
+            }
+        }
+
+        throw new DepositPaymentException("Unable to generate a unique transaction reference. Please try again later.");
     }
 
     // ========== DEPOSIT REFUND METHODS ==========
