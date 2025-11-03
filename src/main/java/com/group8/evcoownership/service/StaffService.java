@@ -1,5 +1,7 @@
 package com.group8.evcoownership.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.entity.OwnershipGroup;
 import com.group8.evcoownership.entity.UsageBooking;
@@ -43,7 +45,8 @@ public class StaffService {
     @Autowired
     private UsageBookingRepository usageBookingRepository;
 
-
+    @Autowired
+    private ObjectMapper objectMapper;
 
     public List<UserProfileResponseDTO> getAllUsers(String status, String documentStatus) {
         List<User> users = userRepository.findByRoleRoleName(RoleName.CO_OWNER);
@@ -81,26 +84,18 @@ public class StaffService {
     }
 
     public List<GroupBookingDTO> getGroupsByUserId(Long userId) {
-        // Kiểm tra user tồn tại
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
 
-        // Lấy danh sách groups của user
         List<OwnershipGroup> groups = ownershipGroupRepository.findByMembersUserId(userId);
 
-        // Map sang DTO với bookings
         return groups.stream()
                 .map(group -> {
                     List<UsageBooking> bookings = usageBookingRepository.findAllBookingsByGroupId(group.getGroupId());
 
                     List<BookingQRCodeDTO> bookingDTOs = bookings.stream()
                             .sorted((b1, b2) -> Long.compare(b1.getId(), b2.getId()))
-                            .map(booking -> new BookingQRCodeDTO(
-                                    booking.getId(),
-                                    booking.getQrCode(),
-                                    booking.getStartDateTime() != null ? booking.getStartDateTime().toString() : null,
-                                    booking.getEndDateTime() != null ? booking.getEndDateTime().toString() : null
-                            ))
+                            .map(booking -> mapBookingToQRCodeDTO(booking))
                             .toList();
 
                     return new GroupBookingDTO(
@@ -111,7 +106,56 @@ public class StaffService {
                 })
                 .toList();
     }
-    
+
+    public Page<UserGroupBookingsResponseDTO> getAllUsersQRCode(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<User> userPage = userRepository.findByRoleRoleName(RoleName.CO_OWNER, pageable);
+
+        List<UserGroupBookingsResponseDTO> usersWithQRCodes = userPage.getContent().stream()
+                .map(user -> {
+                    List<OwnershipGroup> groups = ownershipGroupRepository.findByMembersUserId(user.getUserId());
+
+                    List<GroupBookingDTO> groupBookings = groups.stream()
+                            .map(group -> {
+                                List<UsageBooking> bookings = usageBookingRepository.findAllBookingsByGroupId(group.getGroupId());
+
+                                List<BookingQRCodeDTO> bookingDTOs = bookings.stream()
+                                        .sorted((b1, b2) -> Long.compare(b1.getId(), b2.getId()))
+                                        .map(booking -> mapBookingToQRCodeDTO(booking))
+                                        .toList();
+
+                                return new GroupBookingDTO(
+                                        group.getGroupId(),
+                                        group.getGroupName(),
+                                        bookingDTOs
+                                );
+                            })
+                            .toList();
+
+                    return new UserGroupBookingsResponseDTO(
+                            user.getUserId(),
+                            user.getFullName(),
+                            groupBookings
+                    );
+                })
+                .filter(user -> !user.getGroups().isEmpty())
+                .toList();
+
+        return new PageImpl<>(usersWithQRCodes, pageable, userPage.getTotalElements());
+    }
+
+    private BookingQRCodeDTO mapBookingToQRCodeDTO(UsageBooking booking) {
+        return new BookingQRCodeDTO(
+                booking.getId(),
+                booking.getQrCodeCheckin(),   // Đọc từ qrCodeCheckin
+                booking.getQrCodeCheckout(),  // Đọc từ qrCodeCheckout
+                booking.getStartDateTime() != null ? booking.getStartDateTime().toString() : null,
+                booking.getEndDateTime() != null ? booking.getEndDateTime().toString() : null,
+                booking.getCreatedAt() != null ? booking.getCreatedAt().toString() : null
+        );
+    }
+
+
     @Transactional
     public String reviewDocument(Long documentId, ReviewDocumentRequestDTO request, String staffEmail) {
         UserDocument document = userDocumentRepository.findById(documentId)
@@ -122,7 +166,6 @@ public class StaffService {
 
         String action = request.getAction().toUpperCase();
 
-        // ← AUTO-GENERATE reviewNote
         if ("APPROVE".equals(action)) {
             document.setStatus("APPROVED");
             document.setReviewNote("Document verified and approved");
@@ -182,7 +225,6 @@ public class StaffService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        // Soft delete to avoid FK violations
         user.setStatus(UserStatus.BANNED);
         userRepository.save(user);
         return "User has been deactivated (BANNED) successfully";
@@ -205,49 +247,4 @@ public class StaffService {
     private boolean hasStatus(DocumentDetailDTO doc, String status) {
         return doc != null && status.equalsIgnoreCase(doc.getStatus());
     }
-
-    public Page<UserGroupBookingsResponseDTO> getAllUsersQRCode(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        Page<User> userPage = userRepository.findByRoleRoleName(RoleName.CO_OWNER, pageable);
-
-        List<UserGroupBookingsResponseDTO> usersWithQRCodes = userPage.getContent().stream()
-                .map(user -> {
-                    List<OwnershipGroup> groups = ownershipGroupRepository.findByMembersUserId(user.getUserId());
-
-                    List<GroupBookingDTO> groupBookings = groups.stream()
-                            .map(group -> {
-                                List<UsageBooking> bookings = usageBookingRepository.findAllBookingsByGroupId(group.getGroupId());
-
-                                List<BookingQRCodeDTO> bookingDTOs = bookings.stream()
-                                        //11/3/2025
-                                        .sorted((b1, b2) -> Long.compare(b1.getId(), b2.getId()))
-                                        .map(booking -> new BookingQRCodeDTO(
-                                                booking.getId(),
-                                                booking.getQrCode(),
-                                                booking.getStartDateTime() != null ? booking.getStartDateTime().toString() : null,
-                                                booking.getEndDateTime() != null ? booking.getEndDateTime().toString() : null
-                                        ))
-                                        .toList();
-
-                                return new GroupBookingDTO(
-                                        group.getGroupId(),
-                                        group.getGroupName(),
-                                        bookingDTOs
-                                );
-                            })
-                            .toList();
-
-                    return new UserGroupBookingsResponseDTO(
-                            user.getUserId(),
-                            user.getFullName(),
-                            groupBookings
-                    );
-                })
-                .filter(user -> !user.getGroups().isEmpty())
-                .toList();
-
-        return new PageImpl<>(usersWithQRCodes, pageable, userPage.getTotalElements());
-    }
-
 }
-

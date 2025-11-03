@@ -17,4 +17,7 @@ public class BookingResponseDTO {
     private LocalDateTime startDateTime;
     private LocalDateTime endDateTime;
     private String status;
+    private String qrCodeCheckin;      // Thêm
+    private String qrCodeCheckout;     // Thêm
+    private LocalDateTime createdAt;
 }
