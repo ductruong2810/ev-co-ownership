@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,8 +30,12 @@ public class NotificationController {
     private final NotificationOrchestrator notificationOrchestrator;
 
     @GetMapping
-    @Operation(summary = "Danh sách thông báo", description = "Lấy danh sách thông báo của người dùng hiện tại")
-    public ResponseEntity<List<NotificationDTO>> getNotifications(
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "[ALL USERS] Danh sách thông báo của người dùng hiện tại", description = """
+        Lấy danh sách thông báo của người dùng đăng nhập.
+        - Có thể truyền tham số ?isRead=true/false để lọc.
+        - Mặc định: trả về toàn bộ (ưu tiên chưa đọc trước).
+        """)    public ResponseEntity<List<NotificationDTO>> getNotifications(
             @AuthenticationPrincipal String email,
             @RequestParam(required = false) Boolean isRead) {
         User user = getUserByEmail(email);
@@ -47,8 +52,11 @@ public class NotificationController {
     }
 
     @GetMapping("/unread-count")
-    @Operation(summary = "Số thông báo chưa đọc", description = "Lấy số lượng thông báo chưa đọc của người dùng")
-    public ResponseEntity<Map<String, Long>> getUnreadCount(@AuthenticationPrincipal String email) {
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "[ALL USERS] Số lượng thông báo chưa đọc", description = """
+        Trả về số lượng thông báo chưa đọc của người dùng hiện tại.
+        Dùng cho hiển thị badge / icon thông báo.
+        """)    public ResponseEntity<Map<String, Long>> getUnreadCount(@AuthenticationPrincipal String email) {
         User user = getUserByEmail(email);
 
         long count = notificationRepository.countByUserAndIsRead(user, false);
@@ -56,7 +64,11 @@ public class NotificationController {
     }
 
     @PutMapping("/{notificationId}/read")
-    @Operation(summary = "Đánh dấu đã đọc", description = "Đánh dấu một thông báo cụ thể là đã đọc")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "[ALL USERS] Đánh dấu thông báo đã đọc", description = """
+        Đánh dấu một thông báo cụ thể là đã đọc.
+        - Chỉ chủ sở hữu thông báo mới có quyền thao tác.
+        """)
     public ResponseEntity<Void> markAsRead(@PathVariable Long notificationId, @AuthenticationPrincipal String email) {
         User user = getUserByEmail(email);
         Notification notification = getNotificationOrThrow(notificationId);
@@ -67,7 +79,10 @@ public class NotificationController {
     }
 
     @PutMapping("/mark-all-read")
-    @Operation(summary = "Đánh dấu tất cả đã đọc", description = "Đánh dấu tất cả thông báo của người dùng là đã đọc")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "[ALL USERS] Đánh dấu tất cả thông báo là đã đọc", description = """
+        Đánh dấu tất cả thông báo của người dùng đăng nhập là đã đọc.
+        """)
     public ResponseEntity<Void> markAllAsRead(@AuthenticationPrincipal String email) {
         User user = getUserByEmail(email);
         List<Notification> unreadNotifications = notificationRepository.findByUserAndIsRead(user, false);
@@ -76,8 +91,10 @@ public class NotificationController {
         return ResponseEntity.ok().build();
     }
 
-    @DeleteMapping("/{notificationId}")
-    @Operation(summary = "Xóa thông báo", description = "Xóa một thông báo cụ thể")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "[ALL USERS] Xóa thông báo", description = """
+        Xóa một thông báo cụ thể thuộc về người dùng hiện tại.
+        """)
     public ResponseEntity<Void> deleteNotification(@PathVariable Long notificationId, @AuthenticationPrincipal String email) {
         User user = getUserByEmail(email);
         Notification notification = getNotificationOrThrow(notificationId);
@@ -101,6 +118,8 @@ public class NotificationController {
 
         return ResponseEntity.ok().build();
     }
+
+    // ===================== Helper methods =====================
 
     private NotificationDTO convertToDto(Notification notification) {
         return NotificationDTO.builder()
