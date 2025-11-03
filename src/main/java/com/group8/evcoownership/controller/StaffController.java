@@ -47,6 +47,13 @@ public class StaffController {
         return ResponseEntity.ok(user);
     }
 
+    //11/3/2025
+    @GetMapping("/users/{userId}/groups")
+    public ResponseEntity<List<GroupBookingDTO>> getGroupsByUserId(@PathVariable Long userId) {
+        List<GroupBookingDTO> groups = staffService.getGroupsByUserId(userId);
+        return ResponseEntity.ok(groups);
+    }
+
     @GetMapping("/documents/pending")
     @PreAuthorize("hasRole('STAFF') or hasRole('ADMIN')")
     @Operation(summary = "Tài liệu chờ duyệt", description = "Lấy danh sách người dùng có tài liệu chờ duyệt")
