@@ -229,11 +229,7 @@ public class VehicleCheckService {
             if (vehicle != null && vehicle.getOwnershipGroup() != null) {
                 groupId = vehicle.getOwnershipGroup().getGroupId();
             }
-            if (groupId != null) {
-                result.put("redirectUrl", String.format("http://localhost:3000/dashboard/viewGroups/%d/", groupId));
-            } else {
-                result.put("redirectUrl", null);
-            }
+            result.put("groupId", groupId);
 
             VehicleCheck latestTechnicianCheck = findLatestTechnicianCheck(vehicle);
             if (latestTechnicianCheck != null) {
