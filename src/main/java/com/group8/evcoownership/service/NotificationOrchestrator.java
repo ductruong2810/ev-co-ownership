@@ -116,17 +116,27 @@ public class NotificationOrchestrator {
                                       Map<String, Object> data) {
         List<User> groupMembers = userRepository.findUsersByGroupId(groupId);
 
-        // Ensure groupId present in data for routing
+        // ✅ Luôn tạo bản sao mutable để tránh UnsupportedOperationException
         if (data == null) {
             data = new HashMap<>();
+        } else if (!(data instanceof HashMap)) {
+            data = new HashMap<>(data);
         }
+
         data.putIfAbsent("groupId", groupId);
 
         for (User member : groupMembers) {
             notificationService.sendNotification(member, title, message, type.getCode());
 
-            webSocketService.sendToUser(member.getUserId(), type, title, message, "MEDIUM",
-                    getActionUrl(type, data), data);
+            webSocketService.sendToUser(
+                    member.getUserId(),
+                    type,
+                    title,
+                    message,
+                    "MEDIUM",
+                    getActionUrl(type, data),
+                    data
+            );
 
             if (shouldSendEmail(type)) {
                 sendEmailNotification(member, type, title, message, data);
@@ -135,6 +145,7 @@ public class NotificationOrchestrator {
 
         webSocketService.sendToGroup(groupId, type, title, message);
     }
+
 
     /**
      * Send maintenance notification
