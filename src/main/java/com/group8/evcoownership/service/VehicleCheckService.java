@@ -319,6 +319,12 @@ public class VehicleCheckService {
                 return result;
             }
 
+            if (!Boolean.TRUE.equals(booking.getCheckinStatus())) {
+                result.put("success", false);
+                result.put("message", "Must check-in before checkout");
+                return result;
+            }
+
             if (booking.getStatus() == BookingStatus.AWAITING_REVIEW) {
                 result.put("success", false);
                 result.put("message", "Checkout already submitted and awaiting technician review");
@@ -334,19 +340,6 @@ public class VehicleCheckService {
             if (booking.getStatus() != BookingStatus.CONFIRMED) {
                 result.put("success", false);
                 result.put("message", "Booking is not in a checkout-ready state");
-                return result;
-            }
-
-            LocalDateTime now = LocalDateTime.now();
-            if (booking.getStartDateTime() != null && now.isBefore(booking.getStartDateTime())) {
-                result.put("success", false);
-                result.put("message", "Cannot checkout before booking start time");
-                return result;
-            }
-
-            if (booking.getEndDateTime() != null && now.isAfter(booking.getEndDateTime().plusHours(4))) {
-                result.put("success", false);
-                result.put("message", "Checkout window has expired");
                 return result;
             }
 
@@ -507,12 +500,6 @@ public class VehicleCheckService {
         if (booking.getStartDateTime() != null && now.isBefore(booking.getStartDateTime())) {
             result.put("success", false);
             result.put("message", "Cannot checkout before booking start time");
-            return result;
-        }
-
-        if (booking.getEndDateTime() != null && now.isAfter(booking.getEndDateTime().plusHours(4))) {
-            result.put("success", false);
-            result.put("message", "Checkout window has expired");
             return result;
         }
 
