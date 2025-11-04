@@ -2,6 +2,7 @@ package com.group8.evcoownership.controller;
 
 import com.group8.evcoownership.dto.QrCheckOutRequestDTO;
 import com.group8.evcoownership.dto.QrScanRequestDTO;
+import com.group8.evcoownership.dto.UpdateCheckStatusRequestDTO;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.entity.VehicleCheck;
 import com.group8.evcoownership.exception.ResourceNotFoundException;
@@ -12,6 +13,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -61,14 +64,11 @@ public class VehicleCheckController {
      * PUT /api/vehicle-checks/{checkId}/status
      */
     @PutMapping("/{checkId}/status")
-    @Operation(summary = "Cập nhật trạng thái kiểm tra", description = "Kỹ thuật viên phê duyệt hoặc từ chối báo cáo kiểm tra")
-    @PreAuthorize("hasAnyRole('TECHNICIAN','STAFF','ADMIN')")
     public ResponseEntity<VehicleCheck> updateCheckStatus(
             @PathVariable Long checkId,
-            @RequestParam String status,
-            @RequestParam(required = false) String notes) {
-
-        VehicleCheck check = vehicleCheckService.updateCheckStatus(checkId, status, notes);
+            @RequestBody @Valid UpdateCheckStatusRequestDTO request) {
+        VehicleCheck check =
+                vehicleCheckService.updateCheckStatus(checkId, request.getStatus(), request.getNotes());
         return ResponseEntity.ok(check);
     }
 
@@ -108,6 +108,15 @@ public class VehicleCheckController {
     @PreAuthorize("hasAnyRole('TECHNICIAN','STAFF','ADMIN')")
     public ResponseEntity<List<VehicleCheck>> getChecksByStatus(@PathVariable String status) {
         List<VehicleCheck> checks = vehicleCheckService.getChecksByStatus(status);
+        return ResponseEntity.ok(checks);
+    }
+
+    @GetMapping
+    public ResponseEntity<Page<VehicleCheck>> getAllChecks(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "30") int size) {
+
+        Page<VehicleCheck> checks = vehicleCheckService.getAllChecks(PageRequest.of(page, size));
         return ResponseEntity.ok(checks);
     }
 
@@ -192,4 +201,5 @@ public class VehicleCheckController {
         Map<String, Object> result = vehicleCheckService.submitCheckoutForm(request, currentUser.getUserId());
         return ResponseEntity.ok(result);
     }
+
 }
