@@ -12,6 +12,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/users")
 @Tag(name = "Users", description = "Quản lý người dùng")
+@PreAuthorize("isAuthenticated()")
 public class UserController {
 
     private final UserService userService;

@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @RequestMapping("/api")
 @Tag(name = "Invitations", description = "Quản lý lời mời tham gia nhóm (gửi, resend tự động, accept, expire)")
+@PreAuthorize("isAuthenticated()")
 public class InvitationController {
 
     private final InvitationService invitationService;

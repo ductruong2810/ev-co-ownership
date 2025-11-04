@@ -27,6 +27,7 @@ import java.util.Map;
 @RequestMapping("/api/bookings")
 @RequiredArgsConstructor
 @Tag(name = "Usage Bookings", description = "Quản lý đặt xe và sử dụng phương tiện")
+@PreAuthorize("isAuthenticated()")
 public class UsageBookingController {
 
     private final UsageBookingService usageBookingService;
@@ -108,7 +109,7 @@ public class UsageBookingController {
      */
     @PutMapping("/{bookingId}/cancel")
     @Operation(summary = "Hủy đặt xe", description = "Hủy booking và chuyển sang trạng thái Cancelled")
-    @PreAuthorize("hasAnyRole('CO_OWNER','ADMIN','STAFF')")
+    @PreAuthorize("hasAnyRole('CO_OWNER')")
     public ResponseEntity<BookingResponseDTO> cancelBooking(
             @PathVariable Long bookingId,
             @AuthenticationPrincipal String email) {

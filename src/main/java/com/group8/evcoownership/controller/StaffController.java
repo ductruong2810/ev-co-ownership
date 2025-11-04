@@ -21,6 +21,7 @@ import java.util.Map;
 @RequestMapping("/api/staff")
 @Slf4j
 @Tag(name = "Staff", description = "Chức năng dành cho nhân viên và quản trị viên")
+@PreAuthorize("isAuthenticated()")
 public class StaffController {
 
     @Autowired
