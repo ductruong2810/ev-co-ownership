@@ -361,7 +361,7 @@ public class VehicleCheckService {
             }
 
             booking.setStatus(BookingStatus.COMPLETED);
-            booking.setQrCode(generateCompletedQrPayload(booking));
+            booking.setQrCodeCheckout(generateCompletedQrPayload(booking));
             usageBookingRepository.save(booking);
 
             result.put("success", true);
