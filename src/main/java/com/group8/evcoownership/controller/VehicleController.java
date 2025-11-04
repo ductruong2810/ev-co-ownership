@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -23,12 +24,14 @@ public class VehicleController {
 
     @PostMapping
     @Operation(summary = "Tạo phương tiện mới", description = "Tạo một phương tiện mới trong hệ thống")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN', 'CO_OWNER')")
     public VehicleResponseDTO create(@RequestBody @Valid VehicleCreateRequestDTO req) {
         return service.create(req);
     }
 
     @PutMapping("/{vehicleId}")
     @Operation(summary = "Cập nhật phương tiện", description = "Cập nhật thông tin của một phương tiện theo ID")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN', 'CO_OWNER')")
     public VehicleResponseDTO update(@PathVariable Long vehicleId,
                                   @RequestBody @Valid VehicleUpdateRequestDTO req) {
         return service.update(vehicleId, req);
@@ -36,12 +39,14 @@ public class VehicleController {
 
     @GetMapping("/{vehicleId}")
     @Operation(summary = "Lấy thông tin phương tiện", description = "Lấy thông tin chi tiết của một phương tiện theo ID")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN', 'CO_OWNER', 'TECHNICIAN')")
     public VehicleResponseDTO getById(@PathVariable Long vehicleId) {
         return service.getById(vehicleId);
     }
 
     @GetMapping
     @Operation(summary = "Danh sách phương tiện theo nhóm", description = "Lấy danh sách phương tiện thuộc một nhóm cụ thể")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN', 'CO_OWNER', 'TECHNICIAN')")
     public Page<VehicleResponseDTO> listByGroup(@RequestParam Long groupId,
                                              @RequestParam(defaultValue = "0") int page,
                                              @RequestParam(defaultValue = "20") int size) {
@@ -50,6 +55,7 @@ public class VehicleController {
 
     @DeleteMapping("/{vehicleId}")
     @Operation(summary = "Xóa phương tiện", description = "Xóa một phương tiện khỏi hệ thống")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     public void delete(@PathVariable Long vehicleId) {
         service.delete(vehicleId);
     }
