@@ -1,12 +1,11 @@
 package com.group8.evcoownership.dto;
 
 
-import lombok.Builder;
-import lombok.Data;
+import jakarta.validation.constraints.NotBlank;
 
-@Data
-@Builder
-public class UpdateCheckStatusRequestDTO {
-    private String status; // APPROVED, REJECTED
-    private String notes;
+public record UpdateCheckStatusRequestDTO(
+        @NotBlank(message = "status is required") String status,
+        String notes,
+        String issues
+) {
 }
