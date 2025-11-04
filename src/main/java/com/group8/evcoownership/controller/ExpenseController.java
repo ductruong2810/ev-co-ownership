@@ -22,6 +22,7 @@ import java.util.List;
 @RequestMapping("/api/expenses")
 @RequiredArgsConstructor
 @Tag(name = "Expenses", description = "Quản lý chi phí (Incident & Maintenance)")
+@PreAuthorize("isAuthenticated()")
 public class ExpenseController {
 
     private final ExpenseService expenseService;

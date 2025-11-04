@@ -22,6 +22,7 @@ import java.util.List;
 @RequestMapping("/api/groups")
 @RequiredArgsConstructor
 @Tag(name = "Ownership Groups", description = "Quản lý nhóm đồng sở hữu và phương tiện")
+@PreAuthorize("isAuthenticated()")
 public class OwnershipGroupController {
 
     private final OwnershipGroupService service;

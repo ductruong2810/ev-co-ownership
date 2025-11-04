@@ -18,6 +18,7 @@ import java.util.List;
 @RequestMapping("/api/funds")
 @RequiredArgsConstructor
 @Tag(name = "Funds", description = "Quản lý quỹ chung và số dư")
+@PreAuthorize("isAuthenticated()")
 public class FundController {
 
     private final FundService fundService;
