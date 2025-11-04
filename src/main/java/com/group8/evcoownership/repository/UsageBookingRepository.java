@@ -44,7 +44,7 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
                 FROM UsageBooking ub
                 JOIN FETCH ub.user u
                 WHERE ub.vehicle.Id = :vehicleId
-                  AND ub.status IN ('CONFIRMED', 'COMPLETED')
+                  AND ub.status IN ('CONFIRMED', 'AWAITING_REVIEW', 'COMPLETED')
                   AND CAST(ub.startDateTime AS date) = :date
                 ORDER BY ub.startDateTime
             """)
@@ -77,7 +77,7 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
                 JOIN FETCH ub.vehicle v
                 WHERE v.Id = :vehicleId
                   AND v.ownershipGroup.groupId = :groupId
-                  AND ub.status IN ('CONFIRMED', 'COMPLETED')
+                  AND ub.status IN ('CONFIRMED', 'AWAITING_REVIEW', 'COMPLETED')
                   AND ub.endDateTime <= CURRENT_TIMESTAMP
                 ORDER BY ub.endDateTime DESC
             """)
