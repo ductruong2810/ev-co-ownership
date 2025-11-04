@@ -1,5 +1,6 @@
 package com.group8.evcoownership.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.group8.evcoownership.dto.QrCheckOutRequestDTO;
@@ -11,6 +12,8 @@ import com.group8.evcoownership.repository.UsageBookingRepository;
 import com.group8.evcoownership.repository.VehicleCheckRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,11 +31,18 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class VehicleCheckService {
 
     private final VehicleCheckRepository vehicleCheckRepository;
     private final UsageBookingRepository usageBookingRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Value("${booking.checkin.earliest-offset-minutes:10}")
+    private long checkInEarliestOffsetMinutes;
+
+    @Value("${booking.checkin.lock-offset-minutes:20}")
+    private long checkInLockOffsetMinutes;
 
     // User tạo pre-use check với validation
     public VehicleCheck createPreUseCheck(Long bookingId, Long userId, Integer odometer,
@@ -237,34 +247,19 @@ public class VehicleCheckService {
             }
 
             LocalDateTime now = LocalDateTime.now();
-            LocalDateTime earliestCheckIn = booking.getStartDateTime().minusMinutes(10);
-            LocalDateTime lockTime = booking.getStartDateTime().plusMinutes(20);
-            boolean withinCheckInWindow = !now.isBefore(earliestCheckIn) && now.isBefore(lockTime);
+            boolean withinCheckInWindow = isWithinCheckInWindow(booking, now);
 
 
-            if (withinCheckInWindow) {
-                result.put("success", true);
-                result.put("message", "Ready for check-in");
+            result.put("success", true);
+            result.put("message", "Ready for check-in");
 
-                // SINH QR CHECKOUT và lưu vào field qrCodeCheckout
-                String checkoutQr = generateCheckOutQrPayload(booking);
-                booking.setQrCodeCheckout(checkoutQr);  // LƯU VÀO qrCodeCheckout
-                usageBookingRepository.save(booking);
+            // SINH QR CHECKOUT và lưu vào field qrCodeCheckout
+            String checkoutQr = generateCheckOutQrPayload(booking);
+            booking.setQrCodeCheckout(checkoutQr);  // LƯU VÀO qrCodeCheckout
+            usageBookingRepository.save(booking);
 
-                result.put("qrUpdatedForCheckout", true);
-                result.put("checkoutQrCode", checkoutQr);
-            } else {
-                result.put("success", true);
-                result.put("message", "Ready for check-in");
-
-                // SINH QR CHECKOUT và lưu vào field qrCodeCheckout
-                String checkoutQr = generateCheckOutQrPayload(booking);
-                booking.setQrCodeCheckout(checkoutQr);  // LƯU VÀO qrCodeCheckout
-                usageBookingRepository.save(booking);
-
-                result.put("qrUpdatedForCheckout", true);
-                result.put("checkoutQrCode", checkoutQr);
-            }
+            result.put("qrUpdatedForCheckout", true);
+            result.put("checkoutQrCode", checkoutQr);
 
 
             result.put("bookingId", booking.getId());
@@ -286,12 +281,38 @@ public class VehicleCheckService {
             result.put("hasPostUseCheck", hasCheck(booking.getId(), "POST_USE"));
             result.put("qrUserId", qrData.userId());
 
-        } catch (Exception e) {
+        } catch (JsonProcessingException e) {
+            log.warn("Invalid QR code payload for check-in: {}", e.getOriginalMessage());
             result.put("success", false);
-            result.put("message", "Error processing QR code: " + e.getMessage());
+            result.put("message", "Invalid QR code format");
+        } catch (IOException e) {
+            log.error("I/O error while processing QR check-in", e);
+            result.put("success", false);
+            result.put("message", "Unable to process QR code");
+        } catch (EntityNotFoundException | IllegalArgumentException | IllegalStateException | SecurityException e) {
+            log.warn("QR check-in validation failed: {}", e.getMessage());
+            result.put("success", false);
+            result.put("message", e.getMessage() != null ? e.getMessage() : "Unable to process QR code");
+        } catch (Exception e) {
+            log.error("Unexpected error processing QR check-in", e);
+            result.put("success", false);
+            result.put("message", "Unable to process QR code");
         }
 
         return result;
+    }
+
+    private boolean isWithinCheckInWindow(UsageBooking booking, LocalDateTime now) {
+        LocalDateTime startTime = booking.getStartDateTime();
+        LocalDateTime earliestCheckIn = startTime != null
+                ? (checkInEarliestOffsetMinutes < 0
+                    ? LocalDateTime.MIN
+                    : startTime.minusMinutes(checkInEarliestOffsetMinutes))
+                : LocalDateTime.MIN;
+        LocalDateTime lockTime = startTime != null
+                ? startTime.plusMinutes(checkInLockOffsetMinutes)
+                : now.plusYears(1);
+        return !now.isBefore(earliestCheckIn) && now.isBefore(lockTime);
     }
 
 
@@ -373,9 +394,22 @@ public class VehicleCheckService {
             result.put("hasPostUseCheck", true);
             result.put("maintenanceSuggested", hasReportedIssues(request));
 
-        } catch (Exception e) {
+        } catch (JsonProcessingException e) {
+            log.warn("Invalid QR code payload for checkout: {}", e.getOriginalMessage());
             result.put("success", false);
-            result.put("message", "Error processing QR checkout: " + e.getMessage());
+            result.put("message", "Invalid QR code format");
+        } catch (IOException e) {
+            log.error("I/O error while processing QR checkout", e);
+            result.put("success", false);
+            result.put("message", "Unable to process QR checkout");
+        } catch (EntityNotFoundException | IllegalArgumentException | IllegalStateException | SecurityException e) {
+            log.warn("QR checkout validation failed: {}", e.getMessage());
+            result.put("success", false);
+            result.put("message", e.getMessage() != null ? e.getMessage() : "Unable to process QR checkout");
+        } catch (Exception e) {
+            log.error("Unexpected error processing QR checkout", e);
+            result.put("success", false);
+            result.put("message", "Unable to process QR checkout");
         }
 
         return result;
