@@ -131,8 +131,6 @@ public class UsageBookingController {
                 booking.getQrCodeCheckout(),   // Thêm
                 booking.getCreatedAt()         // Thêm
         );
-
-
         return ResponseEntity.ok(response);
     }
 

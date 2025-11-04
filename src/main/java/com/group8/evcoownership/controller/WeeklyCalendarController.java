@@ -39,8 +39,6 @@ public class WeeklyCalendarController {
         // Lấy userId từ JWT
         Long userId = getUserIdByEmail(email);
 
-
-
         WeeklyCalendarResponseDTO response = weeklyCalendarService.getWeeklyCalendar(groupId, userId, weekStart);
         return ResponseEntity.ok(response);
     }
