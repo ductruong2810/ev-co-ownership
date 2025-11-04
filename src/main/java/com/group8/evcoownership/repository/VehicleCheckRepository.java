@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface VehicleCheckRepository extends JpaRepository<VehicleCheck, Long> {
@@ -42,4 +43,5 @@ public interface VehicleCheckRepository extends JpaRepository<VehicleCheck, Long
     boolean existsPostUseCheckWithIssuesByVehicleAndGroup(@Param("vehicleId") Long vehicleId, @Param("groupId") Long groupId);
 
     List<VehicleCheck> findByStatus(String status);
+    Optional<VehicleCheck> findByBooking_IdAndCheckType(Long bookingId, String checkType);
 }

@@ -22,12 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -116,6 +111,10 @@ public class VehicleCheckService {
         }
 
         return savedCheck;
+    }
+
+    public Optional<VehicleCheck> findByBookingAndType(Long bookingId, String checkType) {
+        return vehicleCheckRepository.findByBooking_IdAndCheckType(bookingId, checkType);
     }
 
     // Lấy checks của booking
