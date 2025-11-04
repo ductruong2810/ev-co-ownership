@@ -117,6 +117,7 @@ public class VehicleCheckController {
      */
     @PutMapping("/{checkId}/status")
     @Operation(summary = "Cập nhật trạng thái kiểm tra", description = "Kỹ thuật viên phê duyệt hoặc từ chối báo cáo kiểm tra")
+    @PreAuthorize("hasAnyRole('TECHNICIAN','STAFF','ADMIN')")
     public ResponseEntity<VehicleCheck> updateCheckStatus(
             @PathVariable Long checkId,
             @RequestParam String status,
@@ -133,6 +134,7 @@ public class VehicleCheckController {
      */
     @GetMapping("/booking/{bookingId}")
     @Operation(summary = "Kiểm tra theo booking", description = "Lấy danh sách tất cả kiểm tra của một booking")
+    @PreAuthorize("hasAnyRole('TECHNICIAN','STAFF','ADMIN')")
     public ResponseEntity<List<VehicleCheck>> getChecksByBookingId(@PathVariable Long bookingId) {
         List<VehicleCheck> checks = vehicleCheckService.getChecksByBookingId(bookingId);
         return ResponseEntity.ok(checks);
@@ -145,6 +147,7 @@ public class VehicleCheckController {
      */
     @GetMapping("/vehicle/{vehicleId}")
     @Operation(summary = "Kiểm tra theo phương tiện", description = "Lấy danh sách tất cả kiểm tra của một phương tiện")
+    @PreAuthorize("hasAnyRole('TECHNICIAN','STAFF','ADMIN')")
     public ResponseEntity<List<VehicleCheck>> getChecksByVehicleId(@PathVariable Long vehicleId) {
         List<VehicleCheck> checks = vehicleCheckService.getChecksByVehicleId(vehicleId);
         return ResponseEntity.ok(checks);
@@ -157,6 +160,7 @@ public class VehicleCheckController {
      */
     @GetMapping("/status/{status}")
     @Operation(summary = "Kiểm tra theo trạng thái", description = "Lấy danh sách kiểm tra theo trạng thái cụ thể")
+    @PreAuthorize("hasAnyRole('TECHNICIAN','STAFF','ADMIN')")
     public ResponseEntity<List<VehicleCheck>> getChecksByStatus(@PathVariable String status) {
         List<VehicleCheck> checks = vehicleCheckService.getChecksByStatus(status);
         return ResponseEntity.ok(checks);
@@ -169,6 +173,7 @@ public class VehicleCheckController {
      */
     @GetMapping("/has-check/{bookingId}")
     @Operation(summary = "Kiểm tra đã thực hiện", description = "Kiểm tra xem người dùng đã thực hiện kiểm tra loại nào chưa")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     public ResponseEntity<Boolean> hasCheck(
             @PathVariable Long bookingId,
             @RequestParam String checkType) {
