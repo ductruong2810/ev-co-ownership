@@ -84,7 +84,7 @@ class ContractIntegrationTest {
         assertNotNull(contractData);
         assertEquals(testGroup.getGroupId(), contractData.get("groupId"));
         assertNotNull(contractData.get("terms"));
-        assertTrue(((String) contractData.get("terms")).contains("HỢP ĐỒNG") || ((String) contractData.get("terms")).contains("hợp đồng"));
+        assertTrue(((String) contractData.get("terms")).contains("CONTRACT") || ((String) contractData.get("terms")).contains("contract"));
     }
 
     @Test
@@ -159,6 +159,6 @@ class ContractIntegrationTest {
         // Verify final state
         Contract finalContract = contractRepository.findByGroupGroupId(testGroup.getGroupId()).orElse(null);
         assertNotNull(finalContract);
-        assertTrue(finalContract.getTerms().contains("[ĐÃ KÝ TỰ ĐỘNG]"));
+        assertTrue(finalContract.getTerms().contains("[AUTO-SIGNED]"));
     }
 }
