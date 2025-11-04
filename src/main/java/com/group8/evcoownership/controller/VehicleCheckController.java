@@ -2,7 +2,6 @@ package com.group8.evcoownership.controller;
 
 import com.group8.evcoownership.dto.QrCheckOutRequestDTO;
 import com.group8.evcoownership.dto.QrScanRequestDTO;
-import com.group8.evcoownership.dto.VehicleCheckRequestDTO;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.entity.VehicleCheck;
 import com.group8.evcoownership.exception.ResourceNotFoundException;
@@ -33,60 +32,6 @@ public class VehicleCheckController {
     private final UserRepository userRepository;
     @Value("${frontend.base.url:http://localhost:3000}")
     private String frontendBaseUrl;
-
-    /**
-     * User tạo pre-use check với JWT authentication
-     * Example:
-     * POST /api/vehicle-checks/pre-use
-     */
-    @PostMapping("/pre-use")
-    @PreAuthorize("hasRole('CO_OWNER')")
-    @Operation(summary = "Kiểm tra trước sử dụng", description = "Người dùng tạo báo cáo kiểm tra phương tiện trước khi sử dụng")
-    public ResponseEntity<VehicleCheck> createPreUseCheck(@Valid @RequestBody VehicleCheckRequestDTO request) {
-        // Lấy user từ JWT token
-        String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
-        User currentUser = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found for email: " + userEmail));
-
-        VehicleCheck check = vehicleCheckService.createPreUseCheck(
-                request.getBookingId(),
-                currentUser.getUserId(),
-                request.getOdometer(),
-                request.getBatteryLevel(),
-                request.getCleanliness(),
-                request.getNotes(),
-                request.getIssues()
-        );
-
-        return ResponseEntity.ok(check);
-    }
-
-    /**
-     * User tạo post-use check với JWT authentication
-     * Example:
-     * POST /api/vehicle-checks/post-use
-     */
-    @PostMapping("/post-use")
-    @PreAuthorize("hasRole('CO_OWNER')")
-    @Operation(summary = "Kiểm tra sau sử dụng", description = "Người dùng tạo báo cáo kiểm tra phương tiện sau khi sử dụng")
-    public ResponseEntity<VehicleCheck> createPostUseCheck(@Valid @RequestBody VehicleCheckRequestDTO request) {
-        // Lấy user từ JWT token
-        String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
-        User currentUser = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found for email: " + userEmail));
-
-        VehicleCheck check = vehicleCheckService.createPostUseCheck(
-                request.getBookingId(),
-                currentUser.getUserId(),
-                request.getOdometer(),
-                request.getBatteryLevel(),
-                request.getCleanliness(),
-                request.getNotes(),
-                request.getIssues()
-        );
-
-        return ResponseEntity.ok(check);
-    }
 
     /**
      * User từ chối xe với JWT authentication
