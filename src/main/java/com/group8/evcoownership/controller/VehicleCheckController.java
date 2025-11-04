@@ -68,7 +68,7 @@ public class VehicleCheckController {
             @PathVariable Long checkId,
             @RequestBody @Valid UpdateCheckStatusRequestDTO request) {
         VehicleCheck check =
-                vehicleCheckService.updateCheckStatus(checkId, request.getStatus(), request.getNotes());
+                vehicleCheckService.updateCheckStatus(checkId, request.status(), request.notes(), request.issues());
         return ResponseEntity.ok(check);
     }
 
@@ -79,7 +79,7 @@ public class VehicleCheckController {
      */
     @GetMapping("/booking/{bookingId}")
     @Operation(summary = "Kiểm tra theo booking", description = "Lấy danh sách tất cả kiểm tra của một booking")
-    @PreAuthorize("hasAnyRole('TECHNICIAN','STAFF','ADMIN')")
+    @PreAuthorize("hasAnyRole('TECHNICIAN','STAFF','ADMIN','CO_OWNER')")
     public ResponseEntity<List<VehicleCheck>> getChecksByBookingId(@PathVariable Long bookingId) {
         List<VehicleCheck> checks = vehicleCheckService.getChecksByBookingId(bookingId);
         return ResponseEntity.ok(checks);
