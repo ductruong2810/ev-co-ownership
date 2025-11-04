@@ -127,11 +127,6 @@ public class VehicleCheckService {
             throw new IllegalStateException("Only confirmed bookings can be checked-out. Current status: " + booking.getStatus());
         }
 
-        // VALIDATION: Kiểm tra đã làm pre-use check chưa
-        if (!hasCheck(bookingId, "PRE_USE")) {
-            throw new IllegalStateException("Must complete pre-use check before post-use check");
-        }
-
         // VALIDATION: Kiểm tra đã làm post-use check chưa
         if (hasCheck(bookingId, "POST_USE")) {
             throw new IllegalStateException("Post-use check already completed for this booking");
@@ -343,12 +338,6 @@ public class VehicleCheckService {
                 return result;
             }
 
-            if (!hasCheck(booking.getId(), "PRE_USE")) {
-                result.put("success", false);
-                result.put("message", "Must complete pre-use check before checkout");
-                return result;
-            }
-
             VehicleCheck postUseCheck;
             boolean alreadyPostUse = hasCheck(booking.getId(), "POST_USE");
             if (alreadyPostUse) {
@@ -496,12 +485,6 @@ public class VehicleCheckService {
             return result;
         }
 
-        if (!hasCheck(booking.getId(), "PRE_USE")) {
-            result.put("success", false);
-            result.put("message", "Must complete pre-use check before checkout");
-            return result;
-        }
-
         boolean alreadyPostUse = hasCheck(booking.getId(), "POST_USE");
         if (alreadyPostUse) {
             vehicleCheckRepository.findByBookingId(booking.getId())
@@ -586,14 +569,13 @@ public class VehicleCheckService {
 
         result.put("groupId", groupId);
         result.put("vehicleInfo", vehicleInfo);
-        result.put("bookingInfo", Map.of(
-                "startTime", booking.getStartDateTime(),
-                "endTime", booking.getEndDateTime(),
-                "status", booking.getStatus() != null ? booking.getStatus().name() : null
-        ));
+        Map<String, Object> bookingInfo = new HashMap<>();
+        bookingInfo.put("startTime", booking.getStartDateTime());
+        bookingInfo.put("endTime", booking.getEndDateTime());
+        bookingInfo.put("status", booking.getStatus() != null ? booking.getStatus().name() : null);
+        result.put("bookingInfo", bookingInfo);
         result.put("bookingId", booking.getId());
         result.put("bookingStatus", booking.getStatus() != null ? booking.getStatus().name() : null);
-        result.put("hasPreUseCheck", hasCheck(booking.getId(), "PRE_USE"));
         result.put("hasPostUseCheck", hasCheck(booking.getId(), "POST_USE"));
         if (qrData != null) {
             result.put("qrUserId", qrData.userId());

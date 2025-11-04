@@ -94,7 +94,7 @@ public class VehicleCheckController {
      * POST /api/vehicle-checks/reject
      */
     @PostMapping("/reject")
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("hasRole('CO_OWNER')")
     @Operation(summary = "Từ chối phương tiện", description = "Người dùng từ chối sử dụng phương tiện do có vấn đề")
     public ResponseEntity<VehicleCheck> rejectVehicle(
             @RequestParam Long bookingId,
