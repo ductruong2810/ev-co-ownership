@@ -582,6 +582,4 @@ public class WeeklyCalendarService {
                 endTime
         );
     }
-
-
 }

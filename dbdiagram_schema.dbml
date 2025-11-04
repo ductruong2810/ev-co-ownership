@@ -1,4 +1,4 @@
-// EV Co-ownership Database Schema (Simplified, no Dispute modules)
+// EV Co-ownership Database Schema (aligned with JPA entities, excluding dispute modules)
 
 Table Roles {
   RoleId bigint [pk, increment]
@@ -7,35 +7,37 @@ Table Roles {
 
 Table Users {
   UserId bigint [pk, increment]
-  FullName varchar(100) [not null]
-  Email varchar(100) [unique, not null]
-  PasswordHash varchar(255) [not null]
-  PhoneNumber varchar(20)
-  AvatarUrl varchar(500)
+  FullName nvarchar(100) [not null]
+  Email nvarchar(100) [unique, not null]
+  PasswordHash nvarchar(255) [not null]
+  PhoneNumber nvarchar(20)
+  AvatarUrl nvarchar(500)
   RoleId bigint [ref: > Roles.RoleId]
-  Status varchar(20) [default: 'ACTIVE']
-  CreatedAt datetime [default: `now()`]
-  UpdatedAt datetime [default: `now()`]
+  Status varchar(20)
+  CreatedAt datetime
+  UpdatedAt datetime
 }
 
 Table OwnershipGroup {
   GroupId bigint [pk, increment]
-  GroupName varchar(100) [not null, unique]
-  Status varchar(20) [default: 'PENDING']
+  GroupName nvarchar(100) [not null, unique]
+  Status varchar(20) [not null, default: 'PENDING']
   Description text
-  MemberCapacity int [note: 'Planned number of members in the group']
-  CreatedAt datetime [default: `now()`]
-  UpdatedAt datetime [default: `now()`]
+  MemberCapacity int
+  RejectionReason text
+  FundId bigint [ref: - SharedFund.FundId]
+  CreatedAt datetime
+  UpdatedAt datetime
 }
 
 Table OwnershipShare {
   UserId bigint [ref: > Users.UserId, not null]
   GroupId bigint [ref: > OwnershipGroup.GroupId, not null]
-  GroupRole varchar(50) [default: 'MEMBER']
-  OwnershipPercentage decimal(5,2) [not null, note: 'Must be > 0 and <= 100']
-  JoinDate datetime [default: `now()`]
-  DepositStatus varchar(20) [default: 'PENDING', note: 'PENDING, PAID, REFUNDED']
-  UpdatedAt datetime [default: `now()`]
+  GroupRole varchar(50) [not null, default: 'MEMBER']
+  OwnershipPercentage decimal(5,2) [not null, note: '0.00 - 100.00']
+  JoinDate datetime [not null]
+  DepositStatus varchar(20) [not null, default: 'PENDING']
+  UpdatedAt datetime [not null]
 
   indexes {
     (UserId, GroupId) [pk]
@@ -45,26 +47,39 @@ Table OwnershipShare {
 
 Table Vehicle {
   VehicleId bigint [pk, increment]
-  Brand varchar(100)
-  Model varchar(100)
+  Brand nvarchar(100)
+  Model nvarchar(100)
   LicensePlate varchar(20)
   ChassisNumber varchar(30)
   VehicleValue decimal(15,2)
   GroupId bigint [ref: - OwnershipGroup.GroupId]
-  CreatedAt datetime [default: `now()`]
-  UpdatedAt datetime [default: `now()`]
+  CreatedAt datetime
+  UpdatedAt datetime
 }
 
 Table VehicleImages {
   ImageId bigint [pk, increment]
-  VehicleId bigint [ref: > Vehicle.VehicleId, not null]
-  ImageUrl varchar(500) [not null]
-  ImageType varchar(20) [not null]
-  ApprovalStatus varchar(20) [default: 'PENDING']
+  VehicleId bigint [ref: > Vehicle.VehicleId]
+  ImageUrl nvarchar(500)
+  ImageType varchar(20)
+  ApprovalStatus varchar(20)
   ApprovedBy bigint [ref: > Users.UserId]
   ApprovedAt datetime
   RejectionReason varchar(500)
-  UploadedAt datetime [default: `now()`]
+  UploadedAt datetime
+}
+
+Table VehicleCheck {
+  Id bigint [pk, increment]
+  BookingId bigint [ref: > UsageBooking.BookingId]
+  CheckType varchar(20)
+  Odometer int
+  BatteryLevel decimal(5,2)
+  Cleanliness varchar(20)
+  Notes text
+  Issues text
+  Status varchar(20)
+  CreatedAt datetime
 }
 
 Table Contract {
@@ -75,8 +90,8 @@ Table Contract {
   Terms text
   RequiredDepositAmount decimal(15,2)
   IsActive boolean [default: true]
-  CreatedAt datetime [default: `now()`]
-  UpdatedAt datetime [default: `now()`]
+  CreatedAt datetime
+  UpdatedAt datetime
   ApprovalStatus varchar(20) [default: 'PENDING']
   ApprovedBy bigint [ref: > Users.UserId]
   ApprovedAt datetime
@@ -90,10 +105,11 @@ Table Contract {
 
 Table SharedFund {
   FundId bigint [pk, increment]
-  GroupId bigint [ref: - OwnershipGroup.GroupId, not null]
+  GroupId bigint [ref: > OwnershipGroup.GroupId, not null]
   Balance decimal(15,2) [default: 0]
-  CreatedAt datetime [default: `now()`]
-  UpdatedAt datetime [default: `now()`]
+  TargetAmount decimal(15,2) [default: 0]
+  CreatedAt datetime
+  UpdatedAt datetime
   Version bigint [default: 0]
 
   indexes {
@@ -105,68 +121,60 @@ Table UsageBooking {
   BookingId bigint [pk, increment]
   UserId bigint [ref: > Users.UserId, not null]
   VehicleId bigint [ref: > Vehicle.VehicleId, not null]
-  StartDateTime datetime [not null]
-  EndDateTime datetime [not null]
-  Status varchar(20) [default: 'PENDING']
+  StartDateTime datetime
+  EndDateTime datetime
+  Status varchar(20)
   TotalDuration int
   Priority int
-  QrCode varchar(255)
-  CreatedAt datetime [default: `now()`]
-  UpdatedAt datetime [default: `now()`]
+  QrCodeCheckin varchar(255)
+  QrCodeCheckout varchar(255)
+  CheckinStatus boolean [default: false]
+  CheckoutStatus boolean [default: false]
+  CheckinTime datetime
+  CheckoutTime datetime
+  CreatedAt datetime
+  UpdatedAt datetime
 }
 
 Table Maintenance {
   MaintenanceId bigint [pk, increment]
   VehicleId bigint [ref: > Vehicle.VehicleId, not null]
-  RequestedBy bigint [not null]
+  RequestedBy bigint [ref: > Users.UserId, not null]
   ApprovedBy bigint [ref: > Users.UserId]
-  RequestDate datetime [default: `now()`]
+  Description text
+  ActualCost decimal(12,2)
+  Status varchar(20) [default: 'PENDING']
+  RequestDate datetime
   ApprovalDate datetime
   NextDueDate date
-  Description text
-  EstimatedCost decimal(12,2)
-  ActualCost decimal(12,2)
-  MaintenanceStatus varchar(20) [default: 'PENDING']
+  CreatedAt datetime
+  UpdatedAt datetime
 }
 
 Table Notification {
   NotificationId bigint [pk, increment]
   UserId bigint [ref: > Users.UserId]
-  Title varchar(255)
+  Title nvarchar(255)
   Message text
   NotificationType varchar(50)
   IsRead boolean [default: false]
   IsDelivered boolean [default: false]
-  CreatedAt datetime [default: `now()`]
+  CreatedAt datetime
 }
 
 Table Incident {
   IncidentId bigint [pk, increment]
   BookingId bigint [ref: > UsageBooking.BookingId, not null]
-  IncidentType varchar(50)
+  UserId bigint [ref: > Users.UserId, not null]
   Description text
-  EstimatedCost decimal(12,2)
   ActualCost decimal(12,2)
-  Status varchar(20) [default: 'REPORTED']
   ImageUrls text
-  IncidentDate datetime [default: `now()`]
-  ResolvedDate datetime
-  ResolvedBy bigint [ref: > Users.UserId]
-  Notes varchar(1000)
-  CreatedAt datetime [default: `now()`]
-}
-
-Table VehicleCheck {
-  Id bigint [pk, increment]
-  BookingId bigint [ref: > UsageBooking.BookingId]
-  CheckType varchar(20)
-  Odometer int
-  BatteryLevel decimal(5,2)
-  Cleanliness varchar(20)
-  Notes text
-  Issues text
-  Status varchar(20)
-  CreatedAt datetime [default: `now()`]
+  Status varchar(20) [default: 'PENDING']
+  ApprovedBy bigint [ref: > Users.UserId]
+  RejectionCategory varchar(50)
+  RejectionReason text
+  CreatedAt datetime
+  UpdatedAt datetime
 }
 
 Table UserDocument {
@@ -175,52 +183,59 @@ Table UserDocument {
   DocumentType varchar(20)
   Side varchar(10)
   ImageUrl varchar(500) [not null]
-  Status varchar(20) [default: 'PENDING']
+  FileHash varchar(64)
+  Status varchar(20)
   ReviewNote text
   ReviewedBy bigint [ref: > Users.UserId]
-  CreatedAt datetime [default: `now()`]
-  UpdatedAt datetime [default: `now()`]
+  CreatedAt datetime
+  UpdatedAt datetime
 }
 
 Table Voting {
   VotingId bigint [pk, increment]
   GroupId bigint [ref: > OwnershipGroup.GroupId]
-  Title varchar(255)
+  Title nvarchar(255)
   Description text
   VotingType varchar(50)
   Options text
   Results text
   Deadline datetime
-  Status varchar(20) [default: 'ACTIVE']
+  Status varchar(20)
   CreatedBy bigint [ref: > Users.UserId]
-  CreatedAt datetime [default: `now()`]
+  CreatedAt datetime
 }
 
 Table Expense {
   ExpenseId bigint [pk, increment]
-  FundId bigint [ref: > SharedFund.FundId]
-  SourceType varchar(50)
-  SourceId bigint
+  FundId bigint [ref: > SharedFund.FundId, not null]
+  SourceType varchar(30) [not null]
+  SourceId bigint [not null]
+  RecipientUserId bigint [ref: > Users.UserId]
   Description text
   Amount decimal(12,2) [not null]
-  ExpenseDate datetime [default: `now()`]
+  Status varchar(20) [not null]
+  CreatedAt datetime
+  UpdatedAt datetime
+  ExpenseDate datetime
+  ApprovedBy bigint [ref: > Users.UserId]
+  FundBalanceAfter decimal(15,2)
 }
 
 Table Payment {
   PaymentId bigint [pk, increment]
   PayerUserId bigint [ref: > Users.UserId, not null]
   FundId bigint [ref: > SharedFund.FundId, not null]
-  Amount decimal(12,2) [not null]
-  PaymentDate datetime [default: `now()`]
+  Amount decimal(18,2) [not null]
+  PaymentDate datetime
   PaymentMethod varchar(50)
-  Status varchar(20) [default: 'PENDING']
+  Status varchar(20)
   TransactionCode varchar(100)
   ProviderResponse text
   PaymentType varchar(20) [not null]
-  Version bigint [default: 0]
-  PaymentCategory varchar(20) [default: 'GROUP']
+  PaymentCategory varchar(20)
   ChargedUserId bigint [ref: > Users.UserId]
   PersonalReason text
+  Version bigint [default: 0]
 
   indexes {
     PaymentCategory [name: 'IX_Payment_Category']
@@ -236,8 +251,8 @@ Table FinancialReport {
   TotalIncome decimal(15,2)
   TotalExpense decimal(15,2)
   GeneratedBy bigint [ref: > Users.UserId, not null]
-  CreatedAt datetime [default: `now()`]
-  UpdatedAt datetime [default: `now()`]
+  CreatedAt datetime
+  UpdatedAt datetime
 
   indexes {
     FundId [name: 'IX_FinancialReport_FundId']
@@ -251,22 +266,27 @@ Table OtpToken {
   OtpCode varchar(6) [not null]
   ExpiresAt datetime [not null]
   IsUsed boolean [default: false]
-  CreatedAt datetime [default: `now()`]
+  CreatedAt datetime
 }
 
 Table Invitation {
   InvitationId bigint [pk, increment]
   GroupId bigint [ref: > OwnershipGroup.GroupId, not null]
   InviterUserId bigint [ref: > Users.UserId, not null]
-  InviteeEmail varchar(100) [not null]
+  InviteeEmail nvarchar(100) [not null]
   Token varchar(128) [not null, unique]
   OtpCode varchar(6) [not null]
-  Status varchar(20) [default: 'PENDING']
+  Status varchar(20) [not null, default: 'PENDING']
   SuggestedPercentage decimal(5,2)
   ExpiresAt datetime [not null]
-  ResendCount int [default: 0]
+  ResendCount int [not null, default: 0]
   LastSentAt datetime
-  CreatedAt datetime [default: `now()`]
+  CreatedAt datetime
   AcceptedAt datetime
   AcceptedBy bigint [ref: > Users.UserId]
+
+  indexes {
+    ExpiresAt [name: 'IX_Invitation_ExpiresAt']
+    (GroupId, ExpiresAt) [name: 'IX_Invitation_Group_ExpiresAt']
+  }
 }

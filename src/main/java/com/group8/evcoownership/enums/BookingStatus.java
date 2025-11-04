@@ -1,5 +1,9 @@
 package com.group8.evcoownership.enums;
 
 public enum BookingStatus {
-    CONFIRMED, CANCELLED, COMPLETED
+    CONFIRMED,
+    AWAITING_REVIEW,
+    NEEDS_ATTENTION,
+    CANCELLED,
+    COMPLETED
 }

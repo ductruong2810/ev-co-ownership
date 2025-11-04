@@ -31,7 +31,9 @@ public class UsageBookingService {
         UsageBooking booking = usageBookingRepository.findById(bookingId)
                 .orElseThrow(() -> new EntityNotFoundException("Booking not found"));
 
-        if (booking.getStatus() == BookingStatus.COMPLETED) {
+        if (booking.getStatus() == BookingStatus.COMPLETED
+                || booking.getStatus() == BookingStatus.AWAITING_REVIEW
+                || booking.getStatus() == BookingStatus.NEEDS_ATTENTION) {
             throw new IllegalStateException("Cannot cancel completed bookings");
         }
 
@@ -48,7 +50,9 @@ public class UsageBookingService {
         UsageBooking booking = usageBookingRepository.findById(bookingId)
                 .orElseThrow(() -> new EntityNotFoundException("Booking not found"));
 
-        if (booking.getStatus() == BookingStatus.COMPLETED) {
+        if (booking.getStatus() == BookingStatus.COMPLETED
+                || booking.getStatus() == BookingStatus.AWAITING_REVIEW
+                || booking.getStatus() == BookingStatus.NEEDS_ATTENTION) {
             throw new IllegalStateException("Cannot cancel completed bookings");
         }
 
