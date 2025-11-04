@@ -302,18 +302,19 @@ public class ContractService {
         LocalDateTime now = LocalDateTime.now();
         String timestamp = now.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
 
-        return "[ĐÃ KÝ TỰ ĐỘNG] " + timestamp +
-                " - Hệ thống EV Co-Ownership" +
+        return "[AUTO-SIGNED] " + timestamp +
+                " - EV Co-Ownership System" +
 
-                // Thêm thông tin pháp lý
-                "\n\n[THÔNG TIN PHÁP LÝ]" +
-                "\n- Contract được ký tự động khi đủ điều kiện" +
-                "\n- Tất cả thành viên đã đồng ý với điều khoản hợp đồng" +
-                "\n- Chữ ký này có giá trị pháp lý đầy đủ" +
-                "\n- Thời gian ký: " + timestamp +
+                // Legal information
+                "\n\n[LEGAL INFORMATION]" +
+                "\n- This contract was automatically signed once all required conditions were met." +
+                "\n- All co-owners have agreed to the contract terms." +
+                "\n- This electronic signature holds full legal validity under applicable laws." +
+                "\n- Signing time: " + timestamp +
                 "\n- Contract ID: " + contractRepository.findByGroupGroupId(groupId)
                 .map(Contract::getId)
                 .orElse(null);
+
     }
 
     /**
@@ -474,7 +475,7 @@ public class ContractService {
         contractInfo.put("number", "TBD");
         contractInfo.put("effectiveDate", formatDate(LocalDate.now()));
         contractInfo.put("endDate", formatDate(LocalDate.now().plusYears(1)));
-        contractInfo.put("termLabel", "1 năm");
+        contractInfo.put("termLabel", "1 year");
         contractInfo.put("location", "HCM"); // Default
         contractInfo.put("signDate", formatDate(LocalDate.now()));
 
@@ -516,24 +517,26 @@ public class ContractService {
         financeInfo.put("depositAmount", depositAmount);
 
         financeInfo.put("targetAmount", BigDecimal.valueOf(50000000)); // Default target
-        financeInfo.put("contributionRule", "Theo tỷ lệ sở hữu");
+        financeInfo.put("contributionRule", "According to ownership ratio");
         data.put("finance", financeInfo);
 
         // Usage info
-        Map<String, Object> usageInfo = new HashMap<>();
-        usageInfo.put("rule", "Điểm tín dụng lịch sử & phiên bốc thăm tuần");
-        data.put("usage", usageInfo);
+//        Map<String, Object> usageInfo = new HashMap<>();
+//        usageInfo.put("rule", "Điểm tín dụng lịch sử & phiên bốc thăm tuần");
+//        data.put("usage", usageInfo);
 
         // Maintenance info
         Map<String, Object> maintenanceInfo = new HashMap<>();
-        maintenanceInfo.put("approval", "Biểu quyết > 50% theo tỷ lệ sở hữu cho chi > 5 triệu");
-        maintenanceInfo.put("insurance", "PVI – Gói vật chất toàn diện");
+        maintenanceInfo.put("approval", "Approval by >50% vote based on ownership ratio for expenses exceeding 5 million VND");
+        maintenanceInfo.put("insurance", "PVI – Comprehensive physical damage insurance package");
         data.put("maintenance", maintenanceInfo);
+
 
         // Dispute info
         Map<String, Object> disputeInfo = new HashMap<>();
-        disputeInfo.put("voting", "Đa số theo tỷ lệ sở hữu; nếu hoà 50/50, ưu tiên lịch sử đóng góp");
+        disputeInfo.put("voting", "Majority voting based on ownership ratio; in case of a 50/50 tie, priority is given to contribution history");
         data.put("dispute", disputeInfo);
+
 
         // Owners info
         List<Map<String, Object>> owners = shares.stream().map(share -> {
@@ -585,45 +588,70 @@ public class ContractService {
 
         StringBuilder terms = new StringBuilder();
 
-        // Bắt đầu từ phần 2. GÓP VỐN & QUỸ VẬN HÀNH
-        terms.append("1. GÓP VỐN & QUỸ VẬN HÀNH\n");
+// 1. CAPITAL CONTRIBUTION & OPERATING FUND
+        terms.append("1. CAPITAL CONTRIBUTION & OPERATING FUND\n");
         if (vehicle != null) {
-            terms.append("- Giá trị xe: ").append(formatCurrency(vehicle.getVehicleValue())).append("\n");
+            terms.append("- Vehicle value: ").append(formatCurrency(vehicle.getVehicleValue())).append("\n");
         } else {
-            terms.append("- Giá trị xe: Sẽ được cập nhật sau\n");
+            terms.append("- Vehicle value: To be updated later\n");
         }
-        terms.append("- Tiền cọc: ").append(formatCurrency(calculateDepositAmount(group))).append("\n");
-        terms.append("- Mục tiêu quỹ: 50,000,000 VND\n");
-        terms.append("- Nguyên tắc góp: Theo tỷ lệ sở hữu\n");
-        terms.append("\nCác khoản chi bảo dưỡng, sạc, vệ sinh… được thanh toán từ Quỹ chung; khoản cá nhân (nếu có) do cá nhân chi trả theo bút toán bù trừ.\n");
-        terms.append("\nLưu ý: Tiền cọc phải được đóng đầy đủ trước khi hợp đồng được kích hoạt và có hiệu lực.\n\n");
+        terms.append("- Deposit amount: ").append(formatCurrency(calculateDepositAmount(group))).append("\n");
+        terms.append("- Target fund: 50,000,000 VND\n");
+        terms.append("- Contribution principle: According to ownership ratio\n");
+        terms.append(
+                "\nAll expenses for maintenance, charging, and cleaning are paid from the Group Fund; "
+                        + "any personal expenses (if applicable) are settled individually via offset transactions.\n"
+        );
+        terms.append(
+                "\nNote: The full deposit must be paid before the contract becomes active and legally effective.\n\n"
+        );
 
-        // 1. Quyền sử dụng & Lịch đặt
-        terms.append("2. QUYỀN SỬ DỤNG & LỊCH ĐẶT\n");
-        terms.append("Việc sử dụng xe được thực hiện thông qua hệ thống đặt lịch. Mỗi Bên cam kết tuân thủ lịch đặt và hoàn trả đúng hẹn.\n\n");
+// 2. USAGE RIGHTS & BOOKING SCHEDULE
+        terms.append("2. USAGE RIGHTS & BOOKING SCHEDULE\n");
+        terms.append(
+                "Vehicle usage must be booked through the system. "
+                        + "Each member agrees to follow the confirmed schedule and return the vehicle on time.\n"
+                        + "Booking rules: Each co-owner’s weekly quota is 164 hours × ownership ratio; "
+                        + "minimum booking duration is 1 hour and maximum is 3 days (72 hours); "
+                        + "maximum 3 bookings per week per member; "
+                        + "rest time between bookings: +2h if previous trip > 4h, +1h if ≤ 4h; "
+                        + "no overlapping bookings (First Come, First Served); "
+                        + "up to 2 weeks advance booking allowed; "
+                        + "the system reserves 4 hours every Sunday for maintenance.\n\n"
+        );
 
-        // 2. Bảo dưỡng, Sửa chữa & Bảo hiểm
-        terms.append("3. BẢO DƯỠNG, SỬA CHỮA & BẢO HIỂM\n");
-        terms.append("Xe được bảo dưỡng định kỳ theo khuyến nghị của hãng. Trách nhiệm phê duyệt chi phí: Biểu quyết > 50% theo tỷ lệ sở hữu cho chi > 5 triệu. Hợp đồng bảo hiểm: PVI – Gói vật chất toàn diện.\n\n");
+// 3. MAINTENANCE, REPAIR & INSURANCE
+        terms.append("3. MAINTENANCE, REPAIR & INSURANCE\n");
+        terms.append(
+                "The vehicle shall be maintained periodically according to the manufacturer’s recommendations. "
+                        + "Expense approval requires a majority vote (>50%) based on ownership ratio for costs exceeding 5 million VND. "
+                        + "Insurance provider: PVI – Comprehensive physical damage coverage.\n\n"
+        );
 
-        // 3. Giải quyết tranh chấp
-        terms.append("4. GIẢI QUYẾT TRANH CHẤP\n");
-        terms.append("Tranh chấp phát sinh được ghi nhận trên hệ thống và ưu tiên hòa giải trong Nhóm. Cơ chế biểu quyết: Đa số theo tỷ lệ sở hữu; nếu hoà 50/50, ưu tiên lịch sử đóng góp. Thẩm quyền cuối cùng theo pháp luật hiện hành.\n\n");
+// 4. DISPUTE RESOLUTION
+        terms.append("4. DISPUTE RESOLUTION\n");
+        terms.append(
+                "All disputes shall be recorded in the system and prioritized for internal mediation within the group. "
+                        + "Voting mechanism: Majority decision based on ownership ratio; "
+                        + "in case of a 50/50 tie, priority is given to contribution history. "
+                        + "Final authority follows applicable Vietnamese law.\n\n"
+        );
 
-        // 4. Điều khoản chung
-        terms.append("5. ĐIỀU KHOẢN CHUNG\n");
-        terms.append("- Hợp đồng có hiệu lực khi tất cả Bên đồng sở hữu đồng ý và ký.\n");
-        terms.append("- Kích hoạt hợp đồng: Sau khi ký, hợp đồng chỉ được kích hoạt khi tất cả thành viên đã đóng đủ tiền cọc theo quy định.\n");
-        terms.append("- Duyệt hợp đồng: Hệ thống sẽ duyệt lại hợp đồng sau khi nhận đủ tiền cọc từ tất cả thành viên.\n");
-        terms.append("- Các phụ lục (nếu có) là bộ phận không tách rời của Hợp đồng.\n");
-        terms.append("- Hệ thống lưu vết phiên bản, thời điểm ký và danh tính người ký.\n\n");
+// 5. GENERAL TERMS
+        terms.append("5. GENERAL TERMS\n");
+        terms.append("- The contract takes effect once all co-owners have agreed and signed.\n");
+        terms.append("- Activation: The contract becomes active only after all members have paid the full deposit as required.\n");
+        terms.append("- System verification: The system will revalidate and officially activate the contract after confirming all deposits.\n");
+        terms.append("- Appendices (if any) are integral parts of this contract.\n");
+        terms.append("- The system records version history, signing timestamp, and digital identities of signatories.\n\n");
 
-        // 5. Chữ ký các Bên
-        terms.append("6. CHỮ KÝ CÁC BÊN\n");
-        terms.append("Đại diện nhóm: Admin Group\n");
-        terms.append("Ngày ký: ").append(formatDate(LocalDate.now())).append("\n");
-
-        terms.append("Hợp đồng này có hiệu lực từ ngày ký và được tất cả thành viên nhóm đồng ý.\n");
+// 6. SIGNATURES
+        terms.append("6. SIGNATURES\n");
+        terms.append("Group Representative: Admin Group\n");
+        terms.append("Date of Signing: ").append(formatDate(LocalDate.now())).append("\n");
+        terms.append(
+                "This contract takes effect on the signing date and is acknowledged by all members of the co-ownership group.\n"
+        );
 
         return terms.toString();
     }
