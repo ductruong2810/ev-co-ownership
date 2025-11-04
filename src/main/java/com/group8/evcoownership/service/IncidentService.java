@@ -4,7 +4,6 @@ import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.dto.IncidentResponseDTO;
 import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.enums.BookingStatus;
-import com.group8.evcoownership.enums.RejectionCategory;
 import com.group8.evcoownership.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -42,7 +41,8 @@ public class IncidentService {
         }
 
         // Cho phép report nếu đang IN_USE, CONFIRMED, hoặc COMPLETED trong 24h
-        if (!List.of(BookingStatus.CONFIRMED, BookingStatus.COMPLETED)
+        if (!List.of(BookingStatus.CONFIRMED, BookingStatus.AWAITING_REVIEW,
+                BookingStatus.NEEDS_ATTENTION, BookingStatus.COMPLETED)
                 .contains(booking.getStatus())) {
             throw new IllegalStateException("Booking not eligible for incident reporting.");
         }

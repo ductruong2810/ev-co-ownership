@@ -1,7 +1,7 @@
 package com.group8.evcoownership.controller;
 
-import com.group8.evcoownership.dto.QrCheckInRequestDTO;
 import com.group8.evcoownership.dto.QrCheckOutRequestDTO;
+import com.group8.evcoownership.dto.QrScanRequestDTO;
 import com.group8.evcoownership.dto.VehicleCheckRequestDTO;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.entity.VehicleCheck;
@@ -183,68 +183,68 @@ public class VehicleCheckController {
     }
 
     /**
-     * QR Code Check-in endpoint - Quét QR để tìm booking active của user
+     * Unified QR Scan endpoint - handles both check-in and checkout QR payloads
      * Example:
-     * POST /api/vehicle-checks/qr-checkin
+     * POST /api/vehicle-checks/qr-scan
      */
-    @PostMapping("/qr-checkin")
+    @PostMapping("/qr-scan")
     @PreAuthorize("hasRole('CO_OWNER')")
-    @Operation(summary = "Check-in bằng QR code", description = "Quét QR code để check-in và tìm booking đang hoạt động")
-    public ResponseEntity<?> qrCheckIn(@Valid @RequestBody QrCheckInRequestDTO request) {
+    @Operation(summary = "Quét QR code", description = "Quét QR code để xác định hành động (check-in/check-out)")
+    public ResponseEntity<Map<String, Object>> qrScan(@Valid @RequestBody QrScanRequestDTO request) {
         // Lấy user từ JWT token
         String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
         User currentUser = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found for email: " + userEmail));
 
-        Map<String, Object> result = vehicleCheckService.processQrCheckIn(request.qrCode(), currentUser.getUserId());
+        Map<String, Object> result = vehicleCheckService.processQrScan(request.qrCode(), currentUser.getUserId());
         boolean success = Boolean.TRUE.equals(result.get("success"));
-        Long groupId = result.get("groupId") instanceof Number number ? number.longValue() : null;
-        String message = result.get("message") != null ? result.get("message").toString() : "";
-        Long bookingId = result.get("bookingId") instanceof Number bk ? bk.longValue() : null;
-
         result.put("status", success ? "success" : "fail");
 
-        if (groupId != null) {
+        Long groupId = result.get("groupId") instanceof Number number ? number.longValue() : null;
+        String message = result.getOrDefault("message", "").toString();
+        Long bookingId = result.get("bookingId") instanceof Number bk ? bk.longValue() : null;
+
+        if (!result.containsKey("redirectUrl")) {
+            String responseType = result.getOrDefault("responseType", "CHECKIN").toString();
+            boolean isCheckoutFlow = "CHECKOUT".equalsIgnoreCase(responseType)
+                    || "CHECKOUT_FORM".equalsIgnoreCase(responseType)
+                    || "TECH_REVIEW".equalsIgnoreCase(responseType)
+                    || "COMPLETED".equalsIgnoreCase(responseType);
+
+            String resultPath = isCheckoutFlow ? "checkout-result" : "checkin-result";
+
             String encodedMessage = URLEncoder.encode(message, StandardCharsets.UTF_8);
-            String basePath = String.format("%s/dashboard/viewGroups/%d/checkin-result", frontendBaseUrl, groupId);
-            String messageQuery = encodedMessage.isEmpty() ? "" : "&message=" + encodedMessage;
             String bookingQuery = bookingId != null ? "&bookingId=" + bookingId : "";
-            String target;
-            if (success) {
-                target = String.format("%s?status=success%s%s", basePath, bookingQuery, messageQuery);
+            if (groupId != null) {
+                String basePath = String.format("%s/dashboard/viewGroups/%d/%s", frontendBaseUrl, groupId, resultPath);
+                String messageQuery = encodedMessage.isEmpty() ? "" : "&message=" + encodedMessage;
+                result.put("redirectUrl", String.format("%s?status=%s%s%s", basePath,
+                        success ? "success" : "fail", bookingQuery, messageQuery));
             } else {
-                target = String.format("%s?status=fail%s%s", basePath, bookingQuery, messageQuery);
+                result.put("redirectUrl", String.format("%s/%s?status=%s%s&message=%s",
+                        frontendBaseUrl,
+                        resultPath,
+                        success ? "success" : "fail",
+                        bookingQuery,
+                        encodedMessage));
             }
-            result.put("redirectUrl", target);
-            return ResponseEntity.ok(result);
         }
 
-        if (success) {
-            String target = frontendBaseUrl + "/dashboard?status=success";
-            result.put("redirectUrl", target);
-            return ResponseEntity.ok(result);
-        }
-
-        String target = String.format("%s/checkin-result?status=fail&message=%s",
-                frontendBaseUrl, URLEncoder.encode(message, StandardCharsets.UTF_8));
-        result.put("redirectUrl", target);
         return ResponseEntity.ok(result);
     }
 
     /**
-     * QR Code Check-out endpoint - Quét QR để hoàn tất booking và ghi nhận post-use check
-     * Example:
-     * POST /api/vehicle-checks/qr-checkout
+     * Checkout form submission - lưu kết quả kiểm tra sau sử dụng và chuyển trạng thái booking
      */
-    @PostMapping("/qr-checkout")
+    @PostMapping("/checkout/submit")
     @PreAuthorize("hasRole('CO_OWNER')")
     @Operation(summary = "Check-out bằng QR code", description = "Quét QR code để check-out, cập nhật tình trạng xe và đóng booking")
-    public ResponseEntity<Map<String, Object>> qrCheckOut(@Valid @RequestBody QrCheckOutRequestDTO request) {
+    public ResponseEntity<Map<String, Object>> submitCheckoutForm(@Valid @RequestBody QrCheckOutRequestDTO request) {
         String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
         User currentUser = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found for email: " + userEmail));
 
-        Map<String, Object> result = vehicleCheckService.processQrCheckOut(request, currentUser.getUserId());
+        Map<String, Object> result = vehicleCheckService.submitCheckoutForm(request, currentUser.getUserId());
         return ResponseEntity.ok(result);
     }
 }
