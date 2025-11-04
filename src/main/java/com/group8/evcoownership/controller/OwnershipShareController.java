@@ -19,6 +19,7 @@ import java.util.List;
 @RequestMapping("/api/shares")
 @RequiredArgsConstructor
 @Tag(name = "Ownership Shares", description = "Quản lý tỷ lệ sở hữu")
+@PreAuthorize("isAuthenticated()")
 public class OwnershipShareController {
 
     private final OwnershipShareService service;
