@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -18,11 +19,13 @@ import java.util.Map;
 @RequestMapping("/api/auth/vnpay")
 @RequiredArgsConstructor
 @Tag(name = "VNPay", description = "Tích hợp thanh toán VNPay")
+@PreAuthorize("isAuthenticated()")
 public class VnPayController {
     private final VnPay_PaymentService VnPay_PaymentService;
 
     @PostMapping("/create-vnPaypayment/{fee}")
     @Operation(summary = "Tạo URL thanh toán VNPay", description = "Tạo URL thanh toán VNPay cho một khoản phí cụ thể")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN', 'CO_OWNER')")
     public ResponseEntity<Map<String, String>> createPaymentUrl(@PathVariable long fee, HttpServletRequest request) {
         Map<String, String> map = new HashMap<>();
 
