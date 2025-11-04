@@ -68,7 +68,6 @@ public class ContractController {
      * Generate contract data (chỉ tạo nội dung, không save DB)
      */
     @GetMapping("/{groupId}/generate")
-    @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
     @Operation(summary = "Tạo nội dung hợp đồng", description = "Tạo nội dung hợp đồng để preview, không lưu vào database")
     public ResponseEntity<Map<String, Object>> generateContractData(
             @PathVariable Long groupId,
