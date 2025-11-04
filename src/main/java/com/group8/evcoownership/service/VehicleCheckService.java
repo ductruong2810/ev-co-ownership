@@ -496,13 +496,6 @@ public class VehicleCheckService {
             return result;
         }
 
-        LocalDateTime now = LocalDateTime.now();
-        if (booking.getStartDateTime() != null && now.isBefore(booking.getStartDateTime())) {
-            result.put("success", false);
-            result.put("message", "Cannot checkout before booking start time");
-            return result;
-        }
-
         if (!hasCheck(booking.getId(), "PRE_USE")) {
             result.put("success", false);
             result.put("message", "Must complete pre-use check before checkout");
