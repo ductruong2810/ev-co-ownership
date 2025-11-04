@@ -10,7 +10,7 @@ import com.group8.evcoownership.entity.VehicleCheck;
 import com.group8.evcoownership.enums.BookingStatus;
 import com.group8.evcoownership.repository.UsageBookingRepository;
 import com.group8.evcoownership.repository.VehicleCheckRepository;
- import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Value;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,12 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -80,7 +75,7 @@ public class VehicleCheckService {
     }
 
     // Technician approve/reject check
-    public VehicleCheck updateCheckStatus(Long checkId, String status, String notes) {
+    public VehicleCheck updateCheckStatus(Long checkId, String status, String notes, String issues) {
         VehicleCheck check = vehicleCheckRepository.findById(checkId)
                 .orElseThrow(() -> new EntityNotFoundException("Vehicle check not found"));
 
@@ -98,13 +93,17 @@ public class VehicleCheckService {
             check.setStatus(normalizedStatus);
         }
 
+        if (issues != null && !issues.isBlank()) {
+            check.setIssues(issues);
+        }
+
         VehicleCheck savedCheck = vehicleCheckRepository.save(check);
 
         UsageBooking booking = check.getBooking();
         if (booking != null && normalizedStatus != null) {
             switch (normalizedStatus) {
                 case "APPROVED", "PASSED", "COMPLETED" -> finalizeBookingAfterApproval(booking);
-                case "REJECTED", "FAILED", "NEEDS_ATTENTION" -> handleTechnicianRejection(booking, notes, check, normalizedStatus);
+                case "REJECTED", "FAILED", "NEEDS_ATTENTION" -> handleTechnicianRejection(booking, notes, issues, check, normalizedStatus);
                 default -> {
                     // no-op for other statuses
                 }
@@ -112,6 +111,10 @@ public class VehicleCheckService {
         }
 
         return savedCheck;
+    }
+
+    public Optional<VehicleCheck> findByBookingAndType(Long bookingId, String checkType) {
+        return vehicleCheckRepository.findByBooking_IdAndCheckType(bookingId, checkType);
     }
 
     // Lấy checks của booking
@@ -517,7 +520,8 @@ public class VehicleCheckService {
     }
 
 
-    private void handleTechnicianRejection(UsageBooking booking, String notes, VehicleCheck sourceCheck, String normalizedStatus) {
+    private void handleTechnicianRejection(UsageBooking booking, String notes, String issuesOverride,
+                                           VehicleCheck sourceCheck, String normalizedStatus) {
         booking.setStatus(BookingStatus.NEEDS_ATTENTION);
         usageBookingRepository.save(booking);
 
@@ -527,7 +531,7 @@ public class VehicleCheckService {
                 .odometer(sourceCheck.getOdometer())
                 .batteryLevel(sourceCheck.getBatteryLevel())
                 .cleanliness(sourceCheck.getCleanliness())
-                .issues(sourceCheck.getIssues())
+                .issues(issuesOverride != null && !issuesOverride.isBlank() ? issuesOverride : sourceCheck.getIssues())
                 .notes(notes)
                 .status(normalizedStatus)
                 .build();
