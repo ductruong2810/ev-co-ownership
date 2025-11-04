@@ -49,19 +49,16 @@ public class UsageBooking {
     @Column(name = "Priority")
     private Integer priority;
 
-    @Column(name = "QrCode", length = 255)
-    private String qrCode;
-
     @Column(name = "CreatedAt")
     private LocalDateTime createdAt;
 
     @Column(name = "UpdatedAt")
     private LocalDateTime updatedAt;
 
-    @Column(name = "QrCodeCheckin", length = 255)
+    @Column(name = "QrCodeCheckin")
     private String qrCodeCheckin;
 
-    @Column(name = "QrCodeCheckout", length = 255)
+    @Column(name = "QrCodeCheckout")
     private String qrCodeCheckout;
 
     @Column(name = "CheckinStatus")
