@@ -30,7 +30,7 @@ public class WeeklyCalendarController {
 
     @GetMapping("/groups/{groupId}/weekly")
     @Operation(summary = "Lấy lịch tuần", description = "Hiển thị lịch tuần với các slot đã book và quota của user")
-    @PreAuthorize("hasAnyRole('STAFF','ADMIN', 'CO_OWNER', 'TECHNICIAN')")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN','CO_OWNER')")
     public ResponseEntity<WeeklyCalendarResponseDTO> getWeeklyCalendar(
             @PathVariable Long groupId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart,

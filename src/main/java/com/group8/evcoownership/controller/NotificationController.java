@@ -24,6 +24,7 @@ import java.util.Map;
 @RequestMapping("/api/notifications")
 @RequiredArgsConstructor
 @Tag(name = "Notifications", description = "Quản lý thông báo")
+@PreAuthorize("isAuthenticated()")
 public class NotificationController {
 
     private final NotificationRepository notificationRepository;

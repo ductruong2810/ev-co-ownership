@@ -16,6 +16,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/incidents")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class IncidentController {
 
     private final IncidentService incidentService;

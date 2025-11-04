@@ -20,6 +20,7 @@ import java.util.List;
 @RequestMapping("/api/maintenances")
 @RequiredArgsConstructor
 @Tag(name = "Maintenance", description = "Quản lý yêu cầu bảo trì xe (Technician tạo, Staff/Admin duyệt, Admin giám sát)")
+@PreAuthorize("isAuthenticated()")
 public class MaintenanceController {
 
     private final MaintenanceService maintenanceService;

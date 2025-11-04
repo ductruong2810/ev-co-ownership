@@ -17,6 +17,7 @@ import java.util.Map;
 @RequestMapping("/api/contracts")
 @RequiredArgsConstructor
 @Tag(name = "Contracts", description = "Tạo, xuất PDF, ký và duyệt hợp đồng")
+@PreAuthorize("isAuthenticated()")
 public class ContractController {
 
     private final ContractService contractService;
