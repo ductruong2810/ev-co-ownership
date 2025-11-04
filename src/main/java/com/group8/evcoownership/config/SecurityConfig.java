@@ -49,7 +49,20 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
-                                "/api/auth/**"
+                                "/api/auth/**",
+                                "/api/funds/**",
+                                "/api/payments/**",
+                                "/api/auth/vnpay/**",
+                                "/api/disputes/**",
+                                "/api/expenses/**",
+                                "/api/user/profile/**",
+                                "/api/shares/**",
+                                "/api/vehicles/**",
+                                "/api/contracts/**",
+                                "/api/bookings/**",
+                                "/api/test/**",
+                                "/api/ocr/**",
+                                "/api/deposits/deposit-callback"
                         ).permitAll()
 
                         // 3. Role-based endpoints - ĐẶT TRƯỚC .anyRequest()

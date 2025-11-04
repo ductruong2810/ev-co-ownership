@@ -25,7 +25,6 @@ import java.util.Map;
 @RequestMapping("/api/deposits")
 @RequiredArgsConstructor
 @Tag(name = "Deposit Payments", description = "Quản lý thanh toán tiền cọc")
-@PreAuthorize("isAuthenticated()")
 public class DepositPaymentController {
 
     private static final Logger log = LoggerFactory.getLogger(DepositPaymentController.class);

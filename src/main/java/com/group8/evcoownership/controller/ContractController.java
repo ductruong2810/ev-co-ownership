@@ -65,7 +65,7 @@ public class ContractController {
     }
 
     /**
-     * Generate contract data (chỉ tạo nội dung, không save DB)
+     * chỉ tạo nội dung, không save DB
      */
     @GetMapping("/{groupId}/generate")
     @Operation(summary = "Tạo nội dung hợp đồng", description = "Tạo nội dung hợp đồng để preview, không lưu vào database")
