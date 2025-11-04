@@ -1,15 +1,15 @@
 package com.group8.evcoownership.dto;
 
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
 
 public record QrCheckOutRequestDTO(
-        @NotBlank String qrCode,
+        @NotNull Long bookingId,
         Integer odometer,
         BigDecimal batteryLevel,
         String cleanliness,
-        String notes,
+       String notes,
         String issues
 ) {
 }

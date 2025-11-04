@@ -10,10 +10,10 @@ import com.group8.evcoownership.entity.VehicleCheck;
 import com.group8.evcoownership.enums.BookingStatus;
 import com.group8.evcoownership.repository.UsageBookingRepository;
 import com.group8.evcoownership.repository.VehicleCheckRepository;
+ import org.springframework.beans.factory.annotation.Value;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,7 +36,11 @@ public class VehicleCheckService {
 
     private final VehicleCheckRepository vehicleCheckRepository;
     private final UsageBookingRepository usageBookingRepository;
+    private final NotificationService notificationService;
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Value("${frontend.base.url:http://localhost:3000}")
+    private String frontendBaseUrl;
 
     @Value("${booking.checkin.earliest-offset-minutes:10}")
     private long checkInEarliestOffsetMinutes;
@@ -183,12 +187,34 @@ public class VehicleCheckService {
         VehicleCheck check = vehicleCheckRepository.findById(checkId)
                 .orElseThrow(() -> new EntityNotFoundException("Vehicle check not found"));
 
-        check.setStatus(status);
-        if (notes != null) {
-            check.setNotes(check.getNotes() + " | Technician notes: " + notes);
+        String normalizedStatus = status != null ? status.trim().toUpperCase() : null;
+
+        if (notes != null && !notes.isBlank()) {
+            String existingNotes = check.getNotes();
+            String mergedNotes = (existingNotes != null && !existingNotes.isBlank())
+                    ? existingNotes + " | Technician notes: " + notes
+                    : "Technician notes: " + notes;
+            check.setNotes(mergedNotes);
         }
 
-        return vehicleCheckRepository.save(check);
+        if (normalizedStatus != null) {
+            check.setStatus(normalizedStatus);
+        }
+
+        VehicleCheck savedCheck = vehicleCheckRepository.save(check);
+
+        UsageBooking booking = check.getBooking();
+        if (booking != null && normalizedStatus != null) {
+            switch (normalizedStatus) {
+                case "APPROVED", "PASSED", "COMPLETED" -> finalizeBookingAfterApproval(booking);
+                case "REJECTED", "FAILED", "NEEDS_ATTENTION" -> handleTechnicianRejection(booking, notes, check, normalizedStatus);
+                default -> {
+                    // no-op for other statuses
+                }
+            }
+        }
+
+        return savedCheck;
     }
 
     // Lấy checks của booking
@@ -216,7 +242,7 @@ public class VehicleCheckService {
     /**
      * Xử lý QR code check-in - Tìm booking active của user cho vehicle
      */
-    public Map<String, Object> processQrCheckIn(String qrCode, Long userId) {
+    public Map<String, Object> processQrScan(String qrCode, Long userId) {
         Map<String, Object> result = new HashMap<>();
 
         try {
@@ -227,74 +253,30 @@ public class VehicleCheckService {
 
             UsageBooking booking = context.booking();
             BookingQrData qrData = context.qrData();
+            String phase = qrData.phase() != null ? qrData.phase() : "CHECKIN";
+            result.put("qrPhase", phase);
 
-            if (booking.getStatus() != BookingStatus.CONFIRMED) {
-                result.put("success", false);
-                result.put("message", "Booking is not confirmed");
-                return result;
-            }
-
-            Vehicle vehicle = booking.getVehicle();
-            Long groupId = null;
-            if (vehicle != null && vehicle.getOwnershipGroup() != null) {
-                groupId = vehicle.getOwnershipGroup().getGroupId();
-            }
-            result.put("groupId", groupId);
-
-            VehicleCheck latestTechnicianCheck = findLatestTechnicianCheck(vehicle);
-            if (latestTechnicianCheck != null) {
-                result.put("latestVehicleCheck", buildVehicleCheckSummary(latestTechnicianCheck));
-            }
-
-            LocalDateTime now = LocalDateTime.now();
-            boolean withinCheckInWindow = isWithinCheckInWindow(booking, now);
-
-
-            result.put("success", true);
-            result.put("message", "Ready for check-in");
-
-            // SINH QR CHECKOUT và lưu vào field qrCodeCheckout
-            String checkoutQr = generateCheckOutQrPayload(booking);
-            booking.setQrCodeCheckout(checkoutQr);  // LƯU VÀO qrCodeCheckout
-            usageBookingRepository.save(booking);
-
-            result.put("qrUpdatedForCheckout", true);
-            result.put("checkoutQrCode", checkoutQr);
-
-
-            result.put("bookingId", booking.getId());
-            result.put("canCheckIn", withinCheckInWindow);
-            Map<String, Object> vehicleInfo = new HashMap<>();
-            if (vehicle != null) {
-                vehicleInfo.put("vehicleId", vehicle.getId());
-                vehicleInfo.put("brand", vehicle.getBrand());
-                vehicleInfo.put("model", vehicle.getModel());
-                vehicleInfo.put("licensePlate", vehicle.getLicensePlate());
-            }
-            result.put("vehicleInfo", vehicleInfo);
-            result.put("bookingInfo", Map.of(
-                    "startTime", booking.getStartDateTime(),
-                    "endTime", booking.getEndDateTime(),
-                    "status", booking.getStatus().toString()
-            ));
-            result.put("hasPreUseCheck", hasCheck(booking.getId(), "PRE_USE"));
-            result.put("hasPostUseCheck", hasCheck(booking.getId(), "POST_USE"));
-            result.put("qrUserId", qrData.userId());
+            return switch (phase) {
+                case "CHECKOUT" -> handleCheckoutScan(booking, qrData, result);
+                case "TECH_REVIEW" -> handlePendingReviewScan(booking, qrData, result);
+                case "COMPLETED" -> handleCompletedScan(booking, qrData, result);
+                default -> handleCheckInScan(booking, qrData, result);
+            };
 
         } catch (JsonProcessingException e) {
-            log.warn("Invalid QR code payload for check-in: {}", e.getOriginalMessage());
+            log.warn("Invalid QR code payload: {}", e.getOriginalMessage());
             result.put("success", false);
             result.put("message", "Invalid QR code format");
         } catch (IOException e) {
-            log.error("I/O error while processing QR check-in", e);
+            log.error("I/O error while processing QR scan", e);
             result.put("success", false);
             result.put("message", "Unable to process QR code");
         } catch (EntityNotFoundException | IllegalArgumentException | IllegalStateException | SecurityException e) {
-            log.warn("QR check-in validation failed: {}", e.getMessage());
+            log.warn("QR scan validation failed: {}", e.getMessage());
             result.put("success", false);
             result.put("message", e.getMessage() != null ? e.getMessage() : "Unable to process QR code");
         } catch (Exception e) {
-            log.error("Unexpected error processing QR check-in", e);
+            log.error("Unexpected error processing QR scan", e);
             result.put("success", false);
             result.put("message", "Unable to process QR code");
         }
@@ -316,23 +298,36 @@ public class VehicleCheckService {
     }
 
 
-    public Map<String, Object> processQrCheckOut(QrCheckOutRequestDTO request, Long userId) {
+    public Map<String, Object> submitCheckoutForm(QrCheckOutRequestDTO request, Long userId) {
         Map<String, Object> result = new HashMap<>();
 
         try {
-            BookingContext context = validateBookingQr(request.qrCode(), userId, result);
-            if (context == null) {
-                return result;
+            UsageBooking booking = usageBookingRepository.findById(request.bookingId())
+                    .orElseThrow(() -> new EntityNotFoundException("Booking not found"));
+
+            if (!booking.getUser().getUserId().equals(userId)) {
+                throw new SecurityException("You can only submit checkout for your own booking");
             }
 
-            UsageBooking booking = context.booking();
+            result.put("responseType", "CHECKOUT_FORM");
+            attachBookingMetadata(booking, null, result);
 
             if (booking.getStatus() == BookingStatus.COMPLETED) {
                 result.put("success", true);
                 result.put("alreadyCompleted", true);
                 result.put("message", "Booking already completed");
-                result.put("bookingId", booking.getId());
-                result.put("bookingStatus", booking.getStatus().name());
+                return result;
+            }
+
+            if (booking.getStatus() == BookingStatus.AWAITING_REVIEW) {
+                result.put("success", false);
+                result.put("message", "Checkout already submitted and awaiting technician review");
+                return result;
+            }
+
+            if (booking.getStatus() == BookingStatus.NEEDS_ATTENTION) {
+                result.put("success", false);
+                result.put("message", "Booking requires technician attention. Please contact support");
                 return result;
             }
 
@@ -381,27 +376,37 @@ public class VehicleCheckService {
                 );
             }
 
-            booking.setStatus(BookingStatus.COMPLETED);
-            booking.setQrCodeCheckout(generateCompletedQrPayload(booking));
+            booking.setStatus(BookingStatus.AWAITING_REVIEW);
+            booking.setCheckoutStatus(true);
+            booking.setCheckoutTime(LocalDateTime.now());
+            booking.setQrCodeCheckout(generatePendingReviewQrPayload(booking));
             usageBookingRepository.save(booking);
 
             result.put("success", true);
-            result.put("message", "Checkout recorded successfully");
-            result.put("bookingId", booking.getId());
-            result.put("bookingStatus", booking.getStatus().name());
+            result.put("message", "Checkout recorded. Awaiting technician review");
             result.put("postUseCheckId", postUseCheck != null ? postUseCheck.getId() : null);
             result.put("postUseCheck", postUseCheck != null ? buildVehicleCheckSummary(postUseCheck) : null);
             result.put("hasPostUseCheck", true);
+            result.put("requiresTechnicianReview", true);
+            result.put("technicianReviewStatus", postUseCheck != null ? postUseCheck.getStatus() : "PENDING");
             result.put("maintenanceSuggested", hasReportedIssues(request));
 
-        } catch (JsonProcessingException e) {
-            log.warn("Invalid QR code payload for checkout: {}", e.getOriginalMessage());
-            result.put("success", false);
-            result.put("message", "Invalid QR code format");
-        } catch (IOException e) {
-            log.error("I/O error while processing QR checkout", e);
-            result.put("success", false);
-            result.put("message", "Unable to process QR checkout");
+            notifyTechniciansForPendingReview(booking);
+
+            if (booking.getVehicle() != null && booking.getVehicle().getOwnershipGroup() != null) {
+                Long groupId = booking.getVehicle().getOwnershipGroup().getGroupId();
+                String redirectUrl = String.format("%s/dashboard/viewGroups/%d/checkout-result?status=pending&bookingId=%d",
+                        frontendBaseUrl,
+                        groupId,
+                        booking.getId());
+                result.put("redirectUrl", redirectUrl);
+            } else {
+                String redirectUrl = String.format("%s/checkout-result?status=pending&bookingId=%d",
+                        frontendBaseUrl,
+                        booking.getId());
+                result.put("redirectUrl", redirectUrl);
+            }
+
         } catch (EntityNotFoundException | IllegalArgumentException | IllegalStateException | SecurityException e) {
             log.warn("QR checkout validation failed: {}", e.getMessage());
             result.put("success", false);
@@ -411,6 +416,154 @@ public class VehicleCheckService {
             result.put("success", false);
             result.put("message", "Unable to process QR checkout");
         }
+
+        return result;
+    }
+
+
+    private Map<String, Object> handleCheckInScan(UsageBooking booking,
+                                                  BookingQrData qrData,
+                                                  Map<String, Object> result) {
+        result.put("responseType", "CHECKIN");
+
+        if (Boolean.TRUE.equals(booking.getCheckinStatus())) {
+            result.put("success", false);
+            result.put("message", "Booking already checked in");
+            attachBookingMetadata(booking, qrData, result);
+            result.put("alreadyCheckedIn", true);
+            result.put("checkinTime", booking.getCheckinTime());
+            return result;
+        }
+
+        if (booking.getStatus() != BookingStatus.CONFIRMED) {
+            result.put("success", false);
+            result.put("message", "Booking is not confirmed");
+            attachBookingMetadata(booking, qrData, result);
+            return result;
+        }
+
+        VehicleCheck latestTechnicianCheck = findLatestTechnicianCheck(booking.getVehicle());
+        if (latestTechnicianCheck != null) {
+            result.put("latestVehicleCheck", buildVehicleCheckSummary(latestTechnicianCheck));
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        boolean withinCheckInWindow = isWithinCheckInWindow(booking, now);
+
+        booking.setCheckinStatus(true);
+        booking.setCheckinTime(LocalDateTime.now());
+
+        String checkoutQr = generateCheckOutQrPayload(booking);
+        booking.setQrCodeCheckout(checkoutQr);
+        usageBookingRepository.save(booking);
+
+        attachBookingMetadata(booking, qrData, result);
+
+        result.put("success", true);
+        result.put("message", "Ready for check-in");
+        result.put("canCheckIn", withinCheckInWindow);
+        result.put("qrUpdatedForCheckout", true);
+        result.put("checkoutQrCode", checkoutQr);
+
+        return result;
+    }
+
+
+    private Map<String, Object> handleCheckoutScan(UsageBooking booking,
+                                                   BookingQrData qrData,
+                                                   Map<String, Object> result) {
+        result.put("responseType", "CHECKOUT");
+        attachBookingMetadata(booking, qrData, result);
+
+        if (booking.getStatus() == BookingStatus.COMPLETED) {
+            result.put("success", true);
+            result.put("message", "Booking already completed");
+            result.put("alreadyCompleted", true);
+            result.put("requiresCheckoutForm", false);
+            return result;
+        }
+
+        if (booking.getStatus() == BookingStatus.AWAITING_REVIEW) {
+            result.put("success", false);
+            result.put("message", "Checkout already submitted and awaiting technician review");
+            result.put("requiresTechnicianReview", true);
+            return result;
+        }
+
+        if (booking.getStatus() == BookingStatus.NEEDS_ATTENTION) {
+            result.put("success", false);
+            result.put("message", "Booking requires technician attention. Please contact support");
+            result.put("requiresTechnicianReview", true);
+            return result;
+        }
+
+        if (booking.getStatus() != BookingStatus.CONFIRMED) {
+            result.put("success", false);
+            result.put("message", "Booking is not in a checkout-ready state");
+            return result;
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        if (booking.getStartDateTime() != null && now.isBefore(booking.getStartDateTime())) {
+            result.put("success", false);
+            result.put("message", "Cannot checkout before booking start time");
+            return result;
+        }
+
+        if (booking.getEndDateTime() != null && now.isAfter(booking.getEndDateTime().plusHours(4))) {
+            result.put("success", false);
+            result.put("message", "Checkout window has expired");
+            return result;
+        }
+
+        if (!hasCheck(booking.getId(), "PRE_USE")) {
+            result.put("success", false);
+            result.put("message", "Must complete pre-use check before checkout");
+            return result;
+        }
+
+        boolean alreadyPostUse = hasCheck(booking.getId(), "POST_USE");
+        if (alreadyPostUse) {
+            vehicleCheckRepository.findByBookingId(booking.getId())
+                    .stream()
+                    .filter(check -> "POST_USE".equals(check.getCheckType()))
+                    .findFirst().ifPresent(existingPostUse -> result.put("existingPostUseCheck", buildVehicleCheckSummary(existingPostUse)));
+        }
+
+        result.put("success", true);
+        result.put("message", "Ready for checkout");
+        result.put("requiresCheckoutForm", true);
+        result.put("hasExistingPostUse", alreadyPostUse);
+
+        return result;
+    }
+
+
+    private Map<String, Object> handlePendingReviewScan(UsageBooking booking,
+                                                        BookingQrData qrData,
+                                                        Map<String, Object> result) {
+        result.put("responseType", "CHECKOUT");
+        attachBookingMetadata(booking, qrData, result);
+
+        result.put("success", false);
+        result.put("message", "Checkout already submitted and awaiting technician review");
+        result.put("requiresTechnicianReview", true);
+        result.put("reviewStatus", booking.getStatus() != null ? booking.getStatus().name() : null);
+
+        return result;
+    }
+
+
+    private Map<String, Object> handleCompletedScan(UsageBooking booking,
+                                                    BookingQrData qrData,
+                                                    Map<String, Object> result) {
+        result.put("responseType", "CHECKOUT");
+        attachBookingMetadata(booking, qrData, result);
+
+        result.put("success", true);
+        result.put("message", "Booking already completed");
+        result.put("alreadyCompleted", true);
+        result.put("requiresCheckoutForm", false);
 
         return result;
     }
@@ -437,6 +590,37 @@ public class VehicleCheckService {
     }
 
 
+    private void attachBookingMetadata(UsageBooking booking, BookingQrData qrData, Map<String, Object> result) {
+        Vehicle vehicle = booking.getVehicle();
+        Long groupId = null;
+        Map<String, Object> vehicleInfo = new HashMap<>();
+        if (vehicle != null) {
+            vehicleInfo.put("vehicleId", vehicle.getId());
+            vehicleInfo.put("brand", vehicle.getBrand());
+            vehicleInfo.put("model", vehicle.getModel());
+            vehicleInfo.put("licensePlate", vehicle.getLicensePlate());
+            if (vehicle.getOwnershipGroup() != null) {
+                groupId = vehicle.getOwnershipGroup().getGroupId();
+            }
+        }
+
+        result.put("groupId", groupId);
+        result.put("vehicleInfo", vehicleInfo);
+        result.put("bookingInfo", Map.of(
+                "startTime", booking.getStartDateTime(),
+                "endTime", booking.getEndDateTime(),
+                "status", booking.getStatus() != null ? booking.getStatus().name() : null
+        ));
+        result.put("bookingId", booking.getId());
+        result.put("bookingStatus", booking.getStatus() != null ? booking.getStatus().name() : null);
+        result.put("hasPreUseCheck", hasCheck(booking.getId(), "PRE_USE"));
+        result.put("hasPostUseCheck", hasCheck(booking.getId(), "POST_USE"));
+        if (qrData != null) {
+            result.put("qrUserId", qrData.userId());
+        }
+    }
+
+
     private Map<String, Object> buildVehicleCheckSummary(VehicleCheck check) {
         Map<String, Object> summary = new HashMap<>();
         summary.put("checkId", check.getId());
@@ -453,6 +637,63 @@ public class VehicleCheckService {
     }
 
 
+    private void finalizeBookingAfterApproval(UsageBooking booking) {
+        booking.setStatus(BookingStatus.COMPLETED);
+        booking.setCheckoutStatus(true);
+        if (booking.getCheckoutTime() == null) {
+            booking.setCheckoutTime(LocalDateTime.now());
+        }
+        booking.setQrCodeCheckout(generateCompletedQrPayload(booking));
+        usageBookingRepository.save(booking);
+    }
+
+
+    private void handleTechnicianRejection(UsageBooking booking, String notes, VehicleCheck sourceCheck, String normalizedStatus) {
+        booking.setStatus(BookingStatus.NEEDS_ATTENTION);
+        usageBookingRepository.save(booking);
+
+        VehicleCheck technicianReview = VehicleCheck.builder()
+                .booking(booking)
+                .checkType("TECH_REVIEW")
+                .odometer(sourceCheck.getOdometer())
+                .batteryLevel(sourceCheck.getBatteryLevel())
+                .cleanliness(sourceCheck.getCleanliness())
+                .issues(sourceCheck.getIssues())
+                .notes(notes)
+                .status(normalizedStatus)
+                .build();
+
+        vehicleCheckRepository.save(technicianReview);
+    }
+
+
+    private void notifyTechniciansForPendingReview(UsageBooking booking) {
+        if (notificationService == null) {
+            return;
+        }
+
+        Vehicle vehicle = booking.getVehicle();
+        String vehicleInfo = vehicle != null
+                ? String.format("%s %s (%s)",
+                vehicle.getBrand(),
+                vehicle.getModel(),
+                vehicle.getLicensePlate())
+                : "the assigned vehicle";
+
+        String title = "Vehicle checkout pending review";
+        String message = String.format("Booking #%d for %s has been checked out and awaits technician review.",
+                booking.getId(),
+                vehicleInfo);
+
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("vehicleName", vehicleInfo);
+        metadata.put("description", String.format("Booking #%d awaiting technician review", booking.getId()));
+        metadata.put("status", booking.getStatus() != null ? booking.getStatus().name() : "AWAITING_REVIEW");
+
+        notificationService.sendNotificationToTechnicians(title, message, metadata);
+    }
+
+
     private String generateCheckOutQrPayload(UsageBooking booking) {
         String startTime = booking.getStartDateTime() != null ? "\"" + booking.getStartDateTime() + "\"" : "null";
         String endTime = booking.getEndDateTime() != null ? "\"" + booking.getEndDateTime() + "\"" : "null";
@@ -465,6 +706,22 @@ public class VehicleCheckService {
                 startTime,
                 endTime,
                 UUID.randomUUID(),
+                LocalDateTime.now()
+        );
+    }
+
+
+    private String generatePendingReviewQrPayload(UsageBooking booking) {
+        String startTime = booking.getStartDateTime() != null ? "\"" + booking.getStartDateTime() + "\"" : "null";
+        String endTime = booking.getEndDateTime() != null ? "\"" + booking.getEndDateTime() + "\"" : "null";
+
+        return String.format(
+                "{\"bookingId\":%d,\"userId\":%d,\"vehicleId\":%d,\"phase\":\"TECH_REVIEW\",\"status\":\"AWAITING_REVIEW\",\"startTime\":%s,\"endTime\":%s,\"timestamp\":\"%s\"}",
+                booking.getId(),
+                booking.getUser() != null ? booking.getUser().getUserId() : null,
+                booking.getVehicle() != null ? booking.getVehicle().getId() : null,
+                startTime,
+                endTime,
                 LocalDateTime.now()
         );
     }
@@ -517,13 +774,15 @@ public class VehicleCheckService {
         JsonNode root = objectMapper.readTree(normalizedQr);
         String phase = root.has("phase") ? root.get("phase").asText() : null;
 
-        boolean isValidQr = false;
-        if ("CHECKIN".equals(phase)) {
-            // So sánh với qrCodeCheckin
+        boolean isValidQr;
+        if (phase == null || phase.isBlank() || "CHECKIN".equalsIgnoreCase(phase)) {
             isValidQr = Objects.equals(booking.getQrCodeCheckin(), normalizedQr);
-        } else if ("CHECKOUT".equals(phase)) {
-            // So sánh với qrCodeCheckout
+        } else if ("CHECKOUT".equalsIgnoreCase(phase)
+                || "TECH_REVIEW".equalsIgnoreCase(phase)
+                || "COMPLETED".equalsIgnoreCase(phase)) {
             isValidQr = Objects.equals(booking.getQrCodeCheckout(), normalizedQr);
+        } else {
+            isValidQr = false;
         }
 
         if (!isValidQr) {
@@ -572,10 +831,11 @@ public class VehicleCheckService {
         Long vehicleId = vehicleNode.asLong();
 
         Long qrUserId = root.hasNonNull("userId") ? root.get("userId").asLong() : null;
+        String phase = root.hasNonNull("phase") ? root.get("phase").asText() : null;
         LocalDateTime startTime = parseLocalDateTime(root.path("startTime"));
         LocalDateTime endTime = parseLocalDateTime(root.path("endTime"));
 
-        return new BookingQrData(bookingId, vehicleId, qrUserId, startTime, endTime);
+        return new BookingQrData(bookingId, vehicleId, qrUserId, phase, startTime, endTime);
     }
 
     private LocalDateTime parseLocalDateTime(JsonNode node) {
@@ -594,6 +854,7 @@ public class VehicleCheckService {
     private record BookingQrData(Long bookingId,
                                  Long vehicleId,
                                  Long userId,
+                                 String phase,
                                  LocalDateTime startTime,
                                  LocalDateTime endTime) {
     }
