@@ -13,6 +13,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,6 +23,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 @RequestMapping("/api/payments")
 @Tag(name = "Payments", description = "Quản lý thanh toán và giao dịch")
+@PreAuthorize("isAuthenticated()")
 public class PaymentController {
 
     private final PaymentService paymentService;
@@ -29,6 +31,7 @@ public class PaymentController {
 
     @PostMapping
     @Operation(summary = "Tạo thanh toán", description = "Tạo một giao dịch thanh toán mới và sinh URL thanh toán VNPay")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN', 'CO_OWNER')")
     public ResponseEntity<?> createPayment(@RequestBody PaymentRequestDTO request, HttpServletRequest servletRequest) {
 
         Long groupId = request.getGroupId();
@@ -56,6 +59,7 @@ public class PaymentController {
     // READ - by id
     @GetMapping("/{id}")
     @Operation(summary = "Lấy thông tin thanh toán", description = "Lấy thông tin chi tiết của một giao dịch thanh toán theo ID")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN', 'CO_OWNER')")
     public PaymentResponseDTO getById(@PathVariable Long id) {
         return paymentService.getById(id);
     }
@@ -63,6 +67,7 @@ public class PaymentController {
     // LIST (trả List, có page/size/sort/asc để limit/offset)
     @GetMapping
     @Operation(summary = "Tìm kiếm thanh toán", description = "Tìm kiếm và lọc danh sách giao dịch thanh toán với phân trang")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     public List<PaymentResponseDTO> search(
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) String status,
@@ -78,6 +83,7 @@ public class PaymentController {
     // UPDATE
     @PutMapping("/{id}")
     @Operation(summary = "Cập nhật thanh toán", description = "Cập nhật thông tin của một giao dịch thanh toán")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     public PaymentResponseDTO update(@PathVariable Long id,
                                   @Valid @RequestBody UpdatePaymentRequestDTO req) {
         return paymentService.update(id, req);
@@ -85,6 +91,7 @@ public class PaymentController {
 
     @PutMapping("/{id}/status")
     @Operation(summary = "Cập nhật trạng thái thanh toán", description = "Cập nhật trạng thái của giao dịch thanh toán")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     public PaymentResponseDTO updateStatus(@PathVariable Long id,
                                            @Valid @RequestBody PaymentStatusUpdateRequestDTO req) {
         return paymentService.updateStatus(id, req.status(), req.transactionCode(), req.providerResponseJson());
@@ -94,6 +101,7 @@ public class PaymentController {
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Xóa thanh toán", description = "Xóa một giao dịch thanh toán khỏi hệ thống")
+    @PreAuthorize("hasRole('ADMIN')")
     public void delete(@PathVariable Long id) {
         paymentService.delete(id);
     }
@@ -101,6 +109,7 @@ public class PaymentController {
     // MARK PAID (ví dụ gọi từ VNPay return/IPN sau khi verify)
     @PostMapping("/{id}/mark-paid")
     @Operation(summary = "Đánh dấu đã thanh toán", description = "Đánh dấu giao dịch đã được thanh toán thành công")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     public PaymentResponseDTO markPaid(@PathVariable Long id,
                                     @RequestParam(required = false) String transactionCode,
                                     @RequestBody(required = false) String providerResponseJson) {
@@ -110,6 +119,7 @@ public class PaymentController {
     // MARK FAILED
     @PostMapping("/{id}/mark-failed")
     @Operation(summary = "Đánh dấu thanh toán thất bại", description = "Đánh dấu giao dịch thanh toán thất bại")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     public PaymentResponseDTO markFailed(@PathVariable Long id,
                                       @RequestBody(required = false) String providerResponseJson) {
         return paymentService.markFailed(id, providerResponseJson);
@@ -118,6 +128,7 @@ public class PaymentController {
     // MARK REFUNDED (nếu có luồng hoàn tiền)
     @PostMapping("/{id}/mark-refunded")
     @Operation(summary = "Đánh dấu đã hoàn tiền", description = "Đánh dấu giao dịch đã được hoàn tiền")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     public PaymentResponseDTO markRefunded(@PathVariable Long id,
                                         @RequestBody(required = false) String providerResponseJson) {
         return paymentService.markRefunded(id, providerResponseJson);

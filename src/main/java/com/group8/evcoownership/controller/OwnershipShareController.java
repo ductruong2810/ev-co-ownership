@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,6 +29,8 @@ public class OwnershipShareController {
     // Thêm member + % sở hữu -> auto tryActivate
     @PostMapping
     @Operation(summary = "Thêm thành viên", description = "Thêm thành viên mới với tỷ lệ sở hữu và tự động kích hoạt nhóm")
+    // Cần rõ là admin của group (owner/manager) HOẶC staff/admin hệ thống
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN') or @ownershipGroupService.isGroupAdmin(authentication.name, #req.groupId)")
     public OwnershipShareResponseDTO addMember(@RequestBody @Valid OwnershipShareCreateRequestDTO req) {
         return service.addGroupShare(req);
     }
@@ -42,14 +45,17 @@ public class OwnershipShareController {
     // Danh sách theo user
     @GetMapping("/my-groups")
     @Operation(summary = "Danh sách nhóm của tôi", description = "Lấy danh sách tất cả nhóm của người dùng hiện tại")
+    @PreAuthorize("hasAnyRole('CO_OWNER','STAFF','ADMIN')")
     public List<OwnershipShareResponseDTO> getMyGroups(@AuthenticationPrincipal String userEmail) {
         Long userId = userProfileService.getUserProfile(userEmail).getUserId();
         return service.listByUser(userId);
     }
 
-    // Xoá member (chỉ khi Pending) - chỉ cho phép xóa chính mình
+    // Rời khỏi nhóm (chỉ khi Pending) - chỉ cho phép xóa chính mình
     @DeleteMapping("/{groupId}")
     @Operation(summary = "Rời khỏi nhóm", description = "Rời khỏi nhóm (chỉ khi nhóm ở trạng thái Pending)")
+    // Co-owner và phải là member của nhóm
+    @PreAuthorize("hasRole('CO_OWNER') and @ownershipGroupService.isGroupMember(authentication.name, #groupId)")
     public void leaveGroup(@PathVariable Long groupId, @AuthenticationPrincipal String userEmail) {
         Long userId = userProfileService.getUserProfile(userEmail).getUserId();
         service.removeMember(groupId, userId);
@@ -63,6 +69,7 @@ public class OwnershipShareController {
      */
     @GetMapping("/page-data/{groupId}")
     @Operation(summary = "Dữ liệu trang tỷ lệ sở hữu", description = "Lấy tất cả dữ liệu cần thiết cho trang nhập tỷ lệ sở hữu bao gồm thông tin xe")
+    @PreAuthorize("hasAnyRole('CO_OWNER','STAFF','ADMIN')")
     public ResponseEntity<OwnershipPageDataResponseDTO> getOwnershipPageData(
             @PathVariable Long groupId,
             @AuthenticationPrincipal String userEmail) {
@@ -98,6 +105,7 @@ public class OwnershipShareController {
      */
     @PutMapping("/my-percentage/{groupId}")
     @Operation(summary = "Cập nhật tỷ lệ sở hữu của tôi", description = "Cập nhật tỷ lệ sở hữu của người dùng trong nhóm")
+    @PreAuthorize("hasAnyRole('CO_OWNER')")
     public ResponseEntity<OwnershipPercentageResponseDTO> updateMyOwnershipPercentage(
             @PathVariable Long groupId,
             @AuthenticationPrincipal String userEmail,
@@ -118,6 +126,7 @@ public class OwnershipShareController {
     @PutMapping("/{groupId}/percentage")
     @Operation(summary = "Cập nhật tỷ lệ sở hữu thành viên",
             description = "Cập nhật tỷ lệ sở hữu của thành viên")
+    @PreAuthorize("hasAnyRole('CO_OWNER')")
     public OwnershipPercentageResponseDTO updateMemberOwnershipPercentage(@PathVariable Long groupId,
                                                                           @AuthenticationPrincipal String userEmail,
                                                                           @RequestBody @Valid OwnershipPercentageRequestDTO req) {
@@ -132,6 +141,7 @@ public class OwnershipShareController {
      */
     @GetMapping("/group/{groupId}/summary")
     @Operation(summary = "Tổng quan tỷ lệ nhóm", description = "Lấy tổng quan tỷ lệ sở hữu của tất cả thành viên trong nhóm")
+    @PreAuthorize("hasAnyRole('CO_OWNER','STAFF','ADMIN')")
     public ResponseEntity<GroupOwnershipSummaryResponseDTO> getGroupOwnershipSummary(
             @PathVariable Long groupId,
             @AuthenticationPrincipal String userEmail) {
@@ -150,6 +160,7 @@ public class OwnershipShareController {
      */
     @PostMapping("/my-percentage/{groupId}/reset")
     @Operation(summary = "Reset tỷ lệ sở hữu", description = "Reset tỷ lệ sở hữu của người dùng về 0%")
+    @PreAuthorize("hasAnyRole('CO_OWNER')")
     public ResponseEntity<OwnershipPercentageResponseDTO> resetMyOwnershipPercentage(
             @PathVariable Long groupId,
             @AuthenticationPrincipal String userEmail) {
@@ -190,6 +201,7 @@ public class OwnershipShareController {
      */
     @GetMapping("/{groupId}/suggestions")
     @Operation(summary = "Gợi ý tỷ lệ sở hữu", description = "Lấy danh sách các tỷ lệ sở hữu được gợi ý cho nhóm")
+    @PreAuthorize("hasAnyRole('CO_OWNER','STAFF','ADMIN')")
     public ResponseEntity<List<BigDecimal>> getOwnershipSuggestions(@PathVariable Long groupId) {
         List<BigDecimal> suggestions = service.getOwnershipSuggestions(groupId);
         return ResponseEntity.ok(suggestions);

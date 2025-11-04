@@ -10,6 +10,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,6 +22,7 @@ import java.util.Map;
 @RequestMapping("/api/staff/vehicle-images")
 @RequiredArgsConstructor
 @Tag(name = "Vehicle Image Approval", description = "Duyệt và quản lý hình ảnh phương tiện (dành cho Staff)")
+@PreAuthorize("hasAnyRole('STAFF','ADMIN')")
 public class VehicleImageApprovalController {
 
     private final VehicleImageApprovalService approvalService;

@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,6 +22,7 @@ import java.util.List;
 @RequestMapping("/api/calendar")
 @RequiredArgsConstructor
 @Tag(name = "Weekly Calendar", description = "Quản lý lịch tuần và quota sử dụng")
+@PreAuthorize("isAuthenticated()")
 public class WeeklyCalendarController {
 
     private final WeeklyCalendarService weeklyCalendarService;
@@ -28,6 +30,7 @@ public class WeeklyCalendarController {
 
     @GetMapping("/groups/{groupId}/weekly")
     @Operation(summary = "Lấy lịch tuần", description = "Hiển thị lịch tuần với các slot đã book và quota của user")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN', 'CO_OWNER', 'TECHNICIAN')")
     public ResponseEntity<WeeklyCalendarResponseDTO> getWeeklyCalendar(
             @PathVariable Long groupId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart,
@@ -44,6 +47,7 @@ public class WeeklyCalendarController {
 
     @GetMapping("/groups/{groupId}/suggestions")
     @Operation(summary = "Lấy gợi ý booking", description = "Gợi ý booking dựa trên quota và availability")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN', 'CO_OWNER')")
     public ResponseEntity<List<String>> getBookingSuggestions(
             @PathVariable Long groupId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart,
@@ -58,6 +62,7 @@ public class WeeklyCalendarController {
 
     @PostMapping("/flexible-booking")
     @Operation(summary = "Tạo booking linh hoạt", description = "Tạo booking với thời gian tùy chỉnh, hỗ trợ qua đêm")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN', 'CO_OWNER')")
     public ResponseEntity<FlexibleBookingResponseDTO> createFlexibleBooking(
             @RequestBody FlexibleBookingRequestDTO request,
             @AuthenticationPrincipal String email) {

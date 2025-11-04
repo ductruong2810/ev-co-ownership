@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,18 +18,21 @@ import java.util.List;
 @RequestMapping("/api/vehicle-images")
 @RequiredArgsConstructor
 @Tag(name = "Vehicle Images", description = "Xem hình ảnh phương tiện")
+@PreAuthorize("isAuthenticated()")
 public class VehicleImageController {
 
     private final VehicleImageApprovalService approvalService;
 
     @GetMapping("/groups/{groupId}")
     @Operation(summary = "Hình ảnh theo nhóm", description = "Lấy danh sách hình ảnh phương tiện của một nhóm")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN', 'CO_OWNER', 'TECHNICIAN')")
     public ResponseEntity<List<VehicleImageResponseDTO>> getImagesByGroupId(@PathVariable Long groupId) {
         return ResponseEntity.ok(approvalService.getImagesByGroupId(groupId));
     }
 
     @GetMapping("/vehicle/{vehicleId}")
     @Operation(summary = "Hình ảnh theo phương tiện", description = "Lấy danh sách hình ảnh của một phương tiện cụ thể")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN', 'CO_OWNER', 'TECHNICIAN')")
     public ResponseEntity<List<VehicleImageResponseDTO>> getImagesByVehicleId(@PathVariable Long vehicleId) {
         return ResponseEntity.ok(approvalService.getImagesByVehicleId(vehicleId));
     }
