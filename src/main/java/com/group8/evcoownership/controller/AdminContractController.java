@@ -4,8 +4,6 @@ import com.group8.evcoownership.dto.ContractApprovalRequestDTO;
 import com.group8.evcoownership.dto.ContractDTO;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.enums.ContractApprovalStatus;
-import com.group8.evcoownership.exception.InvalidContractActionException;
-import com.group8.evcoownership.exception.ResourceNotFoundException;
 import com.group8.evcoownership.service.ContractService;
 import com.group8.evcoownership.service.UserService;
 import jakarta.validation.Valid;
