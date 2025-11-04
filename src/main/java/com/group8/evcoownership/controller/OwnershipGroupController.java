@@ -27,8 +27,11 @@ public class OwnershipGroupController {
     private final OwnershipGroupService service;
 
     @PostMapping("/with-vehicle")
-    @Operation(summary = "Tạo nhóm với phương tiện", description = "Tạo nhóm đồng sở hữu mới kèm theo phương tiện và nhiều hình ảnh với OCR auto-fill")
-    public GroupWithVehicleResponseDTO createGroupWithVehicle(
+    @Operation(
+            summary = "Tạo nhóm với phương tiện",
+            description = "Tạo nhóm đồng sở hữu mới kèm theo phương tiện và nhiều hình ảnh với OCR auto-fill"
+    )
+    @PreAuthorize("hasAnyRole('CO_OWNER','STAFF','ADMIN')")    public GroupWithVehicleResponseDTO createGroupWithVehicle(
             @Valid @ModelAttribute CreateGroupWithVehicleRequestDTO request,
             @AuthenticationPrincipal String userEmail) {
         Integer memberCapacity = Integer.parseInt(request.memberCapacity());
@@ -40,21 +43,29 @@ public class OwnershipGroupController {
     }
 
     @PutMapping("/{groupId}")
-    @Operation(summary = "Cập nhật nhóm", description = "Chủ nhóm hoặc thành viên có quyền cập nhật thông tin nhóm")
+    @Operation(
+            summary = "Cập nhật nhóm",
+            description = "Chủ nhóm hoặc thành viên có quyền cập nhật thông tin nhóm"
+    )
+    @PreAuthorize("hasAnyRole('CO_OWNER','STAFF','ADMIN')")
     public OwnershipGroupResponseDTO updateByUser(@PathVariable Long groupId,
                                                   @RequestBody @Valid OwnershipGroupUpdateRequestDTO req) {
         return service.updateByUser(groupId, req);
     }
 
+
     @PatchMapping("/{groupId}/status")
     @Operation(summary = "Cập nhật trạng thái nhóm", description = "Thay đổi trạng thái hoạt động của nhóm")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     public OwnershipGroupResponseDTO updateStatus(@PathVariable Long groupId,
                                                   @RequestBody @Valid OwnershipGroupStatusUpdateRequestDTO req) {
         return service.updateStatus(groupId, req);
     }
 
+
     @GetMapping("/{groupId}")
     @Operation(summary = "Lấy chi tiết nhóm", description = "Trả về thông tin chi tiết của một nhóm theo ID")
+    @PreAuthorize("hasAnyRole('CO_OWNER','STAFF','ADMIN')")
     public OwnershipGroupResponseDTO getById(@PathVariable Long groupId, @AuthenticationPrincipal String userEmail) {
         return service.getByIdWithUserRole(groupId, userEmail);
     }
@@ -81,13 +92,21 @@ public class OwnershipGroupController {
      * Lấy tất cả groups mà user hiện tại đã tạo và tham gia
      */
     @GetMapping("/my-groups")
-    @Operation(summary = "Nhóm của tôi", description = "Lấy tất cả nhóm mà người dùng hiện tại tạo hoặc tham gia")
+    @Operation(
+            summary = "Nhóm của tôi",
+            description = "Lấy tất cả nhóm mà người dùng hiện tại tạo hoặc tham gia"
+    )
+    @PreAuthorize("hasAnyRole('CO_OWNER','STAFF','ADMIN')")
     public List<OwnershipGroupResponseDTO> getMyGroups(@AuthenticationPrincipal String userEmail) {
         return service.getGroupsByUser(userEmail);
     }
 
     @DeleteMapping("/{groupId}")
-    @Operation(summary = "Xóa nhóm", description = "Xóa một nhóm theo ID")
+    @Operation(
+            summary = "Xóa nhóm",
+            description = "Xóa một nhóm theo ID"
+    )
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     public void delete(@PathVariable Long groupId) {
         service.delete(groupId);
     }

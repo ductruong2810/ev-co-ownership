@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,6 +29,7 @@ public class UserProfileController {
      */
     @GetMapping
     @Operation(summary = "Hồ sơ của tôi", description = "Lấy thông tin hồ sơ của người dùng hiện tại")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<UserProfileResponseDTO> getMyProfile(@AuthenticationPrincipal String email) {
         UserProfileResponseDTO profile = userProfileService.getUserProfile(email);
         return ResponseEntity.ok(profile);
@@ -39,6 +41,7 @@ public class UserProfileController {
      */
     @GetMapping("/{userId}")
     @Operation(summary = "Hồ sơ người dùng", description = "Xem hồ sơ của một người dùng cụ thể theo ID")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     public ResponseEntity<UserProfileResponseDTO> getUserProfileById(@PathVariable Long userId) {
         log.info("Fetching profile for userId: {}", userId);
         UserProfileResponseDTO profile = userProfileService.getUserProfileById(userId);
