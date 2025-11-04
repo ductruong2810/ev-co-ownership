@@ -5,6 +5,7 @@ import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.enums.ContractApprovalStatus;
 import com.group8.evcoownership.enums.NotificationType;
 import com.group8.evcoownership.enums.DepositStatus;
+import com.group8.evcoownership.exception.InvalidContractActionException;
 import com.group8.evcoownership.exception.ResourceNotFoundException;
 import com.group8.evcoownership.repository.*;
 import jakarta.persistence.EntityNotFoundException;
@@ -682,6 +683,8 @@ public class ContractService {
         }
     }
 
+
+
     private static BigDecimal getBigDecimal(List<OwnershipShare> shares) {
         BigDecimal totalOwnershipPercentage = BigDecimal.ZERO;
         BigDecimal minimumOwnership = new BigDecimal("1.00"); // Tối thiểu 1%
@@ -795,6 +798,47 @@ public class ContractService {
         return convertToDTO(savedContract);
     }
 
+    /**
+     * Xử lý duyệt/từ chối hợp đồng với validation đầy đủ
+     * Dùng cho AdminController để giảm logic phức tạp
+     */
+    @Transactional
+    public ContractDTO processContractApproval(Long contractId, String action, String reason, User admin) {
+        // Validate contract exists
+        if (!contractExists(contractId)) {
+            throw new ResourceNotFoundException("Contract not found with ID: " + contractId);
+        }
+
+        // Xử lý theo action
+        return switch (action.toUpperCase()) {
+            case "APPROVE" -> approveContract(contractId, admin);
+            case "REJECT" -> {
+                validateRejectionReason(reason);
+                yield rejectContract(contractId, reason.trim(), admin);
+            }
+            default -> throw new InvalidContractActionException(
+                    "Invalid action. Only 'APPROVE' or 'REJECT' are allowed"
+            );
+        };
+    }
+
+    /**
+     * Validate lý do từ chối hợp đồng
+     */
+    private void validateRejectionReason(String reason) {
+        if (reason == null || reason.isBlank()) {
+            throw new InvalidContractActionException(
+                    "Rejection reason is required when rejecting a contract"
+            );
+        }
+
+        if (reason.trim().length() < 10) {
+            throw new InvalidContractActionException(
+                    "Rejection reason must be at least 10 characters"
+            );
+        }
+    }
+
 
     private ContractDTO convertToDTO(Contract contract) {
         ContractDTO dto = new ContractDTO();
@@ -905,7 +949,6 @@ public class ContractService {
         return contractRepository.existsById(contractId);
     }
 
-    
 
     /**
      * Lấy userId từ email

@@ -15,11 +15,13 @@ public class FlexibleBookingResponseDTO {
     private Long totalHours;
     private boolean overnightBooking;
 //    private String qrCode;//thinh moi them vo nha
-    @JsonRawValue
-    private String qrCodeCheckin;
 
     @JsonRawValue
+    //để trả về Json thuần ko bị esacape
+    private String qrCodeCheckin;
+    @JsonRawValue
     private String qrCodeCheckout;
+
     private LocalDateTime startDateTime;
     private LocalDateTime endDateTime;
     private LocalDateTime createdAt;
