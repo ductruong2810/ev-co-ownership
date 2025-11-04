@@ -202,4 +202,13 @@ public class VehicleCheckController {
         return ResponseEntity.ok(result);
     }
 
+    @GetMapping("/booking/{bookingId}/post-use")
+    @Operation(summary = "Lấy kiểm tra POST_USE", description = "Lấy kiểm tra POST_USE cho booking")
+    public ResponseEntity<VehicleCheck> getLatestPostUse(@PathVariable Long bookingId) {
+        VehicleCheck check = vehicleCheckService
+                .findByBookingAndType(bookingId, "POST_USE")
+                .orElseThrow(() -> new ResourceNotFoundException("No POST_USE check"));
+        return ResponseEntity.ok(check);
+    }
+
 }
