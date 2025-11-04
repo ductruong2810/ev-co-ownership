@@ -21,6 +21,9 @@ public class BookingDetailResponseDTO {
     String status;
 
     @JsonRawValue
-    String qrCode;
+    String qrCodeCheckin;
+
+    @JsonRawValue
+    String qrCodeCheckout;
 }
 

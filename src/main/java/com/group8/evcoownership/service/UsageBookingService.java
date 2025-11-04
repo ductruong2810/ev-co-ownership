@@ -114,7 +114,8 @@ public class UsageBookingService {
                 .startDateTime(booking.getStartDateTime())
                 .endDateTime(booking.getEndDateTime())
                 .status(booking.getStatus() != null ? booking.getStatus().name() : null)
-                .qrCode(booking.getQrCode())
+                .qrCodeCheckin(booking.getQrCodeCheckin())
+                .qrCodeCheckout(booking.getQrCodeCheckout())
                 .build();
     }
 

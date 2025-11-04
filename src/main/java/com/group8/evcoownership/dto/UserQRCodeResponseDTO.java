@@ -15,5 +15,8 @@ public class UserQRCodeResponseDTO {
     private Long bookingId;
 
     @JsonRawValue
-    private String qrCode;
+    private String qrCodeCheckin;
+
+    @JsonRawValue
+    private String qrCodeCheckout;
 }
