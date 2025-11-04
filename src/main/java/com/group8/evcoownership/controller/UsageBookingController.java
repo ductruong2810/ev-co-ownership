@@ -40,6 +40,7 @@ public class UsageBookingController {
      */
     @GetMapping("/user-bookings")
     @Operation(summary = "Đặt xe của tôi", description = "Lấy danh sách booking của người dùng theo nhóm, có thể lọc theo tuần")
+    @PreAuthorize("hasAnyRole('CO_OWNER','ADMIN','STAFF')")
     public ResponseEntity<?> getUserBookings(
             @RequestParam Long groupId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart,
@@ -107,6 +108,7 @@ public class UsageBookingController {
      */
     @PutMapping("/{bookingId}/cancel")
     @Operation(summary = "Hủy đặt xe", description = "Hủy booking và chuyển sang trạng thái Cancelled")
+    @PreAuthorize("hasAnyRole('CO_OWNER','ADMIN','STAFF')")
     public ResponseEntity<BookingResponseDTO> cancelBooking(
             @PathVariable Long bookingId,
             @AuthenticationPrincipal String email) {
@@ -140,6 +142,7 @@ public class UsageBookingController {
      */
     @PutMapping("/{bookingId}/cancel-with-reason")
     @Operation(summary = "Hủy đặt xe có lý do", description = "Hủy booking với lý do cụ thể (dành cho admin/kỹ thuật viên)")
+    @PreAuthorize("hasAnyRole('ADMIN','STAFF','TECHNICIAN')")
     public ResponseEntity<Map<String, Object>> cancelBookingWithReason(
             @PathVariable Long bookingId,
             @RequestBody CancelBookingRequestDTO request) {
