@@ -599,8 +599,11 @@ public class ContractService {
         terms.append("- Target fund: 50,000,000 VND\n");
         terms.append("- Contribution principle: According to ownership ratio\n");
         terms.append(
-                "\nAll expenses for maintenance, charging, and cleaning are paid from the Group Fund; "
-                        + "any personal expenses (if applicable) are settled individually via offset transactions.\n"
+                """
+                        
+                        All expenses for maintenance, charging, and cleaning are paid from the Group Fund; \
+                        any personal expenses (if applicable) are settled individually via offset transactions.
+                        """
         );
         terms.append(
                 "\nNote: The full deposit must be paid before the contract becomes active and legally effective.\n\n"
@@ -609,32 +612,41 @@ public class ContractService {
 // 2. USAGE RIGHTS & BOOKING SCHEDULE
         terms.append("2. USAGE RIGHTS & BOOKING SCHEDULE\n");
         terms.append(
-                "Vehicle usage must be booked through the system. "
-                        + "Each member agrees to follow the confirmed schedule and return the vehicle on time.\n"
-                        + "Booking rules: Each co-owner’s weekly quota is 164 hours × ownership ratio; "
-                        + "minimum booking duration is 1 hour and maximum is 3 days (72 hours); "
-                        + "maximum 3 bookings per week per member; "
-                        + "rest time between bookings: +2h if previous trip > 4h, +1h if ≤ 4h; "
-                        + "no overlapping bookings (First Come, First Served); "
-                        + "up to 2 weeks advance booking allowed; "
-                        + "the system reserves 4 hours every Sunday for maintenance.\n\n"
+                """
+                        Vehicle usage must be booked through the system. \
+                        Each member agrees to follow the confirmed schedule and return the vehicle on time.
+                        Booking rules: Each co-owner’s weekly quota is 164 hours × ownership ratio; \
+                        minimum booking duration is 1 hour and maximum is 3 days (72 hours); \
+                        maximum 3 bookings per week per member; \
+                        rest time between bookings: +2h if previous trip > 4h, +1h if ≤ 4h; \
+                        no overlapping bookings (First Come, First Served); \
+                        up to 2 weeks advance booking allowed; \
+                        the system reserves 4 hours every Sunday for maintenance.
+                        
+                        """
         );
 
 // 3. MAINTENANCE, REPAIR & INSURANCE
         terms.append("3. MAINTENANCE, REPAIR & INSURANCE\n");
         terms.append(
-                "The vehicle shall be maintained periodically according to the manufacturer’s recommendations. "
-                        + "Expense approval requires a majority vote (>50%) based on ownership ratio for costs exceeding 5 million VND. "
-                        + "Insurance provider: PVI – Comprehensive physical damage coverage.\n\n"
+                """
+                        The vehicle shall be maintained periodically according to the manufacturer’s recommendations. \
+                        Expense approval requires a majority vote (>50%) based on ownership ratio for costs exceeding 5 million VND. \
+                        Insurance provider: PVI – Comprehensive physical damage coverage.
+                        
+                        """
         );
 
 // 4. DISPUTE RESOLUTION
         terms.append("4. DISPUTE RESOLUTION\n");
         terms.append(
-                "All disputes shall be recorded in the system and prioritized for internal mediation within the group. "
-                        + "Voting mechanism: Majority decision based on ownership ratio; "
-                        + "in case of a 50/50 tie, priority is given to contribution history. "
-                        + "Final authority follows applicable Vietnamese law.\n\n"
+                """
+                        All disputes shall be recorded in the system and prioritized for internal mediation within the group. \
+                        Voting mechanism: Majority decision based on ownership ratio; \
+                        in case of a 50/50 tie, priority is given to contribution history. \
+                        Final authority follows applicable Vietnamese law.
+                        
+                        """
         );
 
 // 5. GENERAL TERMS
