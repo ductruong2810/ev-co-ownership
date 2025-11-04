@@ -401,6 +401,34 @@ public class WeeklyCalendarService {
                     .build();
         }
 
+        UsageBooking awaitingReviewBooking = overlapping.stream()
+                .filter(b -> b.getStatus() == BookingStatus.AWAITING_REVIEW)
+                .findFirst().orElse(null);
+        if (awaitingReviewBooking != null) {
+            return TimeSlotResponseDTO.builder()
+                    .time(timeDisplay)
+                    .status(awaitingReviewBooking.getStatus().name())
+                    .type("AWAITING_REVIEW")
+                    .bookedBy(awaitingReviewBooking.getUser() != null ? awaitingReviewBooking.getUser().getFullName() : "Unknown")
+                    .bookable(false)
+                    .bookingId(awaitingReviewBooking.getId())
+                    .build();
+        }
+
+        UsageBooking needsAttentionBooking = overlapping.stream()
+                .filter(b -> b.getStatus() == BookingStatus.NEEDS_ATTENTION)
+                .findFirst().orElse(null);
+        if (needsAttentionBooking != null) {
+            return TimeSlotResponseDTO.builder()
+                    .time(timeDisplay)
+                    .status(needsAttentionBooking.getStatus().name())
+                    .type("NEEDS_ATTENTION")
+                    .bookedBy(needsAttentionBooking.getUser() != null ? needsAttentionBooking.getUser().getFullName() : "Unknown")
+                    .bookable(false)
+                    .bookingId(needsAttentionBooking.getId())
+                    .build();
+        }
+
         if (now.isAfter(lockThreshold) && now.isBefore(end)) {
             return TimeSlotResponseDTO.builder()
                     .time(timeDisplay)

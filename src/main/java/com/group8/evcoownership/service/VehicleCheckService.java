@@ -19,7 +19,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -47,105 +46,6 @@ public class VehicleCheckService {
 
     @Value("${booking.checkin.lock-offset-minutes:20}")
     private long checkInLockOffsetMinutes;
-
-    // User tạo pre-use check với validation
-    public VehicleCheck createPreUseCheck(Long bookingId, Long userId, Integer odometer,
-                                          BigDecimal batteryLevel, String cleanliness,
-                                          String notes, String issues) {
-        // Validate inputs
-        if (bookingId == null) {
-            throw new IllegalArgumentException("Booking ID is required");
-        }
-        if (userId == null) {
-            throw new IllegalArgumentException("User ID is required");
-        }
-
-        UsageBooking booking = usageBookingRepository.findById(bookingId)
-                .orElseThrow(() -> new EntityNotFoundException("Booking not found with ID: " + bookingId));
-
-        // VALIDATION: Kiểm tra booking có thuộc về user không
-        if (!booking.getUser().getUserId().equals(userId)) {
-            throw new SecurityException("You can only check-in your own bookings");
-        }
-
-        // VALIDATION: Kiểm tra booking status
-        if (booking.getStatus() != BookingStatus.CONFIRMED) {
-            throw new IllegalStateException("Only confirmed bookings can be checked-in. Current status: " + booking.getStatus());
-        }
-
-        // VALIDATION: Kiểm tra thời gian check-in
-        LocalDateTime now = LocalDateTime.now();
-        if (now.isBefore(booking.getStartDateTime().minusMinutes(15))) {
-            throw new IllegalStateException("Cannot check-in more than 15 minutes before booking time");
-        }
-        if (now.isAfter(booking.getEndDateTime())) {
-            throw new IllegalStateException("Booking time has expired");
-        }
-
-        // VALIDATION: Kiểm tra đã làm pre-use check chưa
-        if (hasCheck(bookingId, "PRE_USE")) {
-            throw new IllegalStateException("Pre-use check already completed for this booking");
-        }
-
-        VehicleCheck check = VehicleCheck.builder()
-                .booking(booking)
-                .checkType("PRE_USE")
-                .odometer(odometer)
-                .batteryLevel(batteryLevel)
-                .cleanliness(cleanliness)
-                .notes(notes)
-                .issues(issues)
-                .status("PENDING")
-                .build();
-
-        return vehicleCheckRepository.save(check);
-    }
-
-
-    // User tạo post-use check với validation
-    public VehicleCheck createPostUseCheck(Long bookingId, Long userId, Integer odometer,
-                                           BigDecimal batteryLevel, String cleanliness,
-                                           String notes, String issues) {
-        // Validate inputs
-        if (bookingId == null) {
-            throw new IllegalArgumentException("Booking ID is required");
-        }
-        if (userId == null) {
-            throw new IllegalArgumentException("User ID is required");
-        }
-
-        UsageBooking booking = usageBookingRepository.findById(bookingId)
-                .orElseThrow(() -> new EntityNotFoundException("Booking not found with ID: " + bookingId));
-
-        // VALIDATION: Kiểm tra booking có thuộc về user không
-        if (!booking.getUser().getUserId().equals(userId)) {
-            throw new SecurityException("You can only check-out your own bookings");
-        }
-
-        // VALIDATION: Kiểm tra booking status
-        if (booking.getStatus() != BookingStatus.CONFIRMED) {
-            throw new IllegalStateException("Only confirmed bookings can be checked-out. Current status: " + booking.getStatus());
-        }
-
-        // VALIDATION: Kiểm tra đã làm post-use check chưa
-        if (hasCheck(bookingId, "POST_USE")) {
-            throw new IllegalStateException("Post-use check already completed for this booking");
-        }
-
-        VehicleCheck check = VehicleCheck.builder()
-                .booking(booking)
-                .checkType("POST_USE")
-                .odometer(odometer)
-                .batteryLevel(batteryLevel)
-                .cleanliness(cleanliness)
-                .notes(notes)
-                .issues(issues)
-                .status("PENDING")
-                .build();
-
-        return vehicleCheckRepository.save(check);
-    }
-
 
     // User từ chối xe với validation
     public VehicleCheck rejectVehicle(Long bookingId, Long userId, String issues, String notes) {
@@ -234,9 +134,7 @@ public class VehicleCheckService {
                 .anyMatch(check -> checkType.equals(check.getCheckType()));
     }
 
-    /**
-     * Xử lý QR code check-in - Tìm booking active của user cho vehicle
-     */
+    //Xử lý QR code check-in - Tìm booking active của user cho vehicle//
     public Map<String, Object> processQrScan(String qrCode, Long userId) {
         Map<String, Object> result = new HashMap<>();
 
@@ -347,15 +245,18 @@ public class VehicleCheckService {
                         .findFirst()
                         .orElse(null);
             } else {
-                postUseCheck = createPostUseCheck(
-                        booking.getId(),
-                        userId,
-                        request.odometer(),
-                        request.batteryLevel(),
-                        request.cleanliness(),
-                        request.notes(),
-                        request.issues()
-                );
+                postUseCheck = VehicleCheck.builder()
+                        .booking(booking)
+                        .checkType("POST_USE")
+                        .odometer(request.odometer())
+                        .batteryLevel(request.batteryLevel())
+                        .cleanliness(request.cleanliness())
+                        .notes(request.notes())
+                        .issues(request.issues())
+                        .status("PENDING")
+                        .build();
+
+                postUseCheck = vehicleCheckRepository.save(postUseCheck);
             }
 
             booking.setStatus(BookingStatus.AWAITING_REVIEW);
