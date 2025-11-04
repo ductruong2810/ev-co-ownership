@@ -58,6 +58,24 @@ public class UsageBooking {
     @Column(name = "UpdatedAt")
     private LocalDateTime updatedAt;
 
+    @Column(name = "QrCodeCheckin", length = 255)
+    private String qrCodeCheckin;
+
+    @Column(name = "QrCodeCheckout", length = 255)
+    private String qrCodeCheckout;
+
+    @Column(name = "CheckinStatus")
+    private Boolean checkinStatus = false;
+
+    @Column(name = "CheckoutStatus")
+    private Boolean checkoutStatus = false;
+
+    @Column(name = "CheckinTime")
+    private LocalDateTime checkinTime;
+
+    @Column(name = "CheckoutTime")
+    private LocalDateTime checkoutTime;
+
     // Relationships với các entity mới
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<VehicleCheck> vehicleChecks;
@@ -75,7 +93,5 @@ public class UsageBooking {
     public void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
-
-
 
 }

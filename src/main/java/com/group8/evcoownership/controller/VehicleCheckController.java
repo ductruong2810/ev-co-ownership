@@ -5,17 +5,21 @@ import com.group8.evcoownership.dto.QrCheckOutRequestDTO;
 import com.group8.evcoownership.dto.VehicleCheckRequestDTO;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.entity.VehicleCheck;
+import com.group8.evcoownership.exception.ResourceNotFoundException;
 import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.service.VehicleCheckService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -27,6 +31,8 @@ public class VehicleCheckController {
 
     private final VehicleCheckService vehicleCheckService;
     private final UserRepository userRepository;
+    @Value("${frontend.base.url:http://localhost:3000}")
+    private String frontendBaseUrl;
 
     /**
      * User tạo pre-use check với JWT authentication
@@ -40,7 +46,7 @@ public class VehicleCheckController {
         // Lấy user từ JWT token
         String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
         User currentUser = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found for email: " + userEmail));
 
         VehicleCheck check = vehicleCheckService.createPreUseCheck(
                 request.getBookingId(),
@@ -67,7 +73,7 @@ public class VehicleCheckController {
         // Lấy user từ JWT token
         String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
         User currentUser = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found for email: " + userEmail));
 
         VehicleCheck check = vehicleCheckService.createPostUseCheck(
                 request.getBookingId(),
@@ -98,7 +104,7 @@ public class VehicleCheckController {
         // Lấy user từ JWT token
         String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
         User currentUser = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found for email: " + userEmail));
 
         VehicleCheck check = vehicleCheckService.rejectVehicle(bookingId, currentUser.getUserId(), issues, notes);
         return ResponseEntity.ok(check);
@@ -179,13 +185,44 @@ public class VehicleCheckController {
     @PostMapping("/qr-checkin")
     @PreAuthorize("hasRole('CO_OWNER')")
     @Operation(summary = "Check-in bằng QR code", description = "Quét QR code để check-in và tìm booking đang hoạt động")
-    public ResponseEntity<Map<String, Object>> qrCheckIn(@Valid @RequestBody QrCheckInRequestDTO request) {
+    public ResponseEntity<?> qrCheckIn(@Valid @RequestBody QrCheckInRequestDTO request) {
         // Lấy user từ JWT token
         String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
         User currentUser = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found for email: " + userEmail));
 
         Map<String, Object> result = vehicleCheckService.processQrCheckIn(request.qrCode(), currentUser.getUserId());
+        boolean success = Boolean.TRUE.equals(result.get("success"));
+        Long groupId = result.get("groupId") instanceof Number number ? number.longValue() : null;
+        String message = result.get("message") != null ? result.get("message").toString() : "";
+        Long bookingId = result.get("bookingId") instanceof Number bk ? bk.longValue() : null;
+
+        result.put("status", success ? "success" : "fail");
+
+        if (groupId != null) {
+            String encodedMessage = URLEncoder.encode(message, StandardCharsets.UTF_8);
+            String basePath = String.format("%s/dashboard/viewGroups/%d/checkin-result", frontendBaseUrl, groupId);
+            String messageQuery = encodedMessage.isEmpty() ? "" : "&message=" + encodedMessage;
+            String bookingQuery = bookingId != null ? "&bookingId=" + bookingId : "";
+            String target;
+            if (success) {
+                target = String.format("%s?status=success%s%s", basePath, bookingQuery, messageQuery);
+            } else {
+                target = String.format("%s?status=fail%s%s", basePath, bookingQuery, messageQuery);
+            }
+            result.put("redirectUrl", target);
+            return ResponseEntity.ok(result);
+        }
+
+        if (success) {
+            String target = frontendBaseUrl + "/dashboard?status=success";
+            result.put("redirectUrl", target);
+            return ResponseEntity.ok(result);
+        }
+
+        String target = String.format("%s/checkin-result?status=fail&message=%s",
+                frontendBaseUrl, URLEncoder.encode(message, StandardCharsets.UTF_8));
+        result.put("redirectUrl", target);
         return ResponseEntity.ok(result);
     }
 
@@ -200,7 +237,7 @@ public class VehicleCheckController {
     public ResponseEntity<Map<String, Object>> qrCheckOut(@Valid @RequestBody QrCheckOutRequestDTO request) {
         String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
         User currentUser = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found for email: " + userEmail));
 
         Map<String, Object> result = vehicleCheckService.processQrCheckOut(request, currentUser.getUserId());
         return ResponseEntity.ok(result);

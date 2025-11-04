@@ -7,6 +7,7 @@ import com.group8.evcoownership.enums.NotificationType;
 import com.group8.evcoownership.repository.NotificationRepository;
 import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.service.NotificationOrchestrator;
+import com.group8.evcoownership.exception.ResourceNotFoundException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -150,12 +151,12 @@ public class NotificationController {
     // ---- helpers to reduce duplication ----
     private User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found for email: " + email));
     }
 
     private Notification getNotificationOrThrow(Long id) {
         return notificationRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Notification not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Notification not found: " + id));
     }
 
     private boolean isNotOwner(Notification notification, User user) {

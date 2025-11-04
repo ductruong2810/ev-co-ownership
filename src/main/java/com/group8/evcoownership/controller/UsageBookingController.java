@@ -4,6 +4,7 @@ import com.group8.evcoownership.dto.BookingDetailResponseDTO;
 import com.group8.evcoownership.dto.BookingResponseDTO;
 import com.group8.evcoownership.dto.CancelBookingRequestDTO;
 import com.group8.evcoownership.entity.UsageBooking;
+import com.group8.evcoownership.exception.ResourceNotFoundException;
 import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.service.UsageBookingService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -44,8 +45,7 @@ public class UsageBookingController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart,
             @AuthenticationPrincipal String email
     ) {
-        Long userId = userRepository.findByEmail(email)
-                .orElseThrow().getUserId();
+        Long userId = getUserIdByEmail(email);
 
         List<UsageBooking> bookings;
 
@@ -68,9 +68,13 @@ public class UsageBookingController {
                         b.getVehicle().getModel(),
                         b.getStartDateTime(),
                         b.getEndDateTime(),
-                        b.getStatus().name()
+                        b.getStatus().name(),
+                        b.getQrCodeCheckin(),    // Thêm
+                        b.getQrCodeCheckout(),   // Thêm
+                        b.getCreatedAt()         // Thêm
                 ))
                 .toList();
+
 
         return ResponseEntity.ok(response);
     }
@@ -107,8 +111,7 @@ public class UsageBookingController {
             @PathVariable Long bookingId,
             @AuthenticationPrincipal String email) {
 
-        Long userId = userRepository.findByEmail(email)
-                .orElseThrow().getUserId();
+        Long userId = getUserIdByEmail(email);
 
         UsageBooking booking = usageBookingService.cancelBooking(bookingId, userId);
 
@@ -120,8 +123,12 @@ public class UsageBookingController {
                 vehicle.getModel(),
                 booking.getStartDateTime(),
                 booking.getEndDateTime(),
-                booking.getStatus().name()
+                booking.getStatus().name(),
+                booking.getQrCodeCheckin(),    // Thêm
+                booking.getQrCodeCheckout(),   // Thêm
+                booking.getCreatedAt()         // Thêm
         );
+
 
         return ResponseEntity.ok(response);
     }
@@ -138,5 +145,10 @@ public class UsageBookingController {
             @RequestBody CancelBookingRequestDTO request) {
         Map<String, Object> result = usageBookingService.cancelBookingWithReason(bookingId, request);
         return ResponseEntity.ok(result);
+    }
+    private Long getUserIdByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found for email: " + email))
+                .getUserId();
     }
 }

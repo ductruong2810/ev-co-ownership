@@ -225,6 +225,11 @@ public class VehicleCheckService {
             }
 
             Vehicle vehicle = booking.getVehicle();
+            Long groupId = null;
+            if (vehicle != null && vehicle.getOwnershipGroup() != null) {
+                groupId = vehicle.getOwnershipGroup().getGroupId();
+            }
+            result.put("groupId", groupId);
 
             VehicleCheck latestTechnicianCheck = findLatestTechnicianCheck(vehicle);
             if (latestTechnicianCheck != null) {
@@ -237,34 +242,41 @@ public class VehicleCheckService {
             boolean withinCheckInWindow = !now.isBefore(earliestCheckIn) && now.isBefore(lockTime);
 
 
-            if (!withinCheckInWindow) {
-                result.put("success", false);
-                if (now.isBefore(earliestCheckIn)) {
-                    result.put("message", "Too early for check-in");
-                } else if (now.isAfter(lockTime)) {
-                    result.put("message", "Check-in window closed");
-                } else {
-                    result.put("message", "Booking time is not valid for check-in");
-                }
+            if (withinCheckInWindow) {
+                result.put("success", true);
+                result.put("message", "Ready for check-in");
+
+                // SINH QR CHECKOUT và lưu vào field qrCodeCheckout
+                String checkoutQr = generateCheckOutQrPayload(booking);
+                booking.setQrCodeCheckout(checkoutQr);  // LƯU VÀO qrCodeCheckout
+                usageBookingRepository.save(booking);
+
+                result.put("qrUpdatedForCheckout", true);
+                result.put("checkoutQrCode", checkoutQr);
             } else {
                 result.put("success", true);
                 result.put("message", "Ready for check-in");
 
+                // SINH QR CHECKOUT và lưu vào field qrCodeCheckout
                 String checkoutQr = generateCheckOutQrPayload(booking);
-                booking.setQrCode(checkoutQr);
+                booking.setQrCodeCheckout(checkoutQr);  // LƯU VÀO qrCodeCheckout
                 usageBookingRepository.save(booking);
+
                 result.put("qrUpdatedForCheckout", true);
                 result.put("checkoutQrCode", checkoutQr);
             }
 
+
             result.put("bookingId", booking.getId());
             result.put("canCheckIn", withinCheckInWindow);
-            result.put("vehicleInfo", Map.of(
-                    "vehicleId", vehicle.getId(),
-                    "brand", vehicle.getBrand(),
-                    "model", vehicle.getModel(),
-                    "licensePlate", vehicle.getLicensePlate()
-            ));
+            Map<String, Object> vehicleInfo = new HashMap<>();
+            if (vehicle != null) {
+                vehicleInfo.put("vehicleId", vehicle.getId());
+                vehicleInfo.put("brand", vehicle.getBrand());
+                vehicleInfo.put("model", vehicle.getModel());
+                vehicleInfo.put("licensePlate", vehicle.getLicensePlate());
+            }
+            result.put("vehicleInfo", vehicleInfo);
             result.put("bookingInfo", Map.of(
                     "startTime", booking.getStartDateTime(),
                     "endTime", booking.getEndDateTime(),
@@ -467,7 +479,20 @@ public class VehicleCheckService {
         UsageBooking booking = usageBookingRepository.findById(qrData.bookingId())
                 .orElseThrow(() -> new EntityNotFoundException("Booking not found"));
 
-        if (!Objects.equals(booking.getQrCode(), normalizedQr)) {
+        // Xác định loại QR và validate từ field tương ứng
+        JsonNode root = objectMapper.readTree(normalizedQr);
+        String phase = root.has("phase") ? root.get("phase").asText() : null;
+
+        boolean isValidQr = false;
+        if ("CHECKIN".equals(phase)) {
+            // So sánh với qrCodeCheckin
+            isValidQr = Objects.equals(booking.getQrCodeCheckin(), normalizedQr);
+        } else if ("CHECKOUT".equals(phase)) {
+            // So sánh với qrCodeCheckout
+            isValidQr = Objects.equals(booking.getQrCodeCheckout(), normalizedQr);
+        }
+
+        if (!isValidQr) {
             result.put("success", false);
             result.put("message", "QR code is outdated. Please refresh and try again");
             result.put("requiresUpdatedQr", true);
@@ -488,6 +513,7 @@ public class VehicleCheckService {
 
         return new BookingContext(booking, qrData);
     }
+
 
 
     private BookingQrData parseBookingQr(String qrCode) throws IOException {

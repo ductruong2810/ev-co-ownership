@@ -3,6 +3,7 @@ package com.group8.evcoownership.controller;
 import com.group8.evcoownership.dto.FlexibleBookingRequestDTO;
 import com.group8.evcoownership.dto.FlexibleBookingResponseDTO;
 import com.group8.evcoownership.dto.WeeklyCalendarResponseDTO;
+import com.group8.evcoownership.exception.ResourceNotFoundException;
 import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.service.WeeklyCalendarService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,8 +34,7 @@ public class WeeklyCalendarController {
             @AuthenticationPrincipal String email) {
 
         // Lấy userId từ JWT
-        Long userId = userRepository.findByEmail(email)
-                .orElseThrow().getUserId();
+        Long userId = getUserIdByEmail(email);
 
 
 
@@ -50,8 +50,7 @@ public class WeeklyCalendarController {
             @AuthenticationPrincipal String email) {
 
         // Lấy userId từ JWT
-        Long userId = userRepository.findByEmail(email)
-                .orElseThrow().getUserId();
+        Long userId = getUserIdByEmail(email);
 
         List<String> suggestions = weeklyCalendarService.getBookingSuggestions(groupId, userId, weekStart);
         return ResponseEntity.ok(suggestions);
@@ -65,5 +64,11 @@ public class WeeklyCalendarController {
 
         FlexibleBookingResponseDTO response = weeklyCalendarService.createFlexibleBooking(request, email);
         return ResponseEntity.ok(response);
+    }
+
+    private Long getUserIdByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found for email: " + email))
+                .getUserId();
     }
 }
