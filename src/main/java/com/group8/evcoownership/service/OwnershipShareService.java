@@ -4,6 +4,7 @@ package com.group8.evcoownership.service;
 import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.entity.OwnershipShare;
 import com.group8.evcoownership.entity.OwnershipShareId;
+import com.group8.evcoownership.enums.ContractApprovalStatus;
 import com.group8.evcoownership.enums.DepositStatus;
 import com.group8.evcoownership.enums.GroupRole;
 import com.group8.evcoownership.enums.GroupStatus;
@@ -114,8 +115,22 @@ public class OwnershipShareService {
             throw new IllegalStateException("Cannot remove member when group is not ACTIVE");
         }
 
+        ensureContractAllowsRemoval(groupId);
+
         shareRepo.delete(share);
 //        tryActivate(groupId);
+    }
+
+    private void ensureContractAllowsRemoval(Long groupId) {
+        contractRepository.findByGroupGroupId(groupId).ifPresent(contract -> {
+            var status = contract.getApprovalStatus();
+            boolean contractLocked = status == ContractApprovalStatus.SIGNED
+                    || status == ContractApprovalStatus.APPROVED
+                    || Boolean.TRUE.equals(contract.getIsActive());
+            if (contractLocked) {
+                throw new IllegalStateException("Cannot remove member while the group's contract is signed or active. Please cancel the contract first.");
+            }
+        });
     }
 
     public List<OwnershipShareResponseDTO> listByGroup(Long groupId) {
