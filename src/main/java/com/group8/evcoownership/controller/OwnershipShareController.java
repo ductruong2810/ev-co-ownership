@@ -62,6 +62,14 @@ public class OwnershipShareController {
         service.removeMember(groupId, userId);
     }
 
+    @DeleteMapping("/{groupId}/members/{userId}")
+    @Operation(summary = "Kích thành viên khỏi nhóm", description = "Xóa thành viên khỏi nhóm. Chỉ thực hiện khi chưa có hợp đồng được ký hoặc đang hoạt động.")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN') or @ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
+    public ResponseEntity<Void> removeMember(@PathVariable Long groupId, @PathVariable Long userId) {
+        service.removeMember(groupId, userId);
+        return ResponseEntity.noContent().build();
+    }
+
     // ========== PERCENTAGE MANAGEMENT ==========
 
     /**
