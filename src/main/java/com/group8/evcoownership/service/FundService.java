@@ -1,9 +1,6 @@
 package com.group8.evcoownership.service;
 
-import com.group8.evcoownership.dto.FundBalanceResponseDTO;
-import com.group8.evcoownership.dto.SharedFundCreateRequestDTO;
-import com.group8.evcoownership.dto.SharedFundDTO;
-import com.group8.evcoownership.dto.SharedFundUpdateRequestDTO;
+import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.entity.OwnershipGroup;
 import com.group8.evcoownership.entity.SharedFund;
 import com.group8.evcoownership.enums.FundType;
@@ -59,28 +56,89 @@ public class FundService {
      * addDepositToReserve được sử dụng trong confirmDepositPayment
      */
     @Transactional public void addDepositToReserve(Long groupId, BigDecimal amt) {
-        var r = fundRepo.findByGroup_GroupIdAndFundType(groupId, FundType.DEPOSIT_RESERVE).orElseThrow();
+        SharedFund r = fundRepo.findByGroup_GroupIdAndFundType(groupId, FundType.DEPOSIT_RESERVE).orElseThrow();
         increaseBalance(r.getFundId(), amt);
     }
 
     @Transactional public void refundFromReserve(Long groupId, BigDecimal amt) {
-        var r = fundRepo.findByGroup_GroupIdAndFundType(groupId, FundType.DEPOSIT_RESERVE).orElseThrow();
+        SharedFund r = fundRepo.findByGroup_GroupIdAndFundType(groupId, FundType.DEPOSIT_RESERVE).orElseThrow();
         decreaseBalance(r.getFundId(), amt);
     }
 
     @Transactional public void topUpOperating(Long groupId, BigDecimal amt) {
-        var op = fundRepo.findByGroup_GroupIdAndFundType(groupId, FundType.OPERATING).orElseThrow();
+        SharedFund op = fundRepo.findByGroup_GroupIdAndFundType(groupId, FundType.OPERATING).orElseThrow();
         increaseBalance(op.getFundId(), amt);
     }
 
     @Transactional public void spendOperating(Long groupId, BigDecimal amt) {
-        var op = fundRepo.findByGroup_GroupIdAndFundType(groupId, FundType.OPERATING).orElseThrow();
+        SharedFund op = fundRepo.findByGroup_GroupIdAndFundType(groupId, FundType.OPERATING).orElseThrow();
         if (!op.isSpendable()) throw new IllegalStateException("Operating fund is not spendable");
         decreaseBalance(op.getFundId(), amt);
     }
 
+    /**
+     * New read functions after updating database
+     */
+    private BigDecimal nz(BigDecimal x) { return x == null ? BigDecimal.ZERO : x; }
 
 
+    // Get List Fund by GroupID
+    // ham nay se lay groupId
+    // ==> roi tra ve 1 list: 2 bang ghi, 1 cho deposit và 1 cho operating
+    @Transactional(readOnly = true)
+    public List<SharedFundDTO> listFundsByGroup(Long groupId) {
+        List<SharedFund> funds = fundRepo.findAllByGroup_GroupId(groupId);
+        if (funds.isEmpty()) {
+            throw new EntityNotFoundException("No funds found for group " + groupId);
+        }
+        return funds.stream()
+                .map(f -> new SharedFundDTO(
+                        f.getFundId(),
+                        f.getGroup() != null ? f.getGroup().getGroupId() : null,
+                        f.getFundType(),
+                        f.isSpendable(),
+                        nz(f.getBalance()),
+                        nz(f.getTargetAmount()),
+                        f.getCreatedAt(),
+                        f.getUpdatedAt()
+                ))
+                .toList();
+    }
+
+    // Ham nay tinh tong cua 2 loai quy: deposit va operating
+    // tra ve : operatingBalance + reserveBalance + totalBalance
+    @Transactional(readOnly = true)
+    public FundsSummaryDTO getGroupFundsSummary(Long groupId) {
+        SharedFund op = fundRepo.findByGroup_GroupIdAndFundType(groupId, FundType.OPERATING)
+                .orElseThrow(() -> new EntityNotFoundException("Operating fund not found for group " + groupId));
+        SharedFund rs = fundRepo.findByGroup_GroupIdAndFundType(groupId, FundType.DEPOSIT_RESERVE)
+                .orElseThrow(() -> new EntityNotFoundException("Reserve fund not found for group " + groupId));
+
+        BigDecimal ob = nz(op.getBalance());
+        BigDecimal rb = nz(rs.getBalance());
+        return new FundsSummaryDTO(groupId, ob, rb, ob.add(rb));
+    }
+    @Transactional(readOnly = true)
+    public List<SharedFundDTO> list(Pageable pageable) {
+        return fundRepo.findAll(pageable)
+                .map(f -> new SharedFundDTO(
+                        f.getFundId(),
+                        (f.getGroup() != null ? f.getGroup().getGroupId() : null),
+                        f.getFundType(),
+                        f.isSpendable(),
+                        (f.getBalance() == null ? BigDecimal.ZERO : f.getBalance()),
+                        (f.getTargetAmount() == null ? BigDecimal.ZERO : f.getTargetAmount()),
+                        f.getCreatedAt(),
+                        f.getUpdatedAt()
+                ))
+                .getContent();
+    }
+
+
+    /**
+     *
+     *
+     */
 
     // -------Create--------
     @Transactional
@@ -118,73 +176,6 @@ public class FundService {
         return fundRepo.save(fund);
     }
 
-    // -------Read--------
-    // Lấy số dư quỹ theo groupId, trả về dạng DTO gọn
-    @Transactional(readOnly = true)
-    public FundBalanceResponseDTO getBalanceByGroupId(Long groupId) {
-        SharedFund fund = fundRepo.findByGroup_GroupId(groupId)
-                .orElseThrow(() -> new EntityNotFoundException("SharedFund not found"));
-        return new FundBalanceResponseDTO(fund.getFundId(), fund.getGroup().getGroupId(), fund.getBalance(), fund.getTargetAmount());
-    }
-
-    // Lay SharedFund theo fundId
-    @Transactional(readOnly = true)
-    public FundBalanceResponseDTO getBalanceByFundId(Long fundId) {
-        SharedFund fund = fundRepo.findById(fundId)
-                .orElseThrow(() -> new EntityNotFoundException("SharedFund not found: " + fundId));
-        return new FundBalanceResponseDTO(
-                fund.getFundId(),
-                fund.getGroup().getGroupId(),
-                fund.getBalance(),
-                fund.getTargetAmount()
-        );
-    }
-
-    // Lay SharedFund theo groupId
-    @Transactional(readOnly = true)
-    public SharedFund getByGroupId(Long groupId) {
-        return fundRepo.findByGroup_GroupId(groupId)
-                .orElseThrow(() -> new EntityNotFoundException("SharedFund not found"));
-    }
-
-//    // Liet ke all SharedFund
-//    @Transactional(readOnly = true)
-//    public List<SharedFund> list(Pageable pageable) {
-//        return fundRepo.findAll(pageable).getContent(); // lấy phần content ra làm List
-//    }
-
-    @Transactional(readOnly = true)
-    public List<SharedFundDTO> list(Pageable pageable) {
-        return fundRepo.findAll(pageable).map(f ->
-                new SharedFundDTO(
-                        f.getFundId(),
-                        f.getGroup() != null ? f.getGroup().getGroupId() : null,
-                        f.getBalance(),
-                        f.getTargetAmount(),
-                        f.getCreatedAt(),
-                        f.getUpdatedAt()
-                )
-        ).getContent();
-    }
-
-    // Neu chua co thi tao roi tra ve
-    @Transactional(readOnly = true)
-    // Lấy quỹ theo groupId; nếu chưa có thì tạo mới rồi trả về.
-    public SharedFund getOrCeateByGroup(Long groupId) {
-        return fundRepo.findByGroup_GroupId(groupId)
-                .orElseGet(() -> createOrGroup(groupId));
-    }
-
-    //-------Update-------
-    public SharedFund updateBalance(Long id, SharedFundUpdateRequestDTO req) {
-        SharedFund fund = fundRepo.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("SharedFund not found"));
-        fund.setBalance(req.getBalance());// chi update, khong tang giam
-        if (req.getTargetAmount() != null) {
-            fund.setTargetAmount(req.getTargetAmount());
-        }
-        return fundRepo.save(fund);
-    }
 
     //------delete-------
     public void deleteById(Long fundId) {
