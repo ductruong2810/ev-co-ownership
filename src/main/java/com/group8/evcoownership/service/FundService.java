@@ -7,6 +7,7 @@ import com.group8.evcoownership.enums.FundType;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
 import com.group8.evcoownership.repository.SharedFundRepository;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Pageable;
@@ -39,15 +40,24 @@ public class FundService {
      * Được gọi ở OwnerShipGroupService
      */
     @Transactional
-    public void initTwoFundsIfMissing(Long groupId) {
-        var g = groupRepo.findById(groupId).orElseThrow();
-        if (!fundRepo.existsByGroup_GroupIdAndFundType(groupId, FundType.OPERATING)) {
-            fundRepo.save(SharedFund.builder().group(g).fundType(FundType.OPERATING)
-                    .isSpendable(true).balance(BigDecimal.ZERO).targetAmount(BigDecimal.ZERO).build());
+    public void initTwoFundsIfMissing(@NotNull Long groupId) {
+        OwnershipGroup g = groupRepo.findById(groupId)
+                .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
+        boolean hasOperating = fundRepo.existsByGroup_GroupIdAndFundType(groupId, FundType.OPERATING);
+        if (!hasOperating) {
+            SharedFund operating = SharedFund.builder()
+                    .group(g).fundType(FundType.OPERATING)
+                    .isSpendable(true).balance(BigDecimal.ZERO).targetAmount(BigDecimal.ZERO)
+                    .build();
+            fundRepo.save(operating);
         }
-        if (!fundRepo.existsByGroup_GroupIdAndFundType(groupId, FundType.DEPOSIT_RESERVE)) {
-            fundRepo.save(SharedFund.builder().group(g).fundType(FundType.DEPOSIT_RESERVE)
-                    .isSpendable(false).balance(BigDecimal.ZERO).targetAmount(BigDecimal.ZERO).build());
+        boolean hasReserve = fundRepo.existsByGroup_GroupIdAndFundType(groupId, FundType.DEPOSIT_RESERVE);
+        if (!hasReserve) {
+            SharedFund reserve = SharedFund.builder()
+                    .group(g).fundType(FundType.DEPOSIT_RESERVE)
+                    .isSpendable(false).balance(BigDecimal.ZERO).targetAmount(BigDecimal.ZERO)
+                    .build();
+            fundRepo.save(reserve);
         }
     }
 
