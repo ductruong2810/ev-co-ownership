@@ -85,47 +85,47 @@ class FundServiceTest {
         verify(fundRepo).save(any(SharedFund.class));
     }
 
-    @Test
-    void getBalanceByGroupId_ShouldReturnTargetAmount_Success() {
-        // Given
-        Long groupId = 1L;
-        when(fundRepo.findByGroup_GroupId(groupId)).thenReturn(Optional.of(testFund));
-
-        // When
-        FundBalanceResponseDTO result = fundService.getBalanceByGroupId(groupId);
-
-        // Then
-        assertNotNull(result);
-        assertEquals(1L, result.getFundId());
-        assertEquals(1L, result.getGroupId());
-        assertEquals(BigDecimal.ZERO, result.getBalance());
-        assertEquals(BigDecimal.ZERO, result.getTargetAmount());
-
-        verify(fundRepo).findByGroup_GroupId(groupId);
-    }
-
-    @Test
-    void updateBalance_ShouldUpdateTargetAmount_Success() {
-        // Given
-        Long fundId = 1L;
-        BigDecimal newBalance = new BigDecimal("1000000");
-        BigDecimal newTargetAmount = new BigDecimal("5000000");
-
-        SharedFundUpdateRequestDTO request = new SharedFundUpdateRequestDTO();
-        request.setBalance(newBalance);
-        request.setTargetAmount(newTargetAmount);
-
-        when(fundRepo.findById(fundId)).thenReturn(Optional.of(testFund));
-        when(fundRepo.save(any(SharedFund.class))).thenReturn(testFund);
-
-        // When
-        SharedFund result = fundService.updateBalance(fundId, request);
-
-        // Then
-        assertNotNull(result);
-        verify(fundRepo).findById(fundId);
-        verify(fundRepo).save(any(SharedFund.class));
-    }
+//    @Test
+//    void getBalanceByGroupId_ShouldReturnTargetAmount_Success() {
+//        // Given
+//        Long groupId = 1L;
+//        when(fundRepo.findByGroup_GroupId(groupId)).thenReturn(Optional.of(testFund));
+//
+//        // When
+//        FundBalanceResponseDTO result = fundService.getBalanceByGroupId(groupId);
+//
+//        // Then
+//        assertNotNull(result);
+//        assertEquals(1L, result.getFundId());
+//        assertEquals(1L, result.getGroupId());
+//        assertEquals(BigDecimal.ZERO, result.getBalance());
+//        assertEquals(BigDecimal.ZERO, result.getTargetAmount());
+//
+//        verify(fundRepo).findByGroup_GroupId(groupId);
+//    }
+//
+//    @Test
+//    void updateBalance_ShouldUpdateTargetAmount_Success() {
+//        // Given
+//        Long fundId = 1L;
+//        BigDecimal newBalance = new BigDecimal("1000000");
+//        BigDecimal newTargetAmount = new BigDecimal("5000000");
+//
+//        SharedFundUpdateRequestDTO request = new SharedFundUpdateRequestDTO();
+//        request.setBalance(newBalance);
+//        request.setTargetAmount(newTargetAmount);
+//
+//        when(fundRepo.findById(fundId)).thenReturn(Optional.of(testFund));
+//        when(fundRepo.save(any(SharedFund.class))).thenReturn(testFund);
+//
+//        // When
+//        SharedFund result = fundService.updateBalance(fundId, request);
+//
+//        // Then
+//        assertNotNull(result);
+//        verify(fundRepo).findById(fundId);
+//        verify(fundRepo).save(any(SharedFund.class));
+//    }
 
     @Test
     void create_WithTargetAmount_ShouldCreateFundWithCustomTargetAmount_Success() {

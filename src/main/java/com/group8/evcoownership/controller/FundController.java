@@ -40,54 +40,44 @@ public class FundController {
         return new FundBalanceResponseDTO(fund.getFundId(), fund.getGroup().getGroupId(), fund.getBalance(), fund.getTargetAmount());
     }
 
-    //-------Read------
+    /**
+     * new api after updating database
+     */
+    // ================== INIT ==================
+//    @PostMapping("/groups/{groupId}/init")
+//    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
+//    @Operation(summary = "[ADMIN/STAFF] Khởi tạo 2 quỹ cho nhóm",
+//            description = "Tạo OPERATING (chi được) & DEPOSIT_RESERVE (tiền cọc, không chi) nếu chưa có")
+//    public void initFundsForGroup(@PathVariable Long groupId) {
+//        fundService.initTwoFundsIfMissing(groupId);
+//    }
 
-    @GetMapping("/{groupId}")
+// ================== READ ==================
+    @GetMapping("/groups/{groupId}/all")
     @PreAuthorize("hasAnyRole('ADMIN','STAFF','CO_OWNER')")
-    @Operation(summary = "[CO_OWNER/STAFF/ADMIN] Xem số dư quỹ theo nhóm", description = """
-        Lấy thông tin số dư quỹ của nhóm cụ thể.
-        Co-owner chỉ có thể xem quỹ thuộc nhóm mình.
-        """)    public FundBalanceResponseDTO getFundBalance(@PathVariable("groupId") Long groupId) {
-        return fundService.getBalanceByGroupId(groupId);
+    @Operation(summary = "Danh sách quỹ của 1 nhóm",
+            description = "Trả về 2 bản ghi: OPERATING & DEPOSIT_RESERVE cho group")
+    public List<SharedFundDTO> listFundsOfGroup(@PathVariable Long groupId) {
+        return fundService.listFundsByGroup(groupId);
     }
 
-    // Lay fund theo fundId
-    @GetMapping("/id/{fundId}")
+    @GetMapping("/groups/{groupId}/summary")
+    @PreAuthorize("hasAnyRole('ADMIN','STAFF','CO_OWNER')")
+    @Operation(summary = "Tổng quan quỹ của 1 nhóm",
+            description = "operatingBalance (chi được) / depositBalance (cọc, khóa) / totalBalance")
+    public FundsSummaryDTO getGroupSummary(@PathVariable Long groupId) {
+        return fundService.getGroupFundsSummary(groupId);
+    }
+
+    @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
-    @Operation(summary = "[ADMIN/STAFF] Xem số dư quỹ theo ID", description = "Lấy thông tin số dư quỹ theo fundId.")    public FundBalanceResponseDTO getFundById(@PathVariable("fundId") Long fundId) {
-        return fundService.getBalanceByFundId(fundId);
-    }
-
-    // Lấy fund theo groupId (trả entity)
-//    @GetMapping("/group/{groupId}")
-//    public SharedFund getByGroup(@PathVariable Long groupId) {
-//        return fundService.getByGroupId(groupId);
-//    }
-
-
-    // Danh sách dạng List
-//    @GetMapping("/funds")
-//    public List<SharedFund> list(
-//            @ParameterObject
-//            @PageableDefault(size = 10, sort = "updatedAt", direction = Sort.Direction.DESC)
-//            Pageable pageable) {
-//        return fundService.list(pageable);
-//    }
-    @GetMapping("/funds")
-    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
-    @Operation(summary = "[ADMIN/STAFF] Danh sách quỹ", description = "Lấy danh sách tất cả quỹ trong hệ thống (phân trang).")    public List<SharedFundDTO> list(@ParameterObject Pageable pageable) {
-        return fundService.list(pageable);
+    @Operation(summary = "[ADMIN/STAFF] Danh sách tất cả quỹ (paged)",
+            description = "Dùng cho admin/overview")
+    public List<SharedFundDTO> listAll(@ParameterObject Pageable pageable) {
+        return fundService.list(pageable); // đã map sang SharedFundDTO có fundType/spendable
     }
 
 
-    //------Update-----
-    @PutMapping("/{fundId}")
-    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
-    @Operation(summary = "[ADMIN/STAFF] Cập nhật quỹ", description = "Cập nhật thông tin chi tiết của một quỹ.")
-    public SharedFund updateBalance(@PathVariable Long fundId,
-                                    @Valid @RequestBody SharedFundUpdateRequestDTO req) {
-        return fundService.updateBalance(fundId, req);
-    }
 
     // ====== DELETE ======
     @DeleteMapping("/{fundId}")
@@ -99,22 +89,22 @@ public class FundController {
 
 
     // Tăng quỹ theo fundId
-    @PostMapping("/{fundId}/increase")
-    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
-    @Operation(summary = "[ADMIN/STAFF] Tăng số dư quỹ", description = "Tăng số dư quỹ với số tiền được chỉ định.")
-    public FundBalanceResponseDTO increase(@PathVariable Long fundId,
-                                           @Valid @RequestBody AmountRequestDTO req) {
-        fundService.increaseBalance(fundId, req.amount());
-        return fundService.getBalanceByFundId(fundId);
-    }
-
-    // Giảm quỹ theo fundId
-    @PostMapping("/{fundId}/decrease")
-    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
-    @Operation(summary = "[ADMIN/STAFF] Giảm số dư quỹ", description = "Giảm số dư quỹ với số tiền được chỉ định.")
-    public FundBalanceResponseDTO decrease(@PathVariable Long fundId,
-                                           @Valid @RequestBody AmountRequestDTO req) {
-        fundService.decreaseBalance(fundId, req.amount());
-        return fundService.getBalanceByFundId(fundId);
-    }
+//    @PostMapping("/{fundId}/increase")
+//    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
+//    @Operation(summary = "[ADMIN/STAFF] Tăng số dư quỹ", description = "Tăng số dư quỹ với số tiền được chỉ định.")
+//    public FundBalanceResponseDTO increase(@PathVariable Long fundId,
+//                                           @Valid @RequestBody AmountRequestDTO req) {
+//        fundService.increaseBalance(fundId, req.amount());
+//        return fundService.getBalanceByFundId(fundId);
+//    }
+//
+//    // Giảm quỹ theo fundId
+//    @PostMapping("/{fundId}/decrease")
+//    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
+//    @Operation(summary = "[ADMIN/STAFF] Giảm số dư quỹ", description = "Giảm số dư quỹ với số tiền được chỉ định.")
+//    public FundBalanceResponseDTO decrease(@PathVariable Long fundId,
+//                                           @Valid @RequestBody AmountRequestDTO req) {
+//        fundService.decreaseBalance(fundId, req.amount());
+//        return fundService.getBalanceByFundId(fundId);
+//    }
 }
