@@ -6,6 +6,7 @@ import com.group8.evcoownership.dto.SharedFundDTO;
 import com.group8.evcoownership.dto.SharedFundUpdateRequestDTO;
 import com.group8.evcoownership.entity.OwnershipGroup;
 import com.group8.evcoownership.entity.SharedFund;
+import com.group8.evcoownership.enums.FundType;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
 import com.group8.evcoownership.repository.SharedFundRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -23,6 +24,63 @@ import java.util.List;
 public class FundService {
     private final SharedFundRepository fundRepo;
     private final OwnershipGroupRepository groupRepo;
+
+    // =========================================================
+    // New Functions after Database Update
+    // =========================================================
+    /**
+     * 1) initTwoFundIfMIssing : su dung cho OwnerShipGroupService
+     * 2) addDepositToReserve  : su dung cho confirmDepositPayment
+     * 3) refundFromReserve
+     * 4) topUpOperating
+     * 5) spendOperating
+     */
+
+    /**
+     * initTwoFundIfMIssing
+     * Kiem tra neu chua co group co type Operating va Deposit_Reserve thi tao
+     * Được gọi ở OwnerShipGroupService
+     */
+    @Transactional
+    public void initTwoFundsIfMissing(Long groupId) {
+        var g = groupRepo.findById(groupId).orElseThrow();
+        if (!fundRepo.existsByGroup_GroupIdAndFundType(groupId, FundType.OPERATING)) {
+            fundRepo.save(SharedFund.builder().group(g).fundType(FundType.OPERATING)
+                    .isSpendable(true).balance(BigDecimal.ZERO).targetAmount(BigDecimal.ZERO).build());
+        }
+        if (!fundRepo.existsByGroup_GroupIdAndFundType(groupId, FundType.DEPOSIT_RESERVE)) {
+            fundRepo.save(SharedFund.builder().group(g).fundType(FundType.DEPOSIT_RESERVE)
+                    .isSpendable(false).balance(BigDecimal.ZERO).targetAmount(BigDecimal.ZERO).build());
+        }
+    }
+
+    /**
+     * 4 hàm nghiệp vụ
+     * addDepositToReserve được sử dụng trong confirmDepositPayment
+     */
+    @Transactional public void addDepositToReserve(Long groupId, BigDecimal amt) {
+        var r = fundRepo.findByGroup_GroupIdAndFundType(groupId, FundType.DEPOSIT_RESERVE).orElseThrow();
+        increaseBalance(r.getFundId(), amt);
+    }
+
+    @Transactional public void refundFromReserve(Long groupId, BigDecimal amt) {
+        var r = fundRepo.findByGroup_GroupIdAndFundType(groupId, FundType.DEPOSIT_RESERVE).orElseThrow();
+        decreaseBalance(r.getFundId(), amt);
+    }
+
+    @Transactional public void topUpOperating(Long groupId, BigDecimal amt) {
+        var op = fundRepo.findByGroup_GroupIdAndFundType(groupId, FundType.OPERATING).orElseThrow();
+        increaseBalance(op.getFundId(), amt);
+    }
+
+    @Transactional public void spendOperating(Long groupId, BigDecimal amt) {
+        var op = fundRepo.findByGroup_GroupIdAndFundType(groupId, FundType.OPERATING).orElseThrow();
+        if (!op.isSpendable()) throw new IllegalStateException("Operating fund is not spendable");
+        decreaseBalance(op.getFundId(), amt);
+    }
+
+
+
 
     // -------Create--------
     @Transactional

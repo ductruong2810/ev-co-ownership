@@ -168,7 +168,9 @@ public class DepositPaymentService {
         paymentRepository.save(payment);
 
         // 2. Cập nhật quỹ (Fund)
-        fundService.increaseBalance(payment.getFund().getFundId(), payment.getAmount());
+        Long groupId = payment.getFund().getGroup().getGroupId();
+        // fundService.increaseBalance(payment.getFund().getFundId(), payment.getAmount());
+        fundService.addDepositToReserve(groupId, payment.getAmount()); // cộng vào RESERVE
 
         // 3. Cập nhật trạng thái tiền cọc trong OwnershipShare
         OwnershipShare share = shareRepository.findByUserIdAndFundId(

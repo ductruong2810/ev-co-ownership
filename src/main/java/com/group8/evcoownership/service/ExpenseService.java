@@ -4,6 +4,7 @@ package com.group8.evcoownership.service;
 import com.group8.evcoownership.dto.ExpenseResponseDTO;
 import com.group8.evcoownership.dto.ExpenseCreateRequestDTO;
 import com.group8.evcoownership.entity.*;
+import com.group8.evcoownership.enums.FundType;
 import com.group8.evcoownership.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class ExpenseService {
     private final SharedFundRepository sharedFundRepository;
     private final UserRepository userRepository;
     private final IncidentRepository incidentRepository;
+    private final FundService fundService;
 
     // =============== CREATE ===============
     @Transactional
@@ -73,26 +75,37 @@ public class ExpenseService {
             throw new IllegalStateException("Expense already processed");
         }
 
-        SharedFund fund = expense.getFund();
-        if (fund.getBalance().compareTo(expense.getAmount()) < 0) {
-            throw new IllegalStateException("Insufficient fund balance");
+        // Lấy quỹ gắn với expense (phải là OPERATING, chi được)
+        SharedFund fund = sharedFundRepository.findById(expense.getFund().getFundId())
+                .orElseThrow(() -> new EntityNotFoundException("Fund not found"));
+
+        // ✅ Guard: chỉ cho phép chi từ quỹ OPERATING (spendable)
+        if (fund.getFundType() != FundType.OPERATING || !fund.isSpendable()) {
+            throw new IllegalStateException("Cannot spend from this fund (must be OPERATING).");
         }
 
-        fund.setBalance(fund.getBalance().subtract(expense.getAmount()));
+        // ✅ Trừ tiền qua core service (có kiểm tra không âm + optimistic lock)
+        fundService.decreaseBalance(fund.getFundId(), expense.getAmount());
+
+        // Nạp lại fund để lấy số dư mới sau khi trừ
+        SharedFund fundAfter = sharedFundRepository.findById(fund.getFundId())
+                .orElseThrow(() -> new EntityNotFoundException("Fund not found after update"));
+
+        // Cập nhật trạng thái expense
         expense.setStatus("COMPLETED");
         expense.setExpenseDate(LocalDateTime.now());
         expense.setUpdatedAt(LocalDateTime.now());
-        expense.setFundBalanceAfter(fund.getBalance());
+        expense.setFundBalanceAfter(fundAfter.getBalance()); // ✅ số dư sau chi
 
         User approver = userRepository.findByEmail(username)
                 .orElseThrow(() -> new EntityNotFoundException("Approver not found"));
         expense.setApprovedBy(approver);
 
-        sharedFundRepository.save(fund);
+        // Không cần save fund ở đây vì fundService đã cập nhật
         expenseRepository.save(expense);
-
         return mapToDTO(expense);
     }
+
 
     // =============== REJECT ===============
     @Transactional
