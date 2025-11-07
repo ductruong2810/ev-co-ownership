@@ -3,10 +3,7 @@ package com.group8.evcoownership.service;
 import com.group8.evcoownership.dto.DepositPaymentRequestDTO;
 import com.group8.evcoownership.dto.DepositPaymentResponseDTO;
 import com.group8.evcoownership.entity.*;
-import com.group8.evcoownership.enums.DepositStatus;
-import com.group8.evcoownership.enums.ContractApprovalStatus;
-import com.group8.evcoownership.enums.PaymentStatus;
-import com.group8.evcoownership.enums.PaymentType;
+import com.group8.evcoownership.enums.*;
 import com.group8.evcoownership.exception.DepositPaymentException;
 import com.group8.evcoownership.exception.ResourceNotFoundException;
 import com.group8.evcoownership.repository.*;
@@ -92,9 +89,9 @@ public class DepositPaymentService {
         contractRepository.findByGroupGroupId(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Contract not found for this group"));
 
-        SharedFund fund = sharedFundRepository.findByGroup_GroupId(groupId)
-                .orElseThrow(() -> new EntityNotFoundException("Fund not found for group: " + groupId));
-
+        SharedFund reserveFund = sharedFundRepository
+                .findByGroup_GroupIdAndFundType(groupId, FundType.DEPOSIT_RESERVE)
+                .orElseThrow(() -> new EntityNotFoundException("Reserve fund not found for group: " + groupId));
         // Tính toán số tiền cần đặt cọc
         BigDecimal requiredAmount;
         Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group).orElse(null);
@@ -114,7 +111,7 @@ public class DepositPaymentService {
 
         Payment payment = Payment.builder()
                 .payer(user)
-                .fund(fund)
+                .fund(reserveFund)
                 .amount(requiredAmount)
                 .paymentMethod("VNPAY")
                 .paymentType(PaymentType.DEPOSIT)
