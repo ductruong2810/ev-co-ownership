@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -88,32 +88,29 @@
             font-weight: 600;
         }
 
-        .invitation-details {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
+        table.invitation-details {
+            width: 100%;
+            border-collapse: collapse;
         }
 
-        .detail-item {
-            display: flex;
-            align-items: flex-start;
+        table.invitation-details tr.detail-item td {
+            padding: 8px 0;
             font-size: 15px;
             color: #2d3748;
-            margin-bottom: 12px;
+            vertical-align: top;
         }
 
-        .detail-label {
+        table.invitation-details tr.detail-item td.detail-label {
             font-weight: 600;
-            min-width: 120px;
+            width: 140px;
             color: #4a5568;
-            flex-shrink: 0;
+            padding-right: 12px;
         }
 
-        .detail-value {
+        table.invitation-details tr.detail-item td.detail-value {
             color: #2d3748;
-            word-wrap: break-word;
-            word-break: break-word;
             line-height: 1.4;
+            word-break: break-word;
         }
 
         .message {
@@ -184,44 +181,47 @@
             text-align: center;
         }
 
-        .steps-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
+        table.steps-table {
+            width: 100%;
+            border-collapse: collapse;
         }
 
-        .step-item {
-            display: flex;
-            align-items: flex-start;
-            margin-bottom: 15px;
-            padding: 15px;
-            background-color: #ffffff;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        table.steps-table tr td {
+            padding: 12px;
+            border-bottom: 1px solid #edf2f7;
+            vertical-align: top;
+        }
+
+        table.steps-table tr td.number-col {
+            width: 40px;
+            padding-right: 8px;
+        }
+
+        table.steps-table tr:last-child td {
+            border-bottom: none;
         }
 
         .step-number {
+            display: inline-block;
             background: linear-gradient(135deg, #008080 0%, #005f5f 100%);
             color: #ffffff;
             width: 30px;
             height: 30px;
             border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            text-align: center;
+            line-height: 30px;
             font-weight: 600;
             font-size: 14px;
-            margin-right: 15px;
-            flex-shrink: 0;
+            margin-right: 12px;
         }
 
         .step-text {
+            display: inline-block;
             color: #4a5568;
             font-size: 14px;
             line-height: 1.5;
-            word-wrap: break-word;
             word-break: break-word;
-            flex: 1;
+            max-width: 100%;
         }
 
         .expiry-notice {
@@ -300,30 +300,40 @@
                 letter-spacing: 6px;
             }
 
-            .invitation-details {
-                gap: 8px;
+            .steps-container {
+                padding: 20px;
             }
 
-            .detail-item {
-                flex-direction: column;
-                align-items: flex-start;
-                margin-bottom: 15px;
-            }
-
-            .detail-label {
-                min-width: auto;
-                margin-bottom: 4px;
+            table.invitation-details tr.detail-item td {
+                display: block;
+                width: 100%;
                 font-size: 14px;
+                padding: 4px 0;
             }
 
-            .detail-value {
-                font-size: 14px;
+            table.invitation-details tr.detail-item td.detail-label {
+                padding-right: 0;
+                font-weight: 600;
+            }
+
+            table.invitation-details tr.detail-item td.detail-value {
                 line-height: 1.3;
             }
 
-            .step-item {
-                padding: 12px;
-                margin-bottom: 12px;
+            table.steps-table tr td {
+                display: block;
+                width: 100%;
+                padding: 10px 0;
+                border-bottom: 1px solid #edf2f7;
+            }
+
+            table.steps-table tr:last-child td {
+                border-bottom: none;
+            }
+
+            .step-number {
+                margin-right: 10px;
+                margin-bottom: 6px;
             }
 
             .step-text {
@@ -341,7 +351,7 @@
 <div class="email-container">
     <div class="header">
         <div class="logo">
-            <img src="https://evsharestorage.blob.core.windows.net/images/z7141589149138_de308edc1e1d5e40f1ffa86a9476c547.jpg"
+            <img src="https://evshare.blob.core.windows.net/images/z7141589149138_de308edc1e1d5e40f1ffa86a9476c547.jpg"
                  alt="EV Co-ownership Logo">
         </div>
         <h1>Lời mời tham gia nhóm</h1>
@@ -360,24 +370,24 @@
 
         <div class="invitation-info">
             <h3>📋 Thông tin lời mời</h3>
-            <div class="invitation-details">
-                <div class="detail-item">
-                    <span class="detail-label">👤 Người mời:</span>
-                    <span class="detail-value" th:text="${inviterName}">Tên người mời</span>
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label">🏢 Nhóm:</span>
-                    <span class="detail-value" th:text="${groupName}">Tên nhóm</span>
-                </div>
-                <div class="detail-item" th:if="${suggestedPercentage != null}">
-                    <span class="detail-label">📊 Tỷ lệ sở hữu:</span>
-                    <span class="detail-value"><span class="highlight" th:text="${suggestedPercentage} + '%'">25%</span></span>
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label">⏰ Hạn lời mời:</span>
-                    <span class="detail-value" th:text="${#temporals.format(expiresAt, 'dd/MM/yyyy HH:mm')}">01/01/2025 23:59</span>
-                </div>
-            </div>
+            <table class="invitation-details" role="presentation" style="width:100%; border-collapse:collapse;">
+                <tr class="detail-item">
+                    <td class="detail-label">👤 Người mời:</td>
+                    <td class="detail-value" th:text="${inviterName}">Tên người mời</td>
+                </tr>
+                <tr class="detail-item">
+                    <td class="detail-label">🏢 Nhóm:</td>
+                    <td class="detail-value" th:text="${groupName}">Tên nhóm</td>
+                </tr>
+                <tr class="detail-item" th:if="${suggestedPercentage != null}">
+                    <td class="detail-label">📊 Tỷ lệ sở hữu:</td>
+                    <td class="detail-value"><span class="highlight" th:text="${suggestedPercentage} + '%'">25%</span></td>
+                </tr>
+                <tr class="detail-item">
+                    <td class="detail-label">⏰ Hạn lời mời:</td>
+                    <td class="detail-value" th:text="${#temporals.format(expiresAt, 'dd/MM/yyyy HH:mm')}">01/01/2025 23:59</td>
+                </tr>
+            </table>
         </div>
 
         <div class="otp-container">
@@ -388,26 +398,26 @@
 
         <div class="steps-container">
             <div class="steps-title">📝 Hướng dẫn tham gia</div>
-            <ul class="steps-list">
-                <li class="step-item">
-                    <div class="step-number">1</div>
-                    <div class="step-text">Truy cập website bằng link trên</div>
-                </li>
-                <li class="step-item">
-                    <div class="step-number">2</div>
-                    <div class="step-text">Đăng nhập tài khoản (nếu có) hoặc đăng ký tài khoản mới</div>
-                </li>
-                <li class="step-item">
-                    <div class="step-number">3</div>
-                    <div class="step-text">Nhập mã OTP <span class="highlight" th:text="${otp}">123456</span> để tham
-                        gia nhóm
-                    </div>
-                </li>
-                <li class="step-item">
-                    <div class="step-number">4</div>
-                    <div class="step-text">Sau khi vào nhóm, vào mục "Tỷ lệ sở hữu" để nhập tỷ lệ của bạn</div>
-                </li>
-            </ul>
+            <table class="steps-table" role="presentation" style="width:100%; border-collapse:collapse;">
+                <tr>
+                    <td class="number-col"><span class="step-number">1</span></td>
+                    <td><span class="step-text">Truy cập website bằng link trên</span></td>
+                </tr>
+                <tr>
+                    <td class="number-col"><span class="step-number">2</span></td>
+                    <td><span class="step-text">Đăng nhập tài khoản (nếu có) hoặc đăng ký tài khoản mới</span></td>
+                </tr>
+                <tr>
+                    <td class="number-col"><span class="step-number">3</span></td>
+                    <td><span class="step-text">Nhập mã OTP <span class="highlight" th:text="${otp}">123456</span> để tham
+                        gia nhóm</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="number-col"><span class="step-number">4</span></td>
+                    <td><span class="step-text">Sau khi vào nhóm, vào mục "Tỷ lệ sở hữu" để nhập tỷ lệ của bạn</span></td>
+                </tr>
+            </table>
         </div>
 
         <div class="expiry-notice">
