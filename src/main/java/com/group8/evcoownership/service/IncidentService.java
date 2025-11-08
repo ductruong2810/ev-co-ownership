@@ -4,6 +4,7 @@ import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.dto.IncidentResponseDTO;
 import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.enums.BookingStatus;
+import com.group8.evcoownership.enums.FundType;
 import com.group8.evcoownership.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -103,11 +104,19 @@ public class IncidentService {
         User approver = userRepository.findByEmail(username)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
-        // ✅ Tìm SharedFund theo group của vehicle
-        SharedFund fund = sharedFundRepository.findByGroup_GroupId(
-                incident.getBooking().getVehicle().getOwnershipGroup().getGroupId()
-        ).orElseThrow(() -> new EntityNotFoundException("Shared fund not found"));
+        // LAY GROUPiD DE BO VAO GOI HAM TIM QUY
+        Long groupId = incident.getBooking()
+                .getVehicle()
+                .getOwnershipGroup()
+                .getGroupId();
+        // ✅ Lấy đúng quỹ OPERATING (chi được) của group
+        SharedFund fund = sharedFundRepository
+                .findByGroup_GroupIdAndFundType(groupId, FundType.OPERATING)
+                .orElseThrow(() -> new EntityNotFoundException("Operating fund not found for group: " + groupId));
 
+        if (!fund.isSpendable()) {
+            throw new IllegalStateException("Operating fund is not spendable");
+        }
 
         // ✅ Tạo Expense, thêm recipientUserId = người báo cáo sự cố
         Expense expense = Expense.builder()
