@@ -129,22 +129,6 @@ public class OwnershipShareController {
     }
 
     /**
-     * Cập nhật tỷ lệ sở hữu của thành viên (lấy userId từ token)
-     * PUT /api/shares/{groupId}/percentage
-     */
-    @PutMapping("/{groupId}/percentage")
-    @Operation(summary = "Cập nhật tỷ lệ sở hữu thành viên",
-            description = "Cập nhật tỷ lệ sở hữu của thành viên")
-    @PreAuthorize("hasAnyRole('CO_OWNER')")
-    public OwnershipPercentageResponseDTO updateMemberOwnershipPercentage(@PathVariable Long groupId,
-                                                                          @AuthenticationPrincipal String userEmail,
-                                                                          @RequestBody @Valid OwnershipPercentageRequestDTO req) {
-        // Lấy userId từ JWT token
-        Long userId = userProfileService.getUserProfile(userEmail).getUserId();
-        return service.updateOwnershipPercentage(userId, groupId, req);
-    }
-
-    /**
      * Lấy tổng quan tỷ lệ sở hữu của group
      * GET /api/shares/group/{groupId}/summary
      */
