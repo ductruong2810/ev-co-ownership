@@ -105,9 +105,19 @@ class OwnershipGroupServiceTest {
 
         when(userRepository.findByEmail(userEmail)).thenReturn(Optional.of(testUser));
         when(ownershipGroupRepository.existsByGroupNameIgnoreCase("Test Group")).thenReturn(false);
-        when(ownershipGroupRepository.save(any(OwnershipGroup.class))).thenReturn(testGroup);
+        //when(ownershipGroupRepository.save(any(OwnershipGroup.class))).thenReturn(testGroup);
+        OwnershipGroup testGroup = OwnershipGroup.builder()
+                .groupName("Test Group")
+                .description("Test Description")
+                .memberCapacity(5)
+                .status(GroupStatus.PENDING)
+                .build();
+        testGroup.setGroupId(1L); // 👈 PHẢI có ID
+
+        when(ownershipGroupRepository.save(any(OwnershipGroup.class)))
+                .thenReturn(testGroup);
         when(ownershipShareRepository.save(any(OwnershipShare.class))).thenReturn(testShare);
-        when(fundService.createOrGroup(1L)).thenReturn(testFund);
+        //when(fundService.createOrGroup(1L)).thenReturn(testFund);
 
         // When
         OwnershipGroupResponseDTO result = ownershipGroupService.create(request, userEmail);
@@ -121,7 +131,8 @@ class OwnershipGroupServiceTest {
         assertEquals(GroupStatus.PENDING, result.status());
 
         // Verify that fund was created
-        verify(fundService).createOrGroup(1L);
+        // verify(fundService).createOrGroup(1L);
+        verify(fundService).initTwoFundsIfMissing(1L);
         verify(ownershipGroupRepository).save(any(OwnershipGroup.class));
         verify(ownershipShareRepository).save(any(OwnershipShare.class));
     }

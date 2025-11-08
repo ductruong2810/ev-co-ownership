@@ -1,5 +1,6 @@
 package com.group8.evcoownership.entity;
 
+import com.group8.evcoownership.enums.FundType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -44,6 +45,13 @@ public class SharedFund {
 //    // Relationships với các entity khác
 //    @OneToMany(mappedBy = "fund", cascade = CascadeType.ALL, orphanRemoval = true)
 //    private List<Dispute> disputes;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "FundType", nullable = false, length = 20)
+    private FundType fundType;
+
+    @Column(name = "IsSpendable", nullable = false)
+    private boolean isSpendable; // OPERATING=true, DEPOSIT_RESERVE=false
 
     @PrePersist
     public void onCreate() {

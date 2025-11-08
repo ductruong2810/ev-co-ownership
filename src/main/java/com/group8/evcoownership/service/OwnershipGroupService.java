@@ -199,7 +199,9 @@ public class OwnershipGroupService {
         ownershipShareRepository.save(ownershipShare);
 
         // Tự động tạo quỹ cho nhóm mới
-        fundService.createOrGroup(savedGroup.getGroupId());
+        //fundService.createOrGroup(savedGroup.getGroupId());
+        fundService.initTwoFundsIfMissing(savedGroup.getGroupId());
+
 
         // Send notification to group creator
         notificationOrchestrator.sendComprehensiveNotification(
