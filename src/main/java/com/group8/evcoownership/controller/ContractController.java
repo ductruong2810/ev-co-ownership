@@ -1,8 +1,11 @@
 package com.group8.evcoownership.controller;
 
+import com.group8.evcoownership.dto.ContractUpdateRequestDTO;
+import com.group8.evcoownership.dto.ContractTermsUpdateRequestDTO;
 import com.group8.evcoownership.service.ContractService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -80,6 +83,85 @@ public class ContractController {
         return ResponseEntity.ok(contractData);
     }
 
+    /**
+     * API: Lấy thông tin tính toán deposit amount (cho group admin hiểu công thức)
+     * ------------------------------------------------------------
+     * Dành cho:
+     * - Group Admin
+     * <p>
+     * Mục đích:
+     * Hiển thị giá trị deposit được tính toán tự động và giải thích công thức
+     * để admin có thể quyết định có override hay không
+     */
+    @GetMapping("/{groupId}/deposit-calculation")
+    @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
+    @Operation(
+            summary = "Lấy thông tin tính toán deposit",
+            description = "Lấy giá trị deposit được tính toán tự động và giải thích công thức tính toán"
+    )
+    public ResponseEntity<Map<String, Object>> getDepositCalculation(@PathVariable Long groupId) {
+        Map<String, Object> calculation = contractService.getDepositCalculationInfo(groupId);
+        return ResponseEntity.ok(calculation);
+    }
+
+
+    /**
+     * API: Cập nhật hợp đồng (chỉ admin group)
+     * ------------------------------------------------------------
+     * Dành cho:
+     * - Group Admin
+     * <p>
+     * Điều kiện:
+     * - Contract phải ở trạng thái PENDING (chưa ký)
+     * - Chỉ được sửa: StartDate, EndDate
+     * - RequiredDepositAmount được tính tự động bởi hệ thống (không cho phép sửa)
+     * - EndDate phải sau StartDate (kỳ hạn tối thiểu 1 tháng, tối đa 5 năm)
+     */
+    @PutMapping("/{groupId}")
+    @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
+    @Operation(
+            summary = "Cập nhật hợp đồng",
+            description = "Chỉ admin của nhóm được phép cập nhật hợp đồng. Chỉ có thể sửa khi hợp đồng ở trạng thái PENDING (chưa ký)."
+    )
+    public ResponseEntity<Map<String, Object>> updateContract(
+            @PathVariable Long groupId,
+            @Valid @RequestBody ContractUpdateRequestDTO request) {
+
+        // Validate date range
+        if (!request.isValidDateRange()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("message", "End date must be after start date");
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        Map<String, Object> result = contractService.updateContract(groupId, request);
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * API: Cập nhật terms của hợp đồng (chỉ admin group)
+     * ------------------------------------------------------------
+     * Dành cho:
+     * - Group Admin
+     * <p>
+     * Điều kiện:
+     * - Contract phải ở trạng thái PENDING hoặc PENDING_MEMBER_APPROVAL có phản hồi REJECTED
+     */
+    @PutMapping("/{groupId}/terms")
+    @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
+    @Operation(
+            summary = "Cập nhật terms của hợp đồng",
+            description = "Cho phép group admin cập nhật nội dung terms khi hợp đồng chưa được tất cả members phê duyệt."
+    )
+    public ResponseEntity<Map<String, Object>> updateContractTerms(
+            @PathVariable Long groupId,
+            @Valid @RequestBody ContractTermsUpdateRequestDTO request) {
+
+        Map<String, Object> result = contractService.updateContractTerms(groupId, request);
+        return ResponseEntity.ok(result);
+    }
 
     /**
      * Hủy contract (chỉ admin group)
@@ -151,6 +233,70 @@ public class ContractController {
     public ResponseEntity<Map<String, Object>> checkAndAutoSignContract(@PathVariable Long groupId) {
         Map<String, Object> result = contractService.checkAndAutoSignContract(groupId);
         return ResponseEntity.ok(result);
+    }
+
+    /**
+     * API: Member approve/reject contract
+     * ------------------------------------------------------------
+     * Dành cho:
+     * - Members trong nhóm (không phải admin)
+     * <p>
+     * Điều kiện:
+     * - Contract phải ở trạng thái PENDING_MEMBER_APPROVAL
+     * - Nếu REJECTED, phải có lý do (ít nhất 10 ký tự)
+     */
+    @PostMapping("/{contractId}/member-feedback")
+    @PreAuthorize("@ownershipGroupService.isGroupMemberForContract(authentication.name, #contractId)")
+    @Operation(
+            summary = "Member approve/reject contract",
+            description = "Member có thể approve hoặc reject contract. Nếu reject, phải có lý do."
+    )
+    public ResponseEntity<Map<String, Object>> submitMemberFeedback(
+            @PathVariable Long contractId,
+            @Valid @RequestBody com.group8.evcoownership.dto.ContractMemberFeedbackRequestDTO request,
+            @AuthenticationPrincipal String userEmail) {
+        
+        Long userId = contractService.getUserIdByEmail(userEmail);
+        Map<String, Object> result = contractService.submitMemberFeedback(contractId, userId, request);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * API: Lấy tất cả feedback của members cho contract (cho admin group)
+     * ------------------------------------------------------------
+     * Dành cho:
+     * - Group Admin
+     */
+    @GetMapping("/{contractId}/member-feedbacks")
+    @PreAuthorize("@ownershipGroupService.isGroupAdminForContract(authentication.name, #contractId) or hasAnyRole('ADMIN','STAFF')")
+    @Operation(
+            summary = "Get contract member feedbacks",
+            description = "Lấy tất cả feedback của members cho contract. Chỉ group admin có quyền xem."
+    )
+    public ResponseEntity<Map<String, Object>> getContractMemberFeedbacks(
+            @PathVariable Long contractId) {
+        
+        Map<String, Object> feedbacks = contractService.getContractFeedbacks(contractId);
+        return ResponseEntity.ok(feedbacks);
+    }
+
+    /**
+     * API: Lấy tất cả feedback của members theo groupId (cho admin group)
+     * ------------------------------------------------------------
+     * Dành cho:
+     * - Group Admin
+     */
+    @GetMapping("/group/{groupId}/member-feedbacks")
+    @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId) or hasAnyRole('ADMIN','STAFF')")
+    @Operation(
+            summary = "Get member feedbacks by groupId",
+            description = "Lấy tất cả feedback của members theo groupId. Áp dụng cho nhóm có 1 hợp đồng hiện tại."
+    )
+    public ResponseEntity<Map<String, Object>> getGroupMemberFeedbacks(
+            @PathVariable Long groupId) {
+        
+        Map<String, Object> feedbacks = contractService.getContractFeedbacksByGroup(groupId);
+        return ResponseEntity.ok(feedbacks);
     }
 
     // Removed manual approval endpoints - contracts are now auto-approved
