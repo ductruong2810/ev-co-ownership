@@ -1,6 +1,7 @@
 package com.group8.evcoownership.repository;
 
 import com.group8.evcoownership.entity.Expense;
+import com.group8.evcoownership.enums.FundType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -8,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 @Repository
 public interface ExpenseRepository extends JpaRepository<Expense, Long> {
@@ -39,4 +41,19 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
             @Param("recipientUserId") Long recipientUserId,
             Pageable pageable
     );
+
+
+    /**
+     * new dto for LedgerRowDto
+     */
+    // 1) Theo group + khoảng thời gian (order by mới nhất)
+    List<Expense> findByFund_Group_GroupIdAndExpenseDateBetweenOrderByExpenseDateDesc(
+            Long groupId, LocalDateTime from, LocalDateTime to
+    );
+
+    // 2) Theo group + fundType + khoảng thời gian (order by mới nhất)
+    List<Expense> findByFund_Group_GroupIdAndFund_FundTypeAndExpenseDateBetweenOrderByExpenseDateDesc(
+            Long groupId, FundType fundType, LocalDateTime from, LocalDateTime to
+    );
+
 }

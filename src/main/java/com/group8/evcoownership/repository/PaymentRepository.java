@@ -2,12 +2,15 @@
 package com.group8.evcoownership.repository;
 
 import com.group8.evcoownership.entity.Payment;
+import com.group8.evcoownership.enums.DepositStatus;
+import com.group8.evcoownership.enums.FundType;
 import com.group8.evcoownership.enums.PaymentStatus;
 import com.group8.evcoownership.enums.PaymentType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -40,4 +43,14 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     Optional<Payment> findTopByPayer_UserIdAndFund_Group_GroupIdAndPaymentTypeAndStatusOrderByPaymentDateDesc(
             Long userId, Long groupId, PaymentType paymentType, PaymentStatus status);
+
+    /**
+     * new for ledgerRowDTO
+     */
+    List<Payment> findByFund_Group_GroupIdAndStatusAndPaidAtBetweenOrderByPaidAtDesc(
+            Long groupId, DepositStatus status, LocalDateTime from, LocalDateTime to);
+
+    List<Payment> findByFund_Group_GroupIdAndFund_FundTypeAndStatusAndPaidAtBetweenOrderByPaidAtDesc(
+            Long groupId, FundType fundType, DepositStatus status, LocalDateTime from, LocalDateTime to);
+
 }

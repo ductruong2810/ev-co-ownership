@@ -87,6 +87,14 @@ public class VehicleInfoExtractionService {
      * Extract brand từ text
      */
     private String extractBrand(String text) {
+        Optional<String[]> combinedBrandModel = extractBrandModelFromCombinedLabel(text);
+        if (combinedBrandModel.isPresent()) {
+            String brandCandidate = combinedBrandModel.get()[0];
+            if (isValidBrand(brandCandidate)) {
+                return normalizeBrand(brandCandidate);
+            }
+        }
+
         // Tìm theo pattern nhãn hiệu
         Matcher matcher = BRAND_MODEL_PATTERN.matcher(text);
         if (matcher.find()) {
@@ -153,6 +161,14 @@ public class VehicleInfoExtractionService {
      * Extract model từ text
      */
     private String extractModel(String text) {
+        Optional<String[]> combinedBrandModel = extractBrandModelFromCombinedLabel(text);
+        if (combinedBrandModel.isPresent()) {
+            String modelCandidate = combinedBrandModel.get()[1];
+            if (isValidModel(modelCandidate)) {
+                return normalizeModel(modelCandidate);
+            }
+        }
+
         // Tìm theo pattern kiểu loại
         Matcher matcher = MODEL_PATTERN.matcher(text);
         if (matcher.find()) {
@@ -206,6 +222,128 @@ public class VehicleInfoExtractionService {
         }
 
         return "";
+    }
+
+    /**
+     * Extract brand/model ở format "Hãng / Model" (ví dụ: "Toyota / Camry")
+     */
+    private Optional<String[]> extractBrandModelFromCombinedLabel(String text) {
+        if (text == null || text.isBlank()) {
+            return Optional.empty();
+        }
+
+        String[] lines = text.split("\\r?\\n");
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+            if (isBrandModelLabelLine(line)) {
+                // Thử chính dòng này trước (trường hợp có cả label và value trên cùng dòng)
+                Optional<String[]> currentLine = parseBrandModelValuesFromLine(line);
+                if (currentLine.isPresent()) {
+                    return currentLine;
+                }
+
+                // Nếu giá trị nằm ở dòng tiếp theo, thử trong 2 dòng kế tiếp
+                for (int j = i + 1; j < Math.min(i + 3, lines.length); j++) {
+                    Optional<String[]> candidate = parseBrandModelValuesFromLine(lines[j]);
+                    if (candidate.isPresent()) {
+                        return candidate;
+                    }
+                }
+            }
+        }
+
+        return Optional.empty();
+    }
+
+    private boolean isBrandModelLabelLine(String line) {
+        if (line == null) {
+            return false;
+        }
+        String normalized = line.toLowerCase(Locale.ROOT);
+        return (normalized.contains("hãng") || normalized.contains("hang"))
+                && normalized.contains("model");
+    }
+
+    private Optional<String[]> parseBrandModelValuesFromLine(String line) {
+        if (line == null) {
+            return Optional.empty();
+        }
+
+        String cleaned = line.trim();
+        if (cleaned.isEmpty()) {
+            return Optional.empty();
+        }
+
+        String normalized = cleaned.toLowerCase(Locale.ROOT);
+        if (normalized.contains("hãng") || normalized.contains("hang") || normalized.contains("model")) {
+            // Loại bỏ phần label nếu có
+            cleaned = cleaned.replaceAll("(?i)hãng\\s*/\\s*model", "");
+            int colonIndex = cleaned.indexOf(':');
+            if (colonIndex >= 0) {
+                cleaned = cleaned.substring(colonIndex + 1);
+            }
+            cleaned = cleaned.trim();
+        }
+
+        if (!cleaned.contains("/")) {
+            return Optional.empty();
+        }
+
+        String[] parts = Arrays.stream(cleaned.split("/"))
+                .map(String::trim)
+                .filter(part -> !part.isEmpty())
+                .toArray(String[]::new);
+
+        if (parts.length < 2) {
+            return Optional.empty();
+        }
+
+        String brand = parts[0];
+        String model = String.join(" ", Arrays.copyOfRange(parts, 1, parts.length)).trim();
+
+        if (brand.isEmpty() || model.isEmpty()) {
+            return Optional.empty();
+        }
+
+        // Loại bỏ các trường hợp không phải brand/model (ngày tháng, số, etc.)
+        if (brand.equalsIgnoreCase("hãng") || brand.equalsIgnoreCase("hang")
+                || model.equalsIgnoreCase("model")) {
+            return Optional.empty();
+        }
+
+        // Kiểm tra nếu brand hoặc model chỉ là số hoặc ngày tháng (ví dụ: "5/06/2012")
+        if (isDateOrNumber(brand) || isDateOrNumber(model)) {
+            return Optional.empty();
+        }
+
+        // Brand và model phải chứa ít nhất 1 chữ cái
+        if (!containsLetter(brand) || !containsLetter(model)) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new String[]{brand, model});
+    }
+
+    /**
+     * Kiểm tra xem string có phải là ngày tháng hoặc chỉ là số không
+     */
+    private boolean isDateOrNumber(String str) {
+        if (str == null || str.trim().isEmpty()) {
+            return false;
+        }
+        // Pattern cho ngày tháng: dd/mm/yyyy, dd-mm-yyyy, hoặc chỉ số
+        String trimmed = str.trim();
+        return trimmed.matches("^\\d+[/-]\\d+[/-]\\d+$") || trimmed.matches("^\\d+$");
+    }
+
+    /**
+     * Kiểm tra xem string có chứa ít nhất 1 chữ cái không
+     */
+    private boolean containsLetter(String str) {
+        if (str == null || str.trim().isEmpty()) {
+            return false;
+        }
+        return str.matches(".*[a-zA-ZÀ-ỹ].*");
     }
 
     /**
