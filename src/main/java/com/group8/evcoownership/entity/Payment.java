@@ -86,6 +86,9 @@ public class Payment {
     @Builder.Default
     private Long version = 0L;
 
+    @Column(name = "PaidAt")
+    private LocalDateTime paidAt;
+
     @PrePersist
     public void prePersist() {
         this.paymentDate = LocalDateTime.now();
