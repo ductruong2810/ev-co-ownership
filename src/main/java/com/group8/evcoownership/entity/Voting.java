@@ -1,69 +1,67 @@
 package com.group8.evcoownership.entity;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.Nationalized;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "Voting")
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class Voting {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "VotingId", nullable = false)
-    private Long id;
+    @Column(name = "VotingId")
+    private Long votingId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "GroupId")
-    private OwnershipGroup group;
+    @Column(name = "GroupId")
+    private Long groupId;
 
-    @Size(max = 255)
-    @Nationalized
     @Column(name = "Title")
     private String title;
 
-    @Nationalized
-    @Lob
-    @Column(name = "Description")
+    @Column(name = "Description", columnDefinition = "NVARCHAR(MAX)")
     private String description;
 
     @Column(name = "VotingType", length = 50)
-    private String votingType; // BATTERY_UPGRADE, INSURANCE_CHANGE, SELL_VEHICLE, MAINTENANCE
+    private String votingType;
 
-    @Nationalized
-    @Lob
-    @Column(name = "Options")
-    private String options; // JSON: ["Option 1", "Option 2", "Option 3"]
+    @Column(name = "Options", columnDefinition = "NVARCHAR(MAX)")
+    private String options;
 
-    @Nationalized
-    @Lob
-    @Column(name = "Results")
-    private String results; // JSON: {"Option 1": 2, "Option 2": 1}
+    @Column(name = "Results", columnDefinition = "NVARCHAR(MAX)")
+    private String results;
 
     @Column(name = "Deadline")
     private LocalDateTime deadline;
 
-    @Column(name = "Status", length = 20)
-    private String status; // ACTIVE, COMPLETED, CANCELLED
+    @Column(name = "Status", nullable = false, length = 20)
+    private String status;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "CreatedBy")
-    private User createdBy;
+    @Column(name = "CreatedBy")
+    private Long createdBy;
 
-    @Column(name = "CreatedAt")
+    @Column(name = "CreatedAt", nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "RelatedExpenseId")
+    private Long relatedExpenseId;
+
+    @Column(name = "EstimatedAmount", precision = 12, scale = 2)
+    private BigDecimal estimatedAmount;
+
     @PrePersist
-    public void onCreate() {
+    protected void onCreate() {
         createdAt = LocalDateTime.now();
+        if (status == null) {
+            status = "ACTIVE";
+        }
     }
 }
