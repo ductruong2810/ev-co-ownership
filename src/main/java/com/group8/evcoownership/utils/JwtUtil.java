@@ -11,6 +11,8 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 @Component
 public class JwtUtil {
@@ -19,19 +21,45 @@ public class JwtUtil {
     private String secret;
 
     @Value("${jwt.expiration}")
-    private long expiration; // 15 phút
+    private long expiration;
 
     @Value("${jwt.refresh-expiration}")
-    private long refreshExpiration; // 7 ngày =
+    private long refreshExpiration;
 
     @Value("${jwt.remember-me-expiration}")
-    private long rememberMeExpiration; // 30 ngày
+    private long rememberMeExpiration;
 
     /**
-     * Generate Access Token (luôn 15 phút hoặc 1 giờ)
+     * Extract userId từ token
+     */
+    public Long getUserIdFromToken(String token) {
+        Claims claims = Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+
+        Object userIdObj = claims.get("userId");
+        if (userIdObj == null) {
+            throw new IllegalArgumentException("Invalid userId in token");
+        }
+
+        return Long.valueOf(userIdObj.toString());
+    }
+
+    /**
+     * Generate Access Token
      */
     public String generateToken(User user) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("userId", user.getUserId());
+        claims.put("email", user.getEmail());
+        if (user.getRole() != null) {
+            claims.put("role", user.getRole().getRoleName()); // Hoặc getRoleId()
+        }
+
         return Jwts.builder()
+                .setClaims(claims)
                 .setSubject(user.getEmail())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))
