@@ -1,13 +1,9 @@
 package com.group8.evcoownership.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public record ContractMemberFeedbackRequestDTO(
-        @NotNull(message = "Contract ID is required")
-        Long contractId,
-        
         @NotBlank(message = "Status is required")
         String status, // "APPROVED" or "REJECTED"
         
