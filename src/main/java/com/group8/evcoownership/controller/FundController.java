@@ -2,6 +2,7 @@ package com.group8.evcoownership.controller;
 
 import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.entity.SharedFund;
+import com.group8.evcoownership.enums.FundType;
 import com.group8.evcoownership.service.FundService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -9,9 +10,11 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -53,6 +56,25 @@ public class FundController {
 //    }
 
 // ================== READ ==================
+
+    /**
+     * API: Lấy sổ quỹ (Ledger) theo nhóm
+     * hiển thị lịch sử giao dịch quỹ (thu/chi) trong một khoảng thời gian.
+     *
+     */
+    @GetMapping("/groups/{groupId}/ledger")
+    @PreAuthorize("hasAnyRole('ADMIN','STAFF','CO_OWNER')")
+    @Operation(summary = "FE lấy sổ quỹ (IN/OUT) theo nhóm",
+            description = "Optional: fundType=OPERATING|DEPOSIT_RESERVE; from,to=yyyy-MM-dd")
+    public List<LedgerRowDTO> getLedger(
+            @PathVariable Long groupId,
+            @RequestParam(required = false) FundType fundType,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return fundService.getLedger(groupId, fundType, from, to);
+    }
+
+
     @GetMapping("/groups/{groupId}/all")
     @PreAuthorize("hasAnyRole('ADMIN','STAFF','CO_OWNER')")
     @Operation(summary = "Danh sách quỹ của 1 nhóm",
