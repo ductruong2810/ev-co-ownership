@@ -1,5 +1,6 @@
 package com.group8.evcoownership.service;
 
+import com.group8.evcoownership.dto.UserDocumentInfoDTO;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.entity.UserDocument;
 import com.group8.evcoownership.exception.FileStorageException;
@@ -15,9 +16,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 @Slf4j
@@ -32,9 +34,12 @@ public class UserDocumentService {
     @Autowired
     private AzureBlobStorageService azureBlobStorageService;
 
-    // ================= UPLOAD BATCH DOCUMENTS (FRONT + BACK) WITH DUPLICATE CHECK =================
+    @Autowired
+    private OcrService ocrService;
+
+    // ================= UPLOAD BATCH DOCUMENTS WITH OCR & DUPLICATE CHECK =================
     @Transactional
-    public Map<String, UserDocument> uploadBatchDocuments(
+    public CompletableFuture<Map<String, Object>> uploadBatchDocuments(
             String email,
             String documentType,
             MultipartFile frontFile,
@@ -42,65 +47,239 @@ public class UserDocumentService {
 
         validateDocumentType(documentType);
         validateImage(frontFile);
-        validateImage(backFile);
+        if (backFile != null && !backFile.isEmpty()) {
+            validateImage(backFile);
+        }
 
-        // CHECK IF TWO FILES ARE IDENTICAL (only in memory, no DB storage)
+        // Check duplicate files
         try {
             String frontHash = calculateFileHash(frontFile);
-            String backHash = calculateFileHash(backFile);
+            String backHash = backFile != null ? calculateFileHash(backFile) : null;
 
-            if (frontHash.equals(backHash)) {
-                log.error("Duplicate files detected: frontHash={}, backHash={}",
-                        frontHash.substring(0, 8), backHash.substring(0, 8));
+            if (backHash != null && frontHash.equals(backHash)) {
                 throw new IllegalArgumentException(
                         "Front and back images must be different. Please choose two different images."
                 );
             }
-
-            log.info("Files are different (OK): frontHash={}, backHash={}",
-                    frontHash.substring(0, 8), backHash.substring(0, 8));
-
         } catch (IOException e) {
-            log.error("Error calculating file hash: {}", e.getMessage());
             throw new RuntimeException("Unable to process file. Please try again.");
         }
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        Map<String, UserDocument> results = new HashMap<>();
+        long startTime = System.currentTimeMillis();
 
-        try {
-            // Upload FRONT
-            UserDocument frontDoc = uploadSingleSide(user, documentType, "FRONT", frontFile);
-            results.put("FRONT", frontDoc);
+        // Step 1: OCR để lấy document number
+        return ocrService.extractTextFromImage(frontFile)
+                .thenApply(extractedText -> {
+                    Map<String, Object> result = new HashMap<>();
 
-            // Upload BACK
-            UserDocument backDoc = uploadSingleSide(user, documentType, "BACK", backFile);
-            results.put("BACK", backDoc);
+                    try {
+                        if (extractedText == null || extractedText.trim().isEmpty()) {
+                            throw new IllegalArgumentException("Unable to extract text from image");
+                        }
 
-            log.info("Batch upload completed: userId={}, type={}", user.getUserId(), documentType);
+                        // Extract document info
+                        UserDocumentInfoDTO documentInfo;
+                        if (documentType.equals("CITIZEN_ID")) {
+                            documentInfo = extractCitizenIdInfo(extractedText);
+                        } else {
+                            documentInfo = extractDriverLicenseInfo(extractedText);
+                        }
 
-        } catch (Exception e) {
-            log.error("Batch upload failed: {}", e.getMessage(), e);
+                        String documentNumber = documentInfo.idNumber();
 
-            // Rollback: Delete uploaded files from Azure if any
-            results.values().forEach(doc -> {
-                try {
-                    azureBlobStorageService.deleteFile(doc.getImageUrl());
-                    userDocumentRepository.delete(doc);
-                } catch (Exception cleanupError) {
-                    log.error("Failed to cleanup after failed upload: {}", cleanupError.getMessage());
-                }
-            });
+                        // Check if document number already exists
+                        if (documentNumber != null && !documentNumber.isEmpty()) {
+                            Optional<UserDocument> existingDoc =
+                                    userDocumentRepository.findByDocumentNumber(documentNumber);
 
-            throw new RuntimeException("Upload failed. Please try again: " + e.getMessage());
-        }
+                            if (existingDoc.isPresent()) {
+                                UserDocument existing = existingDoc.get();
 
-        return results;
+                                if (!existing.getUserId().equals(user.getUserId())) {
+                                    log.warn("Document number {} already used by userId={}",
+                                            documentNumber, existing.getUserId());
+                                    throw new IllegalArgumentException(
+                                            String.format("Document number %s is already registered by another user",
+                                                    documentNumber)
+                                    );
+                                } else {
+                                    log.info("User re-uploading their own document: {}", documentNumber);
+                                }
+                            }
+                        }
+
+                        // Step 2: Upload files
+                        Map<String, UserDocument> uploadedDocs = new HashMap<>();
+
+                        UserDocument frontDoc = uploadSingleSideWithDocNumber(
+                                user, documentType, "FRONT", frontFile, documentNumber);
+                        uploadedDocs.put("FRONT", frontDoc);
+
+                        if (backFile != null && !backFile.isEmpty()) {
+                            UserDocument backDoc = uploadSingleSideWithDocNumber(
+                                    user, documentType, "BACK", backFile, documentNumber);
+                            uploadedDocs.put("BACK", backDoc);
+                        }
+
+                        result.put("success", true);
+                        result.put("uploadedDocuments", uploadedDocs);
+                        result.put("documentInfo", documentInfo);
+                        result.put("detectedType", detectDocumentType(extractedText));
+                        result.put("processingTime", (System.currentTimeMillis() - startTime) + "ms");
+
+                        log.info("Document uploaded: userId={}, type={}, number={}",
+                                user.getUserId(), documentType, documentNumber);
+
+                        return result;
+
+                    } catch (IllegalArgumentException e) {
+                        throw e;
+                    } catch (Exception e) {
+                        log.error("Upload failed: {}", e.getMessage(), e);
+                        throw new RuntimeException("Upload failed: " + e.getMessage());
+                    }
+                });
     }
 
-    // ================= CALCULATE FILE HASH (MD5) - IN MEMORY ONLY =================
+    // ================= HELPER: UPLOAD WITH DOCUMENT NUMBER =================
+    private UserDocument uploadSingleSideWithDocNumber(
+            User user, String documentType, String side,
+            MultipartFile file, String documentNumber) {
+
+        // Xóa tất cả documents cũ có thể conflict
+        List<UserDocument> existingDocs = new ArrayList<>();
+
+        // 1. Tìm document với cùng DocumentNumber (nếu có)
+        if (documentNumber != null && !documentNumber.isEmpty()) {
+            userDocumentRepository.findByDocumentNumber(documentNumber)
+                    .filter(doc -> doc.getUserId().equals(user.getUserId()))
+                    .ifPresent(existingDocs::add);
+        }
+
+        // 2. Tìm document với cùng userId + documentType + side
+        userDocumentRepository
+                .findByUserIdAndDocumentTypeAndSide(user.getUserId(), documentType, side)
+                .ifPresent(existingDocs::add);
+
+        // 3. Xóa tất cả documents cũ tìm được
+        existingDocs.stream()
+                .distinct()
+                .forEach(existingDoc -> {
+                    log.info("Deleting existing document: documentId={}, documentNumber={}, side={}",
+                            existingDoc.getDocumentId(), existingDoc.getDocumentNumber(), existingDoc.getSide());
+                    azureBlobStorageService.deleteFile(existingDoc.getImageUrl());
+                    userDocumentRepository.delete(existingDoc);
+                });
+
+        String fileUrl = azureBlobStorageService.uploadFile(file);
+
+        UserDocument document = UserDocument.builder()
+                .userId(user.getUserId())
+                .documentType(documentType)
+                .side(side)
+                .imageUrl(fileUrl)
+                .documentNumber(documentNumber)
+                .status("PENDING")
+                .build();
+
+        return userDocumentRepository.save(document);
+    }
+
+
+    // ================= OCR HELPER METHODS =================
+
+    private String detectDocumentType(String extractedText) {
+        if (extractedText == null || extractedText.trim().isEmpty()) {
+            return "UNKNOWN";
+        }
+
+        String text = extractedText.toLowerCase();
+
+        if (text.contains("căn cước công dân") || text.contains("can cuoc cong dan") ||
+                text.contains("citizen identification") || text.contains("cccd")) {
+            return "CITIZEN_ID";
+        }
+
+        if (text.contains("giấy phép lái xe") || text.contains("giay phep lai xe") ||
+                text.contains("driver license") || text.contains("gplx")) {
+            return "DRIVER_LICENSE";
+        }
+
+        return "UNKNOWN";
+    }
+
+    private UserDocumentInfoDTO extractCitizenIdInfo(String extractedText) {
+        String idNumber = extractIdNumber(extractedText);
+        String fullName = extractFullName(extractedText);
+        String dateOfBirth = extractDateOfBirth(extractedText);
+        String issueDate = extractIssueDate(extractedText);
+        String expiryDate = extractExpiryDate(extractedText);
+        String address = extractAddress(extractedText);
+
+        log.info("Extracted Citizen ID - Number: {}, Name: {}", idNumber, fullName);
+
+        return new UserDocumentInfoDTO(idNumber, fullName, dateOfBirth, issueDate, expiryDate, address);
+    }
+
+    private UserDocumentInfoDTO extractDriverLicenseInfo(String extractedText) {
+        String idNumber = extractLicenseNumber(extractedText);
+        String fullName = extractFullName(extractedText);
+        String dateOfBirth = extractDateOfBirth(extractedText);
+        String issueDate = extractIssueDate(extractedText);
+        String expiryDate = extractExpiryDate(extractedText);
+        String address = extractAddress(extractedText);
+
+        log.info("Extracted Driver License - Number: {}, Name: {}", idNumber, fullName);
+
+        return new UserDocumentInfoDTO(idNumber, fullName, dateOfBirth, issueDate, expiryDate, address);
+    }
+
+    private String extractIdNumber(String text) {
+        Pattern pattern = Pattern.compile("\\b(\\d{12}|\\d{9})\\b");
+        Matcher matcher = pattern.matcher(text);
+        return matcher.find() ? matcher.group(1) : null;
+    }
+
+    private String extractLicenseNumber(String text) {
+        Pattern pattern = Pattern.compile("(\\d{8,12})");
+        Matcher matcher = pattern.matcher(text);
+        return matcher.find() ? matcher.group(1) : null;
+    }
+
+    private String extractFullName(String text) {
+        Pattern pattern = Pattern.compile("(?:họ và tên|ho va ten|full name|name)[:：]?\\s*([A-ZẮẰẲẴẶĂẤẦẨẪẬÂÁÀÃẢẠĐẾỀỂỄỆÊÉÈẺẼẸÍÌỈĨỊỐỒỔỖỘÔỚỜỞỠỢƠÓÒÕỎỌỨỪỬỮỰƯÚÙỦŨỤÝỲỶỸỴ\\s]+)", Pattern.CASE_INSENSITIVE);
+        Matcher matcher = pattern.matcher(text);
+        return matcher.find() ? matcher.group(1).trim() : null;
+    }
+
+    private String extractDateOfBirth(String text) {
+        Pattern pattern = Pattern.compile("(?:ngày sinh|date of birth|dob|sinh)[:：]?\\s*(\\d{1,2}[/-]\\d{1,2}[/-]\\d{4})", Pattern.CASE_INSENSITIVE);
+        Matcher matcher = pattern.matcher(text);
+        return matcher.find() ? matcher.group(1) : null;
+    }
+
+    private String extractIssueDate(String text) {
+        Pattern pattern = Pattern.compile("(?:ngày cấp|issue date|date of issue)[:：]?\\s*(\\d{1,2}[/-]\\d{1,2}[/-]\\d{4})", Pattern.CASE_INSENSITIVE);
+        Matcher matcher = pattern.matcher(text);
+        return matcher.find() ? matcher.group(1) : null;
+    }
+
+    private String extractExpiryDate(String text) {
+        Pattern pattern = Pattern.compile("(?:có giá trị đến|valid until|expiry date)[:：]?\\s*(\\d{1,2}[/-]\\d{1,2}[/-]\\d{4})", Pattern.CASE_INSENSITIVE);
+        Matcher matcher = pattern.matcher(text);
+        return matcher.find() ? matcher.group(1) : null;
+    }
+
+    private String extractAddress(String text) {
+        Pattern pattern = Pattern.compile("(?:địa chỉ|address|dia chi)[:：]?\\s*([^\\n]{10,})", Pattern.CASE_INSENSITIVE);
+        Matcher matcher = pattern.matcher(text);
+        return matcher.find() ? matcher.group(1).trim() : null;
+    }
+
+    // ================= CALCULATE FILE HASH =================
     private String calculateFileHash(MultipartFile file) throws IOException {
         try {
             byte[] fileBytes = file.getBytes();
@@ -111,32 +290,6 @@ public class UserDocumentService {
             log.error("Error reading file bytes: {}", e.getMessage());
             throw new IOException("Unable to read file. Please try again.");
         }
-    }
-
-    // ================= HELPER: UPLOAD SINGLE SIDE =================
-    private UserDocument uploadSingleSide(User user, String documentType, String side, MultipartFile file) {
-
-        // Xóa document cũ nếu đã tồn tại
-        userDocumentRepository
-                .findByUserIdAndDocumentTypeAndSide(user.getUserId(), documentType, side)
-                .ifPresent(existingDoc -> {
-                    azureBlobStorageService.deleteFile(existingDoc.getImageUrl());
-                    userDocumentRepository.delete(existingDoc);
-                });
-
-        // Upload file lên Azure
-        String fileUrl = azureBlobStorageService.uploadFile(file);
-
-        // Tạo document mới (NO fileHash field needed)
-        UserDocument document = UserDocument.builder()
-                .userId(user.getUserId())
-                .documentType(documentType)
-                .side(side)
-                .imageUrl(fileUrl)
-                .status("PENDING")
-                .build();
-
-        return userDocumentRepository.save(document);
     }
 
     // ================= GET ALL MY DOCUMENTS =================
@@ -157,27 +310,22 @@ public class UserDocumentService {
 
     // ================= DELETE DOCUMENT =================
     public void deleteDocument(String email, Long documentId) {
-        // Validate ID
         if (documentId == null || documentId <= 0) {
             throw new IllegalArgumentException("Invalid document ID");
         }
 
-        // Tìm user
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        // Tìm document
         UserDocument document = userDocumentRepository.findById(documentId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         String.format("Document not found with ID: %d. Please check again", documentId)
                 ));
 
-        // Check ownership
         if (!document.getUserId().equals(user.getUserId())) {
             throw new UnauthorizedException("You do not have permission to delete this document");
         }
 
-        // Delete từ Azure Blob Storage
         try {
             azureBlobStorageService.deleteFile(document.getImageUrl());
         } catch (Exception e) {
@@ -185,7 +333,6 @@ public class UserDocumentService {
             throw new FileStorageException("Unable to delete file from storage. Please try again");
         }
 
-        // Delete từ database
         try {
             userDocumentRepository.delete(document);
             log.info("Document deleted successfully: documentId={}, userId={}", documentId, user.getUserId());

@@ -20,6 +20,9 @@ public class UserDocument {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long documentId;
 
+    @Column(name = "DocumentNumber", unique = true)
+    private String documentNumber; // Số CCCD hoặc số GPLX
+
     @Column(name = "UserId", nullable = false)
     private Long userId;
 

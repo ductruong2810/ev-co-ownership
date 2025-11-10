@@ -30,4 +30,7 @@ public interface UserDocumentRepository extends JpaRepository<UserDocument, Long
 
     // Đếm số document chờ duyệt
     long countByStatus(String status);
+    Optional<UserDocument> findByDocumentNumber(String documentNumber);
+    boolean existsByDocumentNumber(String documentNumber);
+
 }
