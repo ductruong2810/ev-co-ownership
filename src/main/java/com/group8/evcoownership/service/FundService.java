@@ -40,6 +40,35 @@ public class FundService {
     // =========================================================
     // New Functions after Database Update
     // =========================================================
+    /**
+     * Ham getLedgerSummary de xem day du thong tin Fund cua 1 group
+     * Ham nay se duoc goi api o controller
+     */
+    @Transactional(readOnly = true)
+    public LedgerSummaryDTO getLedgerSummary(Long groupId,
+                                             @Nullable FundType fundType,
+                                             @Nullable LocalDateTime from,
+                                             @Nullable LocalDateTime to) {
+        // 1) Tổng thu / chi trong khoản thời gian
+        BigDecimal totalIn  = nz(PaymentRepository.sumCompletedIn(groupId, fundType, from, to));
+        BigDecimal totalOut = nz(expenseRepository.sumApprovedOut(groupId, fundType, from, to));
+
+        // 2) Số dư hiện tại của 2 quỹ
+        BigDecimal operatingBal = fundRepo
+                .findByGroup_GroupIdAndFundType(groupId, FundType.OPERATING)
+                .map(f -> nz(f.getBalance())).orElse(BigDecimal.ZERO);
+
+        BigDecimal depositBal = fundRepo
+                .findByGroup_GroupIdAndFundType(groupId, FundType.DEPOSIT_RESERVE)
+                .map(f -> nz(f.getBalance())).orElse(BigDecimal.ZERO);
+
+        // 3) Lấy danh sách dòng sổ quỹ (tái dùng hàm getLedger bạn đã có)
+        List<LedgerRowDTO> rows = getLedger(groupId, fundType,
+                (from != null ? from.toLocalDate() : null),
+                (to   != null ? to.toLocalDate()   : null));
+
+        return new LedgerSummaryDTO(totalIn, totalOut, operatingBal, depositBal, rows);
+    }
 
     /**
      * Ham getLedger de xem day du thong tin Fund cua 1 group
