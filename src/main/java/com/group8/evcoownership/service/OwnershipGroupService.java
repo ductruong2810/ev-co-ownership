@@ -15,6 +15,7 @@ import com.group8.evcoownership.repository.OwnershipGroupRepository;
 import com.group8.evcoownership.repository.OwnershipShareRepository;
 import com.group8.evcoownership.repository.UserDocumentRepository;
 import com.group8.evcoownership.repository.UserRepository;
+import com.group8.evcoownership.repository.ContractRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +44,7 @@ public class OwnershipGroupService {
     private final OwnershipShareRepository ownershipShareRepository;
     private final UserRepository userRepository;
     private final UserDocumentRepository userDocumentRepository;
+    private final ContractRepository contractRepository;
     private final VehicleService vehicleService;
     private final NotificationOrchestrator notificationOrchestrator;
     private final FundService fundService;
@@ -708,6 +710,38 @@ public class OwnershipGroupService {
                     .orElse(null);
 
             return ownershipShare != null;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Kiểm tra user có phải là admin của group dựa trên contractId
+     */
+    public boolean isGroupAdminForContract(String userEmail, Long contractId) {
+        try {
+            var contract = contractRepository.findById(contractId).orElse(null);
+            if (contract == null || contract.getGroup() == null) {
+                return false;
+            }
+            Long groupId = contract.getGroup().getGroupId();
+            return isGroupAdmin(userEmail, groupId);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Kiểm tra user có phải là member của group dựa trên contractId
+     */
+    public boolean isGroupMemberForContract(String userEmail, Long contractId) {
+        try {
+            var contract = contractRepository.findById(contractId).orElse(null);
+            if (contract == null || contract.getGroup() == null) {
+                return false;
+            }
+            Long groupId = contract.getGroup().getGroupId();
+            return isGroupMember(userEmail, groupId);
         } catch (Exception e) {
             return false;
         }
