@@ -160,7 +160,7 @@ public class DepositPaymentService {
 
         // 1. Cập nhật trạng thái Payment
         payment.setStatus(PaymentStatus.COMPLETED);
-        payment.setPaymentDate(LocalDateTime.now());
+        payment.setPaidAt(LocalDateTime.now());
         payment.setProviderResponse(providerResponse);
         paymentRepository.save(payment);
 
