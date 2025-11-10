@@ -1,6 +1,7 @@
 package com.group8.evcoownership.exception;
 
 import com.group8.evcoownership.dto.ValidationErrorResponseDTO;
+import com.group8.evcoownership.dto.ErrorResponseDTO;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
@@ -166,20 +167,18 @@ public class GlobalExceptionHandler {
     // ========== 400 - VEHICLE CHECK ERRORS ==========
     //them de check loi cho pre-use
     @ExceptionHandler(SecurityException.class)
-    public ResponseEntity<ValidationErrorResponseDTO> handleSecurityException(
+    public ResponseEntity<ErrorResponseDTO> handleSecurityException(
             SecurityException ex, WebRequest request) {
 
         logger.warn("Security violation: {}", ex.getMessage());
 
-        String field = "authorization";
-        if (ex.getMessage().contains("booking")) {
-            field = "bookingId";
-        }
-
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
-                ValidationErrorResponseDTO.singleError(403, "Forbidden",
-                        ex.getMessage(), field,
-                        request.getDescription(false).replace("uri=", ""))
+                new ErrorResponseDTO(
+                        HttpStatus.FORBIDDEN.value(),
+                        "Forbidden",
+                        ex.getMessage(),
+                        request.getDescription(false).replace("uri=", "")
+                )
         );
     }
 
@@ -295,15 +294,18 @@ public class GlobalExceptionHandler {
 
     // ========== ACCESS DENIED (403) ==========
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ValidationErrorResponseDTO> handleAccessDenied(
+    public ResponseEntity<ErrorResponseDTO> handleAccessDenied(
             AccessDeniedException ex, WebRequest request) {
 
         logger.warn("Access denied: {}", ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
-                ValidationErrorResponseDTO.singleError(403, "Forbidden",
-                        "You do not have permission to access this resource", "authorization",
-                        request.getDescription(false).replace("uri=", ""))
+                new ErrorResponseDTO(
+                        HttpStatus.FORBIDDEN.value(),
+                        "Forbidden",
+                        "You do not have permission to access this resource",
+                        request.getDescription(false).replace("uri=", "")
+                )
         );
     }
 
@@ -375,14 +377,18 @@ public class GlobalExceptionHandler {
 
     // ========== CUSTOM - UNAUTHORIZED EXCEPTION ==========
     @ExceptionHandler(UnauthorizedException.class)
-    public ResponseEntity<ValidationErrorResponseDTO> handleUnauthorizedException(
+    public ResponseEntity<ErrorResponseDTO> handleUnauthorizedException(
             UnauthorizedException ex, WebRequest request) {
 
         logger.warn("Unauthorized action: {}", ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
-                ValidationErrorResponseDTO.singleError(403, "Forbidden", ex.getMessage(), "authorization",
-                        request.getDescription(false).replace("uri=", ""))
+                new ErrorResponseDTO(
+                        HttpStatus.FORBIDDEN.value(),
+                        "Forbidden",
+                        ex.getMessage(),
+                        request.getDescription(false).replace("uri=", "")
+                )
         );
     }
 
