@@ -3,8 +3,7 @@ package com.group8.evcoownership.service;
 import com.group8.evcoownership.dto.VehicleInfoDTO;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class VehicleInfoExtractionServiceTest {
 
@@ -121,7 +120,40 @@ public class VehicleInfoExtractionServiceTest {
 
         // Kiểm tra chassis (xe ô tô - dài)
         assertNotNull(result.chassisNumber());
-        assertTrue(result.chassisNumber().length() == 17,
-                "Car chassis should be exactly 17 characters, got: " + result.chassisNumber());
+        assertEquals(17, result.chassisNumber().length(), "Car chassis should be exactly 17 characters, got: " + result.chassisNumber());
+    }
+
+    @Test
+    public void testExtractCombinedBrandModelFormat() {
+        String combinedFormatText = """
+                CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+                MAUDEMO • SAMPLE
+                Biển số
+                99A-123.45
+                Hãng / Model
+                Toyota / Camry
+                Màu sơn
+                Đen
+                Số khung (VIN)
+                4T1BK1HK3LU123456
+                """;
+
+        VehicleInfoDTO result = service.extractVehicleInfo(combinedFormatText);
+
+        assertNotNull(result.brand());
+        assertTrue(result.brand().equalsIgnoreCase("Toyota"),
+                "Brand should be Toyota, got: " + result.brand());
+
+        assertNotNull(result.model());
+        assertTrue(result.model().equalsIgnoreCase("Camry"),
+                "Model should be Camry, got: " + result.model());
+
+        assertNotNull(result.licensePlate());
+        assertTrue(result.licensePlate().contains("99A-123.45"),
+                "License plate should contain 99A-123.45, got: " + result.licensePlate());
+
+        assertNotNull(result.chassisNumber());
+        assertTrue(result.chassisNumber().equalsIgnoreCase("4T1BK1HK3LU123456"),
+                "Chassis should match input, got: " + result.chassisNumber());
     }
 }
