@@ -23,22 +23,22 @@ public class FundController {
 
     private final FundService fundService;
 
-    //--------Create------
-    // Api tao quy moi cho group (path) - targetAmount mặc định = 0
-    @PostMapping("/{groupId}")
-    @Operation(summary = "Tạo quỹ cho nhóm", description = "Tạo quỹ chung mới cho một nhóm với số tiền mục tiêu mặc định")
-    public FundBalanceResponseDTO createFund(@PathVariable Long groupId) {
-        SharedFund fund = fundService.createOrGroup(groupId);
-        return new FundBalanceResponseDTO(fund.getFundId(), fund.getGroup().getGroupId(), fund.getBalance(), fund.getTargetAmount());
-    }
-
-    // Api tao quy theo body(DTO) - có thể tùy chọn targetAmount
-    @PostMapping
-    @Operation(summary = "Tạo quỹ mới", description = "Tạo quỹ chung mới với thông tin chi tiết từ request body")
-    public FundBalanceResponseDTO createFund(@Valid @RequestBody SharedFundCreateRequestDTO req) {
-        SharedFund fund = fundService.create(req);
-        return new FundBalanceResponseDTO(fund.getFundId(), fund.getGroup().getGroupId(), fund.getBalance(), fund.getTargetAmount());
-    }
+//    //--------Create------
+//    // Api tao quy moi cho group (path) - targetAmount mặc định = 0
+//    @PostMapping("/{groupId}")
+//    @Operation(summary = "Tạo quỹ cho nhóm", description = "Tạo quỹ chung mới cho một nhóm với số tiền mục tiêu mặc định")
+//    public FundBalanceResponseDTO createFund(@PathVariable Long groupId) {
+//        SharedFund fund = fundService.createOrGroup(groupId);
+//        return new FundBalanceResponseDTO(fund.getFundId(), fund.getGroup().getGroupId(), fund.getBalance(), fund.getTargetAmount());
+//    }
+//
+//    // Api tao quy theo body(DTO) - có thể tùy chọn targetAmount
+//    @PostMapping
+//    @Operation(summary = "Tạo quỹ mới", description = "Tạo quỹ chung mới với thông tin chi tiết từ request body")
+//    public FundBalanceResponseDTO createFund(@Valid @RequestBody SharedFundCreateRequestDTO req) {
+//        SharedFund fund = fundService.create(req);
+//        return new FundBalanceResponseDTO(fund.getFundId(), fund.getGroup().getGroupId(), fund.getBalance(), fund.getTargetAmount());
+//    }
 
     /**
      * new api after updating database
