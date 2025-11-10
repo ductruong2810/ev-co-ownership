@@ -1,11 +1,15 @@
 package com.group8.evcoownership.service;
 
 import com.group8.evcoownership.dto.*;
-import com.group8.evcoownership.entity.OwnershipGroup;
-import com.group8.evcoownership.entity.SharedFund;
+import com.group8.evcoownership.entity.*;
+import com.group8.evcoownership.enums.DepositStatus;
 import com.group8.evcoownership.enums.FundType;
+import com.group8.evcoownership.enums.PaymentStatus;
+import com.group8.evcoownership.repository.ExpenseRepository;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
+import com.group8.evcoownership.repository.PaymentRepository;
 import com.group8.evcoownership.repository.SharedFundRepository;
+import io.micrometer.common.lang.Nullable;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
@@ -15,17 +19,113 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Stream;
+
+import static com.group8.evcoownership.enums.RoleName.*;
+
 
 @Service
 @RequiredArgsConstructor
 public class FundService {
     private final SharedFundRepository fundRepo;
     private final OwnershipGroupRepository groupRepo;
+    private final ExpenseRepository expenseRepository;
+    private final PaymentRepository PaymentRepository;
 
     // =========================================================
     // New Functions after Database Update
     // =========================================================
+
+    /**
+     * Ham getLedger de xem day du thong tin Fund cua 1 group
+     *
+     */
+    @Transactional(readOnly = true)
+    public List<LedgerRowDTO> getLedger(Long groupId,
+                                        @Nullable FundType fundType,
+                                        @Nullable LocalDate fromDate,
+                                        @Nullable LocalDate toDate) {
+
+        // Neu fromD la null thi mac dinh 30 ngay truoc
+        // Neu toD la null thi mac dinh ngay ket thuc la hom nay
+        LocalDate fromD = (fromDate == null) ? LocalDate.now().minusDays(30) : fromDate;
+        LocalDate toD   = (toDate   == null) ? LocalDate.now()              : toDate;
+
+        // du lieu tu fe la LocalDate
+        // ==> phai chuyen ve LocalDateTime
+        // inclusive range: [00:00:00, 23:59:59.999999999]
+        LocalDateTime from = fromD.atStartOfDay();
+        LocalDateTime to   = toD.plusDays(1).atStartOfDay().minusNanos(1);
+
+        // ===== IN (nạp tiền, chỉ lấy PAID) =====
+        List<Payment> ins = (fundType == null)
+                ? PaymentRepository.findByFund_Group_GroupIdAndStatusAndPaidAtBetweenOrderByPaidAtDesc(
+                groupId, PaymentStatus.COMPLETED, from, to)
+                : PaymentRepository.findByFund_Group_GroupIdAndFund_FundTypeAndStatusAndPaidAtBetweenOrderByPaidAtDesc(
+                groupId, fundType, PaymentStatus.COMPLETED, from, to);
+
+        var inRows = ins.stream().map(p -> new LedgerRowDTO(
+                "IN",
+                p.getFund().getFundId(),
+                p.getFund().getFundType(),
+                safeName(p.getPayer()),                 // title
+                displayRole(p.getPayer()),              // subtitle
+                p.getPayer() != null ? p.getPayer().getUserId() : null,
+                p.getAmount(),
+                p.getPaidAt()
+        )).toList();
+
+        // ===== OUT (chi phí) =====
+        List<Expense> outs = (fundType == null)
+                ? expenseRepository.findByFund_Group_GroupIdAndExpenseDateBetweenOrderByExpenseDateDesc(groupId, from, to)
+                : expenseRepository.findByFund_Group_GroupIdAndFund_FundTypeAndExpenseDateBetweenOrderByExpenseDateDesc(
+                groupId, fundType, from, to);
+
+        var outRows = outs.stream().map(e -> new LedgerRowDTO(
+                "OUT",
+                e.getFund().getFundId(),
+                e.getFund().getFundType(),
+                mapExpenseTitle(e.getSourceType()),      // vd: "Bảo Trì & Chi Phí"
+                nzStr(e.getDescription()),               // subtitle từ description
+                e.getRecipientUser() != null ? e.getRecipientUser().getUserId() : null,
+                e.getAmount(),
+                coalesce(e.getExpenseDate(), e.getUpdatedAt())
+        )).toList();
+
+        return Stream.concat(inRows.stream(), outRows.stream())
+                .sorted(Comparator.comparing(LedgerRowDTO::occurredAt).reversed())
+                .toList();
+    }
+
+    // -------- helpers (nhỏ gọn) ----------
+    private String safeName(User u){ return u==null ? "N/A" : (u.getFullName()!=null ? u.getFullName() : u.getEmail()); }
+    private String displayRole(User u){
+        if (u==null || u.getRole()==null) return "";
+        return switch (u.getRole().getRoleName()){
+            case ADMIN -> "Admin";
+            case STAFF -> "Staff";
+            case CO_OWNER -> "Co-owner";
+            default -> "Co-owner";
+        };
+    }
+    private String mapExpenseTitle(String sourceType){
+        if (sourceType==null) return "Chi phí";
+        return switch (sourceType){
+            case "MAINTENANCE", "INCIDENT", "EXPENSE" -> "Bảo Trì & Chi Phí";
+            default -> "Chi phí";
+        };
+    }
+    private String nzStr(String s){ return s==null ? "" : s; }
+//    private LocalDateTime toLocalDateTime(OffsetDateTime odt){ return odt==null ? null : odt.toLocalDateTime(); }
+    private LocalDateTime coalesce(LocalDateTime a, LocalDateTime b){ return a!=null ? a : b; }
+
+
+
     /**
      * 1) initTwoFundIfMIssing : su dung cho OwnerShipGroupService
      * 2) addDepositToReserve  : su dung cho confirmDepositPayment
