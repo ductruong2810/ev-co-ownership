@@ -39,14 +39,14 @@ public class ExpenseService {
 
         User recipient = null;
 
-        // 🔍 Nếu sourceType = INCIDENT → lấy user từ Incident
+        // Nếu sourceType = INCIDENT → lấy user từ Incident
         if ("INCIDENT".equalsIgnoreCase(req.getSourceType())) {
             Incident incident = incidentRepository.findById(req.getSourceId())
                     .orElseThrow(() -> new EntityNotFoundException("Incident not found"));
             recipient = incident.getBooking().getUser(); // hoặc incident.getReportedBy() tuỳ cấu trúc entity
         }
 
-        // 🔧 Nếu là Maintenance thì để recipient = null
+        // Nếu là Maintenance thì để recipient = null
 
         Expense expense = Expense.builder()
                 .fund(fund)

@@ -503,6 +503,30 @@ CREATE TABLE FinancialReport
 );
 GO
 
+CREATE TABLE VoteRecord
+(
+    VoteRecordId   BIGINT IDENTITY(1,1) PRIMARY KEY,
+    VotingId       BIGINT       NOT NULL,
+    UserId         BIGINT       NOT NULL,
+    SelectedOption NVARCHAR(50) NOT NULL,
+    VotedAt        DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
+    FOREIGN KEY (VotingId) REFERENCES Voting(VotingId),
+    FOREIGN KEY (UserId) REFERENCES Users(UserId),
+    CONSTRAINT UQ_VoteRecord UNIQUE (VotingId, UserId)
+);
+
+CREATE INDEX IX_VoteRecord_VotingId ON VoteRecord(VotingId);
+CREATE INDEX IX_VoteRecord_UserId ON VoteRecord(UserId);
+
+ALTER TABLE Voting
+    ADD RelatedExpenseId BIGINT NULL,
+        EstimatedAmount DECIMAL(12,2) NULL;
+
+ALTER TABLE Voting
+    ADD CONSTRAINT FK_Voting_Expense
+        FOREIGN KEY (RelatedExpenseId) REFERENCES Expense(ExpenseId);
+
+
 -- =============================================
 -- INDEXES
 -- =============================================
