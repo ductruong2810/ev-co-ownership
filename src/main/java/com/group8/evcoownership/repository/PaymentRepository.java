@@ -48,9 +48,9 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
      * new for ledgerRowDTO
      */
     List<Payment> findByFund_Group_GroupIdAndStatusAndPaidAtBetweenOrderByPaidAtDesc(
-            Long groupId, DepositStatus status, LocalDateTime from, LocalDateTime to);
+            Long groupId, PaymentStatus status, LocalDateTime from, LocalDateTime to);
 
     List<Payment> findByFund_Group_GroupIdAndFund_FundTypeAndStatusAndPaidAtBetweenOrderByPaidAtDesc(
-            Long groupId, FundType fundType, DepositStatus status, LocalDateTime from, LocalDateTime to);
+            Long groupId, FundType fundType, PaymentStatus status, LocalDateTime from, LocalDateTime to);
 
 }
