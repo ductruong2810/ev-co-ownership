@@ -16,8 +16,3 @@ public final class AuthUtils {
         return ctxAuth != null ? ctxAuth.getName() : null;
     }
 }
-
-
-
-
-
