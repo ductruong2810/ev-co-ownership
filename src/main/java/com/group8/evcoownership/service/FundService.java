@@ -4,6 +4,7 @@ import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.enums.DepositStatus;
 import com.group8.evcoownership.enums.FundType;
+import com.group8.evcoownership.enums.PaymentStatus;
 import com.group8.evcoownership.repository.ExpenseRepository;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
 import com.group8.evcoownership.repository.PaymentRepository;
@@ -49,17 +50,24 @@ public class FundService {
                                         @Nullable FundType fundType,
                                         @Nullable LocalDate fromDate,
                                         @Nullable LocalDate toDate) {
+
+        // Neu fromD la null thi mac dinh 30 ngay truoc
+        // Neu toD la null thi mac dinh ngay ket thuc la hom nay
         LocalDate fromD = (fromDate == null) ? LocalDate.now().minusDays(30) : fromDate;
         LocalDate toD   = (toDate   == null) ? LocalDate.now()              : toDate;
+
+        // du lieu tu fe la LocalDate
+        // ==> phai chuyen ve LocalDateTime
+        // inclusive range: [00:00:00, 23:59:59.999999999]
         LocalDateTime from = fromD.atStartOfDay();
-        LocalDateTime to   = toD.atTime(23,59,59);
+        LocalDateTime to   = toD.plusDays(1).atStartOfDay().minusNanos(1);
 
         // ===== IN (nạp tiền, chỉ lấy PAID) =====
         List<Payment> ins = (fundType == null)
                 ? PaymentRepository.findByFund_Group_GroupIdAndStatusAndPaidAtBetweenOrderByPaidAtDesc(
-                groupId, DepositStatus.PAID, from, to)
+                groupId, PaymentStatus.COMPLETED, from, to)
                 : PaymentRepository.findByFund_Group_GroupIdAndFund_FundTypeAndStatusAndPaidAtBetweenOrderByPaidAtDesc(
-                groupId, fundType, DepositStatus.PAID, from, to);
+                groupId, fundType, PaymentStatus.COMPLETED, from, to);
 
         var inRows = ins.stream().map(p -> new LedgerRowDTO(
                 "IN",
@@ -69,7 +77,7 @@ public class FundService {
                 displayRole(p.getPayer()),              // subtitle
                 p.getPayer() != null ? p.getPayer().getUserId() : null,
                 p.getAmount(),
-                toLocalDateTime(OffsetDateTime.from(p.getPaidAt()))
+                p.getPaidAt()
         )).toList();
 
         // ===== OUT (chi phí) =====
@@ -113,7 +121,7 @@ public class FundService {
         };
     }
     private String nzStr(String s){ return s==null ? "" : s; }
-    private LocalDateTime toLocalDateTime(OffsetDateTime odt){ return odt==null ? null : odt.toLocalDateTime(); }
+//    private LocalDateTime toLocalDateTime(OffsetDateTime odt){ return odt==null ? null : odt.toLocalDateTime(); }
     private LocalDateTime coalesce(LocalDateTime a, LocalDateTime b){ return a!=null ? a : b; }
 
 
