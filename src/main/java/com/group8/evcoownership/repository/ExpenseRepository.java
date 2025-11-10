@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 @Repository
@@ -55,5 +56,23 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
     List<Expense> findByFund_Group_GroupIdAndFund_FundTypeAndExpenseDateBetweenOrderByExpenseDateDesc(
             Long groupId, FundType fundType, LocalDateTime from, LocalDateTime to
     );
+
+    /**
+     * sum approvedOut
+     * cho ham LedgerRow
+     */
+    @Query("""
+   select coalesce(sum(e.amount), 0)
+   from Expense e
+   where e.fund.group.groupId = :groupId
+     and (:fundType is null or e.fund.fundType = :fundType)
+     and e.status = 'COMPLETED'
+     and (:from is null or e.expenseDate >= :from)
+     and (:to   is null or e.expenseDate <  :to)
+""")
+    BigDecimal sumApprovedOut(Long groupId,
+                              @Param("fundType") FundType fundType,
+                              @Param("from") LocalDateTime from,
+                              @Param("to")   LocalDateTime to);
 
 }

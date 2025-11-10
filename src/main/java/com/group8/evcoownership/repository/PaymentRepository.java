@@ -8,8 +8,11 @@ import com.group8.evcoownership.enums.PaymentStatus;
 import com.group8.evcoownership.enums.PaymentType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -52,5 +55,25 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     List<Payment> findByFund_Group_GroupIdAndFund_FundTypeAndStatusAndPaidAtBetweenOrderByPaidAtDesc(
             Long groupId, FundType fundType, PaymentStatus status, LocalDateTime from, LocalDateTime to);
+
+
+    /**
+     * ham lay sumCompletedIn
+     * cho ham getLedgerSummary
+     */
+    @Query("""
+   select coalesce(sum(p.amount), 0)
+   from Payment p
+   where p.fund.group.groupId = :groupId
+     and (:fundType is null or p.fund.fundType = :fundType)
+     and p.status = com.group8.evcoownership.enums.PaymentStatus.COMPLETED
+     and (:from is null or p.paidAt >= :from)
+     and (:to   is null or p.paidAt <  :to)
+""")
+    BigDecimal sumCompletedIn(Long groupId,
+                              @Param("fundType") FundType fundType,
+                              @Param("from") LocalDateTime from,
+                              @Param("to")   LocalDateTime to);
+
 
 }
