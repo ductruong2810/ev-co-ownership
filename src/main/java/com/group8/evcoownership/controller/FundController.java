@@ -11,10 +11,12 @@ import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -56,23 +58,38 @@ public class FundController {
 //    }
 
 // ================== READ ==================
-
     /**
      * API: Lấy sổ quỹ (Ledger) theo nhóm
      * hiển thị lịch sử giao dịch quỹ (thu/chi) trong một khoảng thời gian.
      *
      */
-    @GetMapping("/groups/{groupId}/ledger")
+    @GetMapping("/funds/{groupId}/ledger/summary")
+    @Operation(summary = "Tổng hợp sổ quỹ", description = "Trả về tổng thu/chi + số dư Operating/Reserve và danh sách dòng sổ quỹ")
     @PreAuthorize("hasAnyRole('ADMIN','STAFF','CO_OWNER')")
-    @Operation(summary = "FE lấy sổ quỹ (IN/OUT) theo nhóm",
-            description = "Optional: fundType=OPERATING|DEPOSIT_RESERVE; from,to=yyyy-MM-dd")
-    public List<LedgerRowDTO> getLedger(
+    public ResponseEntity<LedgerSummaryDTO> getLedgerSummary(
             @PathVariable Long groupId,
             @RequestParam(required = false) FundType fundType,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return fundService.getLedger(groupId, fundType, from, to);
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
+
+        return ResponseEntity.ok(fundService.getLedgerSummary(groupId, fundType, from, to));
     }
+
+
+
+//    @GetMapping("/groups/{groupId}/ledger")
+//    @PreAuthorize("hasAnyRole('ADMIN','STAFF','CO_OWNER')")
+//    @Operation(summary = "FE lấy sổ quỹ (IN/OUT) theo nhóm",
+//            description = "Optional: fundType=OPERATING|DEPOSIT_RESERVE; from,to=yyyy-MM-dd")
+//    public List<LedgerRowDTO> getLedger(
+//            @PathVariable Long groupId,
+//            @RequestParam(required = false) FundType fundType,
+//            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+//            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+//        return fundService.getLedger(groupId, fundType, from, to);
+//    }
 
 
     @GetMapping("/groups/{groupId}/all")
