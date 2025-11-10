@@ -464,22 +464,35 @@ public class OwnershipShareService {
             throw new IllegalArgumentException("Ownership percentage must be at least 1% to ensure co-ownership");
         }
 
-        if (newPercentage.compareTo(new BigDecimal("100")) > 0) {
+        BigDecimal hundred = new BigDecimal("100");
+
+        if (newPercentage.compareTo(hundred) > 0) {
             throw new IllegalArgumentException("Ownership percentage cannot exceed 100%");
         }
 
         // Tính tổng tỷ lệ hiện tại (trừ user này)
-        BigDecimal currentTotal = shareRepo.findByGroup_GroupId(groupId)
-                .stream()
+        var shares = shareRepo.findByGroup_GroupId(groupId);
+
+        BigDecimal currentTotal = shares.stream()
                 .filter(share -> !share.getUser().getUserId().equals(userId))
                 .map(OwnershipShare::getOwnershipPercentage)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal newTotal = currentTotal.add(newPercentage);
 
-        if (newTotal.compareTo(new BigDecimal("100")) > 0) {
+        if (newTotal.compareTo(hundred) > 0) {
             throw new IllegalArgumentException("Total ownership percentage cannot exceed 100%. Current total: " +
                     currentTotal + "%, New percentage: " + newPercentage + "%");
+        }
+
+        long remainingMembersWithoutPercentage = shares.stream()
+                .filter(share -> !share.getUser().getUserId().equals(userId))
+                .filter(share -> share.getOwnershipPercentage().compareTo(BigDecimal.ZERO) == 0)
+                .count();
+
+        if (newTotal.compareTo(hundred) < 0 && remainingMembersWithoutPercentage == 0) {
+            throw new IllegalArgumentException("Total ownership percentage must equal 100% once all other members have set their percentages. Current total: " +
+                    currentTotal + "%, Requested percentage: " + newPercentage + "% would result in " + newTotal + "%");
         }
     }
 
