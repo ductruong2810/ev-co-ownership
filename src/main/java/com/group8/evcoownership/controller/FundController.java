@@ -1,12 +1,10 @@
 package com.group8.evcoownership.controller;
 
 import com.group8.evcoownership.dto.*;
-import com.group8.evcoownership.entity.SharedFund;
 import com.group8.evcoownership.enums.FundType;
 import com.group8.evcoownership.service.FundService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
@@ -15,7 +13,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -63,7 +60,7 @@ public class FundController {
      * hiển thị lịch sử giao dịch quỹ (thu/chi) trong một khoảng thời gian.
      *
      */
-    @GetMapping("/funds/{groupId}/ledger/summary")
+    @GetMapping("/groups/{groupId}/ledger/summary")
     @Operation(summary = "Tổng hợp sổ quỹ", description = "Trả về tổng thu/chi + số dư Operating/Reserve và danh sách dòng sổ quỹ")
     @PreAuthorize("hasAnyRole('ADMIN','STAFF','CO_OWNER')")
     public ResponseEntity<LedgerSummaryDTO> getLedgerSummary(
