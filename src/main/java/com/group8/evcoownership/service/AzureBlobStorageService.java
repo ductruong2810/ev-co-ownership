@@ -20,7 +20,7 @@ public class AzureBlobStorageService {
 
     private final BlobContainerClient blobContainerClient;
 
-    // Allowed file types
+    // Các loại tệp được phép
     private static final List<String> ALLOWED_CONTENT_TYPES = Arrays.asList(
             "image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp", "application/pdf"
     );
@@ -73,7 +73,7 @@ public class AzureBlobStorageService {
             // Set headers
             BlobHttpHeaders headers = new BlobHttpHeaders()
                     .setContentType(contentType)
-                    .setContentDisposition("inline"); // Display in browser instead of download
+                    .setContentDisposition("inline"); // Hiển thị trong trình duyệt thay vì tải xuống
 
             //  UPLOAD FILE
             blobClient.upload(file.getInputStream(), file.getSize(), true);
@@ -82,7 +82,7 @@ public class AzureBlobStorageService {
             String fileUrl = blobClient.getBlobUrl();
             log.info(" File uploaded successfully to: {}", fileUrl);
 
-            //VERIFY FILE EXISTS IMMEDIATELY AFTER UPLOAD
+            //XÁC MINH TỆP TỆP TỒN TẠI NGAY SAU KHI TẢI LÊN
             if (!blobClient.exists()) {
                 log.error("CRITICAL: File not found after upload! Blob: {}", blobName);
                 throw new RuntimeException("Upload failed - file verification failed");
@@ -103,7 +103,7 @@ public class AzureBlobStorageService {
         }
     }
 
-    // METHOD TO CHECK IF FILE EXISTS
+    // METHOD ĐỂ KIỂM TRA TỆP CÓ TỒN TẠI KHÔNG
     public boolean fileExists(String fileUrl) {
         try {
             String blobName = extractBlobName(fileUrl);
@@ -134,33 +134,6 @@ public class AzureBlobStorageService {
         } catch (Exception e) {
             log.error("Failed to delete file from Azure: {}", e.getMessage(), e);
             throw new RuntimeException("Could not delete file from Azure Blob Storage", e);
-        }
-    }
-
-    // GET FILE INFO
-    public FileInfoDTO getFileInfo(String fileUrl) {
-        try {
-            String blobName = extractBlobName(fileUrl);
-            BlobClient blobClient = blobContainerClient.getBlobClient(blobName);
-
-            if (!blobClient.exists()) {
-                return null;
-            }
-
-            var properties = blobClient.getProperties();
-
-            return FileInfoDTO.builder()
-                    .blobName(blobName)
-                    .url(fileUrl)
-                    .size(properties.getBlobSize())
-                    .contentType(properties.getContentType())
-                    .lastModified(properties.getLastModified())
-                    .exists(true)
-                    .build();
-
-        } catch (Exception e) {
-            log.error("Error getting file info: {}", e.getMessage());
-            return null;
         }
     }
 
