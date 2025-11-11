@@ -1,11 +1,13 @@
 package com.group8.evcoownership.controller;
 
 import com.group8.evcoownership.dto.ContractApprovalRequestDTO;
+import com.group8.evcoownership.dto.ContractAdminUpdateRequestDTO;
 import com.group8.evcoownership.dto.ContractDTO;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.enums.ContractApprovalStatus;
 import com.group8.evcoownership.service.ContractService;
 import com.group8.evcoownership.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -13,16 +15,38 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin/contracts")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
 public class AdminContractController {
 
     private final ContractService contractService;
     private final UserService userService;
+
+    /**
+     * ADMIN-ONLY: Update both duration and terms in one call
+     */
+    @PutMapping("/{contractId}")
+    @Operation(summary = "Admin update contract (duration + terms)", description = "System admin updates start/end dates and terms together")
+    public ResponseEntity<Map<String, Object>> updateContractByAdmin(
+            @PathVariable Long contractId,
+            @Valid @RequestBody ContractAdminUpdateRequestDTO request
+    ) {
+        if (request.isInvalidDateRange()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("message", "End date must be after start date");
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        Map<String, Object> result = contractService.updateContractByAdminByContractId(contractId, request);
+        return ResponseEntity.ok(result);
+    }
 
 //    @PutMapping("/approve")
 //    @PreAuthorize("hasRole('ADMIN')") //mình chi cho admin truy cập thoi
@@ -68,7 +92,6 @@ public class AdminContractController {
 //    }
 
     @PutMapping("/approve")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ContractDTO> processContractApproval(
             @Valid @RequestBody ContractApprovalRequestDTO request,
             @AuthenticationPrincipal String userEmail) {
@@ -84,25 +107,35 @@ public class AdminContractController {
 
         return ResponseEntity.ok(contract);
     }
+
+    /**
+     * ADMIN-ONLY: Resubmit contract for member approval (clear feedbacks and notify members)
+     */
+    @PostMapping("/{contractId}/resubmit-approval")
+    @Operation(summary = "Resubmit contract for member approval", description = "Clear all member feedbacks and notify all group members to review again")
+    public ResponseEntity<Map<String, Object>> resubmitApproval(
+            @PathVariable Long contractId,
+            @RequestParam(required = false) String note
+    ) {
+        Map<String, Object> result = contractService.resubmitMemberApproval(contractId, note);
+        return ResponseEntity.ok(result);
+    }
     /**
      * Kiểm tra trạng thái đóng tiền cọc của hợp đồng (Admin only)
      */
     @GetMapping("/{groupId}/deposit-status")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> checkDepositStatus(@PathVariable Long groupId) {
         Map<String, Object> status = contractService.checkDepositStatus(groupId);
         return ResponseEntity.ok(status);
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<ContractDTO>> getAllContracts() {
         List<ContractDTO> contracts = contractService.getAllContracts();
         return ResponseEntity.ok(contracts);
     }
 
     @GetMapping("/{contractId}")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ContractDTO> getContractById(@PathVariable Long contractId) {
         ContractDTO contract = contractService.getContractById(contractId);
         return ResponseEntity.ok(contract);
@@ -112,6 +145,24 @@ public class AdminContractController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<ContractDTO>> getPendingContracts() {
         List<ContractDTO> contracts = contractService.getContractsByStatus(ContractApprovalStatus.PENDING);
+        return ResponseEntity.ok(contracts);
+    }
+
+    /**
+     * Lấy tất cả contracts của một group (Admin only)
+     */
+    @GetMapping("/group/{groupId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<ContractDTO>> getContractsByGroup(@PathVariable Long groupId) {
+        List<ContractDTO> contracts = contractService.getContractsByGroupForAdmin(groupId);
+        return ResponseEntity.ok(contracts);
+    }
+
+    @GetMapping("/pending-member-approval")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<ContractDTO>> getPendingMemberApprovalContracts() {
+        List<ContractDTO> contracts =
+                contractService.getContractsByStatus(ContractApprovalStatus.PENDING_MEMBER_APPROVAL);
         return ResponseEntity.ok(contracts);
     }
 }

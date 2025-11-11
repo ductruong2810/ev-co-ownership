@@ -317,11 +317,11 @@ public class VehicleInfoExtractionService {
         }
 
         // Brand và model phải chứa ít nhất 1 chữ cái
-        if (!containsLetter(brand) || !containsLetter(model)) {
-            return Optional.empty();
+        if (containsLetter(brand) && containsLetter(model)) {
+            return Optional.of(new String[]{brand, model});
         }
-
-        return Optional.of(new String[]{brand, model});
+        
+        return Optional.empty();
     }
 
     /**
@@ -500,7 +500,7 @@ public class VehicleInfoExtractionService {
     }
 
     /**
-     * Chuẩn hóa model
+     * Chuẩn hóa model - giữ nguyên định dạng như trong giấy tờ
      */
     private String normalizeModel(String model) {
         if (model == null || model.trim().isEmpty()) {
@@ -511,9 +511,10 @@ public class VehicleInfoExtractionService {
         String cleaned = model.replaceAll("\\n", " ").replaceAll("\\s+", " ").trim();
 
         // Remove common suffixes that might be OCR artifacts
-        cleaned = cleaned.replaceAll("\\s+[a-z]$", ""); // Remove single letter at end
+        cleaned = cleaned.replaceAll("\\s+[a-z]$", ""); // Remove single letter at the end
 
-        return cleaned.toUpperCase();
+        // Giữ nguyên định dạng gốc (không chuyển thành chữ hoa)
+        return cleaned;
     }
 
     /**

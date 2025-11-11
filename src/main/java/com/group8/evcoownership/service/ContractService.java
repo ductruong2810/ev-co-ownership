@@ -1,9 +1,6 @@
 package com.group8.evcoownership.service;
 
-import com.group8.evcoownership.dto.ContractDTO;
-import com.group8.evcoownership.dto.ContractUpdateRequestDTO;
-import com.group8.evcoownership.dto.ContractMemberFeedbackRequestDTO;
-import com.group8.evcoownership.dto.ContractTermsUpdateRequestDTO;
+import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.enums.*;
 import com.group8.evcoownership.exception.InvalidContractActionException;
@@ -159,48 +156,8 @@ public class ContractService {
         Contract contract = getContractByGroup(groupId);
         OwnershipGroup group = contract.getGroup();
 
-        // Kiểm tra contract có thể update không
-        boolean canUpdate = contract.getApprovalStatus() == ContractApprovalStatus.PENDING;
-        
-        // Nếu ở trạng thái PENDING_MEMBER_APPROVAL, chỉ cho phép update nếu có rejections
-        if (contract.getApprovalStatus() == ContractApprovalStatus.PENDING_MEMBER_APPROVAL) {
-            long rejectionCount = feedbackRepository.countByContractIdAndStatus(
-                    contract.getId(),
-                    MemberFeedbackStatus.REJECTED
-            );
-            canUpdate = rejectionCount > 0;
-
-            if (canUpdate) {
-                clearMemberFeedbacks(contract.getId());
-            }
-        }
-        
-        if (!canUpdate) {
-            throw new IllegalStateException(
-                    String.format("Cannot update contract: Contract is in %s status. Only PENDING contracts or PENDING_MEMBER_APPROVAL contracts with rejections can be updated.",
-                            contract.getApprovalStatus())
-            );
-        }
-
-        // Validate date range
-        if (request.endDate().isBefore(request.startDate()) || request.endDate().equals(request.startDate())) {
-            throw new IllegalArgumentException("End date must be after start date");
-        }
-
-        LocalDate today = LocalDate.now();
-        if (request.startDate().isBefore(today)) {
-            throw new IllegalArgumentException("Start date cannot be in the past");
-        }
-
-        LocalDate minimumEndDate = request.startDate().plusMonths(1);
-        if (request.endDate().isBefore(minimumEndDate)) {
-            throw new IllegalArgumentException("Contract term must be at least 1 month");
-        }
-
-        LocalDate maximumEndDate = request.startDate().plusYears(5);
-        if (request.endDate().isAfter(maximumEndDate)) {
-            throw new IllegalArgumentException("Contract term cannot exceed 5 years");
-        }
+        validateContractEditable(contract, "Cannot update contract: Contract is in %s status. Only PENDING contracts or PENDING_MEMBER_APPROVAL contracts with rejections can be updated.");
+        validateContractDatesOrThrow(request.startDate(), request.endDate());
 
         // Tính toán lại deposit amount tự động (theo quy định của hệ thống)
         BigDecimal calculatedDepositAmount = depositCalculationService.calculateRequiredDepositAmount(group);
@@ -257,26 +214,7 @@ public class ContractService {
 
         Contract contract = getContractByGroup(groupId);
 
-        boolean canUpdate = contract.getApprovalStatus() == ContractApprovalStatus.PENDING;
-
-        if (contract.getApprovalStatus() == ContractApprovalStatus.PENDING_MEMBER_APPROVAL) {
-            long rejectionCount = feedbackRepository.countByContractIdAndStatus(
-                    contract.getId(),
-                    MemberFeedbackStatus.REJECTED
-            );
-            canUpdate = rejectionCount > 0;
-
-            if (canUpdate) {
-                clearMemberFeedbacks(contract.getId());
-            }
-        }
-
-        if (!canUpdate) {
-            throw new IllegalStateException(
-                    String.format("Cannot update contract terms: Contract is in %s status. Only PENDING contracts or PENDING_MEMBER_APPROVAL contracts with rejections can be updated.",
-                            contract.getApprovalStatus())
-            );
-        }
+        validateContractEditable(contract, "Cannot update contract terms: Contract is in %s status. Only PENDING contracts or PENDING_MEMBER_APPROVAL contracts with rejections can be updated.");
 
         contract.setTerms(request.terms().trim());
         contract.setUpdatedAt(LocalDateTime.now());
@@ -295,6 +233,141 @@ public class ContractService {
         return result;
     }
 
+    /**
+     * ADMIN-ONLY: Cập nhật theo contractId (thay vì groupId)
+     */
+    @Transactional
+    public Map<String, Object> updateContractByAdminByContractId(Long contractId, ContractAdminUpdateRequestDTO request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Request cannot be null");
+        }
+        if (request.isInvalidDateRange()) {
+            throw new IllegalArgumentException("End date must be after start date");
+        }
+
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
+
+        return updateContractAdminCommon(contract, request);
+    }
+
+    private Map<String, Object> updateContractAdminCommon(Contract contract, ContractAdminUpdateRequestDTO request) {
+        validateContractEditable(contract, "Cannot update contract: Contract is in %s status. Only PENDING contracts or PENDING_MEMBER_APPROVAL contracts with rejections can be updated.");
+        validateContractDatesOrThrow(request.startDate(), request.endDate());
+
+        OwnershipGroup group = contract.getGroup();
+        BigDecimal calculatedDepositAmount = depositCalculationService.calculateRequiredDepositAmount(group);
+
+        contract.setStartDate(request.startDate());
+        contract.setEndDate(request.endDate());
+        contract.setRequiredDepositAmount(calculatedDepositAmount);
+        contract.setUpdatedAt(LocalDateTime.now());
+
+        String baseTerms = request.terms() != null && !request.terms().trim().isEmpty()
+                ? request.terms().trim()
+                : (contract.getTerms() != null ? contract.getTerms() : "");
+
+        String syncedTerms = updateDepositAmountInTerms(baseTerms, calculatedDepositAmount);
+        syncedTerms = updateTermInTerms(syncedTerms, request.startDate(), request.endDate());
+        contract.setTerms(syncedTerms);
+
+        Contract saved = contractRepository.saveAndFlush(contract);
+
+        // Notify all group members that the contract has been updated by admin
+        if (notificationOrchestrator != null) {
+            Map<String, Object> emailData = notificationOrchestrator.buildContractEmailData(saved);
+            notificationOrchestrator.sendGroupNotification(
+                    saved.getGroup().getGroupId(),
+                    NotificationType.CONTRACT_APPROVAL_PENDING,
+                    "Contract Updated by Admin",
+                    "The system administrator has updated the contract timeline and terms. Please review the changes.",
+                    emailData
+            );
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", true);
+        result.put("message", "Contract updated successfully by admin");
+        result.put("contract", Map.of(
+                "contractId", saved.getId(),
+                "startDate", saved.getStartDate(),
+                "endDate", saved.getEndDate(),
+                "requiredDepositAmount", saved.getRequiredDepositAmount(),
+                "approvalStatus", saved.getApprovalStatus(),
+                "updatedAt", saved.getUpdatedAt()
+        ));
+        result.put("term", calculateTermLabel(saved.getStartDate(), saved.getEndDate()));
+        return result;
+    }
+    
+    private void validateContractDatesOrThrow(LocalDate startDate, LocalDate endDate) {
+        if (startDate == null || endDate == null) {
+            throw new IllegalArgumentException("Start date and end date are required");
+        }
+        if (!endDate.isAfter(startDate)) {
+            throw new IllegalArgumentException("End date must be after start date");
+        }
+        LocalDate today = LocalDate.now();
+        if (startDate.isBefore(today)) {
+            throw new IllegalArgumentException("Start date cannot be in the past");
+        }
+        LocalDate minimumEndDate = startDate.plusMonths(1);
+        if (endDate.isBefore(minimumEndDate)) {
+            throw new IllegalArgumentException("Contract term must be at least 1 month");
+        }
+        LocalDate maximumEndDate = startDate.plusYears(5);
+        if (endDate.isAfter(maximumEndDate)) {
+            throw new IllegalArgumentException("Contract term cannot exceed 5 years");
+        }
+    }
+
+    /**
+     * Admin (system) resubmits the contract for member approval without changing content.
+     * Clears all existing member feedbacks and notifies all members to review again.
+     */
+    @Transactional
+    public Map<String, Object> resubmitMemberApproval(Long contractId, String adminNote) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
+
+        // Only allow resubmitting when the contract is in member approval stage
+        if (contract.getApprovalStatus() != ContractApprovalStatus.PENDING_MEMBER_APPROVAL) {
+            throw new IllegalStateException("Resubmit is only allowed when contract is in PENDING_MEMBER_APPROVAL");
+        }
+
+        // Clear all member feedbacks
+        clearMemberFeedbacks(contractId);
+
+        contract.setUpdatedAt(LocalDateTime.now());
+        Contract saved = contractRepository.saveAndFlush(contract);
+
+        // Notify all members to review again
+        if (notificationOrchestrator != null) {
+            Map<String, Object> data = notificationOrchestrator.buildContractEmailData(saved);
+            if (adminNote != null && !adminNote.isBlank()) {
+                data = new HashMap<>(data);
+                data.put("adminNote", adminNote.trim());
+            }
+            notificationOrchestrator.sendGroupNotification(
+                    saved.getGroup().getGroupId(),
+                    NotificationType.CONTRACT_APPROVAL_PENDING,
+                    "Contract Resubmitted for Member Approval",
+                    (adminNote != null && !adminNote.isBlank())
+                            ? adminNote.trim()
+                            : "The system administrator has resubmitted the contract for member approval. Please review and confirm.",
+                    data
+            );
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", true);
+        result.put("message", "Resubmitted for member approval");
+        result.put("contractId", saved.getId());
+        result.put("groupId", saved.getGroup().getGroupId());
+        result.put("approvalStatus", saved.getApprovalStatus());
+        result.put("feedbackCleared", true);
+        return result;
+    }
     /**
      * Lấy thông tin tính toán deposit amount cho group admin
      * Bao gồm giá trị tính toán tự động và giải thích công thức
@@ -800,7 +873,7 @@ public class ContractService {
         data.put("dispute", disputeInfo);
 
 
-        // Owners info
+        // Owner info
         List<Map<String, Object>> owners = shares.stream().map(share -> {
             Map<String, Object> owner = new HashMap<>();
             owner.put("userId", share.getUser().getUserId());
@@ -1058,6 +1131,19 @@ public class ContractService {
 
         Contract savedContract = contractRepository.saveAndFlush(contract);
 
+        // Notify all members that the contract has been approved by system admin
+        if (notificationOrchestrator != null) {
+            Long groupId = savedContract.getGroup().getGroupId();
+            Map<String, Object> emailData = notificationOrchestrator.buildContractEmailData(savedContract);
+            notificationOrchestrator.sendGroupNotification(
+                    groupId,
+                    NotificationType.CONTRACT_APPROVED,
+                    "Contract Approved by System Admin",
+                    "The group's contract has been approved by the system administrator. The contract is now active.",
+                    emailData
+            );
+        }
+
         return convertToDTO(savedContract);
     }
 
@@ -1146,6 +1232,7 @@ public class ContractService {
         ContractDTO dto = new ContractDTO();
         dto.setId(contract.getId());
         dto.setGroupId(contract.getGroup().getGroupId());
+        dto.setGroupName(contract.getGroup().getGroupName());
         dto.setStartDate(contract.getStartDate());
         dto.setEndDate(contract.getEndDate());
         dto.setRequiredDepositAmount(contract.getRequiredDepositAmount());
@@ -1247,12 +1334,42 @@ public class ContractService {
                 .toList();
     }
 
+    /**
+     * ADMIN: Lấy tất cả contracts của một group
+     */
+    public List<ContractDTO> getContractsByGroupForAdmin(Long groupId) {
+        return contractRepository.findAllByGroup_GroupId(groupId).stream()
+                .map(this::convertToDTO)
+                .toList();
+    }
+
     private void clearMemberFeedbacks(Long contractId) {
         List<ContractFeedback> feedbacks =
                 feedbackRepository.findByContractId(contractId);
         if (!feedbacks.isEmpty()) {
             feedbackRepository.deleteAll(feedbacks);
         }
+    }
+
+    /**
+     * Kiểm tra và validate contract có thể chỉnh sửa được không
+     * Throw exception nếu không thể chỉnh sửa
+     */
+    private void validateContractEditable(Contract contract, String errorMessageTemplate) {
+        if (contract.getApprovalStatus() == ContractApprovalStatus.PENDING) {
+            return;
+        }
+
+        if (contract.getApprovalStatus() == ContractApprovalStatus.PENDING_MEMBER_APPROVAL) {
+            long rejectionCount = feedbackRepository.countByContractIdAndStatus(
+                    contract.getId(), MemberFeedbackStatus.REJECTED);
+            if (rejectionCount > 0) {
+                clearMemberFeedbacks(contract.getId());
+                return;
+            }
+        }
+
+        throw new IllegalStateException(String.format(errorMessageTemplate, contract.getApprovalStatus()));
     }
 
     /**
