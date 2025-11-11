@@ -25,17 +25,39 @@ public class OcrController {
 
     @PostMapping("/extract-vehicle-info")
     @PreAuthorize("hasAnyRole('CO_OWNER','STAFF','ADMIN')")
-    @Operation(summary = "[CO_OWNER/STAFF/ADMIN] Trích xuất thông tin xe từ hình ảnh",
+    @Operation(summary = "[CO_OWNER/STAFF/ADMIN] Trích xuất thông tin xe từ hình ảnh (Async)",
             description = """
                 Sử dụng OCR để đọc và trích xuất thông tin brand, model từ hình ảnh cà vẹt xe.
                 - Co-owner: dùng khi tạo hồ sơ xe mới hoặc hợp đồng.
                 - Staff/Admin: có thể dùng để hỗ trợ xác minh hình ảnh xe.
+                Trả về CompletableFuture (async).
                 """)
     public CompletableFuture<GroupWithVehicleResponseDTO.AutoFillInfo> extractVehicleInfo(
             @RequestParam("image") MultipartFile image) {
 
         long startTime = System.currentTimeMillis();
         return ocrService.processVehicleInfoFromImage(image, startTime);
+    }
+
+    @PostMapping("/auto-fill-form")
+    @PreAuthorize("hasAnyRole('CO_OWNER','STAFF','ADMIN')")
+    @Operation(summary = "[CO_OWNER/STAFF/ADMIN] Tự động điền form từ hình ảnh cà vẹt xe",
+            description = "Sử dụng OCR để trích xuất thông tin xe (biển số, số khung, hãng, model, năm) từ hình ảnh cà vẹt xe.")
+    public GroupWithVehicleResponseDTO.AutoFillInfo autoFillForm(
+            @RequestParam("image") MultipartFile image) throws Exception {
+
+        long startTime = System.currentTimeMillis();
+        log.info("Auto-fill form request received for image: {} (size: {} bytes)",
+                image.getOriginalFilename(), image.getSize());
+
+        GroupWithVehicleResponseDTO.AutoFillInfo result =
+                ocrService.processVehicleInfoFromImage(image, startTime).get();
+
+        log.info("Auto-fill form completed. Extracted license plate: {}, chassis: {}, brand: {}, model: {}",
+                result.extractedLicensePlate(), result.extractedChassisNumber(),
+                result.extractedBrand(), result.extractedModel());
+
+        return result;
     }
 
     @PostMapping("/extract-text")
@@ -69,7 +91,7 @@ public class OcrController {
                     result.put("textLength", extractedText != null ? extractedText.length() : 0);
                     result.put("extractedText", extractedText);
                     result.put("isRegistrationDocument",
-                            extractedText != null ? ocrService.isVehicleRegistrationDocument(extractedText) : false);
+                            extractedText != null && ocrService.isVehicleRegistrationDocument(extractedText));
 
                     log.info("Debug OCR completed in {} ms, text length: {}",
                             processingTime, extractedText != null ? extractedText.length() : 0);
