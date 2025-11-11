@@ -398,19 +398,39 @@ public class VehicleInfoExtractionService {
      * Extract số khung xe - phân biệt xe máy và xe ô tô
      */
     private String extractChassisNumber(String text) {
-        // Bước 1: Xác định loại xe dựa trên brand và context
+        // Ưu tiên: nếu trong vùng gần nhãn "Số khung (VIN)" có chuỗi 17 ký tự thì lấy chuỗi 17
+        String[] lines = text.split("\n");
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i].toLowerCase();
+            if (line.contains("số khung") || line.contains("vin") || line.contains("chassis")) {
+                for (int j = i; j < Math.min(i + 3, lines.length); j++) {
+                    Matcher carNearMatcher = CAR_CHASSIS_PATTERN.matcher(lines[j]);
+                    if (carNearMatcher.find()) {
+                        String vin17 = carNearMatcher.group(1).toUpperCase();
+                        log.info("Extracted car VIN (near label) from line {}: {}", j, vin17);
+                        return vin17;
+                    }
+                }
+            }
+        }
+
+        // Kế tiếp: tìm bất kỳ chuỗi 17 ký tự (VIN ô tô) trong toàn bộ văn bản
+        Matcher anyCarMatcher = CAR_CHASSIS_PATTERN.matcher(text);
+        if (anyCarMatcher.find()) {
+            String vin17 = anyCarMatcher.group(1).toUpperCase();
+            log.info("Extracted car VIN (global): {}", vin17);
+            return vin17;
+        }
+
+        // Sau cùng: xác định có thể là xe máy và tìm 10–12 ký tự
         boolean isMotorcycle = isMotorcycleBrand(text);
-
-        // Bước 2: Tìm chassis theo loại xe
         String chassis = findChassisByVehicleType(text, isMotorcycle);
-
         if (!chassis.isEmpty()) {
             log.info("Extracted {} chassis: {}", isMotorcycle ? "motorcycle" : "car", chassis);
             return chassis;
         }
 
-        // Bước 3: Fallback - tìm trong text có chứa "số khung" hoặc "chassis"
-        String[] lines = text.split("\n");
+        // Fallback cuối: tìm bất kỳ 10–17 ký tự gần nhãn
         for (int i = 0; i < lines.length; i++) {
             String line = lines[i];
             if (line.toLowerCase().contains("số khung") || line.toLowerCase().contains("chassis")) {
