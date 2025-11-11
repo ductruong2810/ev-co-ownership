@@ -33,5 +33,6 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
 
     List<Contract> findByApprovalStatus(ContractApprovalStatus status);
 
+    List<Contract> findAllByGroup_GroupId(Long groupId);
 
 }

@@ -128,7 +128,7 @@ public class ContractController {
             @Valid @RequestBody ContractUpdateRequestDTO request) {
 
         // Validate date range
-        if (!request.isValidDateRange()) {
+        if (request.isInvalidDateRange()) {
             Map<String, Object> error = new HashMap<>();
             error.put("success", false);
             error.put("message", "End date must be after start date");
