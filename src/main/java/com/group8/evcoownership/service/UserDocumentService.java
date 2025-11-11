@@ -134,11 +134,11 @@ public class UserDocumentService {
         // Upload files - TRUYỀN userId THAY VÌ User
         Map<String, UserDocument> uploadedDocs = new HashMap<>();
         uploadedDocs.put("FRONT", uploadSingleSideWithDocNumber(
-                userId, documentType, "FRONT", frontFile, documentNumber));
+                userId, documentType, "FRONT", frontFile, documentNumber, documentInfo));
 
         if (backFile != null && !backFile.isEmpty()) {
             uploadedDocs.put("BACK", uploadSingleSideWithDocNumber(
-                    userId, documentType, "BACK", backFile, documentNumber));
+                    userId, documentType, "BACK", backFile, documentNumber, documentInfo));
         }
 
         log.info("Document uploaded: userId={}, type={}, number={}",
@@ -156,8 +156,9 @@ public class UserDocumentService {
     // ================= UPLOAD SINGLE SIDE - NHẬN userId THAY VÌ User =================
     private UserDocument uploadSingleSideWithDocNumber(
             Long userId, String documentType, String side,
-            MultipartFile file, String documentNumber) {
-
+            MultipartFile file, String documentNumber, UserDocumentInfoDTO documentInfo) {
+        log.info("📄 Uploading: userId={}, type={}, side={}, docNumber={}",
+                userId, documentType, side, documentNumber);
         // 1. Check xem documentNumber có thuộc user khác không
         if (documentNumber != null && !documentNumber.isEmpty()) {
             Optional<UserDocument> otherUserDoc = userDocumentRepository
@@ -215,7 +216,16 @@ public class UserDocumentService {
                 .imageUrl(fileUrl)
                 .documentNumber(documentNumber)
                 .status("PENDING")
+                .dateOfBirth(documentInfo.dateOfBirth())
+                .issueDate(documentInfo.issueDate())
+                .expiryDate(documentInfo.expiryDate())
+                .address(documentInfo.address())
                 .build();
+
+        log.info("💾 Saving: docId={}, side={}, docNumber={}, dob={}, issue={}, expiry={}, address={}",
+                document.getDocumentId(), document.getSide(), document.getDocumentNumber(),
+                document.getDateOfBirth(), document.getIssueDate(),
+                document.getExpiryDate(), document.getAddress());
 
         return userDocumentRepository.save(document);
     }
