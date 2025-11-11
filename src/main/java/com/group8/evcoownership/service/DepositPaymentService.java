@@ -333,7 +333,7 @@ public class DepositPaymentService {
         return convertToResponse(payment);
     }
 
-    private Payment getLatestPaymentByTxnRef(String txnRef) {
+    public Payment getLatestPaymentByTxnRef(String txnRef) {
         List<Payment> payments = paymentRepository.findAllByTransactionCodeOrderByIdDesc(txnRef);
 
         if (payments.isEmpty()) {
@@ -348,7 +348,7 @@ public class DepositPaymentService {
         return payments.get(0);
     }
 
-    private String generateUniqueTxnRef() {
+    public String generateUniqueTxnRef() {
         final int maxAttempts = 10;
 
         for (int attempt = 0; attempt < maxAttempts; attempt++) {
