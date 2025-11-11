@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 public class ContractDTO {
     private Long id;
     private Long groupId;
+    private String groupName;
     private LocalDate startDate;
     private LocalDate endDate;
     private BigDecimal requiredDepositAmount;

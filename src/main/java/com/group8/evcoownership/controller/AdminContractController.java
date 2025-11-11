@@ -107,6 +107,19 @@ public class AdminContractController {
 
         return ResponseEntity.ok(contract);
     }
+
+    /**
+     * ADMIN-ONLY: Resubmit contract for member approval (clear feedbacks and notify members)
+     */
+    @PostMapping("/{contractId}/resubmit-approval")
+    @Operation(summary = "Resubmit contract for member approval", description = "Clear all member feedbacks and notify all group members to review again")
+    public ResponseEntity<Map<String, Object>> resubmitApproval(
+            @PathVariable Long contractId,
+            @RequestParam(required = false) String note
+    ) {
+        Map<String, Object> result = contractService.resubmitMemberApproval(contractId, note);
+        return ResponseEntity.ok(result);
+    }
     /**
      * Kiểm tra trạng thái đóng tiền cọc của hợp đồng (Admin only)
      */
