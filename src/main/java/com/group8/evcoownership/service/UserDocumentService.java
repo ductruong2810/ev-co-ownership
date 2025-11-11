@@ -13,6 +13,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -37,22 +38,23 @@ public class UserDocumentService {
     @Autowired
     private OcrService ocrService;
 
-    // ================= UPLOAD BATCH DOCUMENTS WITH OCR & DUPLICATE CHECK =================
-    @Transactional
+    @Autowired
+    private TransactionTemplate transactionTemplate;
+
+    // ================= UPLOAD BATCH DOCUMENTS =================
     public CompletableFuture<Map<String, Object>> uploadBatchDocuments(
             String email,
             String documentType,
             MultipartFile frontFile,
             MultipartFile backFile) {
 
-        validateDocumentType(documentType);
-        validateImage(frontFile);
-        if (backFile != null && !backFile.isEmpty()) {
-            validateImage(backFile);
-        }
-
-        // Check duplicate files
         try {
+            validateDocumentType(documentType);
+            validateImage(frontFile);
+            if (backFile != null && !backFile.isEmpty()) {
+                validateImage(backFile);
+            }
+
             String frontHash = calculateFileHash(frontFile);
             String backHash = backFile != null ? calculateFileHash(backFile) : null;
 
@@ -61,123 +63,153 @@ public class UserDocumentService {
                         "Front and back images must be different. Please choose two different images."
                 );
             }
-        } catch (IOException e) {
-            throw new RuntimeException("Unable to process file. Please try again.");
-        }
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        long startTime = System.currentTimeMillis();
+            // LẤY userId TRƯỚC KHI VÀO ASYNC CONTEXT
+            Long userId = user.getUserId();
+            long startTime = System.currentTimeMillis();
 
-        // Step 1: OCR để lấy document number
-        return ocrService.extractTextFromImage(frontFile)
-                .thenApply(extractedText -> {
-                    Map<String, Object> result = new HashMap<>();
-
-                    try {
-                        if (extractedText == null || extractedText.trim().isEmpty()) {
-                            throw new IllegalArgumentException("Unable to extract text from image");
-                        }
-
-                        // Extract document info
-                        UserDocumentInfoDTO documentInfo;
-                        if (documentType.equals("CITIZEN_ID")) {
-                            documentInfo = extractCitizenIdInfo(extractedText);
-                        } else {
-                            documentInfo = extractDriverLicenseInfo(extractedText);
-                        }
-
-                        String documentNumber = documentInfo.idNumber();
-
-                        // Check if document number already exists
-                        if (documentNumber != null && !documentNumber.isEmpty()) {
-                            Optional<UserDocument> existingDoc =
-                                    userDocumentRepository.findByDocumentNumber(documentNumber);
-
-                            if (existingDoc.isPresent()) {
-                                UserDocument existing = existingDoc.get();
-
-                                if (!existing.getUserId().equals(user.getUserId())) {
-                                    log.warn("Document number {} already used by userId={}",
-                                            documentNumber, existing.getUserId());
-                                    throw new IllegalArgumentException(
-                                            String.format("Document number %s is already registered by another user",
-                                                    documentNumber)
-                                    );
-                                } else {
-                                    log.info("User re-uploading their own document: {}", documentNumber);
+            return ocrService.extractTextFromImage(frontFile)
+                    .thenApply(extractedText ->
+                            transactionTemplate.execute(status -> {
+                                try {
+                                    return processUpload(userId, documentType, frontFile,
+                                            backFile, extractedText, startTime);
+                                } catch (Exception e) {
+                                    log.error("Upload failed: {}", e.getMessage(), e);
+                                    throw new RuntimeException("Upload failed: " + e.getMessage(), e);
                                 }
-                            }
-                        }
+                            })
+                    )
+                    .exceptionally(ex -> {
+                        log.error("Async upload failed: {}", ex.getMessage(), ex);
+                        throw new RuntimeException("Upload failed: " + ex.getMessage(), ex);
+                    });
 
-                        // Step 2: Upload files
-                        Map<String, UserDocument> uploadedDocs = new HashMap<>();
-
-                        UserDocument frontDoc = uploadSingleSideWithDocNumber(
-                                user, documentType, "FRONT", frontFile, documentNumber);
-                        uploadedDocs.put("FRONT", frontDoc);
-
-                        if (backFile != null && !backFile.isEmpty()) {
-                            UserDocument backDoc = uploadSingleSideWithDocNumber(
-                                    user, documentType, "BACK", backFile, documentNumber);
-                            uploadedDocs.put("BACK", backDoc);
-                        }
-
-                        result.put("success", true);
-                        result.put("uploadedDocuments", uploadedDocs);
-                        result.put("documentInfo", documentInfo);
-                        result.put("detectedType", detectDocumentType(extractedText));
-                        result.put("processingTime", (System.currentTimeMillis() - startTime) + "ms");
-
-                        log.info("Document uploaded: userId={}, type={}, number={}",
-                                user.getUserId(), documentType, documentNumber);
-
-                        return result;
-
-                    } catch (IllegalArgumentException e) {
-                        throw e;
-                    } catch (Exception e) {
-                        log.error("Upload failed: {}", e.getMessage(), e);
-                        throw new RuntimeException("Upload failed: " + e.getMessage());
-                    }
-                });
+        } catch (IllegalArgumentException e) {
+            log.warn("Validation failed: {}", e.getMessage());
+            return CompletableFuture.failedFuture(e);
+        } catch (IOException e) {
+            log.error("File processing error: {}", e.getMessage());
+            return CompletableFuture.failedFuture(
+                    new RuntimeException("Unable to process file. Please try again."));
+        } catch (Exception e) {
+            log.error("Unexpected error: {}", e.getMessage(), e);
+            return CompletableFuture.failedFuture(
+                    new RuntimeException("Upload failed: " + e.getMessage()));
+        }
     }
 
-    // ================= HELPER: UPLOAD WITH DOCUMENT NUMBER =================
-    private UserDocument uploadSingleSideWithDocNumber(
-            User user, String documentType, String side,
-            MultipartFile file, String documentNumber) {
+    // ================= PROCESS UPLOAD - NHẬN userId THAY VÌ User =================
+    private Map<String, Object> processUpload(
+            Long userId, String documentType, MultipartFile frontFile,
+            MultipartFile backFile, String extractedText, long startTime) {
 
-        // Xóa tất cả documents cũ có thể conflict
-        List<UserDocument> existingDocs = new ArrayList<>();
-
-        // 1. Tìm document với cùng DocumentNumber (nếu có)
-        if (documentNumber != null && !documentNumber.isEmpty()) {
-            userDocumentRepository.findByDocumentNumber(documentNumber)
-                    .filter(doc -> doc.getUserId().equals(user.getUserId()))
-                    .ifPresent(existingDocs::add);
+        if (extractedText == null || extractedText.trim().isEmpty()) {
+            throw new IllegalArgumentException("Unable to extract text from image");
         }
 
-        // 2. Tìm document với cùng userId + documentType + side
-        userDocumentRepository
-                .findByUserIdAndDocumentTypeAndSide(user.getUserId(), documentType, side)
-                .ifPresent(existingDocs::add);
+        UserDocumentInfoDTO documentInfo = documentType.equals("CITIZEN_ID")
+                ? extractCitizenIdInfo(extractedText)
+                : extractDriverLicenseInfo(extractedText);
 
-        // 3. Xóa tất cả documents cũ tìm được
-        existingDocs.stream()
+        String documentNumber = documentInfo.idNumber();
+
+        // Check duplicate document number
+        if (documentNumber != null && !documentNumber.isEmpty()) {
+            userDocumentRepository.findByDocumentNumber(documentNumber)
+                    .ifPresent(existing -> {
+                        if (!existing.getUserId().equals(userId)) {
+                            throw new IllegalArgumentException(
+                                    String.format("Document number %s is already registered by another user",
+                                            documentNumber)
+                            );
+                        }
+                        log.info("User re-uploading their own document: {}", documentNumber);
+                    });
+        }
+
+        // Upload files - TRUYỀN userId THAY VÌ User
+        Map<String, UserDocument> uploadedDocs = new HashMap<>();
+        uploadedDocs.put("FRONT", uploadSingleSideWithDocNumber(
+                userId, documentType, "FRONT", frontFile, documentNumber));
+
+        if (backFile != null && !backFile.isEmpty()) {
+            uploadedDocs.put("BACK", uploadSingleSideWithDocNumber(
+                    userId, documentType, "BACK", backFile, documentNumber));
+        }
+
+        log.info("Document uploaded: userId={}, type={}, number={}",
+                userId, documentType, documentNumber);
+
+        return Map.of(
+                "success", true,
+                "uploadedDocuments", uploadedDocs,
+                "documentInfo", documentInfo,
+                "detectedType", detectDocumentType(extractedText),
+                "processingTime", (System.currentTimeMillis() - startTime) + "ms"
+        );
+    }
+
+    // ================= UPLOAD SINGLE SIDE - NHẬN userId THAY VÌ User =================
+    private UserDocument uploadSingleSideWithDocNumber(
+            Long userId, String documentType, String side,
+            MultipartFile file, String documentNumber) {
+
+        // 1. Check xem documentNumber có thuộc user khác không
+        if (documentNumber != null && !documentNumber.isEmpty()) {
+            Optional<UserDocument> otherUserDoc = userDocumentRepository
+                    .findByDocumentNumber(documentNumber)
+                    .filter(doc -> !doc.getUserId().equals(userId));
+
+            if (otherUserDoc.isPresent()) {
+                throw new IllegalArgumentException(
+                        String.format("Document number %s is already registered by another user",
+                                documentNumber)
+                );
+            }
+        }
+
+        // 2. Xóa TẤT CẢ documents cũ của user này với documentNumber hoặc (documentType + side)
+        List<UserDocument> toDelete = new ArrayList<>();
+
+        // Xóa theo documentNumber (nếu có)
+        if (documentNumber != null && !documentNumber.isEmpty()) {
+            toDelete.addAll(userDocumentRepository
+                    .findByUserIdAndDocumentNumber(userId, documentNumber));
+        }
+
+        // Xóa theo documentType + side
+        userDocumentRepository
+                .findByUserIdAndDocumentTypeAndSide(userId, documentType, side)
+                .ifPresent(toDelete::add);
+
+        // Xóa duplicate entries
+        toDelete.stream()
                 .distinct()
-                .forEach(existingDoc -> {
-                    log.info("Deleting existing document: documentId={}, documentNumber={}, side={}",
-                            existingDoc.getDocumentId(), existingDoc.getDocumentNumber(), existingDoc.getSide());
-                    azureBlobStorageService.deleteFile(existingDoc.getImageUrl());
-                    userDocumentRepository.delete(existingDoc);
+                .forEach(doc -> {
+                    log.info("Deleting: docId={}, docNumber={}, side={}",
+                            doc.getDocumentId(), doc.getDocumentNumber(), doc.getSide());
+
+                    try {
+                        azureBlobStorageService.deleteFile(doc.getImageUrl());
+                    } catch (Exception e) {
+                        log.warn("Failed to delete Azure file: {}", e.getMessage());
+                    }
+
+                    userDocumentRepository.delete(doc);
                 });
 
+        // 3. Flush để đảm bảo xóa hoàn tất trước khi insert
+        userDocumentRepository.flush();
+
+        // 4. Upload file mới
         String fileUrl = azureBlobStorageService.uploadFile(file);
 
         UserDocument document = UserDocument.builder()
-                .userId(user.getUserId())
+                .userId(userId)
                 .documentType(documentType)
                 .side(side)
                 .imageUrl(fileUrl)
@@ -187,7 +219,6 @@ public class UserDocumentService {
 
         return userDocumentRepository.save(document);
     }
-
 
     // ================= OCR HELPER METHODS =================
 

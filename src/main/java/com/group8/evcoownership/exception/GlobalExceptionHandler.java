@@ -23,6 +23,8 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -536,6 +538,67 @@ public class GlobalExceptionHandler {
                         request.getDescription(false).replace("uri=", ""))
         );
     }
+
+    // ========== 409 - DUPLICATE DOCUMENT NUMBER ==========
+    @ExceptionHandler(java.util.concurrent.ExecutionException.class)
+    public ResponseEntity<ValidationErrorResponseDTO> handleExecutionException(
+            java.util.concurrent.ExecutionException ex, WebRequest request) {
+
+        logger.error("Execution error: {}", ex.getMessage());
+
+        // Unwrap nested exceptions
+        Throwable rootCause = getRootCause(ex);
+        String errorMessage = rootCause.getMessage();
+
+        // Check duplicate document number
+        if (errorMessage != null && errorMessage.contains("already registered by another user")) {
+            String documentNumber = extractDocumentNumber(errorMessage);
+
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                    ValidationErrorResponseDTO.singleError(409, "Duplicate Document",
+                            "Số giấy tờ " + documentNumber + " đã được đăng ký bởi người dùng khác",
+                            "documentNumber",
+                            request.getDescription(false).replace("uri=", ""))
+            );
+        }
+
+        // Check constraint violation
+        if (errorMessage != null && errorMessage.contains("unique index")) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                    ValidationErrorResponseDTO.singleError(409, "Duplicate Document",
+                            "Số giấy tờ này đã tồn tại trong hệ thống",
+                            "documentNumber",
+                            request.getDescription(false).replace("uri=", ""))
+            );
+        }
+
+        // Generic upload error
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                ValidationErrorResponseDTO.singleError(500, "Upload Failed",
+                        "Tải tài liệu thất bại. Vui lòng thử lại sau",
+                        "file",
+                        request.getDescription(false).replace("uri=", ""))
+        );
+    }
+
+    // Helper method
+    private Throwable getRootCause(Throwable throwable) {
+        Throwable cause = throwable;
+        while (cause.getCause() != null && cause.getCause() != cause) {
+            cause = cause.getCause();
+        }
+        return cause;
+    }
+
+    private String extractDocumentNumber(String errorMessage) {
+        Pattern pattern = Pattern.compile("Document number (\\d+)");
+        Matcher matcher = pattern.matcher(errorMessage);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        return "không xác định";
+    }
+
 
     // ========== 409 - PAYMENT CONFLICT ==========
     @ExceptionHandler(PaymentConflictException.class)

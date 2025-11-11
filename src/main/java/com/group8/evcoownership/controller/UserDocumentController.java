@@ -37,39 +37,20 @@ public class UserDocumentController {
             @RequestParam("documentType") String documentType,
             @RequestParam("frontFile") MultipartFile frontFile,
             @RequestParam(value = "backFile", required = false) MultipartFile backFile,
-            Authentication authentication) {
+            Authentication authentication) throws Exception { // THÊM throws Exception
 
         String email = authentication.getName();
         log.info("User {} uploading batch documents: {}", email, documentType);
 
-        try {
-            // Block và đợi CompletableFuture hoàn thành TRONG request thread
-            Map<String, Object> result = userDocumentService
-                    .uploadBatchDocuments(email, documentType, frontFile, backFile)
-                    .get(); // Chờ đến khi hoàn thành
+        // XÓA TRY-CATCH - để exception được throw lên GlobalExceptionHandler
+        Map<String, Object> result = userDocumentService
+                .uploadBatchDocuments(email, documentType, frontFile, backFile)
+                .get(); // Exception sẽ được throw ra đây
 
-            log.info("Upload completed successfully for user {}", email);
-            return ResponseEntity.ok(result);
-
-        } catch (Exception e) {
-            log.error("Upload error: {}", e.getMessage(), e);
-
-            Throwable cause = e.getCause() != null ? e.getCause() : e;
-            if (cause instanceof IllegalArgumentException) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(Map.of(
-                                "error", cause.getMessage(),
-                                "timestamp", System.currentTimeMillis()
-                        ));
-            }
-
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of(
-                            "error", "Upload failed: " + cause.getMessage(),
-                            "timestamp", System.currentTimeMillis()
-                    ));
-        }
+        log.info("Upload completed successfully for user {}", email);
+        return ResponseEntity.ok(result);
     }
+
 
 
     @GetMapping
