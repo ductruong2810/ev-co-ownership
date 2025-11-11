@@ -205,7 +205,7 @@ public class OwnershipGroupService {
         fundService.initTwoFundsIfMissing(savedGroup.getGroupId());
 
 
-        // Send notification to group creator
+        // Send notification to the group creator
         notificationOrchestrator.sendComprehensiveNotification(
                 user.getUserId(),
                 NotificationType.GROUP_CREATED,
@@ -281,7 +281,7 @@ public class OwnershipGroupService {
             throw new IllegalArgumentException(
                     "License plate and chassis number are required. Please enter information manually or ensure OCR can extract from the registration document.");
         } else {
-            // User provided some input - STRICT VALIDATION: Must have valid document
+            // User provided some input - STRICT VALIDATION: Must have a valid document
             if (autoFillInfo != null && isLikelyInvalidDocument(autoFillInfo)) {
                 throw new IllegalArgumentException(
                         "The image is not a valid vehicle registration document. Please upload the correct document to verify information.");
@@ -293,7 +293,7 @@ public class OwnershipGroupService {
                 groupName, description, memberCapacity);
         OwnershipGroupResponseDTO groupResponse = create(groupRequest, userEmail);
 
-        // Step 4: Create vehicle using VehicleService with extracted or provided brand/model
+        // Step 4: Create a vehicle using VehicleService with extracted or provided brand/model
         VehicleCreateRequestDTO vehicleRequest = new VehicleCreateRequestDTO(
                 brand != null && !brand.isEmpty() ? brand : "Unknown",
                 model != null && !model.isEmpty() ? model : "Unknown",
@@ -304,7 +304,7 @@ public class OwnershipGroupService {
         Map<String, Object> uploadedImages = vehicleService.uploadMultipleVehicleImages(
                 vehicleResponse.vehicleId(), vehicleImages, imageTypes);
 
-        // Step 6: Return combined response with auto-fill info
+        // Step 6: Return combined response with autofill info
         return new GroupWithVehicleResponseDTO(
                 groupResponse.groupId(),
                 groupResponse.groupName(),
@@ -325,7 +325,7 @@ public class OwnershipGroupService {
     }
 
     /**
-     * Check if uploaded document is likely invalid (not a vehicle registration document)
+     * Check if an uploaded document is likely invalid (not a vehicle registration document)
      */
     private boolean isLikelyInvalidDocument(GroupWithVehicleResponseDTO.AutoFillInfo autoFillInfo) {
         if (autoFillInfo == null) {
@@ -351,7 +351,7 @@ public class OwnershipGroupService {
 
     /**
      * Validate user input against OCR extracted information
-     * Uses hybrid approach: strict validation for critical fields, flexible for others
+     * Uses a hybrid approach: strict validation for critical fields, flexible for others
      */
     private void validateUserInputAgainstOcr(String brand, String model, String licensePlate, String chassisNumber,
                                              GroupWithVehicleResponseDTO.AutoFillInfo autoFillInfo) {
@@ -382,7 +382,7 @@ public class OwnershipGroupService {
             }
         }
 
-        // SOFT VALIDATION: Brand - only warn if user explicitly provided brand
+        // SOFT VALIDATION: Brand - only warn if the user explicitly provided brand
         if (brand != null && !brand.trim().isEmpty() && !brand.equals("Unknown") &&
                 autoFillInfo.extractedBrand() != null && !autoFillInfo.extractedBrand().isEmpty()) {
 
@@ -395,7 +395,7 @@ public class OwnershipGroupService {
             }
         }
 
-        // SOFT VALIDATION: Model - only warn if user explicitly provided model
+        // SOFT VALIDATION: Model - only warn if the user explicitly provided model
         if (model != null && !model.trim().isEmpty() && !model.equals("Unknown") &&
                 autoFillInfo.extractedModel() != null && !autoFillInfo.extractedModel().isEmpty()) {
 
@@ -437,7 +437,7 @@ public class OwnershipGroupService {
     }
 
     /**
-     * Process OCR auto-fill for vehicle information
+     * Process OCR autofill for vehicle information
      */
     private GroupWithVehicleResponseDTO.AutoFillInfo processOcrAutoFill(
             MultipartFile[] vehicleImages, String[] imageTypes, long startTime) {
@@ -523,12 +523,6 @@ public class OwnershipGroupService {
         }
 
         return toDto(repo.save(e));
-    }
-
-    public OwnershipGroupResponseDTO getById(Long groupId) {
-        return repo.findById(groupId)
-                .map(this::toDto)
-                .orElseThrow(() -> new EntityNotFoundException("Group not found"));
     }
 
     /**
