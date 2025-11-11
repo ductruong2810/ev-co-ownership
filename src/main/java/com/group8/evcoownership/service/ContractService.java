@@ -273,6 +273,18 @@ public class ContractService {
 
         Contract saved = contractRepository.saveAndFlush(contract);
 
+        // Notify all group members that the contract has been updated by admin
+        if (notificationOrchestrator != null) {
+            Map<String, Object> emailData = notificationOrchestrator.buildContractEmailData(saved);
+            notificationOrchestrator.sendGroupNotification(
+                    saved.getGroup().getGroupId(),
+                    NotificationType.CONTRACT_APPROVAL_PENDING,
+                    "Contract Updated by Admin",
+                    "The system administrator has updated the contract timeline and terms. Please review the changes.",
+                    emailData
+            );
+        }
+
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);
         result.put("message", "Contract updated successfully by admin");
@@ -307,6 +319,54 @@ public class ContractService {
         if (endDate.isAfter(maximumEndDate)) {
             throw new IllegalArgumentException("Contract term cannot exceed 5 years");
         }
+    }
+
+    /**
+     * Admin (system) resubmits the contract for member approval without changing content.
+     * Clears all existing member feedbacks and notifies all members to review again.
+     */
+    @Transactional
+    public Map<String, Object> resubmitMemberApproval(Long contractId, String adminNote) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
+
+        // Only allow resubmitting when the contract is in member approval stage
+        if (contract.getApprovalStatus() != ContractApprovalStatus.PENDING_MEMBER_APPROVAL) {
+            throw new IllegalStateException("Resubmit is only allowed when contract is in PENDING_MEMBER_APPROVAL");
+        }
+
+        // Clear all member feedbacks
+        clearMemberFeedbacks(contractId);
+
+        contract.setUpdatedAt(LocalDateTime.now());
+        Contract saved = contractRepository.saveAndFlush(contract);
+
+        // Notify all members to review again
+        if (notificationOrchestrator != null) {
+            Map<String, Object> data = notificationOrchestrator.buildContractEmailData(saved);
+            if (adminNote != null && !adminNote.isBlank()) {
+                data = new HashMap<>(data);
+                data.put("adminNote", adminNote.trim());
+            }
+            notificationOrchestrator.sendGroupNotification(
+                    saved.getGroup().getGroupId(),
+                    NotificationType.CONTRACT_APPROVAL_PENDING,
+                    "Contract Resubmitted for Member Approval",
+                    (adminNote != null && !adminNote.isBlank())
+                            ? adminNote.trim()
+                            : "The system administrator has resubmitted the contract for member approval. Please review and confirm.",
+                    data
+            );
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", true);
+        result.put("message", "Resubmitted for member approval");
+        result.put("contractId", saved.getId());
+        result.put("groupId", saved.getGroup().getGroupId());
+        result.put("approvalStatus", saved.getApprovalStatus());
+        result.put("feedbackCleared", true);
+        return result;
     }
     /**
      * Lấy thông tin tính toán deposit amount cho group admin
@@ -1071,6 +1131,19 @@ public class ContractService {
 
         Contract savedContract = contractRepository.saveAndFlush(contract);
 
+        // Notify all members that the contract has been approved by system admin
+        if (notificationOrchestrator != null) {
+            Long groupId = savedContract.getGroup().getGroupId();
+            Map<String, Object> emailData = notificationOrchestrator.buildContractEmailData(savedContract);
+            notificationOrchestrator.sendGroupNotification(
+                    groupId,
+                    NotificationType.CONTRACT_APPROVED,
+                    "Contract Approved by System Admin",
+                    "The group's contract has been approved by the system administrator. The contract is now active.",
+                    emailData
+            );
+        }
+
         return convertToDTO(savedContract);
     }
 
@@ -1159,6 +1232,7 @@ public class ContractService {
         ContractDTO dto = new ContractDTO();
         dto.setId(contract.getId());
         dto.setGroupId(contract.getGroup().getGroupId());
+        dto.setGroupName(contract.getGroup().getGroupName());
         dto.setStartDate(contract.getStartDate());
         dto.setEndDate(contract.getEndDate());
         dto.setRequiredDepositAmount(contract.getRequiredDepositAmount());
