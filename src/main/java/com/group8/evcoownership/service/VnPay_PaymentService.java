@@ -38,7 +38,7 @@ public class VnPay_PaymentService {
 
     // thanh toan như không phải đóng tièn cọc, e.g: incident
     public String createPaymentUrl(long fee, HttpServletRequest request, String txnRef, Long groupId) {
-        return createPaymentUrl(fee, request, txnRef, true, groupId);
+        return createPaymentUrl(fee, request, txnRef, false, groupId);
     }
 
     /**
