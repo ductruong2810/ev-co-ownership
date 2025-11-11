@@ -16,4 +16,12 @@ public class DocumentDetailDTO {
     private String imageUrl;
     private String status;         // PENDING, APPROVED, REJECTED
     private LocalDateTime uploadedAt;
+    private String reviewNote;
+    private String reviewedBy;
+    private String documentNumber;
+
+    private String dateOfBirth;
+    private String issueDate;
+    private String expiryDate;
+    private String address;
 }
