@@ -51,6 +51,8 @@ public class UserProfileService {
         return buildProfileResponse(user);
     }
 
+
+
     private UserProfileResponseDTO buildProfileResponse(User user) {
         List<UserDocument> allDocuments = userDocumentRepository.findByUserId(user.getUserId());
 
@@ -94,8 +96,15 @@ public class UserProfileService {
                     .documentId(doc.getDocumentId())
                     .imageUrl(doc.getImageUrl())
                     .status(doc.getStatus())
-                    // ← KHÔNG map reviewNote
                     .uploadedAt(doc.getCreatedAt())
+                    .reviewNote(doc.getReviewNote())
+                    .reviewedBy(doc.getReviewedBy() != null ? doc.getReviewedBy().getFullName() : null)
+                    // THÊM CÁC TRƯỜNG SAU:
+                    .documentNumber(doc.getDocumentNumber())
+                    .dateOfBirth(doc.getDateOfBirth())
+                    .issueDate(doc.getIssueDate())
+                    .expiryDate(doc.getExpiryDate())
+                    .address(doc.getAddress())
                     .build();
 
             if ("FRONT".equals(doc.getSide())) {
@@ -110,6 +119,7 @@ public class UserProfileService {
                 .back(backDetail)
                 .build();
     }
+
 
     private int getGroupsCount(Long userId) {
         return ownershipShareRepository.countByUser_UserId(userId).intValue();

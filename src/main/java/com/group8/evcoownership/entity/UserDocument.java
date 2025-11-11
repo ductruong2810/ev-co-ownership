@@ -23,6 +23,18 @@ public class UserDocument {
     @Column(name = "DocumentNumber", unique = true)
     private String documentNumber; // Số CCCD hoặc số GPLX
 
+    @Column(name = "DateOfBirth", length = 20)
+    private String dateOfBirth;
+
+    @Column(name = "IssueDate", length = 20)
+    private String issueDate;
+
+    @Column(name = "ExpiryDate", length = 20)
+    private String expiryDate;
+
+    @Column(name = "Address", columnDefinition = "TEXT")
+    private String address;
+
     @Column(name = "UserId", nullable = false)
     private Long userId;
 
@@ -55,6 +67,7 @@ public class UserDocument {
 
     @Column(name = "UpdatedAt")
     private LocalDateTime updatedAt;
+
 
     @PrePersist
     public void onCreate() {

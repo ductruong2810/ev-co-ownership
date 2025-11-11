@@ -362,8 +362,8 @@ public class OwnershipGroupService {
         if (licensePlate != null && !licensePlate.trim().isEmpty() &&
                 autoFillInfo.extractedLicensePlate() != null && !autoFillInfo.extractedLicensePlate().isEmpty()) {
 
-            String userPlate = licensePlate.trim().toUpperCase();
-            String ocrPlate = autoFillInfo.extractedLicensePlate().trim().toUpperCase();
+            String userPlate = normalizeIdentifier(licensePlate);
+            String ocrPlate = normalizeIdentifier(autoFillInfo.extractedLicensePlate());
 
             if (!userPlate.equals(ocrPlate)) {
                 errors.append("License plate does not match the registration document. ");
@@ -374,11 +374,27 @@ public class OwnershipGroupService {
         if (chassisNumber != null && !chassisNumber.trim().isEmpty() &&
                 autoFillInfo.extractedChassisNumber() != null && !autoFillInfo.extractedChassisNumber().isEmpty()) {
 
-            String userChassis = chassisNumber.trim().toUpperCase();
-            String ocrChassis = autoFillInfo.extractedChassisNumber().trim().toUpperCase();
+            String userChassis = normalizeIdentifier(chassisNumber);
+            String ocrChassis = normalizeIdentifier(autoFillInfo.extractedChassisNumber());
 
             if (!userChassis.equals(ocrChassis)) {
-                errors.append("Chassis number does not match the registration document. ");
+                // Allow partial match tolerance when OCR returns truncated VIN (common in OCR)
+                String longer = userChassis.length() >= ocrChassis.length() ? userChassis : ocrChassis;
+                String shorter = userChassis.length() < ocrChassis.length() ? userChassis : ocrChassis;
+
+                boolean isOcrTruncated = ocrChassis.length() < 17;
+                boolean isUserTruncated = userChassis.length() < 17;
+                boolean partialMatchAccepted = false;
+
+                // Only consider partial acceptance when one side is truncated and the shorter has reasonable length
+                if ((isOcrTruncated || isUserTruncated) && shorter.length() >= 8) {
+                    // Accept if the shorter normalized string is contained in the longer one
+                    partialMatchAccepted = longer.contains(shorter);
+                }
+
+                if (!partialMatchAccepted) {
+                    errors.append("Chassis number does not match the registration document. ");
+                }
             }
         }
 
@@ -434,6 +450,20 @@ public class OwnershipGroupService {
         if (!hasValidVehicleInfo) {
             log.warn("OCR did not extract meaningful vehicle information. Possible invalid document uploaded.");
         }
+    }
+
+    /**
+     * Normalize identifiers such as license plates and chassis/VIN by:
+     * - Trimming
+     * - Uppercasing
+     * - Removing non-alphanumeric characters (spaces, hyphens, dots, etc.)
+     */
+    private String normalizeIdentifier(String raw) {
+        if (raw == null) {
+            return "";
+        }
+        String upper = raw.trim().toUpperCase();
+        return upper.replaceAll("[^A-Z0-9]", "");
     }
 
     /**
