@@ -157,4 +157,12 @@ public class AdminContractController {
         List<ContractDTO> contracts = contractService.getContractsByGroupForAdmin(groupId);
         return ResponseEntity.ok(contracts);
     }
+
+    @GetMapping("/pending-member-approval")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<ContractDTO>> getPendingMemberApprovalContracts() {
+        List<ContractDTO> contracts =
+                contractService.getContractsByStatus(ContractApprovalStatus.PENDING_MEMBER_APPROVAL);
+        return ResponseEntity.ok(contracts);
+    }
 }
