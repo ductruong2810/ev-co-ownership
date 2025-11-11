@@ -159,28 +159,7 @@ public class ContractService {
         Contract contract = getContractByGroup(groupId);
         OwnershipGroup group = contract.getGroup();
 
-        // Kiểm tra contract có thể update không
-        boolean canUpdate = contract.getApprovalStatus() == ContractApprovalStatus.PENDING;
-        
-        // Nếu ở trạng thái PENDING_MEMBER_APPROVAL, chỉ cho phép update nếu có rejections
-        if (contract.getApprovalStatus() == ContractApprovalStatus.PENDING_MEMBER_APPROVAL) {
-            long rejectionCount = feedbackRepository.countByContractIdAndStatus(
-                    contract.getId(),
-                    MemberFeedbackStatus.REJECTED
-            );
-            canUpdate = rejectionCount > 0;
-
-            if (canUpdate) {
-                clearMemberFeedbacks(contract.getId());
-            }
-        }
-        
-        if (!canUpdate) {
-            throw new IllegalStateException(
-                    String.format("Cannot update contract: Contract is in %s status. Only PENDING contracts or PENDING_MEMBER_APPROVAL contracts with rejections can be updated.",
-                            contract.getApprovalStatus())
-            );
-        }
+        validateContractEditable(contract, "Cannot update contract: Contract is in %s status. Only PENDING contracts or PENDING_MEMBER_APPROVAL contracts with rejections can be updated.");
 
         // Validate date range
         if (request.endDate().isBefore(request.startDate()) || request.endDate().equals(request.startDate())) {
@@ -257,26 +236,7 @@ public class ContractService {
 
         Contract contract = getContractByGroup(groupId);
 
-        boolean canUpdate = contract.getApprovalStatus() == ContractApprovalStatus.PENDING;
-
-        if (contract.getApprovalStatus() == ContractApprovalStatus.PENDING_MEMBER_APPROVAL) {
-            long rejectionCount = feedbackRepository.countByContractIdAndStatus(
-                    contract.getId(),
-                    MemberFeedbackStatus.REJECTED
-            );
-            canUpdate = rejectionCount > 0;
-
-            if (canUpdate) {
-                clearMemberFeedbacks(contract.getId());
-            }
-        }
-
-        if (!canUpdate) {
-            throw new IllegalStateException(
-                    String.format("Cannot update contract terms: Contract is in %s status. Only PENDING contracts or PENDING_MEMBER_APPROVAL contracts with rejections can be updated.",
-                            contract.getApprovalStatus())
-            );
-        }
+        validateContractEditable(contract, "Cannot update contract terms: Contract is in %s status. Only PENDING contracts or PENDING_MEMBER_APPROVAL contracts with rejections can be updated.");
 
         contract.setTerms(request.terms().trim());
         contract.setUpdatedAt(LocalDateTime.now());
@@ -800,7 +760,7 @@ public class ContractService {
         data.put("dispute", disputeInfo);
 
 
-        // Owners info
+        // Owner info
         List<Map<String, Object>> owners = shares.stream().map(share -> {
             Map<String, Object> owner = new HashMap<>();
             owner.put("userId", share.getUser().getUserId());
@@ -1253,6 +1213,27 @@ public class ContractService {
         if (!feedbacks.isEmpty()) {
             feedbackRepository.deleteAll(feedbacks);
         }
+    }
+
+    /**
+     * Kiểm tra và validate contract có thể chỉnh sửa được không
+     * Throw exception nếu không thể chỉnh sửa
+     */
+    private void validateContractEditable(Contract contract, String errorMessageTemplate) {
+        if (contract.getApprovalStatus() == ContractApprovalStatus.PENDING) {
+            return;
+        }
+
+        if (contract.getApprovalStatus() == ContractApprovalStatus.PENDING_MEMBER_APPROVAL) {
+            long rejectionCount = feedbackRepository.countByContractIdAndStatus(
+                    contract.getId(), MemberFeedbackStatus.REJECTED);
+            if (rejectionCount > 0) {
+                clearMemberFeedbacks(contract.getId());
+                return;
+            }
+        }
+
+        throw new IllegalStateException(String.format(errorMessageTemplate, contract.getApprovalStatus()));
     }
 
     /**
