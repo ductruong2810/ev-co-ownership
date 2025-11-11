@@ -22,7 +22,6 @@ import java.io.IOException;
 @RequestMapping("/api/funds/payments")
 @RequiredArgsConstructor
 @Tag(name = "Fund Payments", description = "Nạp tiền vào quỹ (Operating) qua VNPay")
-@PreAuthorize("isAuthenticated()")
 public class FundPaymentController {
 
     private final FundPaymentService fundPaymentService;
@@ -32,7 +31,7 @@ public class FundPaymentController {
 
     // =============== 1) CREATE ===============
     @PostMapping("/create")
-    @PreAuthorize("hasAnyRole('ADMIN','STAFF','CO_OWNER')")
+    @PreAuthorize("hasAnyRole('CO_OWNER')")
     @Operation(
             summary = "Tạo yêu cầu nạp quỹ (VNPay)",
             description = """
@@ -53,7 +52,6 @@ public class FundPaymentController {
 
     // =============== 2) CONFIRM (server-to-server) ===============
     @PostMapping("/confirm")
-    @PreAuthorize("permitAll()")
     @Operation(
             summary = "[INTERNAL] Xác nhận thanh toán từ VNPay",
             description = """
@@ -90,7 +88,6 @@ public class FundPaymentController {
 
     // =============== 4) PUBLIC REDIRECT CALLBACK ===============
     @GetMapping("/callback")
-    @PreAuthorize("permitAll()")
     @Operation(
             summary = "Callback trả về từ VNPay (public)",
             description = """
