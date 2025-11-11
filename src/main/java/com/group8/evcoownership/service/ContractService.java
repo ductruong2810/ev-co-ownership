@@ -1,9 +1,6 @@
 package com.group8.evcoownership.service;
 
-import com.group8.evcoownership.dto.ContractDTO;
-import com.group8.evcoownership.dto.ContractUpdateRequestDTO;
-import com.group8.evcoownership.dto.ContractMemberFeedbackRequestDTO;
-import com.group8.evcoownership.dto.ContractTermsUpdateRequestDTO;
+import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.enums.*;
 import com.group8.evcoownership.exception.InvalidContractActionException;
@@ -160,26 +157,7 @@ public class ContractService {
         OwnershipGroup group = contract.getGroup();
 
         validateContractEditable(contract, "Cannot update contract: Contract is in %s status. Only PENDING contracts or PENDING_MEMBER_APPROVAL contracts with rejections can be updated.");
-
-        // Validate date range
-        if (request.endDate().isBefore(request.startDate()) || request.endDate().equals(request.startDate())) {
-            throw new IllegalArgumentException("End date must be after start date");
-        }
-
-        LocalDate today = LocalDate.now();
-        if (request.startDate().isBefore(today)) {
-            throw new IllegalArgumentException("Start date cannot be in the past");
-        }
-
-        LocalDate minimumEndDate = request.startDate().plusMonths(1);
-        if (request.endDate().isBefore(minimumEndDate)) {
-            throw new IllegalArgumentException("Contract term must be at least 1 month");
-        }
-
-        LocalDate maximumEndDate = request.startDate().plusYears(5);
-        if (request.endDate().isAfter(maximumEndDate)) {
-            throw new IllegalArgumentException("Contract term cannot exceed 5 years");
-        }
+        validateContractDatesOrThrow(request.startDate(), request.endDate());
 
         // Tính toán lại deposit amount tự động (theo quy định của hệ thống)
         BigDecimal calculatedDepositAmount = depositCalculationService.calculateRequiredDepositAmount(group);
@@ -255,6 +233,81 @@ public class ContractService {
         return result;
     }
 
+    /**
+     * ADMIN-ONLY: Cập nhật theo contractId (thay vì groupId)
+     */
+    @Transactional
+    public Map<String, Object> updateContractByAdminByContractId(Long contractId, ContractAdminUpdateRequestDTO request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Request cannot be null");
+        }
+        if (request.isInvalidDateRange()) {
+            throw new IllegalArgumentException("End date must be after start date");
+        }
+
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
+
+        return updateContractAdminCommon(contract, request);
+    }
+
+    private Map<String, Object> updateContractAdminCommon(Contract contract, ContractAdminUpdateRequestDTO request) {
+        validateContractEditable(contract, "Cannot update contract: Contract is in %s status. Only PENDING contracts or PENDING_MEMBER_APPROVAL contracts with rejections can be updated.");
+        validateContractDatesOrThrow(request.startDate(), request.endDate());
+
+        OwnershipGroup group = contract.getGroup();
+        BigDecimal calculatedDepositAmount = depositCalculationService.calculateRequiredDepositAmount(group);
+
+        contract.setStartDate(request.startDate());
+        contract.setEndDate(request.endDate());
+        contract.setRequiredDepositAmount(calculatedDepositAmount);
+        contract.setUpdatedAt(LocalDateTime.now());
+
+        String baseTerms = request.terms() != null && !request.terms().trim().isEmpty()
+                ? request.terms().trim()
+                : (contract.getTerms() != null ? contract.getTerms() : "");
+
+        String syncedTerms = updateDepositAmountInTerms(baseTerms, calculatedDepositAmount);
+        syncedTerms = updateTermInTerms(syncedTerms, request.startDate(), request.endDate());
+        contract.setTerms(syncedTerms);
+
+        Contract saved = contractRepository.saveAndFlush(contract);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", true);
+        result.put("message", "Contract updated successfully by admin");
+        result.put("contract", Map.of(
+                "contractId", saved.getId(),
+                "startDate", saved.getStartDate(),
+                "endDate", saved.getEndDate(),
+                "requiredDepositAmount", saved.getRequiredDepositAmount(),
+                "approvalStatus", saved.getApprovalStatus(),
+                "updatedAt", saved.getUpdatedAt()
+        ));
+        result.put("term", calculateTermLabel(saved.getStartDate(), saved.getEndDate()));
+        return result;
+    }
+    
+    private void validateContractDatesOrThrow(LocalDate startDate, LocalDate endDate) {
+        if (startDate == null || endDate == null) {
+            throw new IllegalArgumentException("Start date and end date are required");
+        }
+        if (!endDate.isAfter(startDate)) {
+            throw new IllegalArgumentException("End date must be after start date");
+        }
+        LocalDate today = LocalDate.now();
+        if (startDate.isBefore(today)) {
+            throw new IllegalArgumentException("Start date cannot be in the past");
+        }
+        LocalDate minimumEndDate = startDate.plusMonths(1);
+        if (endDate.isBefore(minimumEndDate)) {
+            throw new IllegalArgumentException("Contract term must be at least 1 month");
+        }
+        LocalDate maximumEndDate = startDate.plusYears(5);
+        if (endDate.isAfter(maximumEndDate)) {
+            throw new IllegalArgumentException("Contract term cannot exceed 5 years");
+        }
+    }
     /**
      * Lấy thông tin tính toán deposit amount cho group admin
      * Bao gồm giá trị tính toán tự động và giải thích công thức
@@ -1203,6 +1256,15 @@ public class ContractService {
 
     public List<ContractDTO> getContractsByStatus(ContractApprovalStatus status) {
         return contractRepository.findByApprovalStatus(status).stream()
+                .map(this::convertToDTO)
+                .toList();
+    }
+
+    /**
+     * ADMIN: Lấy tất cả contracts của một group
+     */
+    public List<ContractDTO> getContractsByGroupForAdmin(Long groupId) {
+        return contractRepository.findAllByGroup_GroupId(groupId).stream()
                 .map(this::convertToDTO)
                 .toList();
     }
