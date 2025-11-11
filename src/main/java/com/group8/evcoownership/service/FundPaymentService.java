@@ -117,6 +117,11 @@ public class FundPaymentService {
         payment.setAmount(request.amount());
         payment.setFund(fund);
         payment.setPaymentDate(LocalDateTime.now());
+        payment.setPaymentMethod("VNPAY");                     // nếu cột này NOT NULL
+        payment.setPayer(user);
+        payment.setPaymentCategory("PERSONAL");
+        payment.setPersonalReason("CONTRIBUTION"); // KHI DE PERSONAL --> FIELD NAY NOT NULL
+        payment.setChargedUser(user);// KHI DE PERSONAL --> FIELD NAY NOT NULL
 
 
         Long actorId = extractUserId(auth);
