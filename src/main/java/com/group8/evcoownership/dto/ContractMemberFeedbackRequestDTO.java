@@ -4,17 +4,17 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record ContractMemberFeedbackRequestDTO(
-        @NotBlank(message = "Status is required")
-        String status, // "APPROVED" or "REJECTED"
+        @NotBlank(message = "Reaction type is required")
+        String reactionType, // "AGREE" or "DISAGREE"
         
         @Size(max = 1000, message = "Reason must not exceed 1000 characters")
-        String reason // Required if status is REJECTED
+        String reason // Required if reactionType is DISAGREE
 ) {
     public boolean isValid() {
-        if ("REJECTED".equalsIgnoreCase(status)) {
+        if ("DISAGREE".equalsIgnoreCase(reactionType)) {
             return reason != null && !reason.trim().isEmpty() && reason.trim().length() >= 10;
         }
-        return "APPROVED".equalsIgnoreCase(status);
+        return "AGREE".equalsIgnoreCase(reactionType);
     }
 }
 
