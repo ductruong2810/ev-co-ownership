@@ -1,8 +1,6 @@
 package com.group8.evcoownership.controller;
 
-import com.group8.evcoownership.dto.ContractUpdateRequestDTO;
-import com.group8.evcoownership.dto.ContractTermsUpdateRequestDTO;
-import com.group8.evcoownership.dto.ContractFeedbacksResponseDTO;
+import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.service.ContractService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -41,7 +39,7 @@ public class ContractController {
      * 3. Danh sách thành viên (tên, email, vai trò, % sở hữu, trạng thái cọc, ...)
      */
     @GetMapping("/{groupId}/details")
-    @PreAuthorize("@ownershipGroupService.isGroupMember(authentication.name, #groupId)")
+    @PreAuthorize("@ownershipGroupService.isGroupMember(authentication.name, #groupId) or hasAnyRole('ADMIN','STAFF')")
     @Operation(
             summary = "Xem chi tiết hợp đồng",
             description = "Trả về thông tin hợp đồng, nhóm và danh sách thành viên trong nhóm"
@@ -61,7 +59,7 @@ public class ContractController {
      * Lấy thông tin contract của group (cho members)
      */
     @GetMapping("/{groupId}")
-    @PreAuthorize("@ownershipGroupService.isGroupMember(authentication.name, #groupId)")
+    @PreAuthorize("@ownershipGroupService.isGroupMember(authentication.name, #groupId) or hasAnyRole('ADMIN','STAFF')")
     @Operation(summary = "Lấy thông tin hợp đồng", description = "Lấy thông tin hợp đồng của nhóm")
     public ResponseEntity<Map<String, Object>> getContractInfo(@PathVariable Long groupId) {
         Map<String, Object> contractInfo = contractService.getContractInfo(groupId);
@@ -124,19 +122,22 @@ public class ContractController {
             summary = "Cập nhật hợp đồng",
             description = "Chỉ admin của nhóm được phép cập nhật hợp đồng. Chỉ có thể sửa khi hợp đồng ở trạng thái PENDING (chưa ký)."
     )
-    public ResponseEntity<Map<String, Object>> updateContract(
+    public ResponseEntity<ApiResponseDTO<ContractUpdateResponseDTO>> updateContract(
             @PathVariable Long groupId,
-            @Valid @RequestBody ContractUpdateRequestDTO request) {
+            @Valid @RequestBody ContractUpdateRequestDTO request,
+            @AuthenticationPrincipal String adminEmail) {
 
         // Validate date range
         if (request.isInvalidDateRange()) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("success", false);
-            error.put("message", "End date must be after start date");
+            ApiResponseDTO<ContractUpdateResponseDTO> error = ApiResponseDTO.<ContractUpdateResponseDTO>builder()
+                    .success(false)
+                    .message("End date must be after start date")
+                    .data(null)
+                    .build();
             return ResponseEntity.badRequest().body(error);
         }
 
-        Map<String, Object> result = contractService.updateContract(groupId, request);
+        ApiResponseDTO<ContractUpdateResponseDTO> result = contractService.updateContract(groupId, request, adminEmail);
 
         return ResponseEntity.ok(result);
     }
@@ -156,11 +157,12 @@ public class ContractController {
             summary = "Cập nhật terms của hợp đồng",
             description = "Cho phép group admin cập nhật nội dung terms khi hợp đồng chưa được tất cả members phê duyệt."
     )
-    public ResponseEntity<Map<String, Object>> updateContractTerms(
+    public ResponseEntity<ApiResponseDTO<ContractUpdateResponseDTO>> updateContractTerms(
             @PathVariable Long groupId,
-            @Valid @RequestBody ContractTermsUpdateRequestDTO request) {
+            @Valid @RequestBody ContractTermsUpdateRequestDTO request,
+            @AuthenticationPrincipal String adminEmail) {
 
-        Map<String, Object> result = contractService.updateContractTerms(groupId, request);
+        ApiResponseDTO<ContractUpdateResponseDTO> result = contractService.updateContractTerms(groupId, request, adminEmail);
         return ResponseEntity.ok(result);
     }
 
@@ -252,13 +254,13 @@ public class ContractController {
             summary = "Member agree/disagree với contract",
             description = "Member có thể agree hoặc disagree với contract. Nếu disagree, phải có lý do."
     )
-    public ResponseEntity<Map<String, Object>> submitMemberFeedback(
+    public ResponseEntity<ApiResponseDTO<SubmitMemberFeedbackResponseDTO>> submitMemberFeedback(
             @PathVariable Long contractId,
             @Valid @RequestBody com.group8.evcoownership.dto.ContractMemberFeedbackRequestDTO request,
             @AuthenticationPrincipal String userEmail) {
         
         Long userId = contractService.getUserIdByEmail(userEmail);
-        Map<String, Object> result = contractService.submitMemberFeedback(contractId, userId, request);
+        ApiResponseDTO<SubmitMemberFeedbackResponseDTO> result = contractService.submitMemberFeedback(contractId, userId, request);
         return ResponseEntity.ok(result);
     }
 
