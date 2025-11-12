@@ -81,48 +81,41 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     /**
      * Repository for Payment History
      */
+
     @Query("""
-        SELECT p FROM Payment p
-        JOIN p.fund f
-        JOIN f.group g
-        WHERE p.payer.userId = :userId
-          AND g.groupId = :groupId
-          AND (:status IS NULL OR p.status = :status)
-          AND (:ptype IS NULL OR p.paymentType = :ptype)
-          AND (:ftype IS NULL OR f.fundType = :ftype)
-          AND (:fromAt IS NULL OR p.paymentDate >= :fromAt)
-          AND (:toAt   IS NULL OR p.paymentDate <= :toAt)
-    """)
-    Page<Payment> searchPersonalHistory(
+  SELECT p FROM Payment p
+  JOIN p.fund f
+  JOIN f.group g
+  WHERE p.payer.userId = :userId
+    AND g.groupId = :groupId
+    AND p.status = com.group8.evcoownership.enums.PaymentStatus.COMPLETED
+    AND (:fromAt IS NULL OR p.paymentDate >= :fromAt)
+    AND (:toAt   IS NULL OR p.paymentDate <= :toAt)
+""")
+    Page<Payment> searchPersonalHistoryCompleted(
             @Param("userId") Long userId,
             @Param("groupId") Long groupId,
-            @Param("status") PaymentStatus status,
-            @Param("ptype") PaymentType paymentType,
-            @Param("ftype") FundType fundType,
             @Param("fromAt") LocalDateTime fromAt,
             @Param("toAt") LocalDateTime toAt,
             Pageable pageable
     );
 
     @Query("""
-        SELECT COALESCE(SUM(p.amount), 0) FROM Payment p
-        JOIN p.fund f
-        JOIN f.group g
-        WHERE p.payer.userId = :userId
-          AND g.groupId = :groupId
-          AND p.status = com.group8.evcoownership.enums.PaymentStatus.COMPLETED
-          AND (:ptype IS NULL OR p.paymentType = :ptype)
-          AND (:ftype IS NULL OR f.fundType = :ftype)
-          AND (:fromAt IS NULL OR p.paymentDate >= :fromAt)
-          AND (:toAt   IS NULL OR p.paymentDate <= :toAt)
-    """)
+  SELECT COALESCE(SUM(p.amount), 0) FROM Payment p
+  JOIN p.fund f
+  JOIN f.group g
+  WHERE p.payer.userId = :userId
+    AND g.groupId = :groupId
+    AND p.status = com.group8.evcoownership.enums.PaymentStatus.COMPLETED
+    AND (:fromAt IS NULL OR p.paymentDate >= :fromAt)
+    AND (:toAt   IS NULL OR p.paymentDate <= :toAt)
+""")
     BigDecimal sumPersonalCompleted(
             @Param("userId") Long userId,
             @Param("groupId") Long groupId,
-            @Param("ptype") PaymentType paymentType,
-            @Param("ftype") FundType fundType,
             @Param("fromAt") LocalDateTime fromAt,
             @Param("toAt") LocalDateTime toAt
     );
+
 
 }

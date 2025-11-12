@@ -1,9 +1,7 @@
 package com.group8.evcoownership.controller;
 
-import com.group8.evcoownership.dto.PaymentRequestDTO;
-import com.group8.evcoownership.dto.PaymentResponseDTO;
-import com.group8.evcoownership.dto.PaymentStatusUpdateRequestDTO;
-import com.group8.evcoownership.dto.UpdatePaymentRequestDTO;
+import com.group8.evcoownership.dto.*;
+import com.group8.evcoownership.entity.Payment;
 import com.group8.evcoownership.service.PaymentService;
 import com.group8.evcoownership.service.VnPay_PaymentService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,6 +17,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
+import static jdk.jfr.FlightRecorder.isInitialized;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/payments")
@@ -29,6 +29,26 @@ public class PaymentController {
     private final PaymentService paymentService;
     private final VnPay_PaymentService vnPayService;
 
+    /**
+     * Lay lich su giao dich cua 1 user
+     */
+    @GetMapping("/history")
+    @Operation(
+            summary = "Lịch sử giao dịch đã hoàn tất của 1 user trong 1 group",
+            description = "Chỉ trả các Payment có status=COMPLETED; không lọc theo paymentType. " +
+                    "Query: userId, groupId, fromDate/toDate (yyyy-MM-dd), page, size."
+    )
+    @PreAuthorize("hasAnyRole('CO_OWNER')")
+    public ResponseEntity<PaymentHistoryResponseDTO> getPaymentHistory(
+            @Valid @ModelAttribute PaymentHistoryBasicRequestDTO q) {
+        // @ModelAttribute sẽ tự bind query string vào DTO (kể cả fromDate/toDate)
+        return ResponseEntity.ok(paymentService.getPersonalHistory(q));
+    }
+
+
+    /**
+     * Tao thanh toan
+     */
     @PostMapping
     @Operation(summary = "Tạo thanh toán", description = "Tạo một giao dịch thanh toán mới và sinh URL thanh toán VNPay")
     @PreAuthorize("hasAnyRole('STAFF','ADMIN', 'CO_OWNER')")
