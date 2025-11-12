@@ -59,7 +59,7 @@ public class PaymentService {
                 q.getUserId(), q.getGroupId(), q.getFromAt(), q.getToAt(), pageable);
 
         // MAP sang item DTO
-        var items = pageResult.getContent().stream()
+        List<PaymentHistoryItemDTO> items = pageResult.getContent().stream()
                 .map(this::toHistoryItem)
                 .toList();
 

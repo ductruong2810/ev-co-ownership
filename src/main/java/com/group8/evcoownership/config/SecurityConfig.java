@@ -51,6 +51,7 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/api/auth/**",
                                 "/api/funds/**",
+                                "/api/funds/payments/**",
                                 "/api/payments/**",
                                 "/api/auth/vnpay/**",
                                 "/api/disputes/**",
