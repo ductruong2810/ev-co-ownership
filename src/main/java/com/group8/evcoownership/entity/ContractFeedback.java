@@ -1,6 +1,7 @@
 package com.group8.evcoownership.entity;
 
 import com.group8.evcoownership.enums.MemberFeedbackStatus;
+import com.group8.evcoownership.enums.ReactionType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -32,11 +33,15 @@ public class ContractFeedback {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "Status", nullable = false)
-    private MemberFeedbackStatus status; // APPROVED, REJECTED
+    private MemberFeedbackStatus status; // PENDING, APPROVED, REJECTED
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "ReactionType")
+    private ReactionType reactionType; // AGREE, DISAGREE (có khi status = PENDING, APPROVED, hoặc REJECTED)
 
     @Nationalized
     @Column(name = "Reason", length = 1000)
-    private String reason; // Lý do approve/reject (bắt buộc nếu REJECTED)
+    private String reason; // Lý do (bắt buộc nếu reactionType = DISAGREE)
 
     @Column(name = "SubmittedAt", nullable = false)
     private LocalDateTime submittedAt;
