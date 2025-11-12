@@ -41,7 +41,7 @@ public class ContractController {
      * 3. Danh sách thành viên (tên, email, vai trò, % sở hữu, trạng thái cọc, ...)
      */
     @GetMapping("/{groupId}/details")
-    @PreAuthorize("@ownershipGroupService.isGroupMember(authentication.name, #groupId)")
+    @PreAuthorize("@ownershipGroupService.isGroupMember(authentication.name, #groupId) or hasAnyRole('ADMIN','STAFF')")
     @Operation(
             summary = "Xem chi tiết hợp đồng",
             description = "Trả về thông tin hợp đồng, nhóm và danh sách thành viên trong nhóm"
@@ -61,7 +61,7 @@ public class ContractController {
      * Lấy thông tin contract của group (cho members)
      */
     @GetMapping("/{groupId}")
-    @PreAuthorize("@ownershipGroupService.isGroupMember(authentication.name, #groupId)")
+    @PreAuthorize("@ownershipGroupService.isGroupMember(authentication.name, #groupId) or hasAnyRole('ADMIN','STAFF')")
     @Operation(summary = "Lấy thông tin hợp đồng", description = "Lấy thông tin hợp đồng của nhóm")
     public ResponseEntity<Map<String, Object>> getContractInfo(@PathVariable Long groupId) {
         Map<String, Object> contractInfo = contractService.getContractInfo(groupId);
