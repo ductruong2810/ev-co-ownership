@@ -27,5 +27,9 @@ public interface ContractFeedbackRepository extends JpaRepository<ContractFeedba
     long countByContractIdAndReactionType(Long contractId, ReactionType reactionType);
     
     long countByContractIdAndStatusAndReactionType(Long contractId, MemberFeedbackStatus status, ReactionType reactionType);
+    
+    List<ContractFeedback> findByContractIdAndIsProcessed(Long contractId, Boolean isProcessed);
+    
+    long countByContractIdAndIsProcessed(Long contractId, Boolean isProcessed);
 }
 

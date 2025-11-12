@@ -33,15 +33,18 @@ public class ContractFeedback {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "Status", nullable = false)
-    private MemberFeedbackStatus status; // PENDING, APPROVED, REJECTED
+    private MemberFeedbackStatus status; // PENDING (DISAGREE), ACCEPTED (AGREE), APPROVED, REJECTED
 
     @Enumerated(EnumType.STRING)
     @Column(name = "ReactionType")
-    private ReactionType reactionType; // AGREE, DISAGREE (có khi status = PENDING, APPROVED, hoặc REJECTED)
+    private ReactionType reactionType; // AGREE → ACCEPTED, DISAGREE → PENDING
 
     @Nationalized
     @Column(name = "Reason", length = 1000)
     private String reason; // Lý do (bắt buộc nếu reactionType = DISAGREE)
+
+    @Column(name = "IsProcessed", nullable = false)
+    private Boolean isProcessed = false; // Đã được admin xử lý (approve/reject) chưa
 
     @Column(name = "SubmittedAt", nullable = false)
     private LocalDateTime submittedAt;
