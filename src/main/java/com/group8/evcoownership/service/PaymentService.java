@@ -1,8 +1,6 @@
 package com.group8.evcoownership.service;
 
-import com.group8.evcoownership.dto.PaymentRequestDTO;
-import com.group8.evcoownership.dto.PaymentResponseDTO;
-import com.group8.evcoownership.dto.UpdatePaymentRequestDTO;
+import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.entity.Payment;
 import com.group8.evcoownership.entity.SharedFund;
 import com.group8.evcoownership.entity.User;
@@ -37,6 +35,73 @@ public class PaymentService {
     private final SharedFundRepository fundRepo;
     private final FundService fundService;
     private final NotificationOrchestrator notificationOrchestrator;
+
+
+    /**
+     * Ham lay lich su giao dich ca nhan trong nhom
+     */
+    // Trong PaymentService
+    @Transactional(readOnly = true)
+    public PaymentHistoryResponseDTO getPersonalHistory(PaymentHistoryBasicRequestDTO q) {
+        // Chuẩn hoá page/size
+        int page = Math.max(0, q.getPage());
+        int size = Math.min(Math.max(1, q.getSize()), 200);
+
+        // Sắp xếp: mới nhất trước (paymentDate DESC, rồi id DESC để ổn định)
+        Pageable pageable = PageRequest.of(
+                page, size,
+                Sort.by(Sort.Direction.DESC, "paymentDate")
+                        .and(Sort.by(Sort.Direction.DESC, "id"))
+        );
+
+        // LẤY DANH SÁCH: chỉ COMPLETED, không lọc paymentType
+        var pageResult = paymentRepo.searchPersonalHistoryCompleted(
+                q.getUserId(), q.getGroupId(), q.getFromAt(), q.getToAt(), pageable);
+
+        // MAP sang item DTO
+        var items = pageResult.getContent().stream()
+                .map(this::toHistoryItem)
+                .toList();
+
+        // TỔNG TIỀN: chỉ cộng các payment COMPLETED trong cùng khung ngày
+        var totalCompleted = paymentRepo.sumPersonalCompleted(
+                q.getUserId(), q.getGroupId(), q.getFromAt(), q.getToAt());
+
+        // GÓI response (có phân trang + tổng tiền)
+        return PaymentHistoryResponseDTO.builder()
+                .userId(q.getUserId())
+                .groupId(q.getGroupId())
+                .page(page)
+                .size(size)
+                .total(pageResult.getTotalElements())       // tổng bản ghi khớp filter
+                .totalCompletedAmount(totalCompleted)       // tổng tiền đã hoàn tất
+                .items(items)
+                .build();
+    }
+
+
+
+    /**
+     *  Helper for Payment History\
+     *  Mapper nhỏ: Payment -> PaymentHistoryItemDTO
+     */
+    // ====== Mapper nhỏ: Payment -> PaymentHistoryItemDTO ======
+    private PaymentHistoryItemDTO toHistoryItem(Payment p) {
+        Long fundId = (p.getFund() != null) ? p.getFund().getFundId() : null;
+
+        return PaymentHistoryItemDTO.builder()
+                .paymentId(p.getId())
+                .fundId(fundId)
+                .amount(p.getAmount())
+                .paymentMethod(p.getPaymentMethod())
+                .status(p.getStatus() != null ? p.getStatus().name() : null)
+                .paymentType(p.getPaymentType() != null ? p.getPaymentType().name() : null)
+                .transactionCode(p.getTransactionCode())
+                .paymentDate(p.getPaymentDate())
+                .build();
+    }
+    // ====================================================================================
+
 
     // Map Entity -> DTO
     private PaymentResponseDTO toDto(Payment p) {

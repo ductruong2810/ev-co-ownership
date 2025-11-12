@@ -6,6 +6,7 @@ import com.group8.evcoownership.enums.DepositStatus;
 import com.group8.evcoownership.enums.FundType;
 import com.group8.evcoownership.enums.PaymentStatus;
 import com.group8.evcoownership.enums.PaymentType;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -19,6 +20,7 @@ import java.util.Optional;
 
 @Repository
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
+
 
     // Dùng cho list trả về List (áp dụng limit/offset/sort qua Pageable)
     List<Payment> findAllBy(Pageable pageable);
@@ -74,6 +76,46 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
                               @Param("fundType") FundType fundType,
                               @Param("from") LocalDateTime from,
                               @Param("to")   LocalDateTime to);
+
+
+    /**
+     * Repository for Payment History
+     */
+
+    @Query("""
+  SELECT p FROM Payment p
+  JOIN p.fund f
+  JOIN f.group g
+  WHERE p.payer.userId = :userId
+    AND g.groupId = :groupId
+    AND p.status = com.group8.evcoownership.enums.PaymentStatus.COMPLETED
+    AND (:fromAt IS NULL OR p.paymentDate >= :fromAt)
+    AND (:toAt   IS NULL OR p.paymentDate <= :toAt)
+""")
+    Page<Payment> searchPersonalHistoryCompleted(
+            @Param("userId") Long userId,
+            @Param("groupId") Long groupId,
+            @Param("fromAt") LocalDateTime fromAt,
+            @Param("toAt") LocalDateTime toAt,
+            Pageable pageable
+    );
+
+    @Query("""
+  SELECT COALESCE(SUM(p.amount), 0) FROM Payment p
+  JOIN p.fund f
+  JOIN f.group g
+  WHERE p.payer.userId = :userId
+    AND g.groupId = :groupId
+    AND p.status = com.group8.evcoownership.enums.PaymentStatus.COMPLETED
+    AND (:fromAt IS NULL OR p.paymentDate >= :fromAt)
+    AND (:toAt   IS NULL OR p.paymentDate <= :toAt)
+""")
+    BigDecimal sumPersonalCompleted(
+            @Param("userId") Long userId,
+            @Param("groupId") Long groupId,
+            @Param("fromAt") LocalDateTime fromAt,
+            @Param("toAt") LocalDateTime toAt
+    );
 
 
 }
