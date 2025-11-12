@@ -157,9 +157,11 @@ public class UserDocumentService {
     private UserDocument uploadSingleSideWithDocNumber(
             Long userId, String documentType, String side,
             MultipartFile file, String documentNumber, UserDocumentInfoDTO documentInfo) {
-        log.info("📄 Uploading: userId={}, type={}, side={}, docNumber={}",
+
+        log.info("Uploading: userId={}, type={}, side={}, docNumber={}",
                 userId, documentType, side, documentNumber);
-        // 1. Check xem documentNumber có thuộc user khác không
+
+        // 1. Check duplicate với user khác
         if (documentNumber != null && !documentNumber.isEmpty()) {
             Optional<UserDocument> otherUserDoc = userDocumentRepository
                     .findByDocumentNumber(documentNumber)
@@ -173,62 +175,58 @@ public class UserDocumentService {
             }
         }
 
-        // 2. Xóa TẤT CẢ documents cũ của user này với documentNumber hoặc (documentType + side)
-        List<UserDocument> toDelete = new ArrayList<>();
-
-        // Xóa theo documentNumber (nếu có)
-        if (documentNumber != null && !documentNumber.isEmpty()) {
-            toDelete.addAll(userDocumentRepository
-                    .findByUserIdAndDocumentNumber(userId, documentNumber));
-        }
-
-        // Xóa theo documentType + side
+        // 2. CHỈ XÓA DOCUMENT CỦA CÙNG SIDE
         userDocumentRepository
                 .findByUserIdAndDocumentTypeAndSide(userId, documentType, side)
-                .ifPresent(toDelete::add);
-
-        // Xóa duplicate entries
-        toDelete.stream()
-                .distinct()
-                .forEach(doc -> {
-                    log.info("Deleting: docId={}, docNumber={}, side={}",
-                            doc.getDocumentId(), doc.getDocumentNumber(), doc.getSide());
+                .ifPresent(oldDoc -> {
+                    log.info("Deleting old document: docId={}, side={}",
+                            oldDoc.getDocumentId(), oldDoc.getSide());
 
                     try {
-                        azureBlobStorageService.deleteFile(doc.getImageUrl());
+                        azureBlobStorageService.deleteFile(oldDoc.getImageUrl());
                     } catch (Exception e) {
                         log.warn("Failed to delete Azure file: {}", e.getMessage());
                     }
 
-                    userDocumentRepository.delete(doc);
+                    userDocumentRepository.delete(oldDoc);
                 });
 
-        // 3. Flush để đảm bảo xóa hoàn tất trước khi insert
+        // 3. Flush để đảm bảo xóa hoàn tất
         userDocumentRepository.flush();
 
         // 4. Upload file mới
         String fileUrl = azureBlobStorageService.uploadFile(file);
+
+        // 5. CHỈ LƯU documentNumber CHO FRONT
+        String savedDocNumber = "FRONT".equals(side)
+                ? (documentNumber != null ? documentNumber : "")
+                : "";
 
         UserDocument document = UserDocument.builder()
                 .userId(userId)
                 .documentType(documentType)
                 .side(side)
                 .imageUrl(fileUrl)
-                .documentNumber(documentNumber)
+                .documentNumber(savedDocNumber)
                 .status("PENDING")
-                .dateOfBirth(documentInfo.dateOfBirth())
-                .issueDate(documentInfo.issueDate())
-                .expiryDate(documentInfo.expiryDate())
-                .address(documentInfo.address())
+                // Chuyển null thành "" trước khi set
+                .dateOfBirth("FRONT".equals(side) && documentInfo.dateOfBirth() != null
+                        ? documentInfo.dateOfBirth()
+                        : "")
+                .issueDate("FRONT".equals(side) && documentInfo.issueDate() != null
+                        ? documentInfo.issueDate()
+                        : "")
+                .expiryDate("FRONT".equals(side) && documentInfo.expiryDate() != null
+                        ? documentInfo.expiryDate()
+                        : "")
+                .address("BACK".equals(side) && documentInfo.address() != null
+                        ? documentInfo.address()
+                        : "")
                 .build();
-
-        log.info("💾 Saving: docId={}, side={}, docNumber={}, dob={}, issue={}, expiry={}, address={}",
-                document.getDocumentId(), document.getSide(), document.getDocumentNumber(),
-                document.getDateOfBirth(), document.getIssueDate(),
-                document.getExpiryDate(), document.getAddress());
 
         return userDocumentRepository.save(document);
     }
+
 
     // ================= OCR HELPER METHODS =================
 
