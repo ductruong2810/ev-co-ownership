@@ -57,30 +57,32 @@ public class VnPay_PaymentService {
         long amount = fee * 100L;
         Map<String, String> vnpParamsMap = getVNPayConfig();
 
-        String returnUrl = isDeposit ? this.vnp_DepositReturnUrl : this.vnp_ReturnUrl;
+        // 1) Chọn callback BE theo loại giao dịch
+        String baseReturn = isDeposit ? this.vnp_DepositReturnUrl : this.vnp_ReturnUrl;
 
-        // Nếu là deposit thì thêm groupId (ưu tiên từ param truyền vào)
-        if (isDeposit) {
-            String effectiveGroupId = (groupId != null) ? String.valueOf(groupId) : request.getParameter("groupId");
-            if (effectiveGroupId == null || effectiveGroupId.isEmpty()) {
-                System.err.println("[VNPay] groupId missing — fallback to 0");
-                effectiveGroupId = "0";
-            }
-            returnUrl = returnUrl + "?groupId=" + effectiveGroupId;
-        }
+        // 2) Lấy groupId & type để gửi kèm cho callback
+        String gid  = (groupId != null) ? String.valueOf(groupId) : request.getParameter("groupId");
+        if (gid == null || gid.isEmpty()) gid = "0";          // hoặc throw nếu muốn bắt buộc
+        String type = isDeposit ? "deposit" : "fund";
 
-        vnpParamsMap.put("vnp_ReturnUrl", returnUrl);
+        // 3) Luôn append groupId + type vào returnUrl (dùng ? hoặc & cho đúng cú pháp)
+        String joiner   = baseReturn.contains("?") ? "&" : "?";
+        String returnUrl = baseReturn + joiner + "groupId=" + gid + "&type=" + type;
+
+        // 4) Set tham số bắt buộc của VNPay
+        vnpParamsMap.put("vnp_ReturnUrl", returnUrl);         // getPaymentURL sẽ URL-encode value này
         vnpParamsMap.put("vnp_Amount", String.valueOf(amount));
         vnpParamsMap.put("vnp_IpAddr", getIpAddress(request));
         vnpParamsMap.put("vnp_TxnRef", txnRef);
 
-        String queryUrl = getPaymentURL(vnpParamsMap, true);
-        String hashData = getPaymentURL(vnpParamsMap, false);
-        String vnpSecureHash = hmacSHA512(secretKey, hashData);
-        queryUrl += "&vnp_SecureHash=" + vnpSecureHash;
+        String queryUrl   = getPaymentURL(vnpParamsMap, true);
+        String hashData   = getPaymentURL(vnpParamsMap, false);
+        String vnpHash    = hmacSHA512(secretKey, hashData);
+        queryUrl += "&vnp_SecureHash=" + vnpHash;
 
         return vnp_PayUrl + "?" + queryUrl;
     }
+
 
 
     /**
@@ -88,22 +90,25 @@ public class VnPay_PaymentService {
      * Ở dự án EV Co-ownership, thực tế bạn dùng DepositController.depositCallback()
      * để xử lý cập nhật Payment/OwnershipShare → nên hàm này chỉ cần redirect đơn giản
      */
-    public void handlePaymentCallBack(HttpServletRequest request, HttpServletResponse response) throws Exception {
-        String status = request.getParameter("vnp_ResponseCode");
-        String txnRef = request.getParameter("vnp_TxnRef");
-        String groupId = request.getParameter("groupId");
+    public void handlePaymentCallBack(HttpServletRequest req, HttpServletResponse res) throws Exception {
+        String respCode = req.getParameter("vnp_ResponseCode");
+        String txnRef   = req.getParameter("vnp_TxnRef");
+        String groupId  = req.getParameter("groupId");
+        String type     = req.getParameter("type"); // "fund" | "deposit"
 
-        // Dựa theo groupId redirect về đúng trang FE trong dashboard
-        String redirectUrl = String.format(
-                "%s/dashboard/viewGroups/%s/payment-result?status=%s&txnRef=%s",
+        String status = "00".equals(respCode) ? "success" : "fail";
+
+        String redirect = String.format(
+                "%s/dashboard/viewGroups/%s/payment-result?type=%s&status=%s&txnRef=%s",
                 frontendUrl,
-                groupId != null ? groupId : "unknown",
-                "00".equals(status) ? "success" : "fail",
-                txnRef != null ? txnRef : ""
+                (groupId != null ? groupId : "unknown"),
+                (type != null ? type : "fund"),
+                status,
+                (txnRef != null ? txnRef : "")
         );
-
-        response.sendRedirect(redirectUrl);
+        res.sendRedirect(redirect);
     }
+
 
 
     private Map<String, String> getVNPayConfig() {
