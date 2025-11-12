@@ -165,4 +165,33 @@ public class AdminContractController {
                 contractService.getContractsByStatus(ContractApprovalStatus.PENDING_MEMBER_APPROVAL);
         return ResponseEntity.ok(contracts);
     }
+
+    /**
+     * ADMIN-ONLY: Approve một feedback cụ thể
+     */
+    @PutMapping("/feedbacks/{feedbackId}/approve")
+    @Operation(
+            summary = "Approve feedback",
+            description = "Admin approve một feedback cụ thể. Chỉ có thể approve feedbacks có status = PENDING."
+    )
+    public ResponseEntity<Map<String, Object>> approveFeedback(@PathVariable Long feedbackId) {
+        Map<String, Object> result = contractService.approveFeedback(feedbackId);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * ADMIN-ONLY: Reject một feedback cụ thể
+     */
+    @PutMapping("/feedbacks/{feedbackId}/reject")
+    @Operation(
+            summary = "Reject feedback",
+            description = "Admin reject một feedback cụ thể. Chỉ có thể reject feedbacks có status = PENDING."
+    )
+    public ResponseEntity<Map<String, Object>> rejectFeedback(
+            @PathVariable Long feedbackId,
+            @RequestParam(required = false) String adminNote
+    ) {
+        Map<String, Object> result = contractService.rejectFeedback(feedbackId, adminNote);
+        return ResponseEntity.ok(result);
+    }
 }

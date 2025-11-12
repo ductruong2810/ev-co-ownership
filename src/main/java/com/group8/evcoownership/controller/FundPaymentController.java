@@ -64,7 +64,7 @@ public class FundPaymentController {
     public ResponseEntity<FundTopupResponseDTO> confirmFundTopup(
             @ParameterObject HttpServletRequest request,
             @RequestParam("vnp_TxnRef") String txnRef,
-            @RequestParam("vnp_TransactionNo") String transactionNo
+            @RequestParam("vnp_TxnRef") String transactionNo
     ) {
         // Nếu bạn verify chữ ký ở Controller, truyền request.getParameterMap() vào Service.
         return ResponseEntity.ok(fundPaymentService.confirmFundTopup(txnRef, transactionNo));

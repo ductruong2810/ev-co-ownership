@@ -1,7 +1,8 @@
 package com.group8.evcoownership.enums;
 
 public enum MemberFeedbackStatus {
-    APPROVED,   // Member đồng ý với hợp đồng
-    REJECTED    // Member từ chối hợp đồng (cần lý do)
+    PENDING,    // Member mới nộp feedback (chưa được admin xử lý)
+    APPROVED,   // Admin đã chấp nhận và chỉnh sửa contract dựa trên feedback
+    REJECTED    // Admin từ chối, không chỉnh sửa contract (trả về không sửa được)
 }
 

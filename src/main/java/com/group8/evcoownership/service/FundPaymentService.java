@@ -31,7 +31,7 @@ import java.util.UUID;
 public class FundPaymentService {
 
     private final FundService fundService;
-
+    private final DepositPaymentService depositPaymentService;
     private final PaymentRepository paymentRepository;
     private final OwnershipShareRepository shareRepository;
     private final ContractRepository contractRepository;
@@ -107,7 +107,7 @@ public class FundPaymentService {
         // (tuỳ chọn) kiểm tra req.groupId() khớp group của fund
 
         // 2) Sinh txnRef duy nhất
-        String txnRef = uniqueTxnRef();
+        String txnRef = depositPaymentService.generateUniqueTxnRef();
 
         // 3) Lưu Payment ở trạng thái PENDING
         Payment payment = new Payment();
@@ -119,10 +119,12 @@ public class FundPaymentService {
         payment.setPaymentDate(LocalDateTime.now());
         payment.setPaymentMethod("VNPAY");                     // nếu cột này NOT NULL
         payment.setPayer(user);
-        payment.setPaymentCategory("PERSONAL");
-        payment.setPersonalReason("CONTRIBUTION"); // KHI DE PERSONAL --> FIELD NAY NOT NULL
-        payment.setChargedUser(user);// KHI DE PERSONAL --> FIELD NAY NOT NULL
+        payment.setPaymentCategory("GROUP");
+//        payment.setPaymentCategory("PERSONAL");
+//        payment.setPersonalReason("CONTRIBUTION"); // KHI DE PERSONAL --> FIELD NAY NOT NULL
+//        payment.setChargedUser(user);// KHI DE PERSONAL --> FIELD NAY NOT NULL
 
+        payment = paymentRepository.save(payment);
 
         Long actorId = extractUserId(auth);
         // nếu Payment có payer (User) thì set vào, nếu không thì thôi:
@@ -136,9 +138,8 @@ public class FundPaymentService {
         // 5) Trả response
         return FundTopupResponseDTO.builder()
                 .paymentId(payment.getId())
-                .userId(user.getUserId())
+                .userId(payment.getPayer().getUserId())
                 .groupId(fund.getGroup().getGroupId())
-                .userId(actorId)
                 .amount(request.amount())
                 .status(PaymentStatus.PENDING)
                 .transactionCode(txnRef)
@@ -151,8 +152,8 @@ public class FundPaymentService {
     // =============== CONFIRM (server->server hoặc từ callback public) ===============
     @Transactional
     public FundTopupResponseDTO confirmFundTopup(String txnRef, String transactionNo) {
-        Payment payment = paymentRepository.findByTransactionCode(txnRef)
-                .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + txnRef));
+        Payment payment = depositPaymentService.getLatestPaymentByTxnRef(txnRef);
+
 
         if (payment.getPaymentType() != PaymentType.CONTRIBUTION) {
             throw new IllegalStateException("TxnRef does not belong to FUND_TOPUP");
@@ -198,13 +199,13 @@ public class FundPaymentService {
     }
 
     // =============== Helpers ===============
-    private String uniqueTxnRef() {
-        String tx;
-        do {
-            tx = "FUND-" + UUID.randomUUID().toString().replace("-", "").substring(0, 18);
-        } while (paymentRepository.existsByTransactionCode(tx));
-        return tx;
-    }
+//    private String uniqueTxnRef() {
+//        String tx;
+//        do {
+//            tx = "FUND-" + UUID.randomUUID().toString().replace("-", "").substring(0, 18);
+//        } while (paymentRepository.existsByTransactionCode(tx));
+//        return tx;
+//    }
 
     private Long extractUserId(Authentication auth) {
         if (auth == null || auth.getPrincipal() == null) return null;
