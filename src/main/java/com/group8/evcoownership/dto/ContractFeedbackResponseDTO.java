@@ -1,0 +1,26 @@
+package com.group8.evcoownership.dto;
+
+import com.group8.evcoownership.enums.MemberFeedbackStatus;
+import com.group8.evcoownership.enums.ReactionType;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ContractFeedbackResponseDTO {
+    private Long userId;
+    private String fullName;
+    private String email;
+    private MemberFeedbackStatus status;
+    private Boolean isProcessed;
+    private ReactionType reactionType;
+    private String reason;
+    private LocalDateTime submittedAt;
+}
+

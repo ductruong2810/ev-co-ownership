@@ -1,6 +1,7 @@
 package com.group8.evcoownership.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -19,7 +20,9 @@ public record FundTopupRequestDTO(
         @Schema(description = "ID của group", example = "5")
         String groupId,      // Operating fund
 
-        @NotNull @Min(1000)
+        @NotNull(message = "Amount is required")
+        @Min(value = 10000, message = "Amount must be at least 10,000 VND")
+        @Max(value = 100000000, message = "Amount must not exceed 100,000,000 VND")
         BigDecimal amount,
 
         String note
