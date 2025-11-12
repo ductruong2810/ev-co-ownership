@@ -1,8 +1,8 @@
 package com.group8.evcoownership.dto;
 
+import com.group8.evcoownership.enums.FeedbackAdminAction;
 import com.group8.evcoownership.enums.MemberFeedbackStatus;
 import com.group8.evcoownership.enums.ReactionType;
-import com.group8.evcoownership.enums.FeedbackAdminAction;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -14,11 +14,8 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ContractFeedbackResponseDTO {
+public class FeedbackActionResponseDTO {
     private Long feedbackId;
-    private Long userId;
-    private String fullName;
-    private String email;
     private MemberFeedbackStatus status;
     private Boolean isProcessed;
     private Integer approveCount;
@@ -26,7 +23,9 @@ public class ContractFeedbackResponseDTO {
     private FeedbackAdminAction lastAdminAction;
     private LocalDateTime lastAdminActionAt;
     private ReactionType reactionType;
+    private Long userId;
+    private Long contractId;
     private String reason;
-    private LocalDateTime submittedAt;
+    private String adminNote; // Chỉ có khi reject
 }
 

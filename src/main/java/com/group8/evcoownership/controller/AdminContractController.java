@@ -1,8 +1,6 @@
 package com.group8.evcoownership.controller;
 
-import com.group8.evcoownership.dto.ContractApprovalRequestDTO;
-import com.group8.evcoownership.dto.ContractAdminUpdateRequestDTO;
-import com.group8.evcoownership.dto.ContractDTO;
+import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.enums.ContractApprovalStatus;
 import com.group8.evcoownership.service.ContractService;
@@ -15,7 +13,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -33,18 +30,21 @@ public class AdminContractController {
      */
     @PutMapping("/{contractId}")
     @Operation(summary = "Admin update contract (duration + terms)", description = "System admin updates start/end dates and terms together")
-    public ResponseEntity<Map<String, Object>> updateContractByAdmin(
+    public ResponseEntity<ApiResponseDTO<ContractUpdateResponseDTO>> updateContractByAdmin(
             @PathVariable Long contractId,
-            @Valid @RequestBody ContractAdminUpdateRequestDTO request
+            @Valid @RequestBody ContractAdminUpdateRequestDTO request,
+            @AuthenticationPrincipal String adminEmail
     ) {
         if (request.isInvalidDateRange()) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("success", false);
-            error.put("message", "End date must be after start date");
+            ApiResponseDTO<ContractUpdateResponseDTO> error = ApiResponseDTO.<ContractUpdateResponseDTO>builder()
+                    .success(false)
+                    .message("End date must be after start date")
+                    .data(null)
+                    .build();
             return ResponseEntity.badRequest().body(error);
         }
 
-        Map<String, Object> result = contractService.updateContractByAdminByContractId(contractId, request);
+        ApiResponseDTO<ContractUpdateResponseDTO> result = contractService.updateContractByAdminByContractId(contractId, request, adminEmail);
         return ResponseEntity.ok(result);
     }
 
@@ -113,11 +113,11 @@ public class AdminContractController {
      */
     @PostMapping("/{contractId}/resubmit-approval")
     @Operation(summary = "Resubmit contract for member approval", description = "Clear all member feedbacks and notify all group members to review again")
-    public ResponseEntity<Map<String, Object>> resubmitApproval(
+    public ResponseEntity<ApiResponseDTO<ResubmitMemberApprovalResponseDTO>> resubmitApproval(
             @PathVariable Long contractId,
             @RequestParam(required = false) String note
     ) {
-        Map<String, Object> result = contractService.resubmitMemberApproval(contractId, note);
+        ApiResponseDTO<ResubmitMemberApprovalResponseDTO> result = contractService.resubmitMemberApproval(contractId, note);
         return ResponseEntity.ok(result);
     }
     /**
@@ -174,8 +174,8 @@ public class AdminContractController {
             summary = "Approve feedback",
             description = "Admin approve một feedback cụ thể. Chỉ có thể approve feedbacks có status = PENDING."
     )
-    public ResponseEntity<Map<String, Object>> approveFeedback(@PathVariable Long feedbackId) {
-        Map<String, Object> result = contractService.approveFeedback(feedbackId);
+    public ResponseEntity<ApiResponseDTO<FeedbackActionResponseDTO>> approveFeedback(@PathVariable Long feedbackId) {
+        ApiResponseDTO<FeedbackActionResponseDTO> result = contractService.approveFeedback(feedbackId);
         return ResponseEntity.ok(result);
     }
 
@@ -187,11 +187,12 @@ public class AdminContractController {
             summary = "Reject feedback",
             description = "Admin reject một feedback cụ thể. Chỉ có thể reject feedbacks có status = PENDING."
     )
-    public ResponseEntity<Map<String, Object>> rejectFeedback(
+    public ResponseEntity<ApiResponseDTO<FeedbackActionResponseDTO>> rejectFeedback(
             @PathVariable Long feedbackId,
-            @RequestParam(required = false) String adminNote
+            @RequestParam(required = false) String adminNote,
+            @AuthenticationPrincipal String adminEmail
     ) {
-        Map<String, Object> result = contractService.rejectFeedback(feedbackId, adminNote);
+        ApiResponseDTO<FeedbackActionResponseDTO> result = contractService.rejectFeedback(feedbackId, adminNote, adminEmail);
         return ResponseEntity.ok(result);
     }
 }

@@ -19,8 +19,6 @@ public class ContractFeedbacksResponseDTO {
     private Integer totalFeedbacks;
     private Long acceptedCount;
     private Long pendingDisagreeCount;
-    private Long approvedCount;
-    private Long rejectedCount;
     private List<ContractFeedbackResponseDTO> feedbacks;
     private List<PendingMemberDTO> pendingMembers;
 }
