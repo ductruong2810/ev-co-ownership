@@ -168,12 +168,18 @@ public class ContractService {
         contract.setRequiredDepositAmount(calculatedDepositAmount); // Tự động tính toán, không cho phép override
         contract.setUpdatedAt(LocalDateTime.now());
         
+        // Approve tất cả feedbacks PENDING trước (admin đã chỉnh sửa contract)
+        approveMemberFeedbacks(contract.getId());
+
         // Cập nhật terms để phản ánh thay đổi deposit amount và term
         String updatedTerms = updateDepositAmountInTerms(contract.getTerms(), calculatedDepositAmount);
         updatedTerms = updateTermInTerms(updatedTerms, request.startDate(), request.endDate());
         contract.setTerms(updatedTerms);
         
         Contract savedContract = contractRepository.saveAndFlush(contract);
+
+        // Sau đó invalidate để members review lại contract mới
+        invalidateMemberFeedbacks(contract.getId());
 
         // Trả về thông tin
         Map<String, Object> result = new HashMap<>();
@@ -216,10 +222,16 @@ public class ContractService {
 
         validateContractEditable(contract, "Cannot update contract terms: Contract is in %s status. Only PENDING contracts or PENDING_MEMBER_APPROVAL contracts with rejections can be updated.");
 
+        // Approve tất cả feedbacks PENDING trước (admin đã chỉnh sửa contract)
+        approveMemberFeedbacks(contract.getId());
+
         contract.setTerms(request.terms().trim());
         contract.setUpdatedAt(LocalDateTime.now());
 
         Contract savedContract = contractRepository.saveAndFlush(contract);
+
+        // Sau đó invalidate để members review lại contract mới
+        invalidateMemberFeedbacks(contract.getId());
 
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);
@@ -271,7 +283,13 @@ public class ContractService {
         syncedTerms = updateTermInTerms(syncedTerms, request.startDate(), request.endDate());
         contract.setTerms(syncedTerms);
 
+        // Approve tất cả feedbacks PENDING trước (admin đã chỉnh sửa contract)
+        approveMemberFeedbacks(contract.getId());
+        
         Contract saved = contractRepository.saveAndFlush(contract);
+
+        // Sau đó invalidate để members review lại contract mới
+        invalidateMemberFeedbacks(contract.getId());
 
         // Notify all group members that the contract has been updated by admin
         if (notificationOrchestrator != null) {
@@ -323,7 +341,7 @@ public class ContractService {
 
     /**
      * Admin (system) resubmits the contract for member approval without changing content.
-     * Clears all existing member feedbacks and notifies all members to review again.
+     * Invalidates all existing member feedbacks (sets to PENDING) and notifies all members to review again.
      */
     @Transactional
     public Map<String, Object> resubmitMemberApproval(Long contractId, String adminNote) {
@@ -335,8 +353,8 @@ public class ContractService {
             throw new IllegalStateException("Resubmit is only allowed when contract is in PENDING_MEMBER_APPROVAL");
         }
 
-        // Clear all member feedbacks
-        clearMemberFeedbacks(contractId);
+        // Invalidate all member feedbacks (set to PENDING) - members need to review again
+        invalidateMemberFeedbacks(contractId);
 
         contract.setUpdatedAt(LocalDateTime.now());
         Contract saved = contractRepository.saveAndFlush(contract);
@@ -365,7 +383,7 @@ public class ContractService {
         result.put("contractId", saved.getId());
         result.put("groupId", saved.getGroup().getGroupId());
         result.put("approvalStatus", saved.getApprovalStatus());
-        result.put("feedbackCleared", true);
+        result.put("feedbacksInvalidated", true); // Feedbacks set to PENDING, members need to review again
         return result;
     }
     /**
@@ -1343,11 +1361,120 @@ public class ContractService {
                 .toList();
     }
 
-    private void clearMemberFeedbacks(Long contractId) {
+    /**
+     * Approve tất cả feedbacks PENDING của contract (set về APPROVED)
+     * Sử dụng khi admin đã chỉnh sửa contract dựa trên feedbacks
+     */
+    private void approveMemberFeedbacks(Long contractId) {
+        List<ContractFeedback> feedbacks = feedbackRepository.findByContractIdAndStatus(
+                contractId, MemberFeedbackStatus.PENDING);
+        if (!feedbacks.isEmpty()) {
+            feedbacks.forEach(f -> {
+                f.setStatus(MemberFeedbackStatus.APPROVED); // Admin đã chỉnh sửa contract
+                f.setUpdatedAt(LocalDateTime.now());
+            });
+            feedbackRepository.saveAll(feedbacks);
+        }
+    }
+
+    /**
+     * Reject tất cả feedbacks PENDING của contract (set về REJECTED)
+     * Sử dụng khi admin quyết định không chỉnh sửa contract (trả về không sửa được)
+     */
+    public void rejectMemberFeedbacks(Long contractId) {
+        List<ContractFeedback> feedbacks = feedbackRepository.findByContractIdAndStatus(
+                contractId, MemberFeedbackStatus.PENDING);
+        if (!feedbacks.isEmpty()) {
+            feedbacks.forEach(f -> {
+                f.setStatus(MemberFeedbackStatus.REJECTED); // Admin không chỉnh sửa contract
+                f.setUpdatedAt(LocalDateTime.now());
+            });
+            feedbackRepository.saveAll(feedbacks);
+        }
+    }
+
+    /**
+     * Admin approve một feedback cụ thể (theo feedbackId)
+     * Chỉ có thể approve feedbacks có status = PENDING
+     */
+    @Transactional
+    public Map<String, Object> approveFeedback(Long feedbackId) {
+        ContractFeedback feedback = feedbackRepository.findById(feedbackId)
+                .orElseThrow(() -> new ResourceNotFoundException("Feedback not found"));
+        
+        if (feedback.getStatus() != MemberFeedbackStatus.PENDING) {
+            throw new IllegalStateException(
+                    "Only PENDING feedbacks can be approved. Current status: " + feedback.getStatus()
+            );
+        }
+        
+        feedback.setStatus(MemberFeedbackStatus.APPROVED);
+        feedback.setUpdatedAt(LocalDateTime.now());
+        feedbackRepository.save(feedback);
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", true);
+        result.put("message", "Feedback approved successfully");
+        result.put("feedback", Map.of(
+                "feedbackId", feedback.getId(),
+                "status", feedback.getStatus(),
+                "reactionType", feedback.getReactionType(),
+                "userId", feedback.getUser().getUserId(),
+                "contractId", feedback.getContract().getId()
+        ));
+        
+        return result;
+    }
+
+    /**
+     * Admin reject một feedback cụ thể (theo feedbackId)
+     * Chỉ có thể reject feedbacks có status = PENDING
+     */
+    @Transactional
+    public Map<String, Object> rejectFeedback(Long feedbackId, String adminNote) {
+        ContractFeedback feedback = feedbackRepository.findById(feedbackId)
+                .orElseThrow(() -> new ResourceNotFoundException("Feedback not found"));
+        
+        if (feedback.getStatus() != MemberFeedbackStatus.PENDING) {
+            throw new IllegalStateException(
+                    "Only PENDING feedbacks can be rejected. Current status: " + feedback.getStatus()
+            );
+        }
+        
+        feedback.setStatus(MemberFeedbackStatus.REJECTED);
+        feedback.setUpdatedAt(LocalDateTime.now());
+        feedbackRepository.save(feedback);
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", true);
+        result.put("message", "Feedback rejected successfully");
+        result.put("feedback", Map.of(
+                "feedbackId", feedback.getId(),
+                "status", feedback.getStatus(),
+                "reactionType", feedback.getReactionType(),
+                "userId", feedback.getUser().getUserId(),
+                "contractId", feedback.getContract().getId(),
+                "adminNote", adminNote != null ? adminNote : ""
+        ));
+        
+        return result;
+    }
+
+    /**
+     * Invalidate tất cả feedbacks của contract (set về PENDING)
+     * Sử dụng khi admin update contract - members cần review lại contract mới
+     */
+    private void invalidateMemberFeedbacks(Long contractId) {
         List<ContractFeedback> feedbacks =
                 feedbackRepository.findByContractId(contractId);
         if (!feedbacks.isEmpty()) {
-            feedbackRepository.deleteAll(feedbacks);
+            feedbacks.forEach(f -> {
+                f.setStatus(MemberFeedbackStatus.PENDING);
+                f.setReactionType(null); // Clear reaction
+                f.setReason(null); // Clear reason
+                f.setUpdatedAt(LocalDateTime.now());
+            });
+            feedbackRepository.saveAll(feedbacks);
         }
     }
 
@@ -1361,10 +1488,12 @@ public class ContractService {
         }
 
         if (contract.getApprovalStatus() == ContractApprovalStatus.PENDING_MEMBER_APPROVAL) {
-            long rejectionCount = feedbackRepository.countByContractIdAndStatus(
-                    contract.getId(), MemberFeedbackStatus.REJECTED);
+            // Chỉ đếm rejections chưa được admin xử lý (status = PENDING)
+            long rejectionCount = feedbackRepository.countByContractIdAndStatusAndReactionType(
+                    contract.getId(), MemberFeedbackStatus.PENDING, ReactionType.DISAGREE);
             if (rejectionCount > 0) {
-                clearMemberFeedbacks(contract.getId());
+                // Invalidate feedbacks when admin updates contract after rejections
+                invalidateMemberFeedbacks(contract.getId());
                 return;
             }
         }
@@ -1400,13 +1529,13 @@ public class ContractService {
 
         // Validate request
         if (!request.isValid()) {
-            throw new IllegalArgumentException("Invalid feedback. If REJECTED, reason must be at least 10 characters.");
+            throw new IllegalArgumentException("Invalid feedback. If DISAGREE, reason must be at least 10 characters.");
         }
 
-        MemberFeedbackStatus feedbackStatus =
-                "APPROVED".equalsIgnoreCase(request.status()) 
-                    ? MemberFeedbackStatus.APPROVED
-                    : MemberFeedbackStatus.REJECTED;
+        ReactionType reactionType =
+                "AGREE".equalsIgnoreCase(request.reactionType()) 
+                    ? ReactionType.AGREE
+                    : ReactionType.DISAGREE;
 
         // Kiểm tra đã submit feedback chưa
         var existingFeedback = feedbackRepository.findByContractIdAndUser_UserId(contractId, userId);
@@ -1414,7 +1543,8 @@ public class ContractService {
         
         if (existingFeedback.isPresent()) {
             feedback = existingFeedback.get();
-            feedback.setStatus(feedbackStatus);
+            feedback.setStatus(MemberFeedbackStatus.PENDING); // Member mới nộp feedback
+            feedback.setReactionType(reactionType);
             feedback.setReason(request.reason());
             feedback.setUpdatedAt(LocalDateTime.now());
         } else {
@@ -1424,7 +1554,8 @@ public class ContractService {
             feedback = ContractFeedback.builder()
                     .contract(contract)
                     .user(user)
-                    .status(feedbackStatus)
+                    .status(MemberFeedbackStatus.PENDING) // Member mới nộp feedback
+                    .reactionType(reactionType)
                     .reason(request.reason())
                     .build();
         }
@@ -1440,6 +1571,7 @@ public class ContractService {
         result.put("feedback", Map.of(
                 "feedbackId", feedback.getId(),
                 "status", feedback.getStatus(),
+                "reactionType", feedback.getReactionType(),
                 "reason", feedback.getReason() != null ? feedback.getReason() : "",
                 "submittedAt", feedback.getSubmittedAt()
         ));
@@ -1464,13 +1596,14 @@ public class ContractService {
             return;
         }
 
-        // Đếm số members đã approve
-        long approvedCount = feedbackRepository.countByContractIdAndStatus(
+        // Đếm số members đã agree và chưa được admin xử lý (status = PENDING)
+        long approvedCount = feedbackRepository.countByContractIdAndStatusAndReactionType(
                 contract.getId(), 
-                MemberFeedbackStatus.APPROVED
+                MemberFeedbackStatus.PENDING,
+                ReactionType.AGREE
         );
 
-        // Nếu tất cả members đã approve, chuyển sang SIGNED
+        // Nếu tất cả members đã agree, chuyển sang SIGNED
         if (approvedCount == members.size()) {
             contract.setApprovalStatus(ContractApprovalStatus.SIGNED);
             contract.setUpdatedAt(LocalDateTime.now());
@@ -1511,6 +1644,7 @@ public class ContractService {
                     fb.put("fullName", f.getUser().getFullName());
                     fb.put("email", f.getUser().getEmail());
                     fb.put("status", f.getStatus());
+                    fb.put("reactionType", f.getReactionType());
                     fb.put("reason", f.getReason() != null ? f.getReason() : "");
                     fb.put("submittedAt", f.getSubmittedAt());
                     return fb;
@@ -1522,6 +1656,11 @@ public class ContractService {
         result.put("contractStatus", contract.getApprovalStatus());
         result.put("totalMembers", members.size());
         result.put("totalFeedbacks", feedbacks.size());
+        // Đếm feedbacks theo status và reactionType
+        result.put("pendingAgreeCount", feedbackRepository.countByContractIdAndStatusAndReactionType(
+                contractId, MemberFeedbackStatus.PENDING, ReactionType.AGREE));
+        result.put("pendingDisagreeCount", feedbackRepository.countByContractIdAndStatusAndReactionType(
+                contractId, MemberFeedbackStatus.PENDING, ReactionType.DISAGREE));
         result.put("approvedCount", feedbackRepository.countByContractIdAndStatus(
                 contractId, MemberFeedbackStatus.APPROVED));
         result.put("rejectedCount", feedbackRepository.countByContractIdAndStatus(

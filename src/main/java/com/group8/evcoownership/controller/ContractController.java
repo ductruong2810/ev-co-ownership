@@ -147,7 +147,7 @@ public class ContractController {
      * - Group Admin
      * <p>
      * Điều kiện:
-     * - Contract phải ở trạng thái PENDING hoặc PENDING_MEMBER_APPROVAL có phản hồi REJECTED
+     * - Contract phải ở trạng thái PENDING hoặc PENDING_MEMBER_APPROVAL có phản hồi DISAGREE
      */
     @PutMapping("/{groupId}/terms")
     @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
@@ -236,20 +236,20 @@ public class ContractController {
     }
 
     /**
-     * API: Member approve/reject contract
+     * API: Member agree/disagree với contract
      * ------------------------------------------------------------
      * Dành cho:
      * - Members trong nhóm (không phải admin)
      * <p>
      * Điều kiện:
      * - Contract phải ở trạng thái PENDING_MEMBER_APPROVAL
-     * - Nếu REJECTED, phải có lý do (ít nhất 10 ký tự)
+     * - Nếu DISAGREE, phải có lý do (ít nhất 10 ký tự)
      */
     @PostMapping("/{contractId}/member-feedback")
     @PreAuthorize("@ownershipGroupService.isGroupMemberForContract(authentication.name, #contractId)")
     @Operation(
-            summary = "Member approve/reject contract",
-            description = "Member có thể approve hoặc reject contract. Nếu reject, phải có lý do."
+            summary = "Member agree/disagree với contract",
+            description = "Member có thể agree hoặc disagree với contract. Nếu disagree, phải có lý do."
     )
     public ResponseEntity<Map<String, Object>> submitMemberFeedback(
             @PathVariable Long contractId,
