@@ -2,6 +2,7 @@ package com.group8.evcoownership.controller;
 
 import com.group8.evcoownership.dto.ContractUpdateRequestDTO;
 import com.group8.evcoownership.dto.ContractTermsUpdateRequestDTO;
+import com.group8.evcoownership.dto.ContractFeedbacksResponseDTO;
 import com.group8.evcoownership.service.ContractService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -273,10 +274,10 @@ public class ContractController {
             summary = "Get contract member feedbacks",
             description = "Lấy tất cả feedback của members cho contract. Chỉ group admin có quyền xem."
     )
-    public ResponseEntity<Map<String, Object>> getContractMemberFeedbacks(
+    public ResponseEntity<ContractFeedbacksResponseDTO> getContractMemberFeedbacks(
             @PathVariable Long contractId) {
         
-        Map<String, Object> feedbacks = contractService.getContractFeedbacks(contractId);
+        ContractFeedbacksResponseDTO feedbacks = contractService.getContractFeedbacks(contractId);
         return ResponseEntity.ok(feedbacks);
     }
 
@@ -292,10 +293,10 @@ public class ContractController {
             summary = "Get member feedbacks by groupId",
             description = "Lấy tất cả feedback của members theo groupId. Áp dụng cho nhóm có 1 hợp đồng hiện tại."
     )
-    public ResponseEntity<Map<String, Object>> getGroupMemberFeedbacks(
+    public ResponseEntity<ContractFeedbacksResponseDTO> getGroupMemberFeedbacks(
             @PathVariable Long groupId) {
         
-        Map<String, Object> feedbacks = contractService.getContractFeedbacksByGroup(groupId);
+        ContractFeedbacksResponseDTO feedbacks = contractService.getContractFeedbacksByGroup(groupId);
         return ResponseEntity.ok(feedbacks);
     }
 

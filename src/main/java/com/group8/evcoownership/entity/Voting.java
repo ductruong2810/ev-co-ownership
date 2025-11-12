@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.Nationalized;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -27,16 +28,22 @@ public class Voting {
     @Column(name = "Title")
     private String title;
 
-    @Column(name = "Description", columnDefinition = "NVARCHAR(MAX)")
+    @Nationalized
+    @Lob
+    @Column(name = "Description")
     private String description;
 
     @Column(name = "VotingType", length = 50)
     private String votingType;
 
-    @Column(name = "Options", columnDefinition = "NVARCHAR(MAX)")
+    @Nationalized
+    @Lob
+    @Column(name = "Options")
     private String options;
 
-    @Column(name = "Results", columnDefinition = "NVARCHAR(MAX)")
+    @Nationalized
+    @Lob
+    @Column(name = "Results")
     private String results;
 
     @Column(name = "Deadline")
