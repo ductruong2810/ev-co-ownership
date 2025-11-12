@@ -1356,22 +1356,6 @@ public class ContractService {
     }
 
     /**
-     * Reject tất cả feedbacks PENDING của contract (set về REJECTED)
-     * Sử dụng khi admin quyết định không chỉnh sửa contract (trả về không sửa được)
-     */
-    public void rejectMemberFeedbacks(Long contractId) {
-        List<ContractFeedback> feedbacks = feedbackRepository.findByContractIdAndStatus(
-                contractId, MemberFeedbackStatus.PENDING);
-        if (!feedbacks.isEmpty()) {
-            feedbacks.forEach(f -> {
-                f.setStatus(MemberFeedbackStatus.REJECTED); // Admin không chỉnh sửa contract
-                f.setUpdatedAt(LocalDateTime.now());
-            });
-            feedbackRepository.saveAll(feedbacks);
-        }
-    }
-
-    /**
      * Admin approve một feedback cụ thể (theo feedbackId)
      * Chỉ có thể approve feedbacks có status = PENDING
      * Set isProcessed = true và status = PENDING để coowner làm lại
