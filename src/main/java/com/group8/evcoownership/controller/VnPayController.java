@@ -19,7 +19,6 @@ import java.util.Map;
 @RequestMapping("/api/auth/vnpay")
 @RequiredArgsConstructor
 @Tag(name = "VNPay", description = "Tích hợp thanh toán VNPay")
-@PreAuthorize("isAuthenticated()")
 public class VnPayController {
     private final VnPay_PaymentService VnPay_PaymentService;
 
