@@ -119,9 +119,10 @@ public class FundPaymentService {
         payment.setPaymentDate(LocalDateTime.now());
         payment.setPaymentMethod("VNPAY");                     // nếu cột này NOT NULL
         payment.setPayer(user);
-        payment.setPaymentCategory("PERSONAL");
-        payment.setPersonalReason("CONTRIBUTION"); // KHI DE PERSONAL --> FIELD NAY NOT NULL
-        payment.setChargedUser(user);// KHI DE PERSONAL --> FIELD NAY NOT NULL
+        payment.setPaymentCategory("GROUP");
+//        payment.setPaymentCategory("PERSONAL");
+//        payment.setPersonalReason("CONTRIBUTION"); // KHI DE PERSONAL --> FIELD NAY NOT NULL
+//        payment.setChargedUser(user);// KHI DE PERSONAL --> FIELD NAY NOT NULL
 
         payment = paymentRepository.save(payment);
 
