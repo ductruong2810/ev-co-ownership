@@ -13,9 +13,7 @@ import java.util.Optional;
 public interface ContractFeedbackRepository extends JpaRepository<ContractFeedback, Long> {
     
     List<ContractFeedback> findByContractId(Long contractId);
-    
-    List<ContractFeedback> findByContractIdAndStatus(Long contractId, MemberFeedbackStatus status);
-    
+
     Optional<ContractFeedback> findByContractIdAndUser_UserId(Long contractId, Long userId);
     
     boolean existsByContractIdAndUser_UserId(Long contractId, Long userId);
