@@ -198,22 +198,31 @@ public class UserDocumentService {
         String fileUrl = azureBlobStorageService.uploadFile(file);
 
         // 5. CHỈ LƯU documentNumber CHO FRONT
-        String savedDocNumber = "FRONT".equals(side) ? documentNumber : null;
+        String savedDocNumber = "FRONT".equals(side)
+                ? (documentNumber != null ? documentNumber : "")
+                : "";
 
         UserDocument document = UserDocument.builder()
                 .userId(userId)
                 .documentType(documentType)
                 .side(side)
                 .imageUrl(fileUrl)
-                .documentNumber(savedDocNumber)  // CHỈ FRONT mới có documentNumber
+                .documentNumber(savedDocNumber)
                 .status("PENDING")
-                .dateOfBirth("FRONT".equals(side) ? documentInfo.dateOfBirth() : null)
-                .issueDate("FRONT".equals(side) ? documentInfo.issueDate() : null)
-                .expiryDate("FRONT".equals(side) ? documentInfo.expiryDate() : null)
-                .address("BACK".equals(side) ? documentInfo.address() : null)
+                // Chuyển null thành "" trước khi set
+                .dateOfBirth("FRONT".equals(side) && documentInfo.dateOfBirth() != null
+                        ? documentInfo.dateOfBirth()
+                        : "")
+                .issueDate("FRONT".equals(side) && documentInfo.issueDate() != null
+                        ? documentInfo.issueDate()
+                        : "")
+                .expiryDate("FRONT".equals(side) && documentInfo.expiryDate() != null
+                        ? documentInfo.expiryDate()
+                        : "")
+                .address("BACK".equals(side) && documentInfo.address() != null
+                        ? documentInfo.address()
+                        : "")
                 .build();
-
-        log.info("Saving: side={}, docNumber={}", document.getSide(), document.getDocumentNumber());
 
         return userDocumentRepository.save(document);
     }

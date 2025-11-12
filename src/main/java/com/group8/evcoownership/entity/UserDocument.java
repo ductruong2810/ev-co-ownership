@@ -20,43 +20,54 @@ public class UserDocument {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long documentId;
 
+    @Builder.Default
     @Column(name = "DocumentNumber", unique = true)
-    private String documentNumber; // Số CCCD hoặc số GPLX
+    private String documentNumber = ""; //CCCD hoac GPLX
 
+    @Builder.Default
     @Column(name = "DateOfBirth", length = 20)
-    private String dateOfBirth;
+    private String dateOfBirth = "";
 
+    @Builder.Default
     @Column(name = "IssueDate", length = 20)
-    private String issueDate;
+    private String issueDate = "";
 
+    @Builder.Default
     @Column(name = "ExpiryDate", length = 20)
-    private String expiryDate;
+    private String expiryDate = "";
 
+    @Builder.Default
     @Column(name = "Address", columnDefinition = "TEXT")
-    private String address;
+    private String address = "";
 
     @Column(name = "UserId", nullable = false)
     private Long userId;
 
+    @Builder.Default
     @Column(name = "DocumentType", length = 20)
-    private String documentType; // CITIZEN_ID, DRIVER_LICENSE
+    private String documentType = ""; // CITIZEN_ID, DRIVER_LICENSE
 
+    @Builder.Default
     @Column(name = "Side", length = 10)
-    private String side; // FRONT, BACK
+    private String side = ""; // FRONT, BACK
 
+    @Builder.Default
     @Column(name = "ImageUrl", length = 500, nullable = false)
-    private String imageUrl;
+    private String imageUrl = "";
 
     //them vao 23/10/2025
+    @Builder.Default
     @Column(name = "FileHash", length = 64)
-    private String fileHash;
+    private String fileHash = "";
 
+    @Builder.Default
     @Column(name = "Status", length = 20)
-    private String status; // PENDING, APPROVED, REJECTED
+    private String status = ""; // PENDING, APPROVED, REJECTED
 
+    @Builder.Default
     @JsonIgnore
     @Column(name = "ReviewNote")
-    private String reviewNote;
+    private String reviewNote = "";
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ReviewedBy")
