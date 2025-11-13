@@ -192,16 +192,7 @@ public class FundPaymentService {
 //        return tx;
 //    }
 
-    private Long extractUserId(Authentication auth) {
-        if (auth == null || auth.getPrincipal() == null) return null;
-        try {
-            // ĐỔI theo principal của bạn, ví dụ:
-            // return ((UserPrincipal) auth.getPrincipal()).getUserId();
-            return null;
-        } catch (Exception e) {
-            return null;
-        }
-    }
+
 
     private FundTopupResponseDTO map(Payment p, String message) {
         return FundTopupResponseDTO.builder()
