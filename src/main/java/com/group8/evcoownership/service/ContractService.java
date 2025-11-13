@@ -1358,19 +1358,36 @@ public class ContractService {
         Contract contract = contractRepository.findById(contractId)
                 .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
 
-        List<ContractFeedbackHistory> historyEntries =
+        List<ContractFeedbackHistory> allHistoryEntries =
                 feedbackHistoryRepository.findByContractIdOrderByArchivedAtDesc(contractId);
 
-        long totalFeedbacks = feedbackRepository.countByContractId(contractId);
-        long totalMembersSubmitted = feedbackRepository.countDistinctUsersByContractId(contractId);
+        // Chỉ lấy bản ghi mới nhất của mỗi feedback để tránh hiển thị trùng lặp
+        // (một feedback có thể bị reject nhiều lần, mỗi lần tạo một bản ghi history mới)
+        Map<Long, ContractFeedbackHistory> latestHistoryByFeedback = allHistoryEntries.stream()
+                .collect(Collectors.toMap(
+                        entry -> entry.getFeedback().getId(),
+                        entry -> entry,
+                        (existing, replacement) -> existing // Giữ lại bản ghi đầu tiên (mới nhất vì đã sort DESC)
+                ));
+        
+        List<ContractFeedbackHistory> historyEntries = new ArrayList<>(latestHistoryByFeedback.values());
+
+        // Đếm từ history để có số liệu chính xác (không bị ảnh hưởng bởi việc reset feedback)
+        long totalFeedbacks = feedbackHistoryRepository.countDistinctFeedbacksByContractId(contractId);
+        long totalMembersSubmitted = feedbackHistoryRepository.countDistinctUsersByContractId(contractId);
+        long approvedFeedbacksCount = feedbackHistoryRepository.countByContractIdAndHistoryAction(
+                contractId, FeedbackHistoryAction.ADMIN_APPROVE);
+        long rejectedFeedbacksCount = feedbackHistoryRepository.countByContractIdAndHistoryAction(
+                contractId, FeedbackHistoryAction.ADMIN_REJECT);
+        
+        // Đếm trạng thái hiện tại từ feedback (không từ history)
         long acceptedCount = feedbackRepository.countByContractIdAndStatusAndReactionType(
                 contractId, MemberFeedbackStatus.ACCEPTED, ReactionType.AGREE);
         long pendingDisagreeCount = feedbackRepository.countByContractIdAndStatusAndReactionType(
                 contractId, MemberFeedbackStatus.PENDING, ReactionType.DISAGREE);
-        long approvedFeedbacksCount = feedbackRepository.countByContractIdAndLastAdminAction(
-                contractId, FeedbackAdminAction.APPROVE);
-        long rejectedFeedbacksCount = feedbackRepository.countByContractIdAndLastAdminAction(
-                contractId, FeedbackAdminAction.REJECT);
+
+        // Sort lại theo archivedAt DESC để hiển thị đúng thứ tự
+        historyEntries.sort((a, b) -> b.getArchivedAt().compareTo(a.getArchivedAt()));
 
         List<ContractFeedbackHistoryItemDTO> historyItems = historyEntries.stream()
                 .map(entry -> ContractFeedbackHistoryItemDTO.builder()
@@ -1497,6 +1514,15 @@ public class ContractService {
         if (feedback.getStatus() != MemberFeedbackStatus.PENDING) {
             throw new IllegalStateException(
                     "Only PENDING feedbacks can be rejected. Current status: " + feedback.getStatus()
+            );
+        }
+        
+        // Chặn reject lại nếu feedback đã bị reject và member chưa resubmit
+        // (Khi member resubmit, lastAdminAction sẽ được clear về null)
+        if (feedback.getLastAdminAction() == FeedbackAdminAction.REJECT 
+                && feedback.getLastAdminActionAt() != null) {
+            throw new IllegalStateException(
+                    "This feedback has already been rejected. Please wait for the member to resubmit before rejecting again."
             );
         }
         
@@ -1724,6 +1750,17 @@ public class ContractService {
         }
 
         feedbackRepository.save(feedback);
+
+        // Ghi lại lịch sử khi member submit feedback
+        // Nếu có reason thì dùng reason làm actionNote, nếu không thì dùng message mặc định
+        String actionNote = (feedback.getReason() != null && !feedback.getReason().trim().isEmpty())
+                ? feedback.getReason()
+                : (feedbackExisted ? "Member updated feedback" : "Member submitted feedback");
+        recordFeedbackHistorySnapshot(
+                feedback,
+                FeedbackHistoryAction.MEMBER_REVIEW,
+                actionNote
+        );
 
         // Kiểm tra xem tất cả members đã approve chưa
         checkAndAutoSignIfAllApproved(contract);
