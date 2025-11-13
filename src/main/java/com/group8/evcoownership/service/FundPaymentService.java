@@ -69,13 +69,6 @@ public class FundPaymentService {
             throw new DepositPaymentException("You can only create deposit payment for your own account");
         }
 
-        // Kiểm tra group, membership, contract, fund
-        OwnershipGroup group = groupRepository.findById(groupId)
-                .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
-
-        OwnershipShare share = shareRepository.findById(new OwnershipShareId(userId, groupId))
-                .orElseThrow(() -> new EntityNotFoundException("User is not a member of this group"));
-
 
         // Kiểm tra contract tồn tại
         contractRepository.findByGroupGroupId(groupId)
