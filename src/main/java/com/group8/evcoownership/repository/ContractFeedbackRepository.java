@@ -1,6 +1,7 @@
 package com.group8.evcoownership.repository;
 
 import com.group8.evcoownership.entity.ContractFeedback;
+import com.group8.evcoownership.enums.FeedbackAdminAction;
 import com.group8.evcoownership.enums.MemberFeedbackStatus;
 import com.group8.evcoownership.enums.ReactionType;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -21,6 +22,8 @@ public interface ContractFeedbackRepository extends JpaRepository<ContractFeedba
     long countByContractIdAndStatus(Long contractId, MemberFeedbackStatus status);
 
     long countByContractIdAndStatusAndReactionType(Long contractId, MemberFeedbackStatus status, ReactionType reactionType);
+
+    long countByContractIdAndLastAdminAction(Long contractId, FeedbackAdminAction lastAdminAction);
 
 }
 

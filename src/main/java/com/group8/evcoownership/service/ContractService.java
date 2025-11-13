@@ -1362,6 +1362,9 @@ public class ContractService {
         // Đánh dấu đã xử lý và set về PENDING để coowner làm lại
         feedback.setIsProcessed(true);
         feedback.setStatus(MemberFeedbackStatus.PENDING);
+        feedback.setApproveCount((feedback.getApproveCount() != null ? feedback.getApproveCount() : 0) + 1);
+        feedback.setLastAdminAction(FeedbackAdminAction.APPROVE);
+        feedback.setLastAdminActionAt(LocalDateTime.now());
         feedback.setUpdatedAt(LocalDateTime.now());
         feedbackRepository.save(feedback);
         
@@ -1481,8 +1484,6 @@ public class ContractService {
                 .feedbackId(feedback.getId())
                 .status(feedback.getStatus())
                 .isProcessed(Boolean.TRUE.equals(feedback.getIsProcessed()))
-                .approveCount(feedback.getApproveCount() != null ? feedback.getApproveCount() : 0)
-                .rejectCount(feedback.getRejectCount() != null ? feedback.getRejectCount() : 0)
                 .lastAdminAction(feedback.getLastAdminAction())
                 .lastAdminActionAt(feedback.getLastAdminActionAt())
                 .reactionType(feedback.getReactionType())
@@ -1611,8 +1612,6 @@ public class ContractService {
                 .feedbackId(feedback.getId())
                 .status(feedback.getStatus())
                 .isProcessed(Boolean.TRUE.equals(feedback.getIsProcessed()))
-                .approveCount(feedback.getApproveCount() != null ? feedback.getApproveCount() : 0)
-                .rejectCount(feedback.getRejectCount() != null ? feedback.getRejectCount() : 0)
                 .reactionType(feedback.getReactionType())
                 .reason(feedback.getReason() != null ? feedback.getReason() : "")
                 .submittedAt(feedback.getSubmittedAt())
@@ -1691,8 +1690,6 @@ public class ContractService {
                         .email(f.getUser().getEmail())
                         .status(f.getStatus())
                         .isProcessed(Boolean.TRUE.equals(f.getIsProcessed()))
-                        .approveCount(f.getApproveCount() != null ? f.getApproveCount() : 0)
-                        .rejectCount(f.getRejectCount() != null ? f.getRejectCount() : 0)
                         .lastAdminAction(f.getLastAdminAction())
                         .lastAdminActionAt(f.getLastAdminActionAt())
                         .reactionType(f.getReactionType())
@@ -1719,6 +1716,10 @@ public class ContractService {
                         contractId, MemberFeedbackStatus.ACCEPTED, ReactionType.AGREE))
                 .pendingDisagreeCount(feedbackRepository.countByContractIdAndStatusAndReactionType(
                         contractId, MemberFeedbackStatus.PENDING, ReactionType.DISAGREE))
+                .approvedFeedbacksCount(feedbackRepository.countByContractIdAndLastAdminAction(
+                        contractId, FeedbackAdminAction.APPROVE))
+                .rejectedFeedbacksCount(feedbackRepository.countByContractIdAndLastAdminAction(
+                        contractId, FeedbackAdminAction.REJECT))
                 .feedbacks(feedbackList)
                 .pendingMembers(pendingMembers)
                 .build();
