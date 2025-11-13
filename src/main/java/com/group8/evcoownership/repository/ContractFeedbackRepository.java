@@ -19,8 +19,6 @@ public interface ContractFeedbackRepository extends JpaRepository<ContractFeedba
     
     boolean existsByContractIdAndUser_UserId(Long contractId, Long userId);
 
-    long countByContractIdAndStatus(Long contractId, MemberFeedbackStatus status);
-
     long countByContractIdAndStatusAndReactionType(Long contractId, MemberFeedbackStatus status, ReactionType reactionType);
 
     long countByContractIdAndLastAdminAction(Long contractId, FeedbackAdminAction lastAdminAction);
