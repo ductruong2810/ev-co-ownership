@@ -152,7 +152,7 @@ public class ContractService {
      * RequiredDepositAmount được tính tự động bởi hệ thống
      */
     @Transactional
-    public ApiResponseDTO<ContractUpdateResponseDTO> updateContract(Long groupId, ContractUpdateRequestDTO request, String adminEmail) {
+    public ApiResponseDTO<ContractUpdateResponseDTO> updateContract(Long groupId, ContractUpdateRequestDTO request) {
         Contract contract = getContractByGroup(groupId);
         OwnershipGroup group = contract.getGroup();
 
@@ -174,10 +174,6 @@ public class ContractService {
         contract.setTerms(updatedTerms);
         
         Contract savedContract = contractRepository.saveAndFlush(contract);
-
-        // Invalidate tất cả feedbacks về PENDING để members review lại contract mới
-        // (Không tự động approve, admin phải xử lý từng feedback riêng)
-        invalidateMemberFeedbacks(contract.getId(), adminEmail);
 
         // Tính toán và trả về term mới
         String termLabel = calculateTermLabel(savedContract.getStartDate(), savedContract.getEndDate());
@@ -212,7 +208,7 @@ public class ContractService {
      * Cập nhật terms của hợp đồng (chỉ cho phép khi contract ở trạng thái PENDING hoặc PENDING_MEMBER_APPROVAL có rejections)
      */
     @Transactional
-    public ApiResponseDTO<ContractUpdateResponseDTO> updateContractTerms(Long groupId, ContractTermsUpdateRequestDTO request, String adminEmail) {
+    public ApiResponseDTO<ContractUpdateResponseDTO> updateContractTerms(Long groupId, ContractTermsUpdateRequestDTO request) {
         if (request.terms() == null || request.terms().trim().isEmpty()) {
             throw new IllegalArgumentException("Terms cannot be blank");
         }
@@ -225,10 +221,6 @@ public class ContractService {
         contract.setUpdatedAt(LocalDateTime.now());
 
         Contract savedContract = contractRepository.saveAndFlush(contract);
-
-        // Invalidate tất cả feedbacks về PENDING để members review lại contract mới
-        // (Không tự động approve, admin phải xử lý từng feedback riêng)
-        invalidateMemberFeedbacks(contract.getId(), adminEmail);
 
         ContractUpdateResponseDTO contractData = ContractUpdateResponseDTO.builder()
                 .contractId(savedContract.getId())
@@ -247,7 +239,7 @@ public class ContractService {
      * ADMIN-ONLY: Cập nhật theo contractId (thay vì groupId)
      */
     @Transactional
-    public ApiResponseDTO<ContractUpdateResponseDTO> updateContractByAdminByContractId(Long contractId, ContractAdminUpdateRequestDTO request, String adminEmail) {
+    public ApiResponseDTO<ContractUpdateResponseDTO> updateContractByAdminByContractId(Long contractId, ContractAdminUpdateRequestDTO request) {
         if (request == null) {
             throw new IllegalArgumentException("Request cannot be null");
         }
@@ -258,10 +250,10 @@ public class ContractService {
         Contract contract = contractRepository.findById(contractId)
                 .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
 
-        return updateContractAdminCommon(contract, request, adminEmail);
+        return updateContractAdminCommon(contract, request);
     }
 
-    private ApiResponseDTO<ContractUpdateResponseDTO> updateContractAdminCommon(Contract contract, ContractAdminUpdateRequestDTO request, String adminEmail) {
+    private ApiResponseDTO<ContractUpdateResponseDTO> updateContractAdminCommon(Contract contract, ContractAdminUpdateRequestDTO request) {
         validateContractEditable(contract, "Cannot update contract: Contract is in %s status. Only PENDING contracts or PENDING_MEMBER_APPROVAL contracts with rejections can be updated.");
         validateContractDatesOrThrow(request.startDate(), request.endDate());
 
@@ -282,22 +274,6 @@ public class ContractService {
         contract.setTerms(syncedTerms);
 
         Contract saved = contractRepository.saveAndFlush(contract);
-
-        // Invalidate tất cả feedbacks về PENDING để members review lại contract mới
-        // (Không tự động approve, admin phải xử lý từng feedback riêng)
-        invalidateMemberFeedbacks(contract.getId(), adminEmail);
-
-        // Notify all group members that the contract has been updated by admin
-        if (notificationOrchestrator != null) {
-            Map<String, Object> emailData = notificationOrchestrator.buildContractEmailData(saved);
-            notificationOrchestrator.sendGroupNotification(
-                    saved.getGroup().getGroupId(),
-                    NotificationType.CONTRACT_APPROVAL_PENDING,
-                    "Contract Updated by Admin",
-                    "The system administrator has updated the contract timeline and terms. Please review the changes.",
-                    emailData
-            );
-        }
 
         String termLabel = calculateTermLabel(saved.getStartDate(), saved.getEndDate());
         ContractUpdateResponseDTO contractData = ContractUpdateResponseDTO.builder()
@@ -1367,10 +1343,10 @@ public class ContractService {
     /**
      * Admin approve một feedback cụ thể (theo feedbackId)
      * Chỉ có thể approve feedbacks có status = PENDING
-     * Set isProcessed = true và status = PENDING để coowner làm lại
+     * Invalidate tất cả feedbacks và gửi thông báo cho members để review lại contract
      */
     @Transactional
-    public ApiResponseDTO<FeedbackActionResponseDTO> approveFeedback(Long feedbackId) {
+    public ApiResponseDTO<FeedbackActionResponseDTO> approveFeedback(Long feedbackId, String adminNote) {
         ContractFeedback feedback = feedbackRepository.findById(feedbackId)
                 .orElseThrow(() -> new ResourceNotFoundException("Feedback not found"));
         
@@ -1380,28 +1356,45 @@ public class ContractService {
             );
         }
         
+        Contract contract = feedback.getContract();
+        
         // Đánh dấu đã xử lý và set về PENDING để coowner làm lại
         feedback.setIsProcessed(true);
         feedback.setStatus(MemberFeedbackStatus.PENDING);
         feedback.setUpdatedAt(LocalDateTime.now());
         feedbackRepository.save(feedback);
         
-        FeedbackActionResponseDTO feedbackData = FeedbackActionResponseDTO.builder()
-                .feedbackId(feedback.getId())
-                .status(feedback.getStatus())
-                .isProcessed(Boolean.TRUE.equals(feedback.getIsProcessed()))
-                .approveCount(feedback.getApproveCount() != null ? feedback.getApproveCount() : 0)
-                .rejectCount(feedback.getRejectCount() != null ? feedback.getRejectCount() : 0)
-                .lastAdminAction(feedback.getLastAdminAction())
-                .lastAdminActionAt(feedback.getLastAdminActionAt())
-                .reactionType(feedback.getReactionType())
-                .userId(feedback.getUser().getUserId())
-                .contractId(feedback.getContract().getId())
-                .build();
+        // Invalidate tất cả feedbacks về PENDING để members review lại contract mới
+        // và gửi thông báo cho tất cả members
+        invalidateMemberFeedbacks(contract.getId());
+        
+        // Notify all group members that the contract has been updated
+        if (notificationOrchestrator != null) {
+            Long groupId = contract.getGroup().getGroupId();
+            Map<String, Object> emailData = notificationOrchestrator.buildContractEmailData(contract);
+            
+            // Build message với adminNote nếu có
+            String message = "The contract has been updated. Please review the updated contract terms and submit your feedback.";
+            if (adminNote != null && !adminNote.trim().isEmpty()) {
+                message += "\n\nAdmin note: " + adminNote.trim();
+                emailData = new HashMap<>(emailData);
+                emailData.put("adminNote", adminNote.trim());
+            }
+            
+            notificationOrchestrator.sendGroupNotification(
+                    groupId,
+                    NotificationType.CONTRACT_APPROVAL_PENDING,
+                    "Contract Updated - Please Review",
+                    message,
+                    emailData
+            );
+        }
+        
+        FeedbackActionResponseDTO feedbackData = buildFeedbackActionResponseDTO(feedback, adminNote);
         
         return ApiResponseDTO.<FeedbackActionResponseDTO>builder()
                 .success(true)
-                .message("Feedback approved. Coowner can resubmit.")
+                .message("Feedback approved. All members need to review the updated contract.")
                 .data(feedbackData)
                 .build();
     }
@@ -1413,7 +1406,7 @@ public class ContractService {
      * Gửi notification và email cho member kèm adminNote
      */
     @Transactional
-    public ApiResponseDTO<FeedbackActionResponseDTO> rejectFeedback(Long feedbackId, String adminNote, String adminEmail) {
+    public ApiResponseDTO<FeedbackActionResponseDTO> rejectFeedback(Long feedbackId, String adminNote) {
         ContractFeedback feedback = feedbackRepository.findById(feedbackId)
                 .orElseThrow(() -> new ResourceNotFoundException("Feedback not found"));
         
@@ -1469,7 +1462,20 @@ public class ContractService {
             );
         }
         
-        FeedbackActionResponseDTO feedbackData = FeedbackActionResponseDTO.builder()
+        FeedbackActionResponseDTO feedbackData = buildFeedbackActionResponseDTO(feedback, adminNote);
+        
+        return ApiResponseDTO.<FeedbackActionResponseDTO>builder()
+                .success(true)
+                .message("Feedback rejected. Member can resubmit.")
+                .data(feedbackData)
+                .build();
+    }
+
+    /**
+     * Build FeedbackActionResponseDTO từ ContractFeedback
+     */
+    private FeedbackActionResponseDTO buildFeedbackActionResponseDTO(ContractFeedback feedback, String adminNote) {
+        return FeedbackActionResponseDTO.builder()
                 .feedbackId(feedback.getId())
                 .status(feedback.getStatus())
                 .isProcessed(Boolean.TRUE.equals(feedback.getIsProcessed()))
@@ -1483,12 +1489,6 @@ public class ContractService {
                 .reason(feedback.getReason() != null ? feedback.getReason() : "")
                 .adminNote(adminNote != null ? adminNote : "")
                 .build();
-        
-        return ApiResponseDTO.<FeedbackActionResponseDTO>builder()
-                .success(true)
-                .message("Feedback rejected. Member can resubmit.")
-                .data(feedbackData)
-                .build();
     }
 
     /**
@@ -1497,27 +1497,10 @@ public class ContractService {
      * Set isProcessed = true vì admin đã xử lý bằng cách chỉnh sửa hợp đồng
      */
     private void invalidateMemberFeedbacks(Long contractId) {
-        invalidateMemberFeedbacks(contractId, null);
-    }
-
-    private void invalidateMemberFeedbacks(Long contractId, String adminEmail) {
         List<ContractFeedback> feedbacks =
                 feedbackRepository.findByContractId(contractId);
         if (!feedbacks.isEmpty()) {
-            User admin = null;
-            if (adminEmail != null) {
-                admin = userRepository.findByEmail(adminEmail).orElse(null);
-            }
-            final User finalAdmin = admin;
             feedbacks.forEach(f -> {
-                ReactionType originalReaction = f.getReactionType();
-
-                if (finalAdmin != null && originalReaction == ReactionType.DISAGREE) {
-                    f.setApproveCount((f.getApproveCount() != null ? f.getApproveCount() : 0) + 1);
-                    f.setLastAdminAction(FeedbackAdminAction.APPROVE);
-                    f.setLastAdminActionAt(LocalDateTime.now());
-                }
-
                 // Set tất cả về PENDING để members review lại contract mới
                 f.setStatus(MemberFeedbackStatus.PENDING);
                 f.setReactionType(null); // Clear reaction để member submit lại
