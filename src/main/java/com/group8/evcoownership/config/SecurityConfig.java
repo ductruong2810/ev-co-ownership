@@ -23,84 +23,95 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.List;
 
 @Configuration
-@EnableMethodSecurity // BẮT BUỘC nếu dùng @PreAuthorize
-@RequiredArgsConstructor
+@EnableMethodSecurity //Bật hỗ trợ annotation như @PreAuthorize trên controller/service
+@RequiredArgsConstructor // thằng loombok sẽ tự tạo constructor cho tất cả final fields
+                         // (jwtAuthFilter, jwtAuthenticationEntryPoint)
 public class SecurityConfig {
+
+    // khai báo bean PasswordEncoder để dùng toàn ứng dụng (vd: luu password)
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        return new BCryptPasswordEncoder();//dùng Bcrypt để hash pasword
     }
 
+    // Các thuoc tinh inject qua constructor do @RequiredArgsConstructor
+    private final JwtAuthenticationFilter jwtAuthFilter; // custom filter kiểm tra token JWT và set Authentication
+    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint; // xử lý error trả về 401 khi chưa auth
 
-    private final JwtAuthenticationFilter jwtAuthFilter;
-    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
-
-    @Bean
+    @Bean // khai báo bean SecurityFilterChain cấu hình chính cho thằng Spring Security
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(AbstractHttpConfigurer::disable)
-                .cors(Customizer.withDefaults())
+                .csrf(AbstractHttpConfigurer::disable) // TẮT CSRF protection vì backend là stateless API (thường dùng với token)
+                .cors(Customizer.withDefaults())  // bật CORS và dùng CorsConfigurationSource bean bên dưới
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // Đặt session management là STATELESS => không dùng HttpSession, phù hợp với JWT
                 .authorizeHttpRequests(auth -> auth
                         // 1. OPTIONS requests (CORS preflight) - ĐẶT ĐẦU
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
                         // 2. Public endpoints
                         .requestMatchers(
-                                "/swagger-ui/**",
-                                "/v3/api-docs/**",
-                                "/api/auth/**",
-                                "/api/funds/**",
-                                "/api/funds/payments/**",
-                                "/api/payments/**",
-                                "/api/auth/vnpay/**",
-                                "/api/disputes/**",
-                                "/api/expenses/**",
-                                "/api/user/profile/**",
-                                "/api/shares/**",
-                                "/api/vehicles/**",
-                                "/api/contracts/**",
-                                "/api/bookings/**",
-                                "/api/test/**",
-                                "/api/ocr/**",
-                                "/api/deposits/deposit-callback"
-                        ).permitAll()
+                                "/swagger-ui/**", // Swagger UI cho tài liệu API
+                                "/v3/api-docs/**", // OpenAPI JSON
+                                "/api/auth/**",  // Login/Register/refresh token...
+                                "/api/funds/**", // endpoint quỹ (được public theo thiết kế)
+                                "/api/funds/payments/**", // các payment liên quan fund
+                                "/api/payments/**", // payment chung (public)
+                                "/api/auth/vnpay/**", // callback or public vnpay endpoints
+                                "/api/disputes/**", // tranh chấp (public theo thiết kế)
+                                "/api/expenses/**",       // chi phí (public theo thiết kế)
+                                "/api/user/profile/**",    // profile công khai
+                                "/api/shares/**",          // shares (cổ phần)
+                                "/api/vehicles/**",        // vehicles (công khai)
+                                "/api/contracts/**",       // contracts (công khai)
+                                "/api/bookings/**",        // bookings (công khai)
+                                "/api/test/**",            // test endpoint
+                                "/api/ocr/**",             // OCR public
+                                "/api/deposits/deposit-callback" // callback cho deposit
+                        ).permitAll() // tất cả các path trên sẽ không cần authentication
 
                         // 3. Role-based endpoints - ĐẶT TRƯỚC .anyRequest()
                         .requestMatchers("/api/vehicle-checks/**")
                         .hasAnyRole("CO_OWNER", "ADMIN", "STAFF", "TECHNICIAN")
+                        // Chỉ những role này mới được truy cập /api/vehicle-checks/**
 
                         .requestMatchers("/api/staff/**", "/api/admin/**")
                         .hasAnyRole("STAFF", "ADMIN")
+                        // Chỉ STAFF hoặc ADMIN truy cập các endpoint staff/admin
 
                         // 4. Authenticated endpoints - ĐẶT CUỐI CÙNG
-                        .anyRequest().authenticated()
+                        .anyRequest().authenticated() // Các request khác phải xác thực mới được truy cập
                 )
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                        // Khi thiếu auth => chuyển cho jwtAuthenticationEntryPoint xử lý (thường trả 401)
                         .accessDeniedHandler((req, res, e) -> res.sendError(HttpServletResponse.SC_FORBIDDEN))
+                        // Khi có auth nhưng không đủ quyền => trả 403 (FORBIDDEN)
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                // Thêm custom jwtAuthFilter trước UsernamePasswordAuthenticationFilter để kiểm tra token JWT trước
 
-        return http.build();
+        return http.build(); // build và trả về SecurityFilterChain bean
     }
 
 
-    @Bean
+    @Bean // Bean để cấu hình chính sách CORS cho toàn ứng dụng
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOriginPatterns(List.of(
-                "http://localhost:3000",
-                "https://ev-co-ownership-cost-sharing-system.vercel.app",
-                "https://*.vercel.app"
+                "http://localhost:3000", // local dev frontend
+                "https://ev-co-ownership-cost-sharing-system.vercel.app", // deployed app
+                "https://*.vercel.app" // bất kỳ subdomain vercel.app (pattern)
         ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("*"));
+        // Cho phép các phương thức HTTP này từ origin được phép
+        configuration.setAllowedHeaders(List.of("*")); // Cho phép tất cả header gửi lên (Authorization, Content-Type...)
         configuration.setExposedHeaders(List.of("Authorization", "Content-Type"));
-        configuration.setAllowCredentials(true);
+        // Header nào frontend có thể đọc từ response (ví dụ token trả về trong Authorization)
+        configuration.setAllowCredentials(true); // cho phép gửi cookie / credential (nếu có) — lưu ý browser yêu cầu origin cụ thể (không '*')
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        return source;
+        source.registerCorsConfiguration("/**", configuration); // áp dụng cấu hình cho tất cả endpoint
+        return source; // trả về CorsConfigurationSource bean để .cors(...) sử dụng
     }
 }
