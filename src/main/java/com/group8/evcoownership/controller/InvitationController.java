@@ -31,7 +31,7 @@ public class InvitationController {
     // ======================================================
 
     /**
-     * 📨 Gửi lời mời (hoặc tự động resend nếu đang PENDING)
+     * Gửi lời mời (hoặc tự động resend nếu đang PENDING)
      * - Inviter lấy từ token
      * - groupId lấy từ path
      * - Service tự kiểm tra nếu có invitation PENDING thì resend thay vì tạo mới
@@ -89,7 +89,7 @@ public class InvitationController {
     // ======================================================
 
     /**
-     * 🧊 Hủy (expire) lời mời ngay lập tức
+     * Hủy (expire) lời mời ngay lập tức
      */
     @PostMapping("/invitations/{invitationId}/expire")
     @PreAuthorize("isAuthenticated()")
@@ -103,7 +103,7 @@ public class InvitationController {
     }
 
     /**
-     * ✅ Người được mời chấp nhận bằng OTP
+     * Người được mời chấp nhận bằng OTP
      */
     @PostMapping("/invitations/accept")
     @PreAuthorize("isAuthenticated()")
@@ -120,7 +120,7 @@ public class InvitationController {
     // ======================================================
 
     /**
-     * ⚙️ API gửi lại email thủ công (dành cho admin/backend, không cần dùng trên FE vì create() đã tự xử lý)
+     * API gửi lại email thủ công (dành cho admin/backend, không cần dùng trên FE vì create() đã tự xử lý)
      */
     @PostMapping("/invitations/{invitationId}/resend")
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
