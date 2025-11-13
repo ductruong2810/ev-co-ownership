@@ -1,7 +1,10 @@
 package com.group8.evcoownership.integration;
 
+import com.group8.evcoownership.dto.AutoSignContractResponseDTO;
+import com.group8.evcoownership.dto.ContractGenerationResponseDTO;
 import com.group8.evcoownership.dto.DepositPaymentRequestDTO;
 import com.group8.evcoownership.dto.DepositPaymentResponseDTO;
+import com.group8.evcoownership.enums.ContractApprovalStatus;
 import com.group8.evcoownership.enums.DepositStatus;
 import com.group8.evcoownership.enums.PaymentStatus;
 import com.group8.evcoownership.service.ContractService;
@@ -15,7 +18,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -59,23 +61,24 @@ class ContractFlowIntegrationTest {
     @Test
     void testContractGeneration() {
         // Arrange
-        Map<String, Object> expectedResponse = new HashMap<>();
-        expectedResponse.put("contractId", 1L);
-        expectedResponse.put("contractNumber", "EVS-2025-001");
-        expectedResponse.put("status", "GENERATED");
-        expectedResponse.put("savedToDatabase", false);
+        ContractGenerationResponseDTO expectedResponse = ContractGenerationResponseDTO.builder()
+                .contractId(1L)
+                .contractNumber("EVS-2025-001")
+                .status(ContractApprovalStatus.PENDING)
+                .savedToDatabase(false)
+                .build();
 
         when(contractService.generateContractData(1L, 1L))
                 .thenReturn(expectedResponse);
 
         // Act
-        Map<String, Object> response = contractService.generateContractData(1L, 1L);
+        ContractGenerationResponseDTO response = contractService.generateContractData(1L, 1L);
 
         // Assert
         assertNotNull(response);
-        assertEquals(1L, response.get("contractId"));
-        assertEquals("EVS-2025-001", response.get("contractNumber"));
-        assertEquals("GENERATED", response.get("status"));
+        assertEquals(1L, response.getContractId());
+        assertEquals("EVS-2025-001", response.getContractNumber());
+        assertEquals(ContractApprovalStatus.PENDING, response.getStatus());
 
         verify(contractService).generateContractData(1L, 1L);
     }
@@ -83,27 +86,27 @@ class ContractFlowIntegrationTest {
     @Test
     void testContractSigning() {
         // Arrange
-        Map<String, Object> expectedResponse = Map.of(
-                "success", true,
-                "contractId", 1L,
-                "contractNumber", "EVS-0001-2025",
-                "status", "AUTO_SIGNED",
-                "signedAt", LocalDateTime.now(),
-                "message", "Contract has been automatically signed"
-        );
+        AutoSignContractResponseDTO expectedResponse = AutoSignContractResponseDTO.builder()
+                .success(true)
+                .contractId(1L)
+                .contractNumber("EVS-0001-2025")
+                .status("AUTO_SIGNED")
+                .signedAt(LocalDateTime.now())
+                .message("Contract has been automatically signed")
+                .build();
 
         when(contractService.autoSignContract(1L))
                 .thenReturn(expectedResponse);
 
         // Act
-        Map<String, Object> response = contractService.autoSignContract(1L);
+        AutoSignContractResponseDTO response = contractService.autoSignContract(1L);
 
         // Assert
         assertNotNull(response);
-        assertTrue((Boolean) response.get("success"));
-        assertEquals(1L, response.get("contractId"));
-        assertEquals("AUTO_SIGNED", response.get("status"));
-        assertTrue(response.get("message").toString().contains("Contract has been automatically signed"));
+        assertTrue(Boolean.TRUE.equals(response.getSuccess()));
+        assertEquals(1L, response.getContractId());
+        assertEquals("AUTO_SIGNED", response.getStatus());
+        assertTrue(response.getMessage().contains("Contract has been automatically signed"));
 
         verify(contractService).autoSignContract(1L);
     }

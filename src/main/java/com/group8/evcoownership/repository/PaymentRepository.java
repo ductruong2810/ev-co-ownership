@@ -87,16 +87,14 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
   JOIN p.fund f
   JOIN f.group g
   WHERE p.payer.userId = :userId
-    AND g.groupId = :groupId
     AND p.status = com.group8.evcoownership.enums.PaymentStatus.COMPLETED
     AND (:fromAt IS NULL OR p.paymentDate >= :fromAt)
     AND (:toAt   IS NULL OR p.paymentDate <= :toAt)
 """)
-    Page<Payment> searchPersonalHistoryCompleted(
+    Page<Payment> searchUserHistoryCompleted(
             @Param("userId") Long userId,
-            @Param("groupId") Long groupId,
             @Param("fromAt") LocalDateTime fromAt,
-            @Param("toAt") LocalDateTime toAt,
+            @Param("toAt")   LocalDateTime toAt,
             Pageable pageable
     );
 
@@ -105,16 +103,14 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
   JOIN p.fund f
   JOIN f.group g
   WHERE p.payer.userId = :userId
-    AND g.groupId = :groupId
     AND p.status = com.group8.evcoownership.enums.PaymentStatus.COMPLETED
     AND (:fromAt IS NULL OR p.paymentDate >= :fromAt)
     AND (:toAt   IS NULL OR p.paymentDate <= :toAt)
 """)
-    BigDecimal sumPersonalCompleted(
+    BigDecimal sumUserCompleted(
             @Param("userId") Long userId,
-            @Param("groupId") Long groupId,
             @Param("fromAt") LocalDateTime fromAt,
-            @Param("toAt") LocalDateTime toAt
+            @Param("toAt")   LocalDateTime toAt
     );
 
 
