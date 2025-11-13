@@ -14,7 +14,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin/contracts")
@@ -123,8 +122,8 @@ public class AdminContractController {
      * Kiểm tra trạng thái đóng tiền cọc của hợp đồng (Admin only)
      */
     @GetMapping("/{groupId}/deposit-status")
-    public ResponseEntity<Map<String, Object>> checkDepositStatus(@PathVariable Long groupId) {
-        Map<String, Object> status = contractService.checkDepositStatus(groupId);
+    public ResponseEntity<ContractDepositStatusResponseDTO> checkDepositStatus(@PathVariable Long groupId) {
+        ContractDepositStatusResponseDTO status = contractService.checkDepositStatus(groupId);
         return ResponseEntity.ok(status);
     }
 

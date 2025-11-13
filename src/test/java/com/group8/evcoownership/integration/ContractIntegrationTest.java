@@ -1,5 +1,7 @@
 package com.group8.evcoownership.integration;
 
+import com.group8.evcoownership.dto.AutoSignContractResponseDTO;
+import com.group8.evcoownership.dto.ContractGenerationResponseDTO;
 import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.repository.*;
 import com.group8.evcoownership.service.ContractService;
@@ -20,8 +22,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.Map;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -78,13 +78,13 @@ class ContractIntegrationTest {
         }
 
         // When
-        Map<String, Object> contractData = contractService.generateContractData(testGroup.getGroupId(), 1L);
+        ContractGenerationResponseDTO contractData = contractService.generateContractData(testGroup.getGroupId(), 1L);
 
         // Then
         assertNotNull(contractData);
-        assertEquals(testGroup.getGroupId(), contractData.get("groupId"));
-        assertNotNull(contractData.get("terms"));
-        assertTrue(((String) contractData.get("terms")).contains("CONTRACT") || ((String) contractData.get("terms")).contains("contract"));
+        assertEquals(testGroup.getGroupId(), contractData.getGroupId());
+        assertNotNull(contractData.getTerms());
+        assertTrue(contractData.getTerms().contains("CONTRACT") || contractData.getTerms().contains("contract"));
     }
 
     @Test
@@ -108,16 +108,16 @@ class ContractIntegrationTest {
         }
 
         // Generate contract data first
-        Map<String, Object> contractData = contractService.generateContractData(testGroup.getGroupId(), 1L);
+        ContractGenerationResponseDTO contractData = contractService.generateContractData(testGroup.getGroupId(), 1L);
         assertNotNull(contractData);
 
         // When - Auto sign contract
-        var result = contractService.autoSignContract(testGroup.getGroupId());
+        AutoSignContractResponseDTO result = contractService.autoSignContract(testGroup.getGroupId());
 
         // Then
         assertNotNull(result);
-        assertNotNull(result.get("contractId"));
-        assertNotNull(result.get("status"));
+        assertNotNull(result.getContractId());
+        assertNotNull(result.getStatus());
     }
 
     @Test
@@ -149,12 +149,12 @@ class ContractIntegrationTest {
                 .thenReturn(new BigDecimal("2000000"));
 
         // Step 1: Generate contract data
-        Map<String, Object> contractData = contractService.generateContractData(testGroup.getGroupId(), 1L);
+        ContractGenerationResponseDTO contractData = contractService.generateContractData(testGroup.getGroupId(), 1L);
         assertNotNull(contractData);
 
         // Step 2: Auto sign contract
-        var signResult = contractService.autoSignContract(testGroup.getGroupId());
-        assertTrue((Boolean) signResult.get("success"));
+        AutoSignContractResponseDTO signResult = contractService.autoSignContract(testGroup.getGroupId());
+        assertTrue(Boolean.TRUE.equals(signResult.getSuccess()));
 
         // Verify final state
         Contract finalContract = contractRepository.findByGroupGroupId(testGroup.getGroupId()).orElse(null);

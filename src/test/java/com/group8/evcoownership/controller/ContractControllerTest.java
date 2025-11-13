@@ -1,5 +1,6 @@
 package com.group8.evcoownership.controller;
 
+import com.group8.evcoownership.dto.ContractGenerationResponseDTO;
 import com.group8.evcoownership.service.ContractService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -7,9 +8,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
-
-import java.util.HashMap;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -34,16 +32,17 @@ class ContractControllerTest {
         String userEmail = "test@example.com";
         Long userId = 123L;
 
-        Map<String, Object> expectedContractData = new HashMap<>();
-        expectedContractData.put("contractId", 1L);
-        expectedContractData.put("groupId", groupId);
-        expectedContractData.put("status", "DRAFT");
+        ContractGenerationResponseDTO expectedContractData = ContractGenerationResponseDTO.builder()
+                .contractId(1L)
+                .groupId(groupId)
+                .status(null)
+                .build();
 
         when(contractService.getUserIdByEmail(userEmail)).thenReturn(userId);
         when(contractService.generateContractData(groupId, userId)).thenReturn(expectedContractData);
 
         // Act
-        ResponseEntity<Map<String, Object>> response = contractController.generateContractData(groupId, userEmail);
+        ResponseEntity<ContractGenerationResponseDTO> response = contractController.generateContractData(groupId, userEmail);
 
         // Assert
         assertNotNull(response);
