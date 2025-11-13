@@ -40,12 +40,10 @@ public class PaymentController {
             @RequestParam Long userId,
             @RequestParam Long groupId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
-            @RequestParam(required = false, defaultValue = "0") Integer page,
-            @RequestParam(required = false, defaultValue = "20") Integer size
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate
+
     ){
-        return ResponseEntity.ok(paymentService.getPersonalHistory(
-                userId, groupId, fromDate, toDate, page, size));
+        return ResponseEntity.ok(paymentService.getPersonalHistory( userId, groupId, fromDate, toDate));
     }
 
 

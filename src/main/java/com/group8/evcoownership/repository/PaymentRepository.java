@@ -92,12 +92,11 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     AND (:fromAt IS NULL OR p.paymentDate >= :fromAt)
     AND (:toAt   IS NULL OR p.paymentDate <= :toAt)
 """)
-    Page<Payment> searchPersonalHistoryCompleted(
+    List<Payment> searchPersonalHistoryCompleted(
             @Param("userId") Long userId,
             @Param("groupId") Long groupId,
             @Param("fromAt") LocalDateTime fromAt,
-            @Param("toAt") LocalDateTime toAt,
-            Pageable pageable
+            @Param("toAt") LocalDateTime toAt
     );
 
     @Query("""

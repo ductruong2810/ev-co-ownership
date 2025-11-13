@@ -47,32 +47,22 @@ public class PaymentService {
             Long userId,
             Long groupId,
             LocalDate fromDate,   // yyyy-MM-dd (optional)
-            LocalDate toDate,     // yyyy-MM-dd (optional)
-            Integer page,
-            Integer size
+            LocalDate toDate     // yyyy-MM-dd (optional)
     ) {
         if (userId == null || groupId == null) throw new IllegalArgumentException("userId, groupId required");
-
-        int p = Math.max(0, page == null ? 0 : page);
-        int s = Math.min(Math.max(1, size == null ? 20 : size), 200);
 
         LocalDateTime fromAt = (fromDate == null) ? null : fromDate.atStartOfDay();
         LocalDateTime toAt   = (toDate == null)   ? null : toDate.atTime(23,59,59);
 
-        Pageable pageable = PageRequest.of(p, s,
-                Sort.by(Sort.Direction.DESC, "paymentDate").and(Sort.by(Sort.Direction.DESC, "id")));
-
         var pageResult = paymentRepo.searchPersonalHistoryCompleted(
-                userId, groupId, fromAt, toAt, pageable);
+                userId, groupId, fromAt, toAt);
 
-        var items = pageResult.getContent().stream().map(this::toHistoryItem).toList();
+        var items = pageResult.stream().map(this::toHistoryItem).toList();
 
         var totalCompleted = paymentRepo.sumPersonalCompleted(userId, groupId, fromAt, toAt);
 
         return PaymentHistoryResponseDTO.builder()
                 .userId(userId).groupId(groupId)
-                .page(p).size(s)
-                .total(pageResult.getTotalElements())
                 .totalCompletedAmount(totalCompleted)
                 .items(items)
                 .build();
