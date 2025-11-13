@@ -281,6 +281,19 @@ public class ContractController {
         return ResponseEntity.ok(feedbacks);
     }
 
+    @GetMapping("/{contractId}/member-feedbacks/history")
+    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
+    @Operation(
+            summary = "Get contract member feedback history",
+            description = "Lấy lịch sử feedback của members cho contract."
+    )
+    public ResponseEntity<ContractFeedbackHistoryResponseDTO> getContractMemberFeedbackHistory(
+            @PathVariable Long contractId) {
+
+        ContractFeedbackHistoryResponseDTO history = contractService.getContractFeedbackHistory(contractId);
+        return ResponseEntity.ok(history);
+    }
+
     /**
      * API: Lấy tất cả feedback của members theo groupId (cho admin group)
      * ------------------------------------------------------------
