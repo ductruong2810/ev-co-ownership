@@ -16,26 +16,39 @@ import org.springframework.context.annotation.Profile;
 @Slf4j
 public class AzureBlobConfig {
 
+    // inject tên của container từ file cấu hình
+    // (application.properties hoặc application.yml)
     @Value("${azure.storage.container-name}")
     private String containerName;
 
+    // ở đây cũng inject connection string từ file cấu hình
+    // để mình kết noi với AzuresStrograge account
     @Value("${azure.storage.connection-string}")
     private String connectionString;
 
+    //d9ăng ký một Spring Bean trả về BlobServiceClient --> để tuong tác với AzureStorage
     @Bean
     public BlobServiceClient blobServiceClient() {
+        // +Kiểm tra connectionString null (chưa cấu hình) hoặc toàn dấu space (không có nội dung thực),
+        // trường hợp này báo lỗi cấu hình.
+        // +Sử dụng trim() để loại bỏ khoảng trắng đầu/cuối,
+        // giúp phát hiện cấu hình sai dù nhập thừa dấu cách.
         if (connectionString == null || connectionString.trim().isEmpty()) {
             throw new IllegalStateException("Azure connection string is not configured!");
         }
 
+        // +generate BlobServiceClient từ thằng connection string,
+        // cho phép truy cập các container và blob
         BlobServiceClient client = new BlobServiceClientBuilder()
                 .connectionString(connectionString)
                 .buildClient();
 
+        //Log để theo dõi xem kết nối duoc khong
         log.info("BlobServiceClient created successfully!");
         return client;
     }
 
+    // Định nghĩa Bean BlobContainerClient để thao tác trực tiếp với một container blob cụ thể
     @Bean
     public BlobContainerClient blobContainerClient(BlobServiceClient blobServiceClient) {
         if (containerName == null || containerName.trim().isEmpty()) {
