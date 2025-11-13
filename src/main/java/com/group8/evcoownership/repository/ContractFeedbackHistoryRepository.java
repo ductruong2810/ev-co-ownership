@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface ContractFeedbackHistoryRepository extends JpaRepository<ContractFeedbackHistory, Long> {
     List<ContractFeedbackHistory> findByContractIdOrderByArchivedAtDesc(Long contractId);
@@ -18,5 +19,8 @@ public interface ContractFeedbackHistoryRepository extends JpaRepository<Contrac
     long countDistinctUsersByContractId(@Param("contractId") Long contractId);
     
     long countByContractIdAndHistoryAction(Long contractId, FeedbackHistoryAction historyAction);
+    
+    // Tìm history entry cuối cùng của một feedback
+    Optional<ContractFeedbackHistory> findFirstByFeedbackIdOrderByArchivedAtDesc(Long feedbackId);
 }
 
