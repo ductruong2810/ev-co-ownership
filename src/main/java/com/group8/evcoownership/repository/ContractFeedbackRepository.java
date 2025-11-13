@@ -23,5 +23,7 @@ public interface ContractFeedbackRepository extends JpaRepository<ContractFeedba
 
     long countByContractIdAndLastAdminAction(Long contractId, FeedbackAdminAction lastAdminAction);
 
+    long countByContractId(Long contractId);
+
 }
 

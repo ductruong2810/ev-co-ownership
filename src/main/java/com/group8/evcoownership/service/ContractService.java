@@ -38,6 +38,7 @@ public class ContractService {
     private final ContractDeadlinePolicy deadlinePolicy;
     private final DepositPaymentService depositPaymentService;
     private final ContractFeedbackRepository feedbackRepository;
+    private final ContractFeedbackHistoryRepository feedbackHistoryRepository;
 
     @Value("${contract.deposit.deadline.minutes:5}")
     private long depositDeadlineMinutes;
@@ -906,6 +907,26 @@ public class ContractService {
     private String generateContractTerms(Long groupId) {
         OwnershipGroup group = getGroupById(groupId);
         Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group).orElse(null);
+        Contract existingContract = contractRepository.findByGroupGroupId(groupId).orElse(null);
+
+        LocalDate startDate = existingContract != null ? existingContract.getStartDate() : LocalDate.now();
+        LocalDate endDate = existingContract != null ? existingContract.getEndDate()
+                : startDate.plusYears(1);
+        String termLabel = calculateTermLabel(startDate, endDate);
+        String termSuffix = " (minimum 1 month, maximum 5 years)";
+
+        BigDecimal depositAmount = (existingContract != null && existingContract.getRequiredDepositAmount() != null)
+                ? existingContract.getRequiredDepositAmount()
+                : calculateDepositAmount(group);
+
+        String existingTerms = existingContract != null ? existingContract.getTerms() : null;
+        if (existingTerms != null && !existingTerms.trim().isEmpty()) {
+            String syncedTerms = updateDepositAmountInTerms(existingTerms, depositAmount);
+            if (startDate != null && endDate != null) {
+                syncedTerms = updateTermInTerms(syncedTerms, startDate, endDate);
+            }
+            return syncedTerms;
+        }
 
         StringBuilder terms = new StringBuilder();
 
@@ -916,8 +937,12 @@ public class ContractService {
         } else {
             terms.append("- Vehicle value: To be updated later\n");
         }
-        terms.append("- Deposit amount: ").append(formatCurrency(calculateDepositAmount(group))).append("\n");
-        terms.append("Term: 1 year (minimum 1 month, maximum 5 years)\n");
+        terms.append("- Deposit amount: ").append(formatCurrency(depositAmount)).append("\n");
+        if (!"N/A".equalsIgnoreCase(termLabel)) {
+            terms.append("Term: ").append(termLabel).append(termSuffix).append("\n");
+        } else {
+            terms.append("Term: To be updated later").append(termSuffix).append("\n");
+        }
         terms.append("- Contribution principle: According to ownership ratio\n");
         terms.append(
                 """
@@ -1329,6 +1354,54 @@ public class ContractService {
                 .toList();
     }
 
+    public ContractFeedbackHistoryResponseDTO getContractFeedbackHistory(Long contractId) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
+
+        List<ContractFeedbackHistory> historyEntries =
+                feedbackHistoryRepository.findByContractIdOrderByArchivedAtDesc(contractId);
+
+        long totalFeedbacks = feedbackRepository.countByContractId(contractId);
+        long acceptedCount = feedbackRepository.countByContractIdAndStatusAndReactionType(
+                contractId, MemberFeedbackStatus.ACCEPTED, ReactionType.AGREE);
+        long pendingDisagreeCount = feedbackRepository.countByContractIdAndStatusAndReactionType(
+                contractId, MemberFeedbackStatus.PENDING, ReactionType.DISAGREE);
+        long approvedFeedbacksCount = feedbackRepository.countByContractIdAndLastAdminAction(
+                contractId, FeedbackAdminAction.APPROVE);
+        long rejectedFeedbacksCount = feedbackRepository.countByContractIdAndLastAdminAction(
+                contractId, FeedbackAdminAction.REJECT);
+
+        List<ContractFeedbackHistoryItemDTO> historyItems = historyEntries.stream()
+                .map(entry -> ContractFeedbackHistoryItemDTO.builder()
+                        .historyId(entry.getHistoryId())
+                        .feedbackId(entry.getFeedback().getId())
+                        .userId(entry.getUser().getUserId())
+                        .status(entry.getStatus())
+                        .reactionType(entry.getReactionType())
+                        .reason(entry.getReason())
+                        .adminNote(entry.getAdminNote())
+                        .lastAdminAction(entry.getLastAdminAction())
+                        .lastAdminActionAt(entry.getLastAdminActionAt())
+                        .submittedAt(entry.getSubmittedAt())
+                        .updatedAt(entry.getUpdatedAt())
+                        .historyAction(entry.getHistoryAction())
+                        .actionNote(entry.getActionNote())
+                        .archivedAt(entry.getArchivedAt())
+                        .build())
+                .toList();
+
+        return ContractFeedbackHistoryResponseDTO.builder()
+                .contractId(contract.getId())
+                .totalFeedbacks(totalFeedbacks)
+                .acceptedCount(acceptedCount)
+                .pendingDisagreeCount(pendingDisagreeCount)
+                .approvedFeedbacksCount(approvedFeedbacksCount)
+                .rejectedFeedbacksCount(rejectedFeedbacksCount)
+                .totalEntries(historyItems.size())
+                .history(historyItems)
+                .build();
+    }
+
     /**
      * Admin approve một feedback cụ thể (theo feedbackId)
      * Chỉ có thể approve feedbacks có status = PENDING
@@ -1337,6 +1410,7 @@ public class ContractService {
     @Transactional
     public ApiResponseDTO<FeedbackActionResponseDTO> approveFeedback(Long feedbackId, FeedbackActionRequestDTO request) {
         String adminNote = request != null ? request.adminNote() : null;
+        adminNote = (adminNote != null && !adminNote.trim().isEmpty()) ? adminNote.trim() : null;
         ContractFeedback feedback = feedbackRepository.findById(feedbackId)
                 .orElseThrow(() -> new ResourceNotFoundException("Feedback not found"));
         
@@ -1349,13 +1423,18 @@ public class ContractService {
         Contract contract = feedback.getContract();
         
         // Đánh dấu đã xử lý và set về PENDING để coowner làm lại
-        feedback.setIsProcessed(true);
         feedback.setStatus(MemberFeedbackStatus.PENDING);
-        feedback.setApproveCount((feedback.getApproveCount() != null ? feedback.getApproveCount() : 0) + 1);
         feedback.setLastAdminAction(FeedbackAdminAction.APPROVE);
         feedback.setLastAdminActionAt(LocalDateTime.now());
+        feedback.setAdminNote(adminNote);
         feedback.setUpdatedAt(LocalDateTime.now());
         feedbackRepository.save(feedback);
+
+        recordFeedbackHistorySnapshot(
+                feedback,
+                FeedbackHistoryAction.ADMIN_APPROVE,
+                adminNote
+        );
         
         // Invalidate tất cả feedbacks về PENDING để members review lại contract mới
         // và gửi thông báo cho tất cả members
@@ -1368,10 +1447,10 @@ public class ContractService {
             
             // Build message với adminNote nếu có
             String message = "The contract has been updated. Please review the updated contract terms and submit your feedback.";
-            if (adminNote != null && !adminNote.trim().isEmpty()) {
-                message += "\n\nAdmin note: " + adminNote.trim();
+            if (adminNote != null) {
+                message += "\n\nAdmin note: " + adminNote;
                 emailData = new HashMap<>(emailData);
-                emailData.put("adminNote", adminNote.trim());
+                emailData.put("adminNote", adminNote);
             }
             
             notificationOrchestrator.sendGroupNotification(
@@ -1383,7 +1462,7 @@ public class ContractService {
             );
         }
         
-        FeedbackActionResponseDTO feedbackData = buildFeedbackActionResponseDTO(feedback, adminNote);
+        FeedbackActionResponseDTO feedbackData = buildFeedbackActionResponseDTO(feedback);
         
         return ApiResponseDTO.<FeedbackActionResponseDTO>builder()
                 .success(true)
@@ -1401,6 +1480,7 @@ public class ContractService {
     @Transactional
     public ApiResponseDTO<FeedbackActionResponseDTO> rejectFeedback(Long feedbackId, FeedbackActionRequestDTO request) {
         String adminNote = request != null ? request.adminNote() : null;
+        adminNote = (adminNote != null && !adminNote.trim().isEmpty()) ? adminNote.trim() : null;
         ContractFeedback feedback = feedbackRepository.findById(feedbackId)
                 .orElseThrow(() -> new ResourceNotFoundException("Feedback not found"));
         
@@ -1410,20 +1490,9 @@ public class ContractService {
             );
         }
         
-        // Đánh dấu đã xử lý, chuyển về PENDING để coowner có thể làm lại
-        // Lưu adminNote vào reason để coowner biết lý do bị reject
-        feedback.setIsProcessed(true);
+        // Đánh dấu đã xử lý, chuyển về PENDING để co-owner có thể làm lại
         feedback.setStatus(MemberFeedbackStatus.PENDING);
-        if (adminNote != null && !adminNote.trim().isEmpty()) {
-            String adminReason = "Admin note: " + adminNote.trim();
-            // Nếu đã có reason, append thêm adminNote
-            if (feedback.getReason() != null && !feedback.getReason().trim().isEmpty()) {
-                feedback.setReason(feedback.getReason() + "\n\n" + adminReason);
-            } else {
-                feedback.setReason(adminReason);
-            }
-        }
-        feedback.setRejectCount((feedback.getRejectCount() != null ? feedback.getRejectCount() : 0) + 1);
+        feedback.setAdminNote(adminNote);
         feedback.setLastAdminAction(FeedbackAdminAction.REJECT);
         feedback.setLastAdminActionAt(LocalDateTime.now());
         feedback.setUpdatedAt(LocalDateTime.now());
@@ -1436,15 +1505,15 @@ public class ContractService {
             
             String title = "Feedback Rejected - Please Resubmit";
             String message = "Your feedback has been rejected by admin. Please review and resubmit your feedback.";
-            if (adminNote != null && !adminNote.trim().isEmpty()) {
-                message += "\n\nAdmin note: " + adminNote.trim();
+            if (adminNote != null) {
+                message += "\n\nAdmin note: " + adminNote;
             }
             
             Map<String, Object> notificationData = new HashMap<>();
             notificationData.put("feedbackId", feedback.getId());
             notificationData.put("contractId", contract.getId());
             notificationData.put("contractStatus", contract.getApprovalStatus());
-            notificationData.put("adminNote", adminNote != null ? adminNote.trim() : "");
+            notificationData.put("adminNote", adminNote != null ? adminNote : "");
             notificationData.put("reactionType", feedback.getReactionType());
             
             notificationOrchestrator.sendComprehensiveNotification(
@@ -1455,8 +1524,14 @@ public class ContractService {
                     notificationData
             );
         }
+
+        recordFeedbackHistorySnapshot(
+                feedback,
+                FeedbackHistoryAction.ADMIN_REJECT,
+                adminNote
+        );
         
-        FeedbackActionResponseDTO feedbackData = buildFeedbackActionResponseDTO(feedback, adminNote);
+        FeedbackActionResponseDTO feedbackData = buildFeedbackActionResponseDTO(feedback);
         
         return ApiResponseDTO.<FeedbackActionResponseDTO>builder()
                 .success(true)
@@ -1468,39 +1543,76 @@ public class ContractService {
     /**
      * Build FeedbackActionResponseDTO từ ContractFeedback
      */
-    private FeedbackActionResponseDTO buildFeedbackActionResponseDTO(ContractFeedback feedback, String adminNote) {
+    private FeedbackActionResponseDTO buildFeedbackActionResponseDTO(ContractFeedback feedback) {
         return FeedbackActionResponseDTO.builder()
                 .feedbackId(feedback.getId())
                 .status(feedback.getStatus())
-                .isProcessed(Boolean.TRUE.equals(feedback.getIsProcessed()))
+                .isProcessed(isFeedbackProcessed(feedback))
                 .lastAdminAction(feedback.getLastAdminAction())
                 .lastAdminActionAt(feedback.getLastAdminActionAt())
                 .reactionType(feedback.getReactionType())
                 .userId(feedback.getUser().getUserId())
                 .contractId(feedback.getContract().getId())
                 .reason(feedback.getReason() != null ? feedback.getReason() : "")
-                .adminNote(adminNote != null ? adminNote : "")
+                .adminNote(feedback.getAdminNote() != null ? feedback.getAdminNote() : "")
                 .build();
+    }
+
+    private boolean isFeedbackProcessed(ContractFeedback feedback) {
+        return feedback != null && feedback.getLastAdminAction() != null;
+    }
+
+    private void recordFeedbackHistorySnapshot(ContractFeedback feedback,
+                                               FeedbackHistoryAction action,
+                                               String note) {
+        if (feedback == null || feedback.getId() == null) {
+            return;
+        }
+
+        ContractFeedbackHistory historyEntry = new ContractFeedbackHistory();
+        historyEntry.setFeedback(feedback);
+        historyEntry.setContract(feedback.getContract());
+        historyEntry.setUser(feedback.getUser());
+        historyEntry.setStatus(feedback.getStatus());
+        historyEntry.setReactionType(feedback.getReactionType());
+        historyEntry.setReason(feedback.getReason());
+        historyEntry.setAdminNote(feedback.getAdminNote());
+        historyEntry.setLastAdminAction(feedback.getLastAdminAction());
+        historyEntry.setLastAdminActionAt(feedback.getLastAdminActionAt());
+        historyEntry.setSubmittedAt(feedback.getSubmittedAt());
+        historyEntry.setUpdatedAt(feedback.getUpdatedAt());
+        historyEntry.setHistoryAction(action);
+        historyEntry.setActionNote(note);
+        historyEntry.setArchivedAt(LocalDateTime.now());
+
+        feedbackHistoryRepository.save(historyEntry);
     }
 
     /**
      * Invalidate tất cả feedbacks của contract (set về PENDING và clear data)
      * Sử dụng khi admin update contract - members cần review lại contract mới
-     * Set isProcessed = true vì admin đã xử lý bằng cách chỉnh sửa hợp đồng
      */
     private void invalidateMemberFeedbacks(Long contractId) {
         List<ContractFeedback> feedbacks =
                 feedbackRepository.findByContractId(contractId);
         if (!feedbacks.isEmpty()) {
+            LocalDateTime now = LocalDateTime.now();
             feedbacks.forEach(f -> {
                 // Set tất cả về PENDING để members review lại contract mới
                 f.setStatus(MemberFeedbackStatus.PENDING);
                 f.setReactionType(null); // Clear reaction để member submit lại
                 f.setReason(null); // Clear reason
-                f.setIsProcessed(true); // Đánh dấu đã xử lý vì admin đã chỉnh sửa hợp đồng
-                f.setUpdatedAt(LocalDateTime.now());
+                f.setAdminNote(null); // Clear admin note
+                f.setLastAdminAction(null);
+                f.setLastAdminActionAt(null);
+                f.setUpdatedAt(now);
             });
             feedbackRepository.saveAll(feedbacks);
+            feedbacks.forEach(f -> recordFeedbackHistorySnapshot(
+                    f,
+                    FeedbackHistoryAction.CONTRACT_INVALIDATED,
+                    "Contract updated - feedback reset"
+            ));
         }
     }
 
@@ -1577,12 +1689,13 @@ public class ContractService {
                 ? MemberFeedbackStatus.ACCEPTED  // AGREE → ACCEPTED (không cần xử lý)
                 : MemberFeedbackStatus.PENDING;  // DISAGREE → PENDING (cần admin xử lý)
         
-        if (existingFeedback.isPresent()) {
+        boolean feedbackExisted = existingFeedback.isPresent();
+        if (feedbackExisted) {
             feedback = existingFeedback.get();
             feedback.setStatus(feedbackStatus);
             feedback.setReactionType(reactionType);
             feedback.setReason(request.reason());
-            feedback.setIsProcessed(false); // Reset về chưa xử lý vì member đang submit lại
+            feedback.setAdminNote(null);
             feedback.setLastAdminAction(null);
             feedback.setLastAdminActionAt(null);
             feedback.setUpdatedAt(LocalDateTime.now());
@@ -1596,10 +1709,21 @@ public class ContractService {
                     .status(feedbackStatus)
                     .reactionType(reactionType)
                     .reason(request.reason())
+                    .adminNote(null)
                     .build();
         }
 
         feedbackRepository.save(feedback);
+
+        FeedbackHistoryAction memberAction = switch (reactionType) {
+            case AGREE -> FeedbackHistoryAction.MEMBER_AGREE;
+            case DISAGREE -> feedbackExisted ? FeedbackHistoryAction.MEMBER_RESUBMIT : FeedbackHistoryAction.MEMBER_SUBMIT;
+        };
+        recordFeedbackHistorySnapshot(
+                feedback,
+                memberAction,
+                request.reason()
+        );
 
         // Kiểm tra xem tất cả members đã approve chưa
         checkAndAutoSignIfAllApproved(contract);
@@ -1607,7 +1731,7 @@ public class ContractService {
         SubmitMemberFeedbackResponseDTO feedbackData = SubmitMemberFeedbackResponseDTO.builder()
                 .feedbackId(feedback.getId())
                 .status(feedback.getStatus())
-                .isProcessed(Boolean.TRUE.equals(feedback.getIsProcessed()))
+                .isProcessed(isFeedbackProcessed(feedback))
                 .reactionType(feedback.getReactionType())
                 .reason(feedback.getReason() != null ? feedback.getReason() : "")
                 .submittedAt(feedback.getSubmittedAt())
@@ -1685,11 +1809,12 @@ public class ContractService {
                         .fullName(f.getUser().getFullName())
                         .email(f.getUser().getEmail())
                         .status(f.getStatus())
-                        .isProcessed(Boolean.TRUE.equals(f.getIsProcessed()))
+                        .isProcessed(isFeedbackProcessed(f))
                         .lastAdminAction(f.getLastAdminAction())
                         .lastAdminActionAt(f.getLastAdminActionAt())
                         .reactionType(f.getReactionType())
                         .reason(f.getReason() != null ? f.getReason() : "")
+                        .adminNote(f.getAdminNote() != null ? f.getAdminNote() : "")
                         .submittedAt(f.getSubmittedAt())
                         .build())
                 .toList();

@@ -25,6 +25,7 @@ public class ContractFeedbackResponseDTO {
     private LocalDateTime lastAdminActionAt;
     private ReactionType reactionType;
     private String reason;
+    private String adminNote;
     private LocalDateTime submittedAt;
 }
 

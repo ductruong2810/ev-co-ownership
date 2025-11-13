@@ -44,17 +44,9 @@ public class ContractFeedback {
     @Column(name = "Reason", length = 1000)
     private String reason; // Lý do (bắt buộc nếu reactionType = DISAGREE)
 
-    @Column(name = "IsProcessed", nullable = false, columnDefinition = "bit default 0")
-    @Builder.Default
-    private Boolean isProcessed = false; // Đã được admin xử lý (approve/reject) chưa
-
-    @Column(name = "ApproveCount", nullable = false, columnDefinition = "int default 0")
-    @Builder.Default
-    private Integer approveCount = 0; // Số lần feedback đã được admin chấp nhận và chỉnh sửa contract
-
-    @Column(name = "RejectCount", nullable = false, columnDefinition = "int default 0")
-    @Builder.Default
-    private Integer rejectCount = 0; // Số lần feedback bị admin từ chối
+    @Nationalized
+    @Column(name = "AdminNote", length = 1000)
+    private String adminNote; // Ghi chú từ admin khi xử lý feedback
 
     @Enumerated(EnumType.STRING)
     @Column(name = "LastAdminAction", length = 50)
