@@ -18,6 +18,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -42,42 +43,41 @@ public class PaymentService {
      */
     // Trong PaymentService
     @Transactional(readOnly = true)
-    public PaymentHistoryResponseDTO getPersonalHistory(PaymentHistoryBasicRequestDTO q) {
-        // Chuẩn hoá page/size
-        int page = Math.max(0, q.getPage());
-        int size = Math.min(Math.max(1, q.getSize()), 200);
+    public PaymentHistoryResponseDTO getPersonalHistory(
+            Long userId,
+            Long groupId,
+            LocalDate fromDate,   // yyyy-MM-dd (optional)
+            LocalDate toDate,     // yyyy-MM-dd (optional)
+            Integer page,
+            Integer size
+    ) {
+        if (userId == null || groupId == null) throw new IllegalArgumentException("userId, groupId required");
 
-        // Sắp xếp: mới nhất trước (paymentDate DESC, rồi id DESC để ổn định)
-        Pageable pageable = PageRequest.of(
-                page, size,
-                Sort.by(Sort.Direction.DESC, "paymentDate")
-                        .and(Sort.by(Sort.Direction.DESC, "id"))
-        );
+        int p = Math.max(0, page == null ? 0 : page);
+        int s = Math.min(Math.max(1, size == null ? 20 : size), 200);
 
-        // LẤY DANH SÁCH: chỉ COMPLETED, không lọc paymentType
+        LocalDateTime fromAt = (fromDate == null) ? null : fromDate.atStartOfDay();
+        LocalDateTime toAt   = (toDate == null)   ? null : toDate.atTime(23,59,59);
+
+        Pageable pageable = PageRequest.of(p, s,
+                Sort.by(Sort.Direction.DESC, "paymentDate").and(Sort.by(Sort.Direction.DESC, "id")));
+
         var pageResult = paymentRepo.searchPersonalHistoryCompleted(
-                q.getUserId(), q.getGroupId(), q.getFromAt(), q.getToAt(), pageable);
+                userId, groupId, fromAt, toAt, pageable);
 
-        // MAP sang item DTO
-        var items = pageResult.getContent().stream()
-                .map(this::toHistoryItem)
-                .toList();
+        var items = pageResult.getContent().stream().map(this::toHistoryItem).toList();
 
-        // TỔNG TIỀN: chỉ cộng các payment COMPLETED trong cùng khung ngày
-        var totalCompleted = paymentRepo.sumPersonalCompleted(
-                q.getUserId(), q.getGroupId(), q.getFromAt(), q.getToAt());
+        var totalCompleted = paymentRepo.sumPersonalCompleted(userId, groupId, fromAt, toAt);
 
-        // GÓI response (có phân trang + tổng tiền)
         return PaymentHistoryResponseDTO.builder()
-                .userId(q.getUserId())
-                .groupId(q.getGroupId())
-                .page(page)
-                .size(size)
-                .total(pageResult.getTotalElements())       // tổng bản ghi khớp filter
-                .totalCompletedAmount(totalCompleted)       // tổng tiền đã hoàn tất
+                .userId(userId).groupId(groupId)
+                .page(p).size(s)
+                .total(pageResult.getTotalElements())
+                .totalCompletedAmount(totalCompleted)
                 .items(items)
                 .build();
     }
+
 
 
 

@@ -155,49 +155,45 @@ public class DepositPaymentController {
 
         try {
             if ("00".equals(responseCode)) {
-                // Thanh toán thành công → cập nhật DB
                 depositPaymentService.confirmDepositPayment(txnRef, transactionNo);
 
-                // Redirect về FE hiển thị kết quả thành công
                 if (groupId != null) {
                     response.sendRedirect(String.format(
-                            "%s/dashboard/viewGroups/%d/payment-result?status=success&txnRef=%s",
+                            "%s/dashboard/viewGroups/%d/payment-result?type=deposit&status=success&txnRef=%s",
                             frontendBaseUrl, groupId, txnRef
                     ));
                 } else {
-                    // fallback nếu thiếu groupId
                     response.sendRedirect(String.format(
-                            "%s/payment-result?status=success&txnRef=%s",
+                            "%s/payment-result?type=deposit&status=success&txnRef=%s",
                             frontendBaseUrl, txnRef
                     ));
                 }
-
             } else {
-                // Thanh toán thất bại
                 if (groupId != null) {
                     response.sendRedirect(String.format(
-                            "%s/dashboard/viewGroups/%d/payment-result?status=fail&txnRef=%s",
+                            "%s/dashboard/viewGroups/%d/payment-result?type=deposit&status=fail&txnRef=%s",
                             frontendBaseUrl, groupId, txnRef
                     ));
                 } else {
                     response.sendRedirect(String.format(
-                            "%s/payment-result?status=fail&txnRef=%s",
+                            "%s/payment-result?type=deposit&status=fail&txnRef=%s",
                             frontendBaseUrl, txnRef
                     ));
                 }
             }
+
 
         } catch (Exception e) {
             log.error("Error processing deposit callback for txnRef: {}, groupId: {}", txnRef, groupId, e);
             //  Có lỗi trong quá trình xử lý callback
             if (groupId != null) {
                 response.sendRedirect(String.format(
-                        "%s/dashboard/viewGroups/%d/payment-result?status=error&txnRef=%s",
+                        "%s/dashboard/viewGroups/%d/payment-result?type=deposit&status=error&txnRef=%s",
                         frontendBaseUrl, groupId, txnRef
                 ));
             } else {
                 response.sendRedirect(String.format(
-                        "%s/payment-result?status=error&txnRef=%s",
+                        "%s/payment-result?type=deposit&status=error&txnRef=%s",
                         frontendBaseUrl, txnRef
                 ));
             }

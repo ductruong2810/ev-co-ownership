@@ -57,30 +57,39 @@ public class VnPay_PaymentService {
         long amount = fee * 100L;
         Map<String, String> vnpParamsMap = getVNPayConfig();
 
-        String returnUrl = isDeposit ? this.vnp_DepositReturnUrl : this.vnp_ReturnUrl;
+        // 1) Chọn callback BE theo loại giao dịch
+        String baseReturn = isDeposit ? this.vnp_DepositReturnUrl : this.vnp_ReturnUrl;
 
-        // Nếu là deposit thì thêm groupId (ưu tiên từ param truyền vào)
-        if (isDeposit) {
-            String effectiveGroupId = (groupId != null) ? String.valueOf(groupId) : request.getParameter("groupId");
-            if (effectiveGroupId == null || effectiveGroupId.isEmpty()) {
-                System.err.println("[VNPay] groupId missing — fallback to 0");
-                effectiveGroupId = "0";
-            }
-            returnUrl = returnUrl + "?groupId=" + effectiveGroupId;
-        }
+        // 2) Lấy groupId & type để gửi kèm cho callback
+        String gid  = (groupId != null) ? String.valueOf(groupId) : request.getParameter("groupId");
+        if (gid == null || gid.isEmpty()) gid = "0";          // hoặc throw nếu muốn bắt buộc
+        String type = isDeposit ? "deposit" : "fund";
 
-        vnpParamsMap.put("vnp_ReturnUrl", returnUrl);
+        // 3) Luôn append groupId + type vào returnUrl (dùng ? hoặc & cho đúng cú pháp)
+        String joiner   = baseReturn.contains("?") ? "&" : "?";
+        String returnUrl = baseReturn + joiner + "groupId=" + gid + "&type=" + type;
+
+        // 4) Set tham số bắt buộc của VNPay
+        vnpParamsMap.put("vnp_ReturnUrl", returnUrl);         // getPaymentURL sẽ URL-encode value này
         vnpParamsMap.put("vnp_Amount", String.valueOf(amount));
         vnpParamsMap.put("vnp_IpAddr", getIpAddress(request));
         vnpParamsMap.put("vnp_TxnRef", txnRef);
 
-        String queryUrl = getPaymentURL(vnpParamsMap, true);
-        String hashData = getPaymentURL(vnpParamsMap, false);
-        String vnpSecureHash = hmacSHA512(secretKey, hashData);
-        queryUrl += "&vnp_SecureHash=" + vnpSecureHash;
+//        String queryUrl   = getPaymentURL(vnpParamsMap, true);
+//        String hashData   = getPaymentURL(vnpParamsMap, false);
+//        String vnpHash    = hmacSHA512(secretKey, hashData);
+//        queryUrl += "&vnp_SecureHash=" + vnpHash;
+//
+//        return vnp_PayUrl + "?" + queryUrl;
 
+        String hashData = buildHashData(vnpParamsMap);          // ⬅️ dùng helper mới
+        String signature = hmacSHA512(secretKey, hashData);
+        vnpParamsMap.put("vnp_SecureHash", signature);
+
+        String queryUrl = buildQueryString(vnpParamsMap);       // ⬅️ encode giống hash
         return vnp_PayUrl + "?" + queryUrl;
     }
+
 
 
     /**
@@ -88,22 +97,60 @@ public class VnPay_PaymentService {
      * Ở dự án EV Co-ownership, thực tế bạn dùng DepositController.depositCallback()
      * để xử lý cập nhật Payment/OwnershipShare → nên hàm này chỉ cần redirect đơn giản
      */
-    public void handlePaymentCallBack(HttpServletRequest request, HttpServletResponse response) throws Exception {
-        String status = request.getParameter("vnp_ResponseCode");
-        String txnRef = request.getParameter("vnp_TxnRef");
-        String groupId = request.getParameter("groupId");
+    public void handlePaymentCallBack(HttpServletRequest req, HttpServletResponse res) throws Exception {
+        String respCode = req.getParameter("vnp_ResponseCode");
+        String txnRef   = req.getParameter("vnp_TxnRef");
+        String groupId  = req.getParameter("groupId");
+        String type     = req.getParameter("type"); // "fund" | "deposit"
 
-        // Dựa theo groupId redirect về đúng trang FE trong dashboard
-        String redirectUrl = String.format(
-                "%s/dashboard/viewGroups/%s/payment-result?status=%s&txnRef=%s",
+        String status = "00".equals(respCode) ? "success" : "fail";
+
+        String redirect = String.format(
+                "%s/dashboard/viewGroups/%s/payment-result?type=%s&status=%s&txnRef=%s",
                 frontendUrl,
-                groupId != null ? groupId : "unknown",
-                "00".equals(status) ? "success" : "fail",
-                txnRef != null ? txnRef : ""
+                (groupId != null ? groupId : "unknown"),
+                (type != null ? type : "fund"),
+                status,
+                (txnRef != null ? txnRef : "")
         );
-
-        response.sendRedirect(redirectUrl);
+        res.sendRedirect(redirect);
     }
+
+    /**
+     * New for fixing sai chu ky o deposit payment
+     */
+    // Helper encode: dùng UTF-8, thay "+" -> "%20" để ổn định
+    private static String enc(String s) {
+        // Giữ nguyên chuẩn URL-encode của Java (UTF-8, khoảng trắng = '+')
+        return URLEncoder.encode(s, StandardCharsets.UTF_8);
+    }
+
+
+    // Build chuỗi cho HASH: sort theo key, KHÔNG đưa vnp_SecureHash / vnp_SecureHashType
+    private static String buildHashData(Map<String, String> params) {
+        return params.entrySet().stream()
+                .filter(e -> e.getKey().startsWith("vnp_"))
+                .filter(e -> e.getValue() != null && !e.getValue().isEmpty())
+                .filter(e -> !"vnp_SecureHash".equals(e.getKey()))
+                .filter(e -> !"vnp_SecureHashType".equals(e.getKey()))   // ← thêm dòng này
+                .sorted(Map.Entry.comparingByKey())
+                .map(e -> enc(e.getKey()) + "=" + enc(e.getValue()))
+                .collect(Collectors.joining("&"));
+    }
+
+
+    // Build query gửi đi: giống hệt hashData + thêm vnp_SecureHash ở cuối
+    private static String buildQueryString(Map<String, String> params) {
+        return params.entrySet().stream()
+                .filter(e -> e.getValue() != null && !e.getValue().isEmpty())
+                .sorted(Map.Entry.comparingByKey())
+                .map(e -> enc(e.getKey()) + "=" + enc(e.getValue()))
+                .collect(Collectors.joining("&"));
+    }
+
+    /**
+     *
+     */
 
 
     private Map<String, String> getVNPayConfig() {
@@ -142,25 +189,40 @@ public class VnPay_PaymentService {
 
     public static String hmacSHA512(final String key, final String data) {
         try {
-            if (key == null || data == null) {
-                throw new NullPointerException();
-            }
-            final Mac hmac512 = Mac.getInstance("HmacSHA512");
-            byte[] hmacKeyBytes = key.getBytes();
-            final SecretKeySpec secretKey = new SecretKeySpec(hmacKeyBytes, "HmacSHA512");
-            hmac512.init(secretKey);
-            byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
-            byte[] result = hmac512.doFinal(dataBytes);
-            StringBuilder sb = new StringBuilder(2 * result.length);
-            for (byte b : result) {
-                sb.append(String.format("%02x", b & 0xff));
-            }
+            Mac mac = Mac.getInstance("HmacSHA512");
+            SecretKeySpec sk = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA512");
+            mac.init(sk);
+            byte[] result = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder(result.length * 2);
+            for (byte b : result) sb.append(String.format("%02x", b & 0xff));
             return sb.toString();
-
         } catch (Exception ex) {
-            return "";
+            throw new RuntimeException(ex);
         }
     }
+
+
+//    public static String hmacSHA512(final String key, final String data) {
+//        try {
+//            if (key == null || data == null) {
+//                throw new NullPointerException();
+//            }
+//            final Mac hmac512 = Mac.getInstance("HmacSHA512");
+//            byte[] hmacKeyBytes = key.getBytes();
+//            final SecretKeySpec secretKey = new SecretKeySpec(hmacKeyBytes, "HmacSHA512");
+//            hmac512.init(secretKey);
+//            byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
+//            byte[] result = hmac512.doFinal(dataBytes);
+//            StringBuilder sb = new StringBuilder(2 * result.length);
+//            for (byte b : result) {
+//                sb.append(String.format("%02x", b & 0xff));
+//            }
+//            return sb.toString();
+//
+//        } catch (Exception ex) {
+//            return "";
+//        }
+//    }
 
 //    public static String getIpAddress(HttpServletRequest request) {
 //        String ipAdress;
@@ -249,12 +311,21 @@ public class VnPay_PaymentService {
         vnpParamsMap.put("vnp_CreateDate", fmt.format(cal.getTime()));
 
         // Build URL và hash
-        String queryUrl = getPaymentURL(vnpParamsMap, true);
-        String hashData = getPaymentURL(vnpParamsMap, false);
-        String vnpSecureHash = hmacSHA512(this.secretKey, hashData);
-        queryUrl += "&vnp_SecureHash=" + vnpSecureHash;
+//        String queryUrl = getPaymentURL(vnpParamsMap, true);
+//        String hashData = getPaymentURL(vnpParamsMap, false);
+//        String vnpSecureHash = hmacSHA512(this.secretKey, hashData);
+//        queryUrl += "&vnp_SecureHash=" + vnpSecureHash;
+//
+//        return this.vnp_PayUrl + "?" + queryUrl;
 
+        vnpParamsMap.put("vnp_SecureHashType", "HmacSHA512");
+        String hashData = buildHashData(vnpParamsMap);
+        String signature = hmacSHA512(this.secretKey, hashData);
+        vnpParamsMap.put("vnp_SecureHash", signature);
+
+        String queryUrl = buildQueryString(vnpParamsMap);
         return this.vnp_PayUrl + "?" + queryUrl;
+
     }
 
     /**
