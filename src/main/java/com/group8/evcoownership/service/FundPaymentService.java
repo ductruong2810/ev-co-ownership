@@ -9,7 +9,6 @@ import com.group8.evcoownership.enums.PaymentType;
 import com.group8.evcoownership.exception.DepositPaymentException;
 import com.group8.evcoownership.repository.*;
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.servlet.ServletRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +17,6 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 /**
  * Nạp quỹ (OPERATING) qua VNPay, tái dùng Payment/SharedFund.
@@ -33,15 +31,10 @@ public class FundPaymentService {
     private final FundService fundService;
     private final DepositPaymentService depositPaymentService;
     private final PaymentRepository paymentRepository;
-    private final OwnershipShareRepository shareRepository;
     private final ContractRepository contractRepository;
     private final SharedFundRepository sharedFundRepository;
     private final UserRepository userRepository;
-    private final OwnershipGroupRepository groupRepository;
     private final VnPay_PaymentService vnPayPaymentService;
-    private final DepositCalculationService depositCalculationService;
-    private final VehicleRepository vehicleRepository;
-    private final ServletRequest servletRequest;
 
     // ham phu
     private Long parseId(String id, String fieldName) {
@@ -73,13 +66,6 @@ public class FundPaymentService {
         if (!user.getEmail().equals(authenticatedEmail)) {
             throw new DepositPaymentException("You can only create deposit payment for your own account");
         }
-
-        // Kiểm tra group, membership, contract, fund
-        OwnershipGroup group = groupRepository.findById(groupId)
-                .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
-
-        OwnershipShare share = shareRepository.findById(new OwnershipShareId(userId, groupId))
-                .orElseThrow(() -> new EntityNotFoundException("User is not a member of this group"));
 
 
         // Kiểm tra contract tồn tại
@@ -126,7 +112,6 @@ public class FundPaymentService {
 
         payment = paymentRepository.save(payment);
 
-        Long actorId = extractUserId(auth);
         // nếu Payment có payer (User) thì set vào, nếu không thì thôi:
         // payment.setPayer(userRepository.getReferenceById(actorId));
         paymentRepository.save(payment);
@@ -207,16 +192,7 @@ public class FundPaymentService {
 //        return tx;
 //    }
 
-    private Long extractUserId(Authentication auth) {
-        if (auth == null || auth.getPrincipal() == null) return null;
-        try {
-            // ĐỔI theo principal của bạn, ví dụ:
-            // return ((UserPrincipal) auth.getPrincipal()).getUserId();
-            return null;
-        } catch (Exception e) {
-            return null;
-        }
-    }
+
 
     private FundTopupResponseDTO map(Payment p, String message) {
         return FundTopupResponseDTO.builder()
