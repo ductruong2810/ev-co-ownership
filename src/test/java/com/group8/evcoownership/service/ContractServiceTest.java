@@ -1,5 +1,7 @@
 package com.group8.evcoownership.service;
 
+import com.group8.evcoownership.dto.AutoSignConditionsResponseDTO;
+import com.group8.evcoownership.dto.ContractInfoResponseDTO;
 import com.group8.evcoownership.entity.Contract;
 import com.group8.evcoownership.entity.OwnershipGroup;
 import com.group8.evcoownership.entity.OwnershipShare;
@@ -20,7 +22,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -123,20 +124,20 @@ class ContractServiceTest {
                 .thenReturn(Optional.of(testContract));
 
         // When
-        Map<String, Object> result = contractService.getContractInfo(TEST_GROUP_ID);
+        ContractInfoResponseDTO result = contractService.getContractInfo(TEST_GROUP_ID);
 
         // Then
         assertNotNull(result);
-        assertEquals(TEST_CONTRACT_ID, result.get("contractId"));
-        assertEquals(TEST_GROUP_ID, result.get("groupId"));
-        assertEquals("Test EV Group", result.get("groupName"));
-        assertEquals(testContract.getStartDate(), result.get("startDate"));
-        assertEquals(testContract.getEndDate(), result.get("endDate"));
-        assertEquals(testContract.getTerms(), result.get("terms"));
-        assertEquals(testContract.getRequiredDepositAmount(), result.get("requiredDepositAmount"));
-        assertEquals(testContract.getIsActive(), result.get("isActive"));
-        assertEquals(testContract.getCreatedAt(), result.get("createdAt"));
-        assertEquals(testContract.getUpdatedAt(), result.get("updatedAt"));
+        assertEquals(TEST_CONTRACT_ID, result.getContractId());
+        assertEquals(TEST_GROUP_ID, result.getGroupId());
+        assertEquals("Test EV Group", result.getGroupName());
+        assertEquals(testContract.getStartDate(), result.getStartDate());
+        assertEquals(testContract.getEndDate(), result.getEndDate());
+        assertEquals(testContract.getTerms(), result.getTerms());
+        assertEquals(testContract.getRequiredDepositAmount(), result.getRequiredDepositAmount());
+        assertEquals(testContract.getIsActive(), result.getIsActive());
+        assertEquals(testContract.getCreatedAt(), result.getCreatedAt());
+        assertEquals(testContract.getUpdatedAt(), result.getUpdatedAt());
 
         verify(groupRepository).findById(TEST_GROUP_ID);
         verify(contractRepository).findByGroupGroupId(TEST_GROUP_ID);
@@ -384,13 +385,13 @@ class ContractServiceTest {
                 .thenReturn(Optional.empty());
 
         // When
-        Map<String, Object> conditions = contractService.checkAutoSignConditions(TEST_GROUP_ID);
+        AutoSignConditionsResponseDTO conditions = contractService.checkAutoSignConditions(TEST_GROUP_ID);
 
         // Then
-        assertFalse((Boolean) conditions.get("hasCorrectOwnershipPercentage"));
-        assertFalse((Boolean) conditions.get("canAutoSign"));
-        assertEquals(new BigDecimal("99.00"), conditions.get("totalOwnershipPercentage"));
-        assertEquals(new BigDecimal("100.00"), conditions.get("expectedOwnershipPercentage"));
+        assertFalse(Boolean.TRUE.equals(conditions.getHasCorrectOwnershipPercentage()));
+        assertFalse(Boolean.TRUE.equals(conditions.getCanAutoSign()));
+        assertEquals(new BigDecimal("99.00"), conditions.getTotalOwnershipPercentage());
+        assertEquals(new BigDecimal("100.00"), conditions.getExpectedOwnershipPercentage());
 
         verify(groupRepository).findById(TEST_GROUP_ID);
         verify(ownershipShareRepository).findByGroupGroupId(TEST_GROUP_ID);

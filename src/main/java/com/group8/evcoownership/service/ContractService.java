@@ -50,9 +50,7 @@ public class ContractService {
      * - Thông tin nhóm (tên nhóm, trạng thái, ngày tạo)
      * - Danh sách thành viên (userId, họ tên, email, vai trò, % sở hữu,...)
      */
-    public Map<String, Object> getContractInfoDetail(Long groupId) {
-        Map<String, Object> result = new LinkedHashMap<>();
-
+    public ContractDetailResponseDTO getContractInfoDetail(Long groupId) {
         // Lấy hợp đồng của group
         // ------------------------------------------------------------
         // Mỗi nhóm chỉ có 1 hợp đồng đang hoạt động.
@@ -73,49 +71,47 @@ public class ContractService {
         List<OwnershipShare> shares = shareRepository.findByGroup_GroupId(groupId);
 
         // Chuẩn bị danh sách thành viên (gọn gàng, không trả entity thô)
-        List<Map<String, Object>> members = shares.stream()
+        List<ContractDetailResponseDTO.MemberInfo> members = shares.stream()
                 .map(share -> {
-                    User user = userRepository.findById(share.getUser().getUserId())
-                            .orElse(null);
-
-                    Map<String, Object> memberInfo = new LinkedHashMap<>();
-                    memberInfo.put("userId", share.getUser().getUserId());
-                    memberInfo.put("fullName", user != null ? user.getFullName() : null);
-                    memberInfo.put("email", user != null ? user.getEmail() : null);
-                    memberInfo.put("userRole", share.getGroupRole().name());
-                    memberInfo.put("ownershipPercentage", share.getOwnershipPercentage());
-                    memberInfo.put("depositStatus", share.getDepositStatus().name());
-                    memberInfo.put("joinDate", share.getJoinDate());
-                    return memberInfo;
+                    User user = userRepository.findById(share.getUser().getUserId()).orElse(null);
+                    return ContractDetailResponseDTO.MemberInfo.builder()
+                            .userId(share.getUser().getUserId())
+                            .fullName(user != null ? user.getFullName() : null)
+                            .email(user != null ? user.getEmail() : null)
+                            .userRole(share.getGroupRole())
+                            .ownershipPercentage(share.getOwnershipPercentage())
+                            .depositStatus(share.getDepositStatus())
+                            .joinDate(share.getJoinDate())
+                            .build();
                 })
                 .toList();
 
-        // Gộp toàn bộ dữ liệu trả về client
-        // ------------------------------------------------------------
-        result.put("contract", Map.of(
-                "contractId", contract.getId(),
-                "terms", contract.getTerms(),
-                "requiredDepositAmount", contract.getRequiredDepositAmount(),
-                "startDate", contract.getStartDate(),
-                "endDate", contract.getEndDate(),
-                "depositDeadline", computeDepositDeadlineSafe(contract),
-                "isActive", contract.getIsActive(),
-                "approvalStatus", contract.getApprovalStatus(),
-                "createdAt", contract.getCreatedAt(),
-                "updatedAt", contract.getUpdatedAt()
-        ));
+        ContractDetailResponseDTO.ContractInfo contractInfo = ContractDetailResponseDTO.ContractInfo.builder()
+                .contractId(contract.getId())
+                .terms(contract.getTerms())
+                .requiredDepositAmount(contract.getRequiredDepositAmount())
+                .startDate(contract.getStartDate())
+                .endDate(contract.getEndDate())
+                .depositDeadline(computeDepositDeadlineSafe(contract))
+                .isActive(contract.getIsActive())
+                .approvalStatus(contract.getApprovalStatus())
+                .createdAt(contract.getCreatedAt())
+                .updatedAt(contract.getUpdatedAt())
+                .build();
 
-        result.put("group", Map.of(
-                "groupId", group.getGroupId(),
-                "groupName", group.getGroupName(),
-                "status", group.getStatus(),
-                "createdAt", group.getCreatedAt(),
-                "updatedAt", group.getUpdatedAt()
-        ));
+        ContractDetailResponseDTO.GroupInfo groupInfo = ContractDetailResponseDTO.GroupInfo.builder()
+                .groupId(group.getGroupId())
+                .groupName(group.getGroupName())
+                .status(group.getStatus())
+                .createdAt(group.getCreatedAt())
+                .updatedAt(group.getUpdatedAt())
+                .build();
 
-        result.put("members", members);
-
-        return result;
+        return ContractDetailResponseDTO.builder()
+                .contract(contractInfo)
+                .group(groupInfo)
+                .members(members)
+                .build();
     }
 
     private final VehicleRepository vehicleRepository;
@@ -369,15 +365,15 @@ public class ContractService {
      * Lấy thông tin tính toán deposit amount cho group admin
      * Bao gồm giá trị tính toán tự động và giải thích công thức
      */
-    public Map<String, Object> getDepositCalculationInfo(Long groupId) {
+    public DepositCalculationInfoDTO getDepositCalculationInfo(Long groupId) {
         OwnershipGroup group = getGroupById(groupId);
         Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group).orElse(null);
         
         BigDecimal calculatedAmount = depositCalculationService.calculateRequiredDepositAmount(group);
         
-        Map<String, Object> info = new HashMap<>();
-        info.put("calculatedDepositAmount", calculatedAmount);
-        info.put("formattedAmount", formatCurrency(calculatedAmount));
+        DepositCalculationInfoDTO.DepositCalculationInfoDTOBuilder builder = DepositCalculationInfoDTO.builder()
+                .calculatedDepositAmount(calculatedAmount)
+                .formattedAmount(formatCurrency(calculatedAmount));
         
         // Giải thích công thức tính toán
         StringBuilder explanation = new StringBuilder();
@@ -386,20 +382,20 @@ public class ContractService {
                     .append(formatCurrency(vehicle.getVehicleValue()))
                     .append(" × 10% = ")
                     .append(formatCurrency(calculatedAmount));
-            info.put("calculationMethod", "VEHICLE_VALUE_PERCENTAGE");
-            info.put("vehicleValue", vehicle.getVehicleValue());
-            info.put("percentage", "10%");
+            builder.calculationMethod("VEHICLE_VALUE_PERCENTAGE")
+                    .vehicleValue(vehicle.getVehicleValue())
+                    .percentage("10%");
         } else {
             explanation.append("Formula: Base amount + (Number of members × 10% × Base amount) = ")
                     .append(formatCurrency(calculatedAmount));
-            info.put("calculationMethod", "MEMBER_CAPACITY");
-            info.put("memberCapacity", group.getMemberCapacity());
+            builder.calculationMethod("MEMBER_CAPACITY")
+                    .memberCapacity(group.getMemberCapacity());
         }
         
-        info.put("explanation", explanation.toString());
-        info.put("note", "You can override this value when updating the contract. This value is the total deposit for the entire group.");
+        builder.explanation(explanation.toString())
+                .note("You can override this value when updating the contract. This value is the total deposit for the entire group.");
         
-        return info;
+        return builder.build();
     }
 
     /**
@@ -492,43 +488,34 @@ public class ContractService {
      * Lấy thông tin contract của group
      * Nếu có contract thì lấy từ contract, nếu không thì tính từ group
      */
-    public Map<String, Object> getContractInfo(Long groupId) {
+    public ContractInfoResponseDTO getContractInfo(Long groupId) {
         OwnershipGroup group = getGroupById(groupId);
 
         // Kiểm tra có contract không
         Contract contract = contractRepository.findByGroupGroupId(groupId).orElse(null);
 
-        Map<String, Object> info = new HashMap<>();
-        info.put("contractId", contract != null ? contract.getId() : null);
-        info.put("groupId", groupId);
-        info.put("groupName", group.getGroupName());
+        ContractInfoResponseDTO.ContractInfoResponseDTOBuilder builder = ContractInfoResponseDTO.builder()
+                .contractId(contract != null ? contract.getId() : null)
+                .groupId(groupId)
+                .groupName(group.getGroupName())
+                .templateId(null);
 
         if (contract != null) {
-            // Có contract
-            info.put("startDate", contract.getStartDate());
-            info.put("endDate", contract.getEndDate());
-            info.put("terms", contract.getTerms());
-            info.put("requiredDepositAmount", contract.getRequiredDepositAmount());
-            info.put("depositDeadline", computeDepositDeadlineSafe(contract));
-            info.put("isActive", contract.getIsActive());
-            info.put("approvalStatus", contract.getApprovalStatus());
-            info.put("createdAt", contract.getCreatedAt());
-            info.put("updatedAt", contract.getUpdatedAt());
+            builder.startDate(contract.getStartDate())
+                    .endDate(contract.getEndDate())
+                    .terms(contract.getTerms())
+                    .requiredDepositAmount(contract.getRequiredDepositAmount())
+                    .depositDeadline(computeDepositDeadlineSafe(contract))
+                    .isActive(contract.getIsActive())
+                    .approvalStatus(contract.getApprovalStatus())
+                    .createdAt(contract.getCreatedAt())
+                    .updatedAt(contract.getUpdatedAt());
         } else {
-            // Chưa có contract, tính toán từ group
-            info.put("startDate", null);
-            info.put("endDate", null);
-            info.put("terms", null);
-            info.put("requiredDepositAmount", depositCalculationService.calculateRequiredDepositAmount(group));
-            info.put("isActive", false);
-            info.put("approvalStatus", null);
-            info.put("createdAt", null);
-            info.put("updatedAt", null);
+            builder.requiredDepositAmount(depositCalculationService.calculateRequiredDepositAmount(group))
+                    .isActive(false);
         }
 
-        info.put("templateId", null); // Template sẽ được xử lý ở Frontend
-
-        return info;
+        return builder.build();
     }
 
 
@@ -537,7 +524,7 @@ public class ContractService {
      * Điều kiện: Group đã có đủ thành viên và vehicle
      */
     @Transactional
-    public Map<String, Object> autoSignContract(Long groupId) {
+    public AutoSignContractResponseDTO autoSignContract(Long groupId) {
         OwnershipGroup group = getGroupById(groupId);
 
         // Kiểm tra đã có contract chưa
@@ -597,15 +584,14 @@ public class ContractService {
             );
         }
 
-        Map<String, Object> result = new HashMap<>();
-        result.put("success", true);
-        result.put("contractId", savedContract.getId());
-        result.put("contractNumber", generateContractNumber(savedContract.getId()));
-        result.put("status", "PENDING_MEMBER_APPROVAL");
-        result.put("signedAt", LocalDateTime.now());
-        result.put("message", "Contract has been signed by group admin. Waiting for member approvals.");
-
-        return result;
+        return AutoSignContractResponseDTO.builder()
+                .success(true)
+                .contractId(savedContract.getId())
+                .contractNumber(generateContractNumber(savedContract.getId()))
+                .status("PENDING_MEMBER_APPROVAL")
+                .signedAt(LocalDateTime.now())
+                .message("Contract has been signed by group admin. Waiting for member approvals.")
+                .build();
     }
 
     private LocalDateTime computeDepositDeadlineSafe(Contract contract) {
@@ -643,18 +629,13 @@ public class ContractService {
     /**
      * Kiểm tra điều kiện để ký tự động contract
      */
-    public Map<String, Object> checkAutoSignConditions(Long groupId) {
+    public AutoSignConditionsResponseDTO checkAutoSignConditions(Long groupId) {
         OwnershipGroup group = getGroupById(groupId);
-
-        Map<String, Object> conditions = new HashMap<>();
 
         // Kiểm tra số thành viên
         List<OwnershipShare> shares = getSharesByGroupId(groupId);
         Integer memberCapacity = group.getMemberCapacity();
         boolean hasEnoughMembers = shares.size() == memberCapacity;
-        conditions.put("hasEnoughMembers", hasEnoughMembers);
-        conditions.put("currentMembers", shares.size());
-        conditions.put("requiredMembers", memberCapacity);
 
         // Kiểm tra tổng tỷ lệ sở hữu
         BigDecimal totalOwnershipPercentage = BigDecimal.ZERO;
@@ -679,30 +660,33 @@ public class ContractService {
         BigDecimal expectedTotal = new BigDecimal("100.00");
         boolean hasCorrectOwnershipPercentage = hasValidOwnershipPercentages &&
                 totalOwnershipPercentage.compareTo(expectedTotal) == 0;
-        conditions.put("hasCorrectOwnershipPercentage", hasCorrectOwnershipPercentage);
-        conditions.put("totalOwnershipPercentage", totalOwnershipPercentage);
-        conditions.put("expectedOwnershipPercentage", expectedTotal);
-        conditions.put("hasValidOwnershipPercentages", hasValidOwnershipPercentages);
-        conditions.put("membersWithZeroOrNullPercentage", membersWithZeroOrNullPercentage);
 
         // Kiểm tra có vehicle không
         Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group).orElse(null);
         boolean hasVehicle = vehicle != null && vehicle.getVehicleValue() != null && vehicle.getVehicleValue().compareTo(BigDecimal.ZERO) > 0;
-        conditions.put("hasVehicle", hasVehicle);
-        conditions.put("vehicleValue", vehicle != null ? vehicle.getVehicleValue() : BigDecimal.ZERO);
 
         // Kiểm tra contract status
         Contract contract = contractRepository.findByGroupGroupId(groupId).orElse(null);
         boolean canSign = contract == null || contract.getApprovalStatus() == ContractApprovalStatus.PENDING;
-        conditions.put("canSign", canSign);
-        conditions.put("contractStatus", contract != null ? contract.getApprovalStatus() : "NO_CONTRACT");
 
         // Tổng kết
         boolean allConditionsMet = hasEnoughMembers && hasCorrectOwnershipPercentage && hasVehicle && canSign;
-        conditions.put("allConditionsMet", allConditionsMet);
-        conditions.put("canAutoSign", allConditionsMet);
-
-        return conditions;
+        return AutoSignConditionsResponseDTO.builder()
+                .hasEnoughMembers(hasEnoughMembers)
+                .currentMembers(shares.size())
+                .requiredMembers(memberCapacity)
+                .hasCorrectOwnershipPercentage(hasCorrectOwnershipPercentage)
+                .totalOwnershipPercentage(totalOwnershipPercentage)
+                .expectedOwnershipPercentage(expectedTotal)
+                .hasValidOwnershipPercentages(hasValidOwnershipPercentages)
+                .membersWithZeroOrNullPercentage(membersWithZeroOrNullPercentage)
+                .hasVehicle(hasVehicle)
+                .vehicleValue(vehicle != null ? vehicle.getVehicleValue() : BigDecimal.ZERO)
+                .canSign(canSign)
+                .contractStatus(contract != null ? contract.getApprovalStatus().name() : "NO_CONTRACT")
+                .allConditionsMet(allConditionsMet)
+                .canAutoSign(allConditionsMet)
+                .build();
     }
 
     /**
@@ -710,17 +694,25 @@ public class ContractService {
      * Method này có thể được gọi từ scheduler hoặc event listener
      */
     @Transactional
-    public Map<String, Object> checkAndAutoSignContract(Long groupId) {
-        Map<String, Object> conditions = checkAutoSignConditions(groupId);
+    public AutoSignOutcomeResponseDTO checkAndAutoSignContract(Long groupId) {
+        AutoSignConditionsResponseDTO conditions = checkAutoSignConditions(groupId);
 
-        if ((Boolean) conditions.get("canAutoSign")) {
-            return autoSignContract(groupId);
+        if (Boolean.TRUE.equals(conditions.getCanAutoSign())) {
+            AutoSignContractResponseDTO autoSignResult = autoSignContract(groupId);
+            return AutoSignOutcomeResponseDTO.builder()
+                    .success(autoSignResult.getSuccess())
+                    .message(autoSignResult.getMessage())
+                    .contractId(autoSignResult.getContractId())
+                    .contractNumber(autoSignResult.getContractNumber())
+                    .status(autoSignResult.getStatus())
+                    .signedAt(autoSignResult.getSignedAt())
+                    .build();
         } else {
-            Map<String, Object> result = new HashMap<>();
-            result.put("success", false);
-            result.put("message", "Contract cannot be auto-signed yet");
-            result.put("conditions", conditions);
-            return result;
+            return AutoSignOutcomeResponseDTO.builder()
+                    .success(false)
+                    .message("Contract cannot be auto-signed yet")
+                    .conditions(conditions)
+                    .build();
         }
     }
 
@@ -731,7 +723,7 @@ public class ContractService {
     /**
      * Generate contract data (chỉ tạo nội dung, không save DB)
      */
-    public Map<String, Object> generateContractData(Long groupId, Long userId) {
+    public ContractGenerationResponseDTO generateContractData(Long groupId, Long userId) {
         // Kiểm tra điều kiện generate contract
         validateContractGeneration(groupId);
 
@@ -746,145 +738,142 @@ public class ContractService {
         String terms = generateContractTerms(groupId);
 
         // Chuẩn bị response data (không save DB)
-        Map<String, Object> responseData = prepareContractData(groupId, existingContract);
+        ContractGenerationResponseDTO baseData = prepareContractData(groupId, existingContract);
 
-        // Thêm thông tin contract được generate
-        responseData.put("groupId", groupId);
-        responseData.put("userId", userId);
-        responseData.put("terms", terms);
-        responseData.put("startDate", startDate);
-        responseData.put("endDate", endDate);
-        responseData.put("contractNumber", "EVS-" + groupId + "-" + System.currentTimeMillis());
-        responseData.put("generatedAt", LocalDateTime.now());
+        ContractGenerationResponseDTO.ContractGenerationResponseDTOBuilder builder = baseData.toBuilder()
+                .groupId(groupId)
+                .userId(userId)
+                .terms(terms)
+                .startDate(startDate)
+                .endDate(endDate)
+                .contractNumber("EVS-" + groupId + "-" + System.currentTimeMillis())
+                .generatedAt(LocalDateTime.now());
 
-        // Trả về status từ database nếu contract đã tồn tại
         if (existingContract.isPresent()) {
             Contract contract = existingContract.get();
-            responseData.put("contractId", contract.getId());
-            responseData.put("status", contract.getApprovalStatus());
-            responseData.put("isActive", contract.getIsActive());
-            responseData.put("savedToDatabase", true);
+            builder.contractId(contract.getId())
+                    .status(contract.getApprovalStatus())
+                    .isActive(contract.getIsActive())
+                    .savedToDatabase(true);
 
-            // Nếu contract đã ký, thêm thông tin ký
             if (contract.getApprovalStatus() == ContractApprovalStatus.SIGNED ||
                     contract.getApprovalStatus() == ContractApprovalStatus.APPROVED) {
-                responseData.put("signedAt", contract.getUpdatedAt());
-                responseData.put("signed", true);
+                builder.signed(true)
+                        .signedAt(contract.getUpdatedAt());
             }
         } else {
-            // Contract chưa tồn tại, status mặc định là PENDING
-            responseData.put("status", ContractApprovalStatus.PENDING);
-            responseData.put("isActive", false);
-            responseData.put("savedToDatabase", false);
+            builder.status(ContractApprovalStatus.PENDING)
+                    .isActive(false)
+                    .savedToDatabase(false)
+                    .signed(false);
         }
 
-        return responseData;
+        return builder.build();
     }
 
 
     /**
      * Chuẩn bị data cho template
      */
-    private Map<String, Object> prepareContractData(Long groupId, Optional<Contract> existingContract) {
+    private ContractGenerationResponseDTO prepareContractData(Long groupId, Optional<Contract> existingContract) {
         OwnershipGroup group = getGroupById(groupId);
         Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group).orElse(null);
         List<OwnershipShare> shares = getSharesByGroupId(groupId);
 
-        Map<String, Object> data = new HashMap<>();
-
         // Contract info
-        Map<String, Object> contractInfo = new HashMap<>();
-        
-        // Set status từ contract nếu có, nếu không thì PENDING
+        ContractGenerationResponseDTO.ContractSection.ContractSectionBuilder contractSectionBuilder =
+                ContractGenerationResponseDTO.ContractSection.builder()
+                        .number("TBD")
+                        .location("HCM")
+                        .signDate(formatDate(LocalDate.now()));
+
+        ContractGenerationResponseDTO.ContractGenerationResponseDTOBuilder responseBuilder = ContractGenerationResponseDTO.builder();
+
         if (existingContract.isPresent()) {
             Contract contract = existingContract.get();
-            contractInfo.put("number", "TBD");
-            contractInfo.put("effectiveDate", formatDate(contract.getStartDate()));
-            contractInfo.put("endDate", formatDate(contract.getEndDate()));
-            // Tính toán term từ startDate và endDate thực tế
-            String termLabel = calculateTermLabel(contract.getStartDate(), contract.getEndDate());
-            contractInfo.put("termLabel", termLabel);
-            contractInfo.put("status", contract.getApprovalStatus());
+            contractSectionBuilder
+                    .effectiveDate(formatDate(contract.getStartDate()))
+                    .endDate(formatDate(contract.getEndDate()))
+                    .termLabel(calculateTermLabel(contract.getStartDate(), contract.getEndDate()))
+                    .status(contract.getApprovalStatus());
+
+            responseBuilder.contractId(contract.getId())
+                    .status(contract.getApprovalStatus())
+                    .isActive(contract.getIsActive())
+                    .savedToDatabase(true);
+
+            if (contract.getApprovalStatus() == ContractApprovalStatus.SIGNED ||
+                    contract.getApprovalStatus() == ContractApprovalStatus.APPROVED) {
+                responseBuilder.signed(true)
+                        .signedAt(contract.getUpdatedAt());
+            }
         } else {
-            // For generate contract data (no contract exists yet)
             LocalDate defaultStartDate = LocalDate.now();
             LocalDate defaultEndDate = defaultStartDate.plusYears(1);
-            contractInfo.put("number", "TBD");
-            contractInfo.put("effectiveDate", formatDate(defaultStartDate));
-            contractInfo.put("endDate", formatDate(defaultEndDate));
-            contractInfo.put("termLabel", calculateTermLabel(defaultStartDate, defaultEndDate));
-            contractInfo.put("status", ContractApprovalStatus.PENDING);
+            contractSectionBuilder
+                    .effectiveDate(formatDate(defaultStartDate))
+                    .endDate(formatDate(defaultEndDate))
+                    .termLabel(calculateTermLabel(defaultStartDate, defaultEndDate))
+                    .status(ContractApprovalStatus.PENDING);
+
+            responseBuilder.status(ContractApprovalStatus.PENDING)
+                    .isActive(false)
+                    .savedToDatabase(false)
+                    .signed(false);
         }
-        
-        contractInfo.put("location", "HCM"); // Default
-        contractInfo.put("signDate", formatDate(LocalDate.now()));
 
-        data.put("contract", contractInfo);
+        ContractGenerationResponseDTO.ContractSection contractSection = contractSectionBuilder.build();
 
-        // Group info
-        Map<String, Object> groupInfo = new HashMap<>();
-        groupInfo.put("name", group.getGroupName());
-        data.put("group", groupInfo);
+        ContractGenerationResponseDTO.GroupSection groupSection = ContractGenerationResponseDTO.GroupSection.builder()
+                .name(group.getGroupName())
+                .build();
 
-        // Vehicle info
-        Map<String, Object> vehicleInfo = new HashMap<>();
-        if (vehicle != null) {
-            vehicleInfo.put("model", vehicle.getBrand() + " " + vehicle.getModel());
-            vehicleInfo.put("plate", vehicle.getLicensePlate());
-            vehicleInfo.put("vin", vehicle.getChassisNumber());
-        } else {
-            vehicleInfo.put("model", "—");
-            vehicleInfo.put("plate", "—");
-            vehicleInfo.put("vin", "—");
-        }
-        data.put("vehicle", vehicleInfo);
+        ContractGenerationResponseDTO.VehicleSection vehicleSection = ContractGenerationResponseDTO.VehicleSection.builder()
+                .model(vehicle != null ? vehicle.getBrand() + " " + vehicle.getModel() : "—")
+                .plate(vehicle != null ? vehicle.getLicensePlate() : "—")
+                .vin(vehicle != null ? vehicle.getChassisNumber() : "—")
+                .build();
 
-        // Finance info
-        Map<String, Object> financeInfo = new HashMap<>();
-        financeInfo.put("vehiclePrice", vehicle != null ? vehicle.getVehicleValue() : BigDecimal.ZERO);
+        BigDecimal depositAmount = depositCalculationService.calculateRequiredDepositAmount(group);
 
-        // Tính deposit amount: nếu có contract thì lấy từ contract, nếu không thì tính từ group
-        BigDecimal depositAmount;
-        // Tính deposit amount cho group khi chưa có contract
-        depositAmount = depositCalculationService.calculateRequiredDepositAmount(group);
-        financeInfo.put("depositAmount", depositAmount);
+        ContractGenerationResponseDTO.FinanceSection financeSection = ContractGenerationResponseDTO.FinanceSection.builder()
+                .vehiclePrice(vehicle != null ? vehicle.getVehicleValue() : BigDecimal.ZERO)
+                .depositAmount(depositAmount)
+                .contributionRule("According to ownership ratio")
+                .build();
 
-        financeInfo.put("contributionRule", "According to ownership ratio");
-        data.put("finance", financeInfo);
+        ContractGenerationResponseDTO.MaintenanceSection maintenanceSection =
+                ContractGenerationResponseDTO.MaintenanceSection.builder()
+                        .approval("Approval by >50% vote based on ownership ratio for expenses exceeding 5 million VND")
+                        .insurance("PVI – Comprehensive physical damage insurance package")
+                        .build();
 
-        // Usage info
-//        Map<String, Object> usageInfo = new HashMap<>();
-//        usageInfo.put("rule", "Điểm tín dụng lịch sử & phiên bốc thăm tuần");
-//        data.put("usage", usageInfo);
+        ContractGenerationResponseDTO.DisputeSection disputeSection =
+                ContractGenerationResponseDTO.DisputeSection.builder()
+                        .voting("Majority voting based on ownership ratio; in case of a 50/50 tie, priority is given to contribution history")
+                        .build();
 
-        // Maintenance info
-        Map<String, Object> maintenanceInfo = new HashMap<>();
-        maintenanceInfo.put("approval", "Approval by >50% vote based on ownership ratio for expenses exceeding 5 million VND");
-        maintenanceInfo.put("insurance", "PVI – Comprehensive physical damage insurance package");
-        data.put("maintenance", maintenanceInfo);
+        List<ContractGenerationResponseDTO.OwnerInfo> owners = shares.stream()
+                .map(share -> ContractGenerationResponseDTO.OwnerInfo.builder()
+                        .userId(share.getUser().getUserId())
+                        .name(share.getUser().getFullName())
+                        .phone(share.getUser().getPhoneNumber())
+                        .email(share.getUser().getEmail())
+                        .idNo("—")
+                        .share(share.getOwnershipPercentage())
+                        .userRole(share.getGroupRole().name())
+                        .build())
+                .collect(Collectors.toList());
 
-
-        // Dispute info
-        Map<String, Object> disputeInfo = new HashMap<>();
-        disputeInfo.put("voting", "Majority voting based on ownership ratio; in case of a 50/50 tie, priority is given to contribution history");
-        data.put("dispute", disputeInfo);
-
-
-        // Owner info
-        List<Map<String, Object>> owners = shares.stream().map(share -> {
-            Map<String, Object> owner = new HashMap<>();
-            owner.put("userId", share.getUser().getUserId());
-            owner.put("name", share.getUser().getFullName());
-            owner.put("phone", share.getUser().getPhoneNumber());
-            owner.put("email", share.getUser().getEmail());
-            owner.put("idNo", "—"); // Placeholder
-            owner.put("share", share.getOwnershipPercentage());
-            owner.put("userRole", share.getGroupRole().name()); // Thêm userRole
-            return owner;
-        }).collect(Collectors.toList());
-        data.put("owners", owners);
-
-        return data;
+        return responseBuilder
+                .contract(contractSection)
+                .group(groupSection)
+                .vehicle(vehicleSection)
+                .finance(financeSection)
+                .maintenance(maintenanceSection)
+                .dispute(disputeSection)
+                .owners(owners)
+                .build();
     }
 
     /**
@@ -1246,7 +1235,7 @@ public class ContractService {
     /**
      * Kiểm tra hợp đồng đã đóng đủ tiền cọc chưa (Admin only)
      */
-    public Map<String, Object> checkDepositStatus(Long groupId) {
+    public ContractDepositStatusResponseDTO checkDepositStatus(Long groupId) {
         // 1. Lấy hợp đồng
         Contract contract = getContractByGroup(groupId);
         BigDecimal requiredAmount = contract.getRequiredDepositAmount();
@@ -1258,11 +1247,9 @@ public class ContractService {
         BigDecimal totalPaid = BigDecimal.ZERO;
         int paidMembers = 0;
 
-        List<Map<String, Object>> memberDetails = new ArrayList<>();
+        List<ContractDepositStatusResponseDTO.MemberDepositStatus> memberDetails = new ArrayList<>();
 
         for (OwnershipShare share : shares) {
-            Map<String, Object> memberInfo = new LinkedHashMap<>();
-
             // Tính tiền cọc cần đóng của từng thành viên
             BigDecimal memberRequired = requiredAmount
                     .multiply(share.getOwnershipPercentage())
@@ -1276,14 +1263,14 @@ public class ContractService {
                 paidMembers++;
             }
 
-            memberInfo.put("userId", share.getUser().getUserId());
-            memberInfo.put("fullName", share.getUser().getFullName());
-            memberInfo.put("ownershipPercentage", share.getOwnershipPercentage());
-            memberInfo.put("requiredDeposit", memberRequired);
-            memberInfo.put("depositStatus", share.getDepositStatus().name());
-            memberInfo.put("isPaid", isPaid);
-
-            memberDetails.add(memberInfo);
+            memberDetails.add(ContractDepositStatusResponseDTO.MemberDepositStatus.builder()
+                    .userId(share.getUser().getUserId())
+                    .fullName(share.getUser().getFullName())
+                    .ownershipPercentage(share.getOwnershipPercentage())
+                    .requiredDeposit(memberRequired)
+                    .depositStatus(share.getDepositStatus())
+                    .isPaid(isPaid)
+                    .build());
         }
 
         // 4. Tính toán
@@ -1292,23 +1279,25 @@ public class ContractService {
         int totalMembers = shares.size();
         boolean allMembersPaid = paidMembers == totalMembers;
 
-        // 5. Response
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("groupId", groupId);
-        result.put("contractId", contract.getId());
-        result.put("approvalStatus", contract.getApprovalStatus());
-        result.put("requiredDepositAmount", requiredAmount);
-        result.put("totalPaid", totalPaid);
-        result.put("remaining", remaining);
-        result.put("isFullyPaid", isFullyPaid);
-        result.put("totalMembers", totalMembers);
-        result.put("paidMembers", paidMembers);
-        result.put("allMembersPaid", allMembersPaid);
-        result.put("paymentProgress", String.format("%.1f%%",
-                totalPaid.multiply(BigDecimal.valueOf(100)).divide(requiredAmount, 1, RoundingMode.HALF_UP).doubleValue()));
-        result.put("memberDetails", memberDetails);
+        String paymentProgress = requiredAmount.compareTo(BigDecimal.ZERO) > 0
+                ? String.format("%.1f%%",
+                totalPaid.multiply(BigDecimal.valueOf(100)).divide(requiredAmount, 1, RoundingMode.HALF_UP).doubleValue())
+                : "0.0%";
 
-        return result;
+        return ContractDepositStatusResponseDTO.builder()
+                .groupId(groupId)
+                .contractId(contract.getId())
+                .approvalStatus(contract.getApprovalStatus())
+                .requiredDepositAmount(requiredAmount)
+                .totalPaid(totalPaid)
+                .remaining(remaining)
+                .isFullyPaid(isFullyPaid)
+                .totalMembers(totalMembers)
+                .paidMembers(paidMembers)
+                .allMembersPaid(allMembersPaid)
+                .paymentProgress(paymentProgress)
+                .memberDetails(memberDetails)
+                .build();
     }
 
 
