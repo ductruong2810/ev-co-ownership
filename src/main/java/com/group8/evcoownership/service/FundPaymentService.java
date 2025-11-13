@@ -9,7 +9,6 @@ import com.group8.evcoownership.enums.PaymentType;
 import com.group8.evcoownership.exception.DepositPaymentException;
 import com.group8.evcoownership.repository.*;
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.servlet.ServletRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +17,6 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 /**
  * Nạp quỹ (OPERATING) qua VNPay, tái dùng Payment/SharedFund.
