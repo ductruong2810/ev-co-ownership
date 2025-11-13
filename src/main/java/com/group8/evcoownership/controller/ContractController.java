@@ -44,11 +44,11 @@ public class ContractController {
             summary = "Xem chi tiết hợp đồng",
             description = "Trả về thông tin hợp đồng, nhóm và danh sách thành viên trong nhóm"
     )
-    public ResponseEntity<Map<String, Object>> getContractInfoDetail(
+    public ResponseEntity<ContractDetailResponseDTO> getContractInfoDetail(
             @PathVariable Long groupId) {
 
         // Gọi service xử lý logic lấy thông tin chi tiết
-        Map<String, Object> contractDetail = contractService.getContractInfoDetail(groupId);
+        ContractDetailResponseDTO contractDetail = contractService.getContractInfoDetail(groupId);
 
         // Trả kết quả về client với HTTP 200 OK
         return ResponseEntity.ok(contractDetail);
@@ -61,8 +61,8 @@ public class ContractController {
     @GetMapping("/{groupId}")
     @PreAuthorize("@ownershipGroupService.isGroupMember(authentication.name, #groupId) or hasAnyRole('ADMIN','STAFF')")
     @Operation(summary = "Lấy thông tin hợp đồng", description = "Lấy thông tin hợp đồng của nhóm")
-    public ResponseEntity<Map<String, Object>> getContractInfo(@PathVariable Long groupId) {
-        Map<String, Object> contractInfo = contractService.getContractInfo(groupId);
+    public ResponseEntity<ContractInfoResponseDTO> getContractInfo(@PathVariable Long groupId) {
+        ContractInfoResponseDTO contractInfo = contractService.getContractInfo(groupId);
         return ResponseEntity.ok(contractInfo);
     }
 
@@ -71,14 +71,14 @@ public class ContractController {
      */
     @GetMapping("/{groupId}/generate")
     @Operation(summary = "Tạo nội dung hợp đồng", description = "Tạo nội dung hợp đồng để preview, không lưu vào database")
-    public ResponseEntity<Map<String, Object>> generateContractData(
+    public ResponseEntity<ContractGenerationResponseDTO> generateContractData(
             @PathVariable Long groupId,
             @AuthenticationPrincipal String userEmail) {
 
         // Lấy userId từ email
         Long userId = contractService.getUserIdByEmail(userEmail);
 
-        Map<String, Object> contractData = contractService.generateContractData(groupId, userId);
+        ContractGenerationResponseDTO contractData = contractService.generateContractData(groupId, userId);
         return ResponseEntity.ok(contractData);
     }
 
@@ -98,8 +98,8 @@ public class ContractController {
             summary = "Lấy thông tin tính toán deposit",
             description = "Lấy giá trị deposit được tính toán tự động và giải thích công thức tính toán"
     )
-    public ResponseEntity<Map<String, Object>> getDepositCalculation(@PathVariable Long groupId) {
-        Map<String, Object> calculation = contractService.getDepositCalculationInfo(groupId);
+    public ResponseEntity<DepositCalculationInfoDTO> getDepositCalculation(@PathVariable Long groupId) {
+        DepositCalculationInfoDTO calculation = contractService.getDepositCalculationInfo(groupId);
         return ResponseEntity.ok(calculation);
     }
 
@@ -201,8 +201,8 @@ public class ContractController {
     @PostMapping("/{groupId}/auto-sign")
     @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
     @Operation(summary = "Tự động ký contract", description = "Tự động ký contract khi đủ điều kiện")
-    public ResponseEntity<Map<String, Object>> autoSignContract(@PathVariable Long groupId) {
-        Map<String, Object> result = contractService.autoSignContract(groupId);
+    public ResponseEntity<AutoSignContractResponseDTO> autoSignContract(@PathVariable Long groupId) {
+        AutoSignContractResponseDTO result = contractService.autoSignContract(groupId);
         return ResponseEntity.ok(result);
     }
 
@@ -216,8 +216,8 @@ public class ContractController {
     @GetMapping("/{groupId}/auto-sign-conditions")
     @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
     @Operation(summary = "Kiểm tra điều kiện ký tự động", description = "Kiểm tra các điều kiện cần thiết để ký tự động contract")
-    public ResponseEntity<Map<String, Object>> checkAutoSignConditions(@PathVariable Long groupId) {
-        Map<String, Object> conditions = contractService.checkAutoSignConditions(groupId);
+    public ResponseEntity<AutoSignConditionsResponseDTO> checkAutoSignConditions(@PathVariable Long groupId) {
+        AutoSignConditionsResponseDTO conditions = contractService.checkAutoSignConditions(groupId);
         return ResponseEntity.ok(conditions);
     }
 
@@ -231,8 +231,8 @@ public class ContractController {
     @PostMapping("/{groupId}/check-and-auto-sign")
     @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
     @Operation(summary = "Kiểm tra và ký tự động", description = "Tự động kiểm tra điều kiện và ký contract nếu đủ điều kiện")
-    public ResponseEntity<Map<String, Object>> checkAndAutoSignContract(@PathVariable Long groupId) {
-        Map<String, Object> result = contractService.checkAndAutoSignContract(groupId);
+    public ResponseEntity<AutoSignOutcomeResponseDTO> checkAndAutoSignContract(@PathVariable Long groupId) {
+        AutoSignOutcomeResponseDTO result = contractService.checkAndAutoSignContract(groupId);
         return ResponseEntity.ok(result);
     }
 
