@@ -1517,6 +1517,15 @@ public class ContractService {
             );
         }
         
+        // Chặn reject lại nếu feedback đã bị reject và member chưa resubmit
+        // (Khi member resubmit, lastAdminAction sẽ được clear về null)
+        if (feedback.getLastAdminAction() == FeedbackAdminAction.REJECT 
+                && feedback.getLastAdminActionAt() != null) {
+            throw new IllegalStateException(
+                    "This feedback has already been rejected. Please wait for the member to resubmit before rejecting again."
+            );
+        }
+        
         // Đánh dấu đã xử lý, chuyển về PENDING để co-owner có thể làm lại
         feedback.setStatus(MemberFeedbackStatus.PENDING);
         feedback.setAdminNote(adminNote);
@@ -1741,6 +1750,17 @@ public class ContractService {
         }
 
         feedbackRepository.save(feedback);
+
+        // Ghi lại lịch sử khi member submit feedback
+        // Nếu có reason thì dùng reason làm actionNote, nếu không thì dùng message mặc định
+        String actionNote = (feedback.getReason() != null && !feedback.getReason().trim().isEmpty())
+                ? feedback.getReason()
+                : (feedbackExisted ? "Member updated feedback" : "Member submitted feedback");
+        recordFeedbackHistorySnapshot(
+                feedback,
+                FeedbackHistoryAction.MEMBER_REVIEW,
+                actionNote
+        );
 
         // Kiểm tra xem tất cả members đã approve chưa
         checkAndAutoSignIfAllApproved(contract);
