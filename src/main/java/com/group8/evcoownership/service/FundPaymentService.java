@@ -112,7 +112,6 @@ public class FundPaymentService {
 
         payment = paymentRepository.save(payment);
 
-        Long actorId = extractUserId(auth);
         // nếu Payment có payer (User) thì set vào, nếu không thì thôi:
         // payment.setPayer(userRepository.getReferenceById(actorId));
         paymentRepository.save(payment);
