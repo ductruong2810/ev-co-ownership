@@ -9,7 +9,7 @@ public record QrCheckOutRequestDTO(
         Integer odometer,
         BigDecimal batteryLevel,
         String cleanliness,
-       String notes,
+        String notes,
         String issues
 ) {
 }

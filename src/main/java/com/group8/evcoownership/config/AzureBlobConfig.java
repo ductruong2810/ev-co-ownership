@@ -46,7 +46,7 @@ public class AzureBlobConfig {
 
         // CREATE CONTAINER IF NOT EXISTS
         if (!containerClient.exists()) {
-            log.info("⚠️ Container does NOT exist, creating: {}", containerName);
+            log.info("Container does NOT exist, creating: {}", containerName);
             containerClient.create();
             log.info("Container created successfully: {}", containerName);
         } else {
@@ -59,7 +59,7 @@ public class AzureBlobConfig {
             PublicAccessType currentAccess = accessPolicies.getBlobAccessType();
 
             if (currentAccess != PublicAccessType.BLOB) {
-                log.info("⚠Setting public access to BLOB for container: {}", containerName);
+                log.info("Setting public access to BLOB for container: {}", containerName);
                 containerClient.setAccessPolicy(PublicAccessType.BLOB, null);
                 log.info("Public access set to BLOB successfully");
             } else {

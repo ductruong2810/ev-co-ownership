@@ -9,4 +9,3 @@ public record ContractTermsUpdateRequestDTO(
         String terms
 ) {
 }
-

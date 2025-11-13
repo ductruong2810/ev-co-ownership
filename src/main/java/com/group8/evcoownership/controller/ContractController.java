@@ -124,8 +124,7 @@ public class ContractController {
     )
     public ResponseEntity<ApiResponseDTO<ContractUpdateResponseDTO>> updateContract(
             @PathVariable Long groupId,
-            @Valid @RequestBody ContractUpdateRequestDTO request,
-            @AuthenticationPrincipal String adminEmail) {
+            @Valid @RequestBody ContractUpdateRequestDTO request) {
 
         // Validate date range
         if (request.isInvalidDateRange()) {
@@ -137,7 +136,7 @@ public class ContractController {
             return ResponseEntity.badRequest().body(error);
         }
 
-        ApiResponseDTO<ContractUpdateResponseDTO> result = contractService.updateContract(groupId, request, adminEmail);
+        ApiResponseDTO<ContractUpdateResponseDTO> result = contractService.updateContract(groupId, request);
 
         return ResponseEntity.ok(result);
     }
@@ -159,10 +158,9 @@ public class ContractController {
     )
     public ResponseEntity<ApiResponseDTO<ContractUpdateResponseDTO>> updateContractTerms(
             @PathVariable Long groupId,
-            @Valid @RequestBody ContractTermsUpdateRequestDTO request,
-            @AuthenticationPrincipal String adminEmail) {
+            @Valid @RequestBody ContractTermsUpdateRequestDTO request) {
 
-        ApiResponseDTO<ContractUpdateResponseDTO> result = contractService.updateContractTerms(groupId, request, adminEmail);
+        ApiResponseDTO<ContractUpdateResponseDTO> result = contractService.updateContractTerms(groupId, request);
         return ResponseEntity.ok(result);
     }
 
@@ -271,7 +269,7 @@ public class ContractController {
      * - Group Admin
      */
     @GetMapping("/{contractId}/member-feedbacks")
-    @PreAuthorize("@ownershipGroupService.isGroupAdminForContract(authentication.name, #contractId) or hasAnyRole('ADMIN','STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     @Operation(
             summary = "Get contract member feedbacks",
             description = "Lấy tất cả feedback của members cho contract. Chỉ group admin có quyền xem."
@@ -290,7 +288,7 @@ public class ContractController {
      * - Group Admin
      */
     @GetMapping("/group/{groupId}/member-feedbacks")
-    @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId) or hasAnyRole('ADMIN','STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     @Operation(
             summary = "Get member feedbacks by groupId",
             description = "Lấy tất cả feedback của members theo groupId. Áp dụng cho nhóm có 1 hợp đồng hiện tại."

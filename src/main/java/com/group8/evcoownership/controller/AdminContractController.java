@@ -32,8 +32,7 @@ public class AdminContractController {
     @Operation(summary = "Admin update contract (duration + terms)", description = "System admin updates start/end dates and terms together")
     public ResponseEntity<ApiResponseDTO<ContractUpdateResponseDTO>> updateContractByAdmin(
             @PathVariable Long contractId,
-            @Valid @RequestBody ContractAdminUpdateRequestDTO request,
-            @AuthenticationPrincipal String adminEmail
+            @Valid @RequestBody ContractAdminUpdateRequestDTO request
     ) {
         if (request.isInvalidDateRange()) {
             ApiResponseDTO<ContractUpdateResponseDTO> error = ApiResponseDTO.<ContractUpdateResponseDTO>builder()
@@ -44,7 +43,7 @@ public class AdminContractController {
             return ResponseEntity.badRequest().body(error);
         }
 
-        ApiResponseDTO<ContractUpdateResponseDTO> result = contractService.updateContractByAdminByContractId(contractId, request, adminEmail);
+        ApiResponseDTO<ContractUpdateResponseDTO> result = contractService.updateContractByAdminByContractId(contractId, request);
         return ResponseEntity.ok(result);
     }
 
@@ -174,8 +173,11 @@ public class AdminContractController {
             summary = "Approve feedback",
             description = "Admin approve một feedback cụ thể. Chỉ có thể approve feedbacks có status = PENDING."
     )
-    public ResponseEntity<ApiResponseDTO<FeedbackActionResponseDTO>> approveFeedback(@PathVariable Long feedbackId) {
-        ApiResponseDTO<FeedbackActionResponseDTO> result = contractService.approveFeedback(feedbackId);
+    public ResponseEntity<ApiResponseDTO<FeedbackActionResponseDTO>> approveFeedback(
+            @PathVariable Long feedbackId,
+            @RequestBody(required = false) FeedbackActionRequestDTO request
+    ) {
+        ApiResponseDTO<FeedbackActionResponseDTO> result = contractService.approveFeedback(feedbackId, request);
         return ResponseEntity.ok(result);
     }
 
@@ -189,10 +191,9 @@ public class AdminContractController {
     )
     public ResponseEntity<ApiResponseDTO<FeedbackActionResponseDTO>> rejectFeedback(
             @PathVariable Long feedbackId,
-            @RequestParam(required = false) String adminNote,
-            @AuthenticationPrincipal String adminEmail
+            @RequestBody(required = false) FeedbackActionRequestDTO request
     ) {
-        ApiResponseDTO<FeedbackActionResponseDTO> result = contractService.rejectFeedback(feedbackId, adminNote, adminEmail);
+        ApiResponseDTO<FeedbackActionResponseDTO> result = contractService.rejectFeedback(feedbackId, request);
         return ResponseEntity.ok(result);
     }
 }
