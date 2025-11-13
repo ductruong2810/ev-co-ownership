@@ -7,8 +7,6 @@ import com.group8.evcoownership.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -60,8 +58,7 @@ public class UserController {
     @Operation(summary = "Cập nhật thông tin profile", description = "Cập nhật fullName và phoneNumber qua body JSON, chứa userId")
     @PreAuthorize("hasRole('CO_OWNER')")
     public ResponseEntity<ApiResponseDTO<UserUpdateResponseDTO>> updateUserProfile(
-            @Valid @RequestBody UserUpdateRequestDTO req,
-            Authentication authentication) {
+            @Valid @RequestBody UserUpdateRequestDTO req) {
 
         // Nếu principal không có field id, bạn có thể tự đối chiếu trong service hoặc kiểm tra thủ công tại đây.
         User updatedUser = userService.updateUserProfile(req.getUserId(), req);
