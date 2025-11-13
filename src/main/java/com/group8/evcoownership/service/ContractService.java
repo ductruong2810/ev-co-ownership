@@ -1380,6 +1380,10 @@ public class ContractService {
                         .userFullName(entry.getUser().getFullName())
                         .userEmail(entry.getUser().getEmail())
                         .userAvatarUrl(entry.getUser().getAvatarUrl())
+                        .isProcessed(
+                                entry.getHistoryAction() == FeedbackHistoryAction.ADMIN_APPROVE
+                                        || entry.getHistoryAction() == FeedbackHistoryAction.ADMIN_REJECT
+                        )
                         .status(entry.getStatus())
                         .reactionType(entry.getReactionType())
                         .reason(entry.getReason())
@@ -1616,8 +1620,8 @@ public class ContractService {
             feedbackRepository.saveAll(feedbacks);
             feedbacks.forEach(f -> recordFeedbackHistorySnapshot(
                     f,
-                    FeedbackHistoryAction.CONTRACT_INVALIDATED,
-                    "Contract updated - feedback reset"
+                    FeedbackHistoryAction.MEMBER_REVIEW,
+                    "Contract resent for member review"
             ));
         }
     }
@@ -1720,16 +1724,6 @@ public class ContractService {
         }
 
         feedbackRepository.save(feedback);
-
-        FeedbackHistoryAction memberAction = switch (reactionType) {
-            case AGREE -> FeedbackHistoryAction.MEMBER_AGREE;
-            case DISAGREE -> feedbackExisted ? FeedbackHistoryAction.MEMBER_RESUBMIT : FeedbackHistoryAction.MEMBER_SUBMIT;
-        };
-        recordFeedbackHistorySnapshot(
-                feedback,
-                memberAction,
-                request.reason()
-        );
 
         // Kiểm tra xem tất cả members đã approve chưa
         checkAndAutoSignIfAllApproved(contract);
