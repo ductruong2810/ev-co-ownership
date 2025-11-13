@@ -16,6 +16,7 @@ public record ContractFeedbackHistoryItemDTO(
         String userFullName,
         String userEmail,
         String userAvatarUrl,
+        boolean isProcessed,
         MemberFeedbackStatus status,
         ReactionType reactionType,
         String reason,
