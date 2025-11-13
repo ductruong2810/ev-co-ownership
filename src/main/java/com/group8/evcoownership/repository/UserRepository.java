@@ -27,6 +27,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // Find all users who belong to a given ownership group
     @Query("select os.user from OwnershipShare os where os.group.groupId = :groupId")
     List<User> findUsersByGroupId(@Param("groupId") Long groupId);
+    Optional<User> findByPhoneNumber(String phoneNumber);
 
 
 }
