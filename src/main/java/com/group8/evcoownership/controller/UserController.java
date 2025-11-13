@@ -1,8 +1,6 @@
 package com.group8.evcoownership.controller;
 
-import com.group8.evcoownership.dto.ApiResponseDTO;
-import com.group8.evcoownership.dto.UserUpdateRequestDTO;
-import com.group8.evcoownership.dto.UserUpdateResponseDTO;
+import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.enums.UserStatus;
 import com.group8.evcoownership.service.UserService;
@@ -72,31 +70,31 @@ public class UserController {
                 updatedUser.getUserId(),
                 updatedUser.getFullName(),
                 updatedUser.getEmail(),
-                updatedUser.getPhoneNumber(),
-                updatedUser.getAvatarUrl()
+                updatedUser.getPhoneNumber()
         );
 
         return ResponseEntity.ok(new ApiResponseDTO<>(true, "Profile updated successfully", response));
     }
 
 
-    @PatchMapping("/{userId}/name")
-    @Operation(summary = "Cập nhật tên")
+    @PatchMapping("/profile/name")
+    @Operation(summary = "Cập nhật tên qua body JSON")
+    @PreAuthorize("hasRole('CO_OWNER')")
     public ResponseEntity<ApiResponseDTO<String>> updateUserName(
-            @PathVariable Long userId,
-            @RequestParam @Size(max = 100) @jakarta.validation.constraints.Pattern(regexp = "^[\\p{L}\\s]+$") String fullName) {
-        User updatedUser = userService.updateUserName(userId, fullName);
+            @Valid @RequestBody UpdateNameRequestDTO req) {
+        User updatedUser = userService.updateUserName(req.getUserId(), req.getFullName());
         return ResponseEntity.ok(new ApiResponseDTO<>(true, "Name updated successfully", updatedUser.getFullName()));
     }
 
-    @PatchMapping("/{userId}/phone")
-    @Operation(summary = "Cập nhật số điện thoại")
+    @PatchMapping("/profile/phone")
+    @Operation(summary = "Cập nhật số điện thoại qua body JSON")
+    @PreAuthorize("hasRole('CO_OWNER')")
     public ResponseEntity<ApiResponseDTO<String>> updateUserPhoneNumber(
-            @PathVariable Long userId,
-            @RequestParam @Pattern(regexp = "^0\\d{9}$") String phoneNumber) {
-        User updatedUser = userService.updateUserPhoneNumber(userId, phoneNumber);
+            @Valid @RequestBody UpdatePhoneRequestDTO req) {
+        User updatedUser = userService.updateUserPhoneNumber(req.getUserId(), req.getPhoneNumber());
         return ResponseEntity.ok(new ApiResponseDTO<>(true, "Phone number updated successfully", updatedUser.getPhoneNumber()));
     }
+
 
 }
 
