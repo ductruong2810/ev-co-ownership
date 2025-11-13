@@ -961,7 +961,7 @@ public class ContractService {
                 """
                         Vehicle usage must be booked through the system. \
                         Each member agrees to follow the confirmed schedule and return the vehicle on time.
-                        Booking rules: Each co-owner’s weekly quota is 164 hours × ownership ratio; \
+                        Booking rules: Each co-owner's weekly quota is 164 hours × ownership ratio; \
                         minimum booking duration is 1 hour and maximum is 3 days (72 hours); \
                         maximum 3 bookings per week per member; \
                         rest time between bookings: +2h if previous trip > 4h, +1h if ≤ 4h; \
@@ -976,7 +976,7 @@ public class ContractService {
         terms.append("3. MAINTENANCE, REPAIR & INSURANCE\n");
         terms.append(
                 """
-                        The vehicle shall be maintained periodically according to the manufacturer’s recommendations. \
+                        The vehicle shall be maintained periodically according to the manufacturer's recommendations. \
                         Expense approval requires a majority vote (>50%) based on ownership ratio for costs exceeding 5 million VND. \
                         Insurance provider: PVI – Comprehensive physical damage coverage.
                         
@@ -1361,16 +1361,8 @@ public class ContractService {
         List<ContractFeedbackHistory> allHistoryEntries =
                 feedbackHistoryRepository.findByContractIdOrderByArchivedAtDesc(contractId);
 
-        // Chỉ lấy bản ghi mới nhất của mỗi feedback để tránh hiển thị trùng lặp
-        // (một feedback có thể bị reject nhiều lần, mỗi lần tạo một bản ghi history mới)
-        Map<Long, ContractFeedbackHistory> latestHistoryByFeedback = allHistoryEntries.stream()
-                .collect(Collectors.toMap(
-                        entry -> entry.getFeedback().getId(),
-                        entry -> entry,
-                        (existing, replacement) -> existing // Giữ lại bản ghi đầu tiên (mới nhất vì đã sort DESC)
-                ));
-        
-        List<ContractFeedbackHistory> historyEntries = new ArrayList<>(latestHistoryByFeedback.values());
+        // Lấy toàn bộ lịch sử feedback theo contract (đã được sort DESC từ repository)
+        List<ContractFeedbackHistory> historyEntries = new ArrayList<>(allHistoryEntries);
 
         // Đếm từ history để có số liệu chính xác (không bị ảnh hưởng bởi việc reset feedback)
         long totalFeedbacks = feedbackHistoryRepository.countDistinctFeedbacksByContractId(contractId);

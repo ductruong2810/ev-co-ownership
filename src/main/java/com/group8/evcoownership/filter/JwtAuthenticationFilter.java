@@ -1,5 +1,8 @@
 package com.group8.evcoownership.filter;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.group8.evcoownership.dto.ErrorResponseDTO;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.service.LogoutService;
@@ -13,6 +16,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -36,6 +40,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter { // Base clas
     @Autowired
     private LogoutService logoutService; // Quản lý blacklist token (token bị revoke khi logout)
 
+    private final ObjectMapper objectMapper; // Dùng để serialize ErrorResponseDTO thành JSON
+
+    public JwtAuthenticationFilter() {
+        this.objectMapper = new ObjectMapper();
+        this.objectMapper.registerModule(new JavaTimeModule());
+    }
+
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                     @NonNull HttpServletResponse response,
@@ -53,19 +64,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter { // Base clas
         // Cắt "Bearer " để lấy chuỗi JWT thực sự
         String token = authHeader.substring(7);
 
-        // Kiểm tra token rỗng (có thể toàn khoảng trắng); nếu lỗi,
-        // gán thuộc tính request để controller hoặc filter sau xử lý, rồi tiếp tục chuỗi filter
+        // Kiểm tra token rỗng (có thể toàn khoảng trắng); nếu lỗi, trả về 401 ngay
         if (token.trim().isEmpty()) {
             log.warn("Empty token detected"); // Ghi cảnh báo
-            request.setAttribute("jwt_error", "Token must not be empty");
-            filterChain.doFilter(request, response);
+            sendErrorResponse(response, request, "Invalid token");
             return;
         }
 
         // Kiểm tra nếu token đã bị revoke (logout) – ngăn dùng lại token cũ
         if (logoutService.isTokenBlacklisted(token)) {
-            request.setAttribute("jwt_error", "Token has been revoked. Please log in again");
-            filterChain.doFilter(request, response);
+            sendErrorResponse(response, request, "Invalid token");
             return;
         }
 
@@ -94,43 +102,67 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter { // Base clas
                     // Gán Authentication vào SecurityContextHolder => user được coi là authenticated từ đây đến cuối request
                     SecurityContextHolder.getContext().setAuthentication(auth);
                 } else {
-                    // Nếu user không tìm được, ghi lỗi và gán thuộc tính lỗi vào request
+                    // Nếu user không tìm được, trả về 401 ngay
                     log.error("User not found for email: {}", email);
-                    request.setAttribute("jwt_error", "User does not exist");
+                    sendErrorResponse(response, request, "Invalid token");
+                    return;
                 }
             } else {
                 // Token hợp lệ về mặt kỹ thuật nhưng verify nội dung thất bại
-                request.setAttribute("jwt_error", "Invalid token");
+                log.warn("Invalid token: validation failed");
+                sendErrorResponse(response, request, "Invalid token");
+                return;
             }
 
         } catch (ExpiredJwtException e) {
-            // Token hết hạn: bắt ngoại lệ riếng và gán lỗi phù hợp, ghi log cảnh báo
+            // Token hết hạn: trả về 401 ngay với message "Invalid token"
             log.warn("JWT token expired: {}", e.getMessage());
-            request.setAttribute("jwt_error", "Token has expired. Please log in again");
+            sendErrorResponse(response, request, "Invalid token");
+            return;
 
         } catch (MalformedJwtException e) {
             // Token sai cấu trúc: không giải mã được
             log.warn("Invalid JWT token: {}", e.getMessage());
-            request.setAttribute("jwt_error", "Token is not in the correct format");
+            sendErrorResponse(response, request, "Invalid token");
+            return;
 
         } catch (SignatureException e) {
             // Chữ ký token không trùng với public key hoặc secret configure
             log.warn("Invalid JWT signature: {}", e.getMessage());
-            request.setAttribute("jwt_error", "Invalid token signature");
+            sendErrorResponse(response, request, "Invalid token");
+            return;
 
         } catch (IllegalArgumentException e) {
             // Các trường hợp truyền token null/rỗng (chặt chẽ hơn ngoài ở trên)
             log.warn("JWT token is empty: {}", e.getMessage());
-            request.setAttribute("jwt_error", "Token must not be empty");
+            sendErrorResponse(response, request, "Invalid token");
+            return;
 
         } catch (Exception e) {
             // Lỗi hệ thống hoặc không lường trước
-            // log chi tiết và gán lỗi tổng quát
             log.error("Cannot set user authentication: {}", e.getMessage());
-            request.setAttribute("jwt_error", "Token authentication failed");
+            sendErrorResponse(response, request, "Invalid token");
+            return;
         }
         // Hoàn thành filter, tiếp tục chuỗi filter tới controller hoặc các filter tiếp theo
         filterChain.doFilter(request, response);
+    }
+
+    /**
+     * Gửi response 401 với message "Invalid token"
+     */
+    private void sendErrorResponse(HttpServletResponse response, HttpServletRequest request, String message) throws IOException {
+        ErrorResponseDTO errorResponse = new ErrorResponseDTO(
+                HttpServletResponse.SC_UNAUTHORIZED,
+                "Unauthorized",
+                message,
+                request.getRequestURI()
+        );
+
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
+        response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
     }
 
     @Override
