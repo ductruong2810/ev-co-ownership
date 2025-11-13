@@ -1346,7 +1346,8 @@ public class ContractService {
      * Invalidate tất cả feedbacks và gửi thông báo cho members để review lại contract
      */
     @Transactional
-    public ApiResponseDTO<FeedbackActionResponseDTO> approveFeedback(Long feedbackId, String adminNote) {
+    public ApiResponseDTO<FeedbackActionResponseDTO> approveFeedback(Long feedbackId, FeedbackActionRequestDTO request) {
+        String adminNote = request != null ? request.adminNote() : null;
         ContractFeedback feedback = feedbackRepository.findById(feedbackId)
                 .orElseThrow(() -> new ResourceNotFoundException("Feedback not found"));
         
@@ -1406,7 +1407,8 @@ public class ContractService {
      * Gửi notification và email cho member kèm adminNote
      */
     @Transactional
-    public ApiResponseDTO<FeedbackActionResponseDTO> rejectFeedback(Long feedbackId, String adminNote) {
+    public ApiResponseDTO<FeedbackActionResponseDTO> rejectFeedback(Long feedbackId, FeedbackActionRequestDTO request) {
+        String adminNote = request != null ? request.adminNote() : null;
         ContractFeedback feedback = feedbackRepository.findById(feedbackId)
                 .orElseThrow(() -> new ResourceNotFoundException("Feedback not found"));
         
