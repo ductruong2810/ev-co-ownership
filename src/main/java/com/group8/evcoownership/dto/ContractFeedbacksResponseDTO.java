@@ -19,6 +19,8 @@ public class ContractFeedbacksResponseDTO {
     private Integer totalFeedbacks;
     private Long acceptedCount;
     private Long pendingDisagreeCount;
+    private Long approvedFeedbacksCount;  // Tổng số feedback đã được admin approve
+    private Long rejectedFeedbacksCount;  // Tổng số feedback đã được admin reject
     private List<ContractFeedbackResponseDTO> feedbacks;
     private List<PendingMemberDTO> pendingMembers;
 }

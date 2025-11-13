@@ -269,7 +269,7 @@ public class ContractController {
      * - Group Admin
      */
     @GetMapping("/{contractId}/member-feedbacks")
-    @PreAuthorize("@ownershipGroupService.isGroupAdminForContract(authentication.name, #contractId) or hasAnyRole('ADMIN','STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     @Operation(
             summary = "Get contract member feedbacks",
             description = "Lấy tất cả feedback của members cho contract. Chỉ group admin có quyền xem."
@@ -288,7 +288,7 @@ public class ContractController {
      * - Group Admin
      */
     @GetMapping("/group/{groupId}/member-feedbacks")
-    @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId) or hasAnyRole('ADMIN','STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     @Operation(
             summary = "Get member feedbacks by groupId",
             description = "Lấy tất cả feedback của members theo groupId. Áp dụng cho nhóm có 1 hợp đồng hiện tại."

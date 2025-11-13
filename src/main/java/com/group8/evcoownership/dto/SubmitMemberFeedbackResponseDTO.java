@@ -17,8 +17,6 @@ public class SubmitMemberFeedbackResponseDTO {
     private Long feedbackId;
     private MemberFeedbackStatus status;
     private Boolean isProcessed;
-    private Integer approveCount;
-    private Integer rejectCount;
     private ReactionType reactionType;
     private String reason;
     private LocalDateTime submittedAt;

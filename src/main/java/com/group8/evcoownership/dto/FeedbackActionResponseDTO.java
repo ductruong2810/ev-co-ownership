@@ -18,8 +18,6 @@ public class FeedbackActionResponseDTO {
     private Long feedbackId;
     private MemberFeedbackStatus status;
     private Boolean isProcessed;
-    private Integer approveCount;
-    private Integer rejectCount;
     private FeedbackAdminAction lastAdminAction;
     private LocalDateTime lastAdminActionAt;
     private ReactionType reactionType;
