@@ -175,9 +175,9 @@ public class AdminContractController {
     )
     public ResponseEntity<ApiResponseDTO<FeedbackActionResponseDTO>> approveFeedback(
             @PathVariable Long feedbackId,
-            @RequestParam(required = false) String adminNote
+            @RequestBody(required = false) FeedbackActionRequestDTO request
     ) {
-        ApiResponseDTO<FeedbackActionResponseDTO> result = contractService.approveFeedback(feedbackId, adminNote);
+        ApiResponseDTO<FeedbackActionResponseDTO> result = contractService.approveFeedback(feedbackId, request);
         return ResponseEntity.ok(result);
     }
 
@@ -191,9 +191,9 @@ public class AdminContractController {
     )
     public ResponseEntity<ApiResponseDTO<FeedbackActionResponseDTO>> rejectFeedback(
             @PathVariable Long feedbackId,
-            @RequestParam(required = false) String adminNote
+            @RequestBody(required = false) FeedbackActionRequestDTO request
     ) {
-        ApiResponseDTO<FeedbackActionResponseDTO> result = contractService.rejectFeedback(feedbackId, adminNote);
+        ApiResponseDTO<FeedbackActionResponseDTO> result = contractService.rejectFeedback(feedbackId, request);
         return ResponseEntity.ok(result);
     }
 }
