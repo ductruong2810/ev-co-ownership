@@ -39,9 +39,6 @@ public class FundPaymentService {
     private final UserRepository userRepository;
     private final OwnershipGroupRepository groupRepository;
     private final VnPay_PaymentService vnPayPaymentService;
-    private final DepositCalculationService depositCalculationService;
-    private final VehicleRepository vehicleRepository;
-    private final ServletRequest servletRequest;
 
     // ham phu
     private Long parseId(String id, String fieldName) {
