@@ -1,5 +1,6 @@
 package com.group8.evcoownership.service;
 
+import com.group8.evcoownership.dto.UserUpdateRequestDTO;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.enums.UserStatus;
 import com.group8.evcoownership.exception.ResourceNotFoundException;
@@ -44,5 +45,46 @@ public class UserService {
         user.setStatus(status);
         return userRepository.save(user);
     }
+
+    @Transactional
+    public User updateUserProfile(Long userId, UserUpdateRequestDTO updateRequest) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+
+        if (updateRequest.getFullName() != null && !updateRequest.getFullName().isBlank()) {
+            user.setFullName(updateRequest.getFullName());
+        }
+
+        if (updateRequest.getPhoneNumber() != null && !updateRequest.getPhoneNumber().isBlank()) {
+            if (userRepository.findByPhoneNumber(updateRequest.getPhoneNumber()).isPresent()) {
+                throw new IllegalArgumentException("Phone number already exists");
+            }
+            user.setPhoneNumber(updateRequest.getPhoneNumber());
+        }
+
+        return userRepository.save(user);
+    }
+
+    @Transactional
+    public User updateUserName(Long userId, String fullName) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+        user.setFullName(fullName);
+        return userRepository.save(user);
+    }
+
+    @Transactional
+    public User updateUserPhoneNumber(Long userId, String phoneNumber) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+
+        if (userRepository.findByPhoneNumber(phoneNumber).isPresent()) {
+            throw new IllegalArgumentException("Phone number already exists");
+        }
+
+        user.setPhoneNumber(phoneNumber);
+        return userRepository.save(user);
+    }
+
 }
 
