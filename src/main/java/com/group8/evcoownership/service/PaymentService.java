@@ -43,42 +43,61 @@ public class PaymentService {
      */
     // Trong PaymentService
     @Transactional(readOnly = true)
-    public PaymentHistoryResponseDTO getPersonalHistory(
+    public PaymentHistoryResponseDTO getPersonalHistoryAllGroups(
             Long userId,
-            Long groupId,
-            LocalDate fromDate,   // yyyy-MM-dd (optional)
-            LocalDate toDate,     // yyyy-MM-dd (optional)
+            LocalDate fromDate,
+            LocalDate toDate,
             Integer page,
             Integer size
     ) {
-        if (userId == null || groupId == null) throw new IllegalArgumentException("userId, groupId required");
+        if (userId == null) throw new IllegalArgumentException("userId required");
 
-        int p = Math.max(0, page == null ? 0 : page);
-        int s = Math.min(Math.max(1, size == null ? 20 : size), 200);
+        int p = (page == null) ? 0  : Math.max(0, page);
+        int s = (size == null) ? 20 : Math.min(Math.max(1, size), 200);
 
         LocalDateTime fromAt = (fromDate == null) ? null : fromDate.atStartOfDay();
-        LocalDateTime toAt   = (toDate == null)   ? null : toDate.atTime(23,59,59);
+        LocalDateTime toAt   = (toDate   == null) ? null : toDate.atTime(23,59,59);
 
-        Pageable pageable = PageRequest.of(p, s,
-                Sort.by(Sort.Direction.DESC, "paymentDate").and(Sort.by(Sort.Direction.DESC, "id")));
+        Pageable pageable = PageRequest.of(
+                p, s,
+                Sort.by(Sort.Direction.DESC, "paymentDate")
+                        .and(Sort.by(Sort.Direction.DESC, "id"))
+        );
 
-        var pageResult = paymentRepo.searchPersonalHistoryCompleted(
-                userId, groupId, fromAt, toAt, pageable);
+        var pageResult = paymentRepo.searchUserHistoryCompleted(userId, fromAt, toAt, pageable);
 
-        var items = pageResult.getContent().stream().map(this::toHistoryItem).toList();
+        var items = pageResult.getContent().stream().map(pmt -> {
+            Long fundId  = (pmt.getFund() != null) ? pmt.getFund().getFundId() : null;
+            // lấy groupId/Name qua fund; gọi getId của proxy Hibernate không ép load
+            Long gid     = null;
+            String gname = null;
+            if (pmt.getFund() != null && pmt.getFund().getGroup() != null) {
+                gid = pmt.getFund().getGroup().getGroupId();
+                gname = pmt.getFund().getGroup().getGroupName(); // nếu entity có
+            }
 
-        var totalCompleted = paymentRepo.sumPersonalCompleted(userId, groupId, fromAt, toAt);
+            return PaymentHistoryItemDTO.builder()
+                    .paymentId(pmt.getId())
+                    .fundId(fundId)
+                    .groupId(gid)
+                    .groupName(gname)
+                    .amount(pmt.getAmount())
+                    .paymentMethod(pmt.getPaymentMethod())
+                    .status(pmt.getStatus() != null ? pmt.getStatus().name() : null)
+                    .paymentType(pmt.getPaymentType() != null ? pmt.getPaymentType().name() : null)
+                    .transactionCode(pmt.getTransactionCode())
+                    .paymentDate(pmt.getPaymentDate())
+                    .build();
+        }).toList();
+
+        var totalCompleted = paymentRepo.sumUserCompleted(userId, fromAt, toAt);
 
         return PaymentHistoryResponseDTO.builder()
-                .userId(userId).groupId(groupId)
-                .page(p).size(s)
-                .total(pageResult.getTotalElements())
+                .userId(userId)
                 .totalCompletedAmount(totalCompleted)
                 .items(items)
                 .build();
     }
-
-
 
 
     /**

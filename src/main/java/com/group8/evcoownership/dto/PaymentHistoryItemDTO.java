@@ -17,6 +17,8 @@ import java.time.LocalDateTime;
 public class PaymentHistoryItemDTO {
     private Long paymentId;
     private Long fundId;
+    private Long groupId;        // NEW
+    private String groupName;   // NEW
     private BigDecimal amount;
     private String paymentMethod;   // VNPay / BANK_TRANSFER / CASH...
     private String status;          // enum name: PENDING / COMPLETED / FAILED / REFUNDED
