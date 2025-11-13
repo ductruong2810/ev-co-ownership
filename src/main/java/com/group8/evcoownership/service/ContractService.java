@@ -1447,6 +1447,19 @@ public class ContractService {
             );
         }
         
+        // Kiểm tra history entry cuối cùng: chỉ cho phép approve nếu entry cuối cùng là MEMBER_REVIEW
+        // (tức là member đã review lại sau khi bị reject/approve)
+        Optional<ContractFeedbackHistory> latestHistory = feedbackHistoryRepository.findFirstByFeedbackIdOrderByArchivedAtDesc(feedbackId);
+        if (latestHistory.isPresent()) {
+            FeedbackHistoryAction lastAction = latestHistory.get().getHistoryAction();
+            if (lastAction != FeedbackHistoryAction.MEMBER_REVIEW) {
+                throw new IllegalStateException(
+                        "Cannot approve this feedback. The member must review and resubmit the feedback first. " +
+                        "Last action was: " + lastAction
+                );
+            }
+        }
+        
         Contract contract = feedback.getContract();
         
         // Đánh dấu đã xử lý và set về PENDING để coowner làm lại
@@ -1460,7 +1473,7 @@ public class ContractService {
         recordFeedbackHistorySnapshot(
                 feedback,
                 FeedbackHistoryAction.ADMIN_APPROVE,
-                adminNote
+                "Admin approved feedback"
         );
         
         // Invalidate tất cả feedbacks về PENDING để members review lại contract mới
@@ -1517,13 +1530,17 @@ public class ContractService {
             );
         }
         
-        // Chặn reject lại nếu feedback đã bị reject và member chưa resubmit
-        // (Khi member resubmit, lastAdminAction sẽ được clear về null)
-        if (feedback.getLastAdminAction() == FeedbackAdminAction.REJECT 
-                && feedback.getLastAdminActionAt() != null) {
-            throw new IllegalStateException(
-                    "This feedback has already been rejected. Please wait for the member to resubmit before rejecting again."
-            );
+        // Kiểm tra history entry cuối cùng: chỉ cho phép reject nếu entry cuối cùng là MEMBER_REVIEW
+        // (tức là member đã review lại sau khi bị reject/approve)
+        Optional<ContractFeedbackHistory> latestHistory = feedbackHistoryRepository.findFirstByFeedbackIdOrderByArchivedAtDesc(feedbackId);
+        if (latestHistory.isPresent()) {
+            FeedbackHistoryAction lastAction = latestHistory.get().getHistoryAction();
+            if (lastAction != FeedbackHistoryAction.MEMBER_REVIEW) {
+                throw new IllegalStateException(
+                        "Cannot reject this feedback. The member must review and resubmit the feedback first. " +
+                        "Last action was: " + lastAction
+                );
+            }
         }
         
         // Đánh dấu đã xử lý, chuyển về PENDING để co-owner có thể làm lại
@@ -1564,7 +1581,7 @@ public class ContractService {
         recordFeedbackHistorySnapshot(
                 feedback,
                 FeedbackHistoryAction.ADMIN_REJECT,
-                adminNote
+                "Admin rejected feedback"
         );
         
         FeedbackActionResponseDTO feedbackData = buildFeedbackActionResponseDTO(feedback);
@@ -1618,7 +1635,10 @@ public class ContractService {
         historyEntry.setSubmittedAt(feedback.getSubmittedAt());
         historyEntry.setUpdatedAt(feedback.getUpdatedAt());
         historyEntry.setHistoryAction(action);
-        historyEntry.setActionNote(note);
+        // actionNote lưu reason của member (nếu có), nếu không thì dùng note được truyền vào
+        historyEntry.setActionNote(feedback.getReason() != null && !feedback.getReason().trim().isEmpty() 
+                ? feedback.getReason() 
+                : note);
         historyEntry.setArchivedAt(LocalDateTime.now());
 
         feedbackHistoryRepository.save(historyEntry);
