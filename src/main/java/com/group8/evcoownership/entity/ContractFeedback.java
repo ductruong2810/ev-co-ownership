@@ -34,11 +34,11 @@ public class ContractFeedback {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "Status", nullable = false)
-    private MemberFeedbackStatus status; // PENDING (DISAGREE), ACCEPTED (AGREE), APPROVED, REJECTED
+    private MemberFeedbackStatus status; // PENDING (DISAGREE), APPROVED (AGREE hoặc Admin approve), REJECTED (Admin reject)
 
     @Enumerated(EnumType.STRING)
     @Column(name = "ReactionType")
-    private ReactionType reactionType; // AGREE → ACCEPTED, DISAGREE → PENDING
+    private ReactionType reactionType; // AGREE → APPROVED, DISAGREE → PENDING
 
     @Nationalized
     @Column(name = "Reason", length = 1000)
