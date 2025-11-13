@@ -14,7 +14,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 // @RestController: Kết hợp @Controller + @ResponseBody, trả JSON cho các method
 // @RequestMapping: prefix route cho tất cả endpoints trong controller này
@@ -105,10 +104,8 @@ public class AdminContractController { // Khai báo class controller cho phần 
      * Kiểm tra trạng thái đóng tiền cọc của hợp đồng (chỉ dành cho admin)
      */
     @GetMapping("/{groupId}/deposit-status") // GET /api/admin/contracts/{groupId}/deposit-status
-    public ResponseEntity<Map<String, Object>> checkDepositStatus(@PathVariable Long groupId) {
-        // Gọi service để lấy trạng thái tiền cọc (ví dụ: tổng tiền cần cọc, đã cọc, còn thiếu, trạng thái từng thành viên)
-        Map<String, Object> status = contractService.checkDepositStatus(groupId);
-        // Trả về kết quả dạng JSON
+    public ResponseEntity<ContractDepositStatusResponseDTO> checkDepositStatus(@PathVariable Long groupId) {
+        ContractDepositStatusResponseDTO status = contractService.checkDepositStatus(groupId);
         return ResponseEntity.ok(status);
     }
 
