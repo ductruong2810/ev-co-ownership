@@ -1362,6 +1362,7 @@ public class ContractService {
                 feedbackHistoryRepository.findByContractIdOrderByArchivedAtDesc(contractId);
 
         long totalFeedbacks = feedbackRepository.countByContractId(contractId);
+        long totalMembersSubmitted = feedbackRepository.countDistinctUsersByContractId(contractId);
         long acceptedCount = feedbackRepository.countByContractIdAndStatusAndReactionType(
                 contractId, MemberFeedbackStatus.ACCEPTED, ReactionType.AGREE);
         long pendingDisagreeCount = feedbackRepository.countByContractIdAndStatusAndReactionType(
@@ -1376,6 +1377,9 @@ public class ContractService {
                         .historyId(entry.getHistoryId())
                         .feedbackId(entry.getFeedback().getId())
                         .userId(entry.getUser().getUserId())
+                        .userFullName(entry.getUser().getFullName())
+                        .userEmail(entry.getUser().getEmail())
+                        .userAvatarUrl(entry.getUser().getAvatarUrl())
                         .status(entry.getStatus())
                         .reactionType(entry.getReactionType())
                         .reason(entry.getReason())
@@ -1392,6 +1396,8 @@ public class ContractService {
 
         return ContractFeedbackHistoryResponseDTO.builder()
                 .contractId(contract.getId())
+                .contractStatus(contract.getApprovalStatus())
+                .totalMembersSubmitted(totalMembersSubmitted)
                 .totalFeedbacks(totalFeedbacks)
                 .acceptedCount(acceptedCount)
                 .pendingDisagreeCount(pendingDisagreeCount)
