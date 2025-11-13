@@ -75,11 +75,18 @@ public class VnPay_PaymentService {
         vnpParamsMap.put("vnp_IpAddr", getIpAddress(request));
         vnpParamsMap.put("vnp_TxnRef", txnRef);
 
-        String queryUrl   = getPaymentURL(vnpParamsMap, true);
-        String hashData   = getPaymentURL(vnpParamsMap, false);
-        String vnpHash    = hmacSHA512(secretKey, hashData);
-        queryUrl += "&vnp_SecureHash=" + vnpHash;
+//        String queryUrl   = getPaymentURL(vnpParamsMap, true);
+//        String hashData   = getPaymentURL(vnpParamsMap, false);
+//        String vnpHash    = hmacSHA512(secretKey, hashData);
+//        queryUrl += "&vnp_SecureHash=" + vnpHash;
+//
+//        return vnp_PayUrl + "?" + queryUrl;
 
+        String hashData = buildHashData(vnpParamsMap);          // ⬅️ dùng helper mới
+        String signature = hmacSHA512(secretKey, hashData);
+        vnpParamsMap.put("vnp_SecureHash", signature);
+
+        String queryUrl = buildQueryString(vnpParamsMap);       // ⬅️ encode giống hash
         return vnp_PayUrl + "?" + queryUrl;
     }
 
@@ -109,6 +116,41 @@ public class VnPay_PaymentService {
         res.sendRedirect(redirect);
     }
 
+    /**
+     * New for fixing sai chu ky o deposit payment
+     */
+    // Helper encode: dùng UTF-8, thay "+" -> "%20" để ổn định
+    private static String enc(String s) {
+        // Giữ nguyên chuẩn URL-encode của Java (UTF-8, khoảng trắng = '+')
+        return URLEncoder.encode(s, StandardCharsets.UTF_8);
+    }
+
+
+    // Build chuỗi cho HASH: sort theo key, KHÔNG đưa vnp_SecureHash / vnp_SecureHashType
+    private static String buildHashData(Map<String, String> params) {
+        return params.entrySet().stream()
+                .filter(e -> e.getKey().startsWith("vnp_"))
+                .filter(e -> e.getValue() != null && !e.getValue().isEmpty())
+                .filter(e -> !"vnp_SecureHash".equals(e.getKey()))
+                .filter(e -> !"vnp_SecureHashType".equals(e.getKey()))   // ← thêm dòng này
+                .sorted(Map.Entry.comparingByKey())
+                .map(e -> enc(e.getKey()) + "=" + enc(e.getValue()))
+                .collect(Collectors.joining("&"));
+    }
+
+
+    // Build query gửi đi: giống hệt hashData + thêm vnp_SecureHash ở cuối
+    private static String buildQueryString(Map<String, String> params) {
+        return params.entrySet().stream()
+                .filter(e -> e.getValue() != null && !e.getValue().isEmpty())
+                .sorted(Map.Entry.comparingByKey())
+                .map(e -> enc(e.getKey()) + "=" + enc(e.getValue()))
+                .collect(Collectors.joining("&"));
+    }
+
+    /**
+     *
+     */
 
 
     private Map<String, String> getVNPayConfig() {
@@ -147,25 +189,40 @@ public class VnPay_PaymentService {
 
     public static String hmacSHA512(final String key, final String data) {
         try {
-            if (key == null || data == null) {
-                throw new NullPointerException();
-            }
-            final Mac hmac512 = Mac.getInstance("HmacSHA512");
-            byte[] hmacKeyBytes = key.getBytes();
-            final SecretKeySpec secretKey = new SecretKeySpec(hmacKeyBytes, "HmacSHA512");
-            hmac512.init(secretKey);
-            byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
-            byte[] result = hmac512.doFinal(dataBytes);
-            StringBuilder sb = new StringBuilder(2 * result.length);
-            for (byte b : result) {
-                sb.append(String.format("%02x", b & 0xff));
-            }
+            Mac mac = Mac.getInstance("HmacSHA512");
+            SecretKeySpec sk = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA512");
+            mac.init(sk);
+            byte[] result = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder(result.length * 2);
+            for (byte b : result) sb.append(String.format("%02x", b & 0xff));
             return sb.toString();
-
         } catch (Exception ex) {
-            return "";
+            throw new RuntimeException(ex);
         }
     }
+
+
+//    public static String hmacSHA512(final String key, final String data) {
+//        try {
+//            if (key == null || data == null) {
+//                throw new NullPointerException();
+//            }
+//            final Mac hmac512 = Mac.getInstance("HmacSHA512");
+//            byte[] hmacKeyBytes = key.getBytes();
+//            final SecretKeySpec secretKey = new SecretKeySpec(hmacKeyBytes, "HmacSHA512");
+//            hmac512.init(secretKey);
+//            byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
+//            byte[] result = hmac512.doFinal(dataBytes);
+//            StringBuilder sb = new StringBuilder(2 * result.length);
+//            for (byte b : result) {
+//                sb.append(String.format("%02x", b & 0xff));
+//            }
+//            return sb.toString();
+//
+//        } catch (Exception ex) {
+//            return "";
+//        }
+//    }
 
 //    public static String getIpAddress(HttpServletRequest request) {
 //        String ipAdress;
@@ -254,12 +311,21 @@ public class VnPay_PaymentService {
         vnpParamsMap.put("vnp_CreateDate", fmt.format(cal.getTime()));
 
         // Build URL và hash
-        String queryUrl = getPaymentURL(vnpParamsMap, true);
-        String hashData = getPaymentURL(vnpParamsMap, false);
-        String vnpSecureHash = hmacSHA512(this.secretKey, hashData);
-        queryUrl += "&vnp_SecureHash=" + vnpSecureHash;
+//        String queryUrl = getPaymentURL(vnpParamsMap, true);
+//        String hashData = getPaymentURL(vnpParamsMap, false);
+//        String vnpSecureHash = hmacSHA512(this.secretKey, hashData);
+//        queryUrl += "&vnp_SecureHash=" + vnpSecureHash;
+//
+//        return this.vnp_PayUrl + "?" + queryUrl;
 
+        vnpParamsMap.put("vnp_SecureHashType", "HmacSHA512");
+        String hashData = buildHashData(vnpParamsMap);
+        String signature = hmacSHA512(this.secretKey, hashData);
+        vnpParamsMap.put("vnp_SecureHash", signature);
+
+        String queryUrl = buildQueryString(vnpParamsMap);
         return this.vnp_PayUrl + "?" + queryUrl;
+
     }
 
     /**
