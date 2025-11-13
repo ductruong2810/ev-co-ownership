@@ -31,11 +31,9 @@ public class FundPaymentService {
     private final FundService fundService;
     private final DepositPaymentService depositPaymentService;
     private final PaymentRepository paymentRepository;
-    private final OwnershipShareRepository shareRepository;
     private final ContractRepository contractRepository;
     private final SharedFundRepository sharedFundRepository;
     private final UserRepository userRepository;
-    private final OwnershipGroupRepository groupRepository;
     private final VnPay_PaymentService vnPayPaymentService;
 
     // ham phu
