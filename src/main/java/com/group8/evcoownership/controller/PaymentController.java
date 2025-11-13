@@ -9,11 +9,13 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -33,17 +35,19 @@ public class PaymentController {
      * Lay lich su giao dich cua 1 user
      */
     @GetMapping("/history")
-    @Operation(
-            summary = "Lịch sử giao dịch đã hoàn tất của 1 user trong 1 group",
-            description = "Chỉ trả các Payment có status=COMPLETED; không lọc theo paymentType. " +
-                    "Query: userId, groupId, fromDate/toDate (yyyy-MM-dd), page, size."
-    )
-    @PreAuthorize("hasAnyRole('CO_OWNER')")
-    public ResponseEntity<PaymentHistoryResponseDTO> getPaymentHistory(
-            @Valid @ModelAttribute PaymentHistoryBasicRequestDTO q) {
-        // @ModelAttribute sẽ tự bind query string vào DTO (kể cả fromDate/toDate)
-        return ResponseEntity.ok(paymentService.getPersonalHistory(q));
+    @Operation(summary = "Lịch sử giao dịch COMPLETED của 1 user trong group")
+    public ResponseEntity<PaymentHistoryResponseDTO> history(
+            @RequestParam Long userId,
+            @RequestParam Long groupId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+            @RequestParam(required = false, defaultValue = "0") Integer page,
+            @RequestParam(required = false, defaultValue = "20") Integer size
+    ){
+        return ResponseEntity.ok(paymentService.getPersonalHistory(
+                userId, groupId, fromDate, toDate, page, size));
     }
+
 
 
     /**
