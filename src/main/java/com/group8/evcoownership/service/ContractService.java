@@ -1509,6 +1509,13 @@ public class ContractService {
      * Throw exception nếu không thể chỉnh sửa
      */
     private void validateContractEditable(Contract contract, String errorMessageTemplate) {
+        long rejectedFeedbackCount = feedbackRepository.countByContractIdAndLastAdminAction(
+                contract.getId(), FeedbackAdminAction.REJECT);
+        if (rejectedFeedbackCount > 0) {
+            throw new IllegalStateException(
+                    "Cannot update contract: At least one member feedback was rejected and is waiting for resubmission.");
+        }
+
         if (contract.getApprovalStatus() == ContractApprovalStatus.PENDING) {
             return;
         }
