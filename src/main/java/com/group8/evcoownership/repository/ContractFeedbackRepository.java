@@ -17,7 +17,7 @@ public interface ContractFeedbackRepository extends JpaRepository<ContractFeedba
     
     List<ContractFeedback> findByContractId(Long contractId);
 
-    Optional<ContractFeedback> findByContractIdAndUser_UserId(Long contractId, Long userId);
+    Optional<ContractFeedback> findTopByContractIdAndUser_UserIdOrderBySubmittedAtDesc(Long contractId, Long userId);
     
     boolean existsByContractIdAndUser_UserId(Long contractId, Long userId);
 
