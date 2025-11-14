@@ -169,6 +169,7 @@ public class OwnershipShareController {
      * Validate tỷ lệ sở hữu trước khi lưu
      * POST /api/shares/my-percentage/{groupId}/validate
      */
+
     @PostMapping("/my-percentage/{groupId}/validate")
     @Operation(summary = "Kiểm tra tỷ lệ sở hữu", description = "Kiểm tra tính hợp lệ của tỷ lệ sở hữu trước khi lưu")
     public ResponseEntity<ValidationResponseDTO> validateMyOwnershipPercentage(
@@ -176,17 +177,14 @@ public class OwnershipShareController {
             @AuthenticationPrincipal String userEmail,
             @Valid @RequestBody OwnershipPercentageRequestDTO request) {
 
-        // Lấy userId từ email
         Long userId = userProfileService.getUserProfile(userEmail).getUserId();
-
-        // Gọi service để validate
-        service.updateOwnershipPercentage(userId, groupId, request);
-
+        service.validateOwnershipOnly(userId, groupId, request); // không save
         return ResponseEntity.ok(ValidationResponseDTO.builder()
                 .valid(true)
                 .message("Tỷ lệ sở hữu hợp lệ")
                 .build());
     }
+
 
     /**
      * Lấy danh sách các tỷ lệ sở hữu có thể chọn (gợi ý)

@@ -520,4 +520,33 @@ public class OwnershipShareService {
                 vehicle.getUpdatedAt()
         );
     }
+
+    @Transactional
+    public void validateOwnershipOnly(Long userId, Long groupId, OwnershipPercentageRequestDTO request) {
+        var group = groupRepo.findById(groupId)
+                .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
+        if (group.getStatus() != GroupStatus.ACTIVE) {
+            throw new IllegalStateException("Group is not ACTIVE");
+        }
+        if (isOwnershipLockedByContract(groupId)) {
+            throw new IllegalStateException("Contract is pending/signed/active; cannot change ownership percentage");
+        }
+        shareRepo.findById(new OwnershipShareId(userId, groupId))
+                .orElseThrow(() -> new EntityNotFoundException("User is not a member of this group"));
+        validateOwnershipPercentage(groupId, userId, request.getOwnershipPercentage());
+    }
+
+
+    private boolean isOwnershipLockedByContract(Long groupId) {
+        var c = contractRepository.findByGroupGroupId(groupId).orElse(null);
+        if (c == null) return false;
+        var st = c.getApprovalStatus();
+        boolean lockedByStatus =
+                st == ContractApprovalStatus.PENDING
+                        || st == ContractApprovalStatus.PENDING_MEMBER_APPROVAL
+                        || st == ContractApprovalStatus.SIGNED
+                        || st == ContractApprovalStatus.APPROVED;
+        return lockedByStatus || Boolean.TRUE.equals(c.getIsActive());
+    }
+
 }
