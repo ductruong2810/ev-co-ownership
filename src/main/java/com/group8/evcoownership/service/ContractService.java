@@ -1789,7 +1789,7 @@ public class ContractService {
     }
 
     /**
-     * Kiểm tra và tự động chuyển sang SIGNED nếu tất cả members đã approve
+     * Kiểm tra và tự động chuyển sang SIGNED nếu admin đã approve và tất cả members đã approve
      */
     @Transactional
     protected void checkAndAutoSignIfAllApproved(Contract contract) {
@@ -1805,14 +1805,23 @@ public class ContractService {
             return;
         }
 
+        // Kiểm tra admin đã approve trước (contract status = PENDING_MEMBER_APPROVAL)
+        // Nếu contract chưa ở PENDING_MEMBER_APPROVAL nghĩa là admin chưa ký
+        if (contract.getApprovalStatus() != ContractApprovalStatus.PENDING_MEMBER_APPROVAL) {
+            return; // Admin chưa approve, không thể chuyển sang SIGNED
+        }
+
         // Đếm số members đã approve (status = APPROVED)
         // APPROVED có thể là: Member AGREE hoặc Admin đã approve feedback DISAGREE
+        // Lưu ý: Logic submit đã hạn chế mỗi user chỉ có 1 feedback APPROVED (trừ khi resubmit sau REJECTED)
+        // Khi resubmit sau REJECTED, feedback cũ vẫn là REJECTED, feedback mới là APPROVED
+        // Nên đếm số feedbacks APPROVED vẫn đúng với số users đã approve
         long approvedCount = feedbackRepository.countByContractIdAndStatus(
                 contract.getId(), 
                 MemberFeedbackStatus.APPROVED
         );
 
-        // Nếu tất cả members đã approve, chuyển sang SIGNED
+        // Nếu admin đã approve VÀ tất cả members đã approve, chuyển sang SIGNED
         if (approvedCount == members.size()) {
             contract.setApprovalStatus(ContractApprovalStatus.SIGNED);
             contract.setUpdatedAt(LocalDateTime.now());
