@@ -122,7 +122,7 @@ public class Maintenance {
             this.status = "PENDING";
         }
         if (this.coverageType == null) {
-            this.coverageType = MaintenanceCoverageType.GROUP_FUND;
+            this.coverageType = MaintenanceCoverageType.GROUP;
         }
     }
 
