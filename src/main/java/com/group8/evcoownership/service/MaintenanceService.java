@@ -114,7 +114,7 @@ public class MaintenanceService {
 
 
     // =================== APPROVE ===================
-    public MaintenanceResponseDTO approve(Long id, String staffEmail, LocalDate nextDueDate) {
+    public MaintenanceResponseDTO approve(Long id, String staffEmail) {
         Maintenance maintenance = maintenanceRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Maintenance not found"));
 
@@ -126,34 +126,15 @@ public class MaintenanceService {
             throw new IllegalStateException("Only PENDING maintenance requests can be approved.");
         }
 
-        // Bắt buộc staff phải nhập nextDueDate
-        if (nextDueDate == null) {
-            throw new IllegalArgumentException("Next due date must be provided when approving maintenance.");
-        }
-        if (nextDueDate.isBefore(LocalDate.now())) {
-            throw new IllegalArgumentException("Next due date must be in the future.");
-        }
+
 
         // Cập nhật trạng thái
         LocalDateTime now = LocalDateTime.now();
         maintenance.setStatus("APPROVED");
         maintenance.setApprovedBy(staff);
         maintenance.setApprovalDate(now);
-        maintenance.setNextDueDate(nextDueDate);
 
         maintenanceRepository.save(maintenance);
-
-        Expense expense = Expense.builder()
-                .fund(maintenance.getVehicle().getOwnershipGroup().getFund())
-                .sourceType("MAINTENANCE")
-                .sourceId(maintenance.getId())
-                .description(maintenance.getDescription())
-                .amount(maintenance.getActualCost())
-                .status("PENDING")
-                .createdAt(now)
-                .build();
-
-        expenseRepository.save(expense);
 
         return mapToDTO(maintenance);
     }

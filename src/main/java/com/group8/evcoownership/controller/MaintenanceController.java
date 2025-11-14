@@ -104,10 +104,9 @@ public class MaintenanceController {
     )
     public ResponseEntity<MaintenanceResponseDTO> approve(
             @PathVariable Long id,
-            @RequestParam LocalDate nextDueDate, // staff nhập ngày kế tiếp
             Authentication auth
     ) {
-        return ResponseEntity.ok(maintenanceService.approve(id, auth.getName(), nextDueDate));
+        return ResponseEntity.ok(maintenanceService.approve(id, auth.getName()));
     }
 
     /**
