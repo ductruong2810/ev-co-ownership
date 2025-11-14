@@ -94,13 +94,7 @@ public class MaintenanceService {
             maintenance.setDescription(req.getDescription());
         }
 
-        if (req.getCost() != null && req.getCost().compareTo(BigDecimal.ZERO) > 0) {
-            maintenance.setActualCost(req.getCost());
-        }
 
-        if (req.getNextDueDate() != null && req.getNextDueDate().isAfter(LocalDate.now())) {
-            maintenance.setNextDueDate(req.getNextDueDate());
-        }
 
         maintenance.setUpdatedAt(LocalDateTime.now());
         maintenanceRepository.save(maintenance);
@@ -135,7 +129,7 @@ public class MaintenanceService {
         maintenance.setStatus("APPROVED");
         maintenance.setApprovedBy(staff);
         maintenance.setApprovalDate(now);
-        maintenance.setNextDueDate(nextDueDate);
+
 
         maintenanceRepository.save(maintenance);
 
@@ -188,7 +182,13 @@ public class MaintenanceService {
                 .status(m.getStatus())
                 .requestDate(m.getRequestDate())
                 .approvalDate(m.getApprovalDate())
-                .nextDueDate(m.getNextDueDate())
+
+                // ===== thời gian bảo trì =====
+                .estimatedDurationDays(m.getEstimatedDurationDays())
+                .maintenanceStartAt(m.getMaintenanceStartAt())
+                .expectedFinishAt(m.getExpectedFinishAt())
+                .maintenanceCompletedAt(m.getMaintenanceCompletedAt())
+
                 .createdAt(m.getCreatedAt())
                 .updatedAt(m.getUpdatedAt())
                 .build();
