@@ -22,5 +22,6 @@ public class MaintenanceUpdateRequestDTO {
     @Future(message = "Next due date must be in the future")
     private LocalDate nextDueDate;
 
+    @DecimalMin(value = "0", inclusive = false, message = "Duration day must be greater than 0")
     private Integer estimatedDurationDays;
 }
