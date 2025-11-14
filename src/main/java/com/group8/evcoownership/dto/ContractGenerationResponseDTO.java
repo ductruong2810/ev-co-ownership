@@ -2,6 +2,8 @@ package com.group8.evcoownership.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.group8.evcoownership.enums.ContractApprovalStatus;
+import com.group8.evcoownership.enums.MemberFeedbackStatus;
+import com.group8.evcoownership.enums.ReactionType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -38,6 +40,13 @@ public class ContractGenerationResponseDTO {
     private Boolean savedToDatabase;
     private LocalDateTime signedAt;
     private Boolean signed;
+    private Boolean userHasSubmittedFeedback;
+    private MemberFeedbackStatus userFeedbackStatus;
+    private ReactionType userFeedbackReaction;
+    private Long userFeedbackId;
+    private LocalDateTime userFeedbackSubmittedAt;
+    private Boolean userFeedbackRejected;
+    private Boolean userCanSubmitFeedback;
 
     @Data
     @Builder
