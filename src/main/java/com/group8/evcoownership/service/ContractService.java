@@ -1673,23 +1673,23 @@ public class ContractService {
 
         // Kiểm tra đã submit feedback cho contract version hiện tại chưa
         // Cho phép tạo feedback mới nếu contract đã được update sau khi feedback được submit
-        var existingFeedback = feedbackRepository.findByContractIdAndUser_UserId(contractId, userId);
+        var existingFeedback = feedbackRepository
+                .findTopByContractIdAndUser_UserIdOrderBySubmittedAtDesc(contractId, userId);
         if (existingFeedback.isPresent()) {
-            ContractFeedback oldFeedback = existingFeedback.get();
-            LocalDateTime contractUpdatedAt = contract.getUpdatedAt() != null 
-                    ? contract.getUpdatedAt() 
+            ContractFeedback latestFeedback = existingFeedback.get();
+            boolean isRejected = latestFeedback.getStatus() == MemberFeedbackStatus.REJECTED;
+            LocalDateTime contractUpdatedAt = contract.getUpdatedAt() != null
+                    ? contract.getUpdatedAt()
                     : contract.getCreatedAt();
-            LocalDateTime feedbackSubmittedAt = oldFeedback.getSubmittedAt();
+            LocalDateTime feedbackSubmittedAt = latestFeedback.getSubmittedAt();
             
-            // Nếu feedback được submit sau khi contract được update lần cuối
-            // thì đây là feedback cho version hiện tại, không cho phép tạo feedback mới
-            if (feedbackSubmittedAt != null && feedbackSubmittedAt.isAfter(contractUpdatedAt)) {
+            // Nếu feedback đã được submit sau lần cập nhật gần nhất của contract và không bị reject
+            // thì không cho phép tạo feedback mới
+            if (!isRejected && feedbackSubmittedAt != null && feedbackSubmittedAt.isAfter(contractUpdatedAt)) {
                 throw new IllegalStateException(
                         "You have already submitted feedback for this contract version. Each member can only review and feedback once per contract version."
                 );
             }
-            // Nếu feedback được submit trước khi contract được update
-            // thì đây là feedback cũ, cho phép tạo feedback mới (không xóa feedback cũ)
         }
         
         // Set status dựa trên reactionType
@@ -1708,7 +1708,6 @@ public class ContractService {
                 .reason(request.reason())
                 .adminNote(null)
                 .build();
-
         feedbackRepository.save(feedback);
 
         // Ghi lại lịch sử khi member submit feedback
