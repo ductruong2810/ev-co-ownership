@@ -6,6 +6,7 @@ import lombok.*;
 import org.hibernate.annotations.Nationalized;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -58,6 +59,9 @@ public class Maintenance {
     // Ngày staff duyệt (APPROVED)
     @Column(name = "ApprovalDate")
     private LocalDateTime approvalDate;
+
+    @Column(name = "NextDueDate")
+    private LocalDate nextDueDate;
 
     // Số ngày dự kiến xe nằm gara (vd: 3 ngày)
     @Column(name = "EstimatedDurationDays")

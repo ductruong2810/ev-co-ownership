@@ -2,6 +2,7 @@ package com.group8.evcoownership.dto;
 
 import lombok.*;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
@@ -31,6 +32,9 @@ public class MaintenanceResponseDTO {
 
     // Thời điểm staff duyệt
     private LocalDateTime approvalDate;
+
+    private LocalDate nextDueDate;       // ngày bảo trì định kỳ kế tiếp
+
 
     // ====== Các thông tin về thời gian bảo trì ======
 
