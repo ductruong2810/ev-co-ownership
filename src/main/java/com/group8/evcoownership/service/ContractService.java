@@ -1710,26 +1710,9 @@ public class ContractService {
                     ? ReactionType.AGREE
                     : ReactionType.DISAGREE;
 
-        // Kiểm tra đã submit feedback cho contract version hiện tại chưa
-        // Cho phép tạo feedback mới nếu contract đã được update sau khi feedback được submit
+        // Kiểm tra đã submit feedback cho contract chưa
         var existingFeedback = feedbackRepository
                 .findTopByContractIdAndUser_UserIdOrderBySubmittedAtDesc(contractId, userId);
-        if (existingFeedback.isPresent()) {
-            ContractFeedback latestFeedback = existingFeedback.get();
-            boolean isRejected = latestFeedback.getStatus() == MemberFeedbackStatus.REJECTED;
-            LocalDateTime contractUpdatedAt = contract.getUpdatedAt() != null
-                    ? contract.getUpdatedAt()
-                    : contract.getCreatedAt();
-            LocalDateTime feedbackSubmittedAt = latestFeedback.getSubmittedAt();
-            
-            // Nếu feedback đã được submit sau lần cập nhật gần nhất của contract và không bị reject
-            // thì không cho phép tạo feedback mới
-            if (!isRejected && feedbackSubmittedAt != null && feedbackSubmittedAt.isAfter(contractUpdatedAt)) {
-                throw new IllegalStateException(
-                        "You have already submitted feedback for this contract version. Each member can only review and feedback once per contract version."
-                );
-            }
-        }
         
         // Set status dựa trên reactionType
         MemberFeedbackStatus feedbackStatus = (reactionType == ReactionType.AGREE) 
@@ -1739,14 +1722,41 @@ public class ContractService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
         
-        ContractFeedback feedback = ContractFeedback.builder()
-                .contract(contract)
-                .user(user)
-                .status(feedbackStatus)
-                .reactionType(reactionType)
-                .reason(request.reason())
-                .adminNote(null)
-                .build();
+        ContractFeedback feedback;
+        
+        if (existingFeedback.isPresent()) {
+            ContractFeedback latestFeedback = existingFeedback.get();
+            boolean isRejected = latestFeedback.getStatus() == MemberFeedbackStatus.REJECTED;
+            
+            // Chỉ cho phép tạo feedback mới khi feedback bị REJECTED
+            if (!isRejected) {
+                throw new IllegalStateException(
+                        "You have already submitted feedback for this contract. Only REJECTED feedbacks can be resubmitted."
+                );
+            }
+            
+            // Nếu feedback bị REJECTED, cho phép tạo feedback mới
+            // Bản ghi REJECTED cũ sẽ được giữ lại, lịch sử đã được lưu trong ContractFeedbackHistory
+            feedback = ContractFeedback.builder()
+                    .contract(contract)
+                    .user(user)
+                    .status(feedbackStatus)
+                    .reactionType(reactionType)
+                    .reason(request.reason())
+                    .adminNote(null)
+                    .build();
+        } else {
+            // Tạo feedback mới nếu chưa có feedback nào
+            feedback = ContractFeedback.builder()
+                    .contract(contract)
+                    .user(user)
+                    .status(feedbackStatus)
+                    .reactionType(reactionType)
+                    .reason(request.reason())
+                    .adminNote(null)
+                    .build();
+        }
+        
         feedbackRepository.save(feedback);
 
         // Ghi lại lịch sử khi member submit feedback
@@ -1779,7 +1789,7 @@ public class ContractService {
     }
 
     /**
-     * Kiểm tra và tự động chuyển sang SIGNED nếu tất cả members đã approve
+     * Kiểm tra và tự động chuyển sang SIGNED nếu admin đã approve và tất cả members đã approve
      */
     @Transactional
     protected void checkAndAutoSignIfAllApproved(Contract contract) {
@@ -1795,14 +1805,23 @@ public class ContractService {
             return;
         }
 
+        // Kiểm tra admin đã approve trước (contract status = PENDING_MEMBER_APPROVAL)
+        // Nếu contract chưa ở PENDING_MEMBER_APPROVAL nghĩa là admin chưa ký
+        if (contract.getApprovalStatus() != ContractApprovalStatus.PENDING_MEMBER_APPROVAL) {
+            return; // Admin chưa approve, không thể chuyển sang SIGNED
+        }
+
         // Đếm số members đã approve (status = APPROVED)
         // APPROVED có thể là: Member AGREE hoặc Admin đã approve feedback DISAGREE
+        // Lưu ý: Logic submit đã hạn chế mỗi user chỉ có 1 feedback APPROVED (trừ khi resubmit sau REJECTED)
+        // Khi resubmit sau REJECTED, feedback cũ vẫn là REJECTED, feedback mới là APPROVED
+        // Nên đếm số feedbacks APPROVED vẫn đúng với số users đã approve
         long approvedCount = feedbackRepository.countByContractIdAndStatus(
                 contract.getId(), 
                 MemberFeedbackStatus.APPROVED
         );
 
-        // Nếu tất cả members đã approve, chuyển sang SIGNED
+        // Nếu admin đã approve VÀ tất cả members đã approve, chuyển sang SIGNED
         if (approvedCount == members.size()) {
             contract.setApprovalStatus(ContractApprovalStatus.SIGNED);
             contract.setUpdatedAt(LocalDateTime.now());
