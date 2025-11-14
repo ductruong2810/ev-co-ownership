@@ -4,6 +4,7 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -55,4 +56,8 @@ public class MaintenanceResponseDTO {
 
     // Ngày cập nhật gần nhất
     private LocalDateTime updatedAt;
+
+    // list chua thong tin Payer va ownershíphare
+    private List<MaintenancePayerShareDTO> payerShares;
+
 }

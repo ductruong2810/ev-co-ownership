@@ -7,6 +7,7 @@ import com.group8.evcoownership.entity.Expense;
 import com.group8.evcoownership.entity.Maintenance;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.entity.Vehicle;
+import com.group8.evcoownership.enums.MaintenanceCoverageType;
 import com.group8.evcoownership.repository.ExpenseRepository;
 import com.group8.evcoownership.repository.MaintenanceRepository;
 import com.group8.evcoownership.repository.UserRepository;
@@ -47,6 +48,7 @@ public class MaintenanceService {
                 .description(req.getDescription())
                 .actualCost(req.getCost())
                 .status("PENDING")
+                .coverageType(MaintenanceCoverageType.GROUP) // bao duong dinh ky, thi group chiu chung
                 .requestDate(now)
                 .build();
 
@@ -121,20 +123,53 @@ public class MaintenanceService {
         User staff = userRepository.findByEmail(staffEmail)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
+        // chi co bao duong dinh ky -> moi co status APPROVED
+        // maintenance after check out -> di tu pending -> funded
+        if (maintenance.getCoverageType() != MaintenanceCoverageType.GROUP) {
+            throw new IllegalStateException("Only GROUP_FUND maintenance can be approved here.");
+        }
+
         // Chỉ được duyệt khi đang ở trạng thái PENDING
         if (!"PENDING".equals(maintenance.getStatus())) {
             throw new IllegalStateException("Only PENDING maintenance requests can be approved.");
         }
-
-
 
         // Cập nhật trạng thái
         LocalDateTime now = LocalDateTime.now();
         maintenance.setStatus("APPROVED");
         maintenance.setApprovedBy(staff);
         maintenance.setApprovalDate(now);
-
         maintenanceRepository.save(maintenance);
+
+
+        // ===== TÍNH AI ĐÓNG BAO NHIÊU =====
+
+//        var group = m.getVehicle().getOwnershipGroup();
+//        var shares = ownershipShareRepository
+//                .findByOwnershipGroup_GroupId(group.getGroupId());
+//
+//        BigDecimal totalCost = m.getActualCost();
+//
+//        List<MaintenancePayerShareDTO> payerShareDTOs = shares.stream()
+//                .map(share -> {
+//                    BigDecimal ratio = share.getOwnershipRatio(); // vd: 0.40
+//                    BigDecimal amount = totalCost
+//                            .multiply(ratio)
+//                            .setScale(2, BigDecimal.ROUND_HALF_UP);
+//
+//                    return MaintenancePayerShareDTO.builder()
+//                            .userId(share.getUser().getUserId())
+//                            .fullName(share.getUser().getFullName())
+//                            .ownershipRatio(ratio)
+//                            .amount(amount)
+//                            .build();
+//                })
+//                .toList();
+//
+//        MaintenanceResponseDTO dto = mapToDTO(m);
+//        dto.setPayerShares(payerShareDTOs);
+//
+//        return dto;
 
         return mapToDTO(maintenance);
     }
@@ -143,6 +178,12 @@ public class MaintenanceService {
     public MaintenanceResponseDTO reject(Long id, String staffEmail) {
         Maintenance maintenance = maintenanceRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Maintenance not found"));
+
+        // chi co bao duong dinh ky -> moi co status REJECTED
+        // maintenance after check out -> di tu pending -> funded
+        if (maintenance.getCoverageType() != MaintenanceCoverageType.GROUP) {
+            throw new IllegalStateException("Only GROUP_FUND maintenance can be rejected here.");
+        }
 
         User staff = userRepository.findByEmail(staffEmail)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
