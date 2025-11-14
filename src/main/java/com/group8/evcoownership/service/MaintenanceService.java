@@ -102,6 +102,10 @@ public class MaintenanceService {
             maintenance.setNextDueDate(req.getNextDueDate());
         }
 
+        if (req.getEstimatedDurationDays() != null && req.getEstimatedDurationDays() > 0) {
+            maintenance.setEstimatedDurationDays(req.getEstimatedDurationDays());
+        }
+
         maintenance.setUpdatedAt(LocalDateTime.now());
         maintenanceRepository.save(maintenance);
 
