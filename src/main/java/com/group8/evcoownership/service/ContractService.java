@@ -762,11 +762,50 @@ public class ContractService {
                 builder.signed(true)
                         .signedAt(contract.getUpdatedAt());
             }
+
+            if (userId != null) {
+                Optional<ContractFeedback> userFeedbackOpt =
+                        feedbackRepository.findTopByContractIdAndUser_UserIdOrderBySubmittedAtDesc(
+                                contract.getId(), userId);
+                boolean isPendingMemberApproval = contract.getApprovalStatus() == ContractApprovalStatus.PENDING_MEMBER_APPROVAL;
+                boolean canSubmitFeedback = isPendingMemberApproval;
+
+                if (userFeedbackOpt.isPresent()) {
+                    ContractFeedback userFeedback = userFeedbackOpt.get();
+                    builder.userHasSubmittedFeedback(true)
+                            .userFeedbackId(userFeedback.getId())
+                            .userFeedbackStatus(userFeedback.getStatus())
+                            .userFeedbackReaction(userFeedback.getReactionType())
+                            .userFeedbackSubmittedAt(userFeedback.getSubmittedAt())
+                            .userFeedbackRejected(userFeedback.getStatus() == MemberFeedbackStatus.REJECTED);
+
+                    LocalDateTime contractUpdatedAt = contract.getUpdatedAt() != null
+                            ? contract.getUpdatedAt()
+                            : contract.getCreatedAt();
+                    LocalDateTime feedbackSubmittedAt = userFeedback.getSubmittedAt();
+                    boolean isSameContractVersion = feedbackSubmittedAt != null
+                            && contractUpdatedAt != null
+                            && feedbackSubmittedAt.isAfter(contractUpdatedAt);
+
+                    canSubmitFeedback = isPendingMemberApproval && (
+                            userFeedback.getStatus() == MemberFeedbackStatus.REJECTED
+                                    || !isSameContractVersion
+                    );
+                } else {
+                    builder.userHasSubmittedFeedback(false)
+                            .userFeedbackRejected(false);
+                }
+
+                builder.userCanSubmitFeedback(canSubmitFeedback);
+            }
         } else {
             builder.status(ContractApprovalStatus.PENDING)
                     .isActive(false)
                     .savedToDatabase(false)
                     .signed(false);
+            builder.userHasSubmittedFeedback(false)
+                    .userFeedbackRejected(false)
+                    .userCanSubmitFeedback(false);
         }
 
         return builder.build();
