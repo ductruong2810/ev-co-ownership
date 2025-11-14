@@ -178,7 +178,7 @@ public class MaintenanceController {
     )
     public ResponseEntity<MaintenanceResponseDTO> completeMaintenance(
             @PathVariable Long id,
-            @RequestParam(required = false) LocalDate nextDueDate,
+            @RequestParam LocalDate nextDueDate,
             Authentication auth
     ) {
         return ResponseEntity.ok(maintenanceService.completeMaintenance(id, nextDueDate, auth.getName()));
