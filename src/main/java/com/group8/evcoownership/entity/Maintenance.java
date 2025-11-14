@@ -6,7 +6,6 @@ import lombok.*;
 import org.hibernate.annotations.Nationalized;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -44,25 +43,44 @@ public class Maintenance {
     @Column(name = "Description")
     private String description;
 
-    @Column(name = "ActualCost", precision = 12, scale = 2)
+    // Giá sửa chính thức (technician nhập, không đổi nữa)
+    @NotNull
+    @Column(name = "ActualCost", precision = 12, scale = 2, nullable = false)
     private BigDecimal actualCost;
 
     @Column(name = "Status", length = 20, nullable = false)
-    private String status; // PENDING | APPROVED | REJECTED
+    private String status; // PENDING | APPROVED | FUNDED | IN_PROGRESS | COMPLETED | REJECTED
 
-    @Column(name = "RequestDate", nullable = false) // ngay technician tao request
+    // Ngày technician tạo request
+    @Column(name = "RequestDate", nullable = false)
     private LocalDateTime requestDate;
 
-    @Column(name = "ApprovalDate") // ngay staff duyet
+    // Ngày staff duyệt (APPROVED)
+    @Column(name = "ApprovalDate")
     private LocalDateTime approvalDate;
 
-    @Column(name = "NextDueDate")
-    private LocalDate nextDueDate;
+    // Số ngày dự kiến xe nằm gara (vd: 3 ngày)
+    @Column(name = "EstimatedDurationDays")
+    private Integer estimatedDurationDays;
 
-    @Column(name = "CreatedAt", nullable = false) // ngay tao bao cao
+    // Thời điểm bắt đầu bảo trì (staff chuyển sang IN_PROGRESS)
+    @Column(name = "MaintenanceStartAt")
+    private LocalDateTime maintenanceStartAt;
+
+    // Thời điểm dự kiến hoàn tất (maintenanceStartAt + estimatedDurationDays)
+    @Column(name = "ExpectedFinishAt")
+    private LocalDateTime expectedFinishAt;
+
+    // Thời điểm thực tế hoàn tất (staff bấm COMPLETED)
+    @Column(name = "MaintenanceCompletedAt")
+    private LocalDateTime maintenanceCompletedAt;
+
+    // Ngày tạo bản ghi
+    @Column(name = "CreatedAt", nullable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "UpdatedAt", nullable = false) // ngay update bao cao
+    // Ngày cập nhật cuối
+    @Column(name = "UpdatedAt", nullable = false)
     private LocalDateTime updatedAt;
 
     // =======================
@@ -71,14 +89,15 @@ public class Maintenance {
 
     @PrePersist
     protected void onCreate() {
+        LocalDateTime now = LocalDateTime.now();
         if (this.createdAt == null) {
-            this.createdAt = LocalDateTime.now();
+            this.createdAt = now;
         }
         if (this.updatedAt == null) {
-            this.updatedAt = LocalDateTime.now();
+            this.updatedAt = now;
         }
         if (this.requestDate == null) {
-            this.requestDate = LocalDateTime.now();
+            this.requestDate = now;
         }
         if (this.status == null) {
             this.status = "PENDING";
