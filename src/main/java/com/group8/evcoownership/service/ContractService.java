@@ -1168,7 +1168,7 @@ public class ContractService {
             throw new IllegalStateException("Only signed contracts can be rejected");
         }
 
-        // Sau khi reject, contract quay về trạng thái REJECTED (moi sua 11/14/2025)
+        // Sau khi reject, contract quay về trạng thái REJECTED (moi sua 11/14/2025 by thinh)
         contract.setApprovalStatus(ContractApprovalStatus.REJECTED);
         contract.setApprovedBy(admin);
         contract.setApprovedAt(LocalDateTime.now());
