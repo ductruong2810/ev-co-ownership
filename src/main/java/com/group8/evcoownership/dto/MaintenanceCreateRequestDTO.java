@@ -20,5 +20,7 @@ public class MaintenanceCreateRequestDTO {
     @DecimalMin(value = "0.0", inclusive = false, message = "Cost must be greater than 0")
     private BigDecimal cost;
 
+    @NotNull(message = "Estimated Duration is required")
+    @DecimalMin(value = "0", inclusive = false, message = "Duration Day must be greater than 0")
     private Integer estimatedDurationDays;
 }
