@@ -1,5 +1,6 @@
 package com.group8.evcoownership.entity;
 
+import com.group8.evcoownership.enums.MaintenanceCoverageType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -39,6 +40,11 @@ public class Maintenance {
     @JoinColumn(name = "ApprovedBy")
     private User approvedBy;
 
+    // FK → Users (co-owner làm hư xe / người phải trả tiền)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "LiableUserId")
+    private User liableUser;
+
     @Nationalized
     @Lob
     @Column(name = "Description")
@@ -51,6 +57,11 @@ public class Maintenance {
 
     @Column(name = "Status", length = 20, nullable = false)
     private String status; // PENDING | APPROVED | FUNDED | IN_PROGRESS | COMPLETED | REJECTED
+
+    // Loại coverage: GROUP_FUND (dùng quỹ) | PERSONAL (co-owner tự trả)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "CoverageType", length = 20, nullable = false)
+    private MaintenanceCoverageType coverageType;
 
     // Ngày technician tạo request
     @Column(name = "RequestDate", nullable = false)
@@ -79,6 +90,10 @@ public class Maintenance {
     @Column(name = "MaintenanceCompletedAt")
     private LocalDateTime maintenanceCompletedAt;
 
+    // Thời điểm maintenance được fund đủ (GROUP_FUND: quỹ đủ / PERSONAL: user trả xong)
+    @Column(name = "FundedAt")
+    private LocalDateTime fundedAt;
+
     // Ngày tạo bản ghi
     @Column(name = "CreatedAt", nullable = false)
     private LocalDateTime createdAt;
@@ -105,6 +120,9 @@ public class Maintenance {
         }
         if (this.status == null) {
             this.status = "PENDING";
+        }
+        if (this.coverageType == null) {
+            this.coverageType = MaintenanceCoverageType.GROUP_FUND;
         }
     }
 
