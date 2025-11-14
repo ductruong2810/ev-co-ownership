@@ -189,6 +189,13 @@ public class MaintenanceService {
                 .requestDate(m.getRequestDate())
                 .approvalDate(m.getApprovalDate())
                 .nextDueDate(m.getNextDueDate())
+
+                // ===== thời gian bảo trì =====
+                .estimatedDurationDays(m.getEstimatedDurationDays())
+                .maintenanceStartAt(m.getMaintenanceStartAt())
+                .expectedFinishAt(m.getExpectedFinishAt())
+                .maintenanceCompletedAt(m.getMaintenanceCompletedAt())
+
                 .createdAt(m.getCreatedAt())
                 .updatedAt(m.getUpdatedAt())
                 .build();
