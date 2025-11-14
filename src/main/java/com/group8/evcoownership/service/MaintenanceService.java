@@ -179,6 +179,70 @@ public class MaintenanceService {
         return mapToDTO(maintenance);
     }
 
+    /**
+     * cac api moi de hoan thien flow maintenance
+     *  status Funded -> In_progress
+     *  status In_progress -> Completed
+     */
+    // =================== START (FUNDED → IN_PROGRESS) ===================
+    public MaintenanceResponseDTO startMaintenance(Long id, String staffEmail) {
+        Maintenance m = maintenanceRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Maintenance not found"));
+
+        User staff = userRepository.findByEmail(staffEmail)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+        if (!"FUNDED".equals(m.getStatus())) {
+            throw new IllegalStateException("Only FUNDED maintenance can be started.");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        m.setStatus("IN_PROGRESS");
+        m.setMaintenanceStartAt(now);
+
+        if (m.getEstimatedDurationDays() != null && m.getEstimatedDurationDays() > 0) {
+            m.setExpectedFinishAt(now.plusDays(m.getEstimatedDurationDays()));
+        }
+
+        m.setUpdatedAt(now);
+        maintenanceRepository.save(m);
+
+        return mapToDTO(m);
+    }
+
+    // =================== COMPLETE (IN_PROGRESS → COMPLETED) ===================
+    public MaintenanceResponseDTO completeMaintenance(Long id, LocalDate nextDueDate, String staffEmail) {
+        Maintenance m = maintenanceRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Maintenance not found"));
+
+        User staff = userRepository.findByEmail(staffEmail)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+        if (!"IN_PROGRESS".equals(m.getStatus())) {
+            throw new IllegalStateException("Only IN_PROGRESS maintenance can be completed.");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        m.setStatus("COMPLETED");
+        m.setMaintenanceCompletedAt(now);
+
+        if (nextDueDate != null) {
+            if (!nextDueDate.isAfter(LocalDate.now())) {
+                throw new IllegalArgumentException("Next due date must be in the future.");
+            }
+            m.setNextDueDate(nextDueDate);
+        }
+
+        m.setUpdatedAt(now);
+        maintenanceRepository.save(m);
+
+        return mapToDTO(m);
+    }
+
+
+    /**
+     * HELPER - MAPPING SECTION
+     */
     // =================== MAPPING ===================
     private MaintenanceResponseDTO mapToDTO(Maintenance m) {
         return MaintenanceResponseDTO.builder()

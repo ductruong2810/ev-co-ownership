@@ -147,4 +147,44 @@ public class MaintenanceController {
         return ResponseEntity.ok(maintenanceService.getOne(id));
     }
 
+    // ================== STAFF / ADMIN: START MAINTENANCE ==================
+    @PutMapping("/{id}/start")
+    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
+    @Operation(
+            summary = "[Staff/Admin] Bắt đầu bảo trì",
+            description = """
+                Chỉ được bắt đầu bảo trì khi maintenance đã FUNDED (tất cả payment đã thanh toán).
+                - Chuyển trạng thái từ FUNDED → IN_PROGRESS.
+                - Ghi lại thời điểm bắt đầu và thời điểm dự kiến hoàn tất.
+                """
+    )
+    public ResponseEntity<MaintenanceResponseDTO> startMaintenance(
+            @PathVariable Long id,
+            Authentication auth
+    ) {
+        return ResponseEntity.ok(maintenanceService.startMaintenance(id, auth.getName()));
+    }
+
+    // ================== STAFF / ADMIN: COMPLETE MAINTENANCE ==================
+    @PutMapping("/{id}/complete")
+    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
+    @Operation(
+            summary = "[Staff/Admin] Hoàn tất bảo trì",
+            description = """
+                Chỉ được hoàn tất khi đang IN_PROGRESS.
+                - Chuyển trạng thái IN_PROGRESS → COMPLETED.
+                - Ghi lại thời điểm hoàn tất.
+                - Có thể cập nhật ngày bảo trì định kỳ tiếp theo (nextDueDate) nếu có.
+                """
+    )
+    public ResponseEntity<MaintenanceResponseDTO> completeMaintenance(
+            @PathVariable Long id,
+            @RequestParam(required = false) LocalDate nextDueDate,
+            Authentication auth
+    ) {
+        return ResponseEntity.ok(maintenanceService.completeMaintenance(id, nextDueDate, auth.getName()));
+    }
+
+
+
 }
