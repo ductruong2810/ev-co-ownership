@@ -102,6 +102,10 @@ public class MaintenanceService {
             maintenance.setNextDueDate(req.getNextDueDate());
         }
 
+        if (req.getEstimatedDurationDays() != null && req.getEstimatedDurationDays() > 0) {
+            maintenance.setEstimatedDurationDays(req.getEstimatedDurationDays());
+        }
+
         maintenance.setUpdatedAt(LocalDateTime.now());
         maintenanceRepository.save(maintenance);
 
@@ -110,7 +114,7 @@ public class MaintenanceService {
 
 
     // =================== APPROVE ===================
-    public MaintenanceResponseDTO approve(Long id, String staffEmail, LocalDate nextDueDate) {
+    public MaintenanceResponseDTO approve(Long id, String staffEmail) {
         Maintenance maintenance = maintenanceRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Maintenance not found"));
 
@@ -122,34 +126,15 @@ public class MaintenanceService {
             throw new IllegalStateException("Only PENDING maintenance requests can be approved.");
         }
 
-        // Bắt buộc staff phải nhập nextDueDate
-        if (nextDueDate == null) {
-            throw new IllegalArgumentException("Next due date must be provided when approving maintenance.");
-        }
-        if (nextDueDate.isBefore(LocalDate.now())) {
-            throw new IllegalArgumentException("Next due date must be in the future.");
-        }
+
 
         // Cập nhật trạng thái
         LocalDateTime now = LocalDateTime.now();
         maintenance.setStatus("APPROVED");
         maintenance.setApprovedBy(staff);
         maintenance.setApprovalDate(now);
-        maintenance.setNextDueDate(nextDueDate);
 
         maintenanceRepository.save(maintenance);
-
-        Expense expense = Expense.builder()
-                .fund(maintenance.getVehicle().getOwnershipGroup().getFund())
-                .sourceType("MAINTENANCE")
-                .sourceId(maintenance.getId())
-                .description(maintenance.getDescription())
-                .amount(maintenance.getActualCost())
-                .status("PENDING")
-                .createdAt(now)
-                .build();
-
-        expenseRepository.save(expense);
 
         return mapToDTO(maintenance);
     }
@@ -175,6 +160,70 @@ public class MaintenanceService {
         return mapToDTO(maintenance);
     }
 
+    /**
+     * cac api moi de hoan thien flow maintenance
+     *  status Funded -> In_progress
+     *  status In_progress -> Completed
+     */
+    // =================== START (FUNDED → IN_PROGRESS) ===================
+    public MaintenanceResponseDTO startMaintenance(Long id, String staffEmail) {
+        Maintenance m = maintenanceRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Maintenance not found"));
+
+        User staff = userRepository.findByEmail(staffEmail)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+        if (!"FUNDED".equals(m.getStatus())) {
+            throw new IllegalStateException("Only FUNDED maintenance can be started.");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        m.setStatus("IN_PROGRESS");
+        m.setMaintenanceStartAt(now);
+
+        if (m.getEstimatedDurationDays() != null && m.getEstimatedDurationDays() > 0) {
+            m.setExpectedFinishAt(now.plusDays(m.getEstimatedDurationDays()));
+        }
+
+        m.setUpdatedAt(now);
+        maintenanceRepository.save(m);
+
+        return mapToDTO(m);
+    }
+
+    // =================== COMPLETE (IN_PROGRESS → COMPLETED) ===================
+    public MaintenanceResponseDTO completeMaintenance(Long id, LocalDate nextDueDate, String staffEmail) {
+        Maintenance m = maintenanceRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Maintenance not found"));
+
+        User staff = userRepository.findByEmail(staffEmail)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+        if (!"IN_PROGRESS".equals(m.getStatus())) {
+            throw new IllegalStateException("Only IN_PROGRESS maintenance can be completed.");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        m.setStatus("COMPLETED");
+        m.setMaintenanceCompletedAt(now);
+
+        if (nextDueDate != null) {
+            if (!nextDueDate.isAfter(LocalDate.now())) {
+                throw new IllegalArgumentException("Next due date must be in the future.");
+            }
+            m.setNextDueDate(nextDueDate);
+        }
+
+        m.setUpdatedAt(now);
+        maintenanceRepository.save(m);
+
+        return mapToDTO(m);
+    }
+
+
+    /**
+     * HELPER - MAPPING SECTION
+     */
     // =================== MAPPING ===================
     private MaintenanceResponseDTO mapToDTO(Maintenance m) {
         return MaintenanceResponseDTO.builder()
