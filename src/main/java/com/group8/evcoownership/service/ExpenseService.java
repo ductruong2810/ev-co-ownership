@@ -79,12 +79,12 @@ public class ExpenseService {
         SharedFund fund = sharedFundRepository.findById(expense.getFund().getFundId())
                 .orElseThrow(() -> new EntityNotFoundException("Fund not found"));
 
-        // ✅ Guard: chỉ cho phép chi từ quỹ OPERATING (spendable)
+        // Guard: chỉ cho phép chi từ quỹ OPERATING (spendable)
         if (fund.getFundType() != FundType.OPERATING || !fund.isSpendable()) {
             throw new IllegalStateException("Cannot spend from this fund (must be OPERATING).");
         }
 
-        // ✅ Trừ tiền qua core service (có kiểm tra không âm + optimistic lock)
+        // Trừ tiền qua core service (có kiểm tra không âm + optimistic lock)
         fundService.decreaseBalance(fund.getFundId(), expense.getAmount());
 
         // Nạp lại fund để lấy số dư mới sau khi trừ
@@ -95,7 +95,7 @@ public class ExpenseService {
         expense.setStatus("COMPLETED");
         expense.setExpenseDate(LocalDateTime.now());
         expense.setUpdatedAt(LocalDateTime.now());
-        expense.setFundBalanceAfter(fundAfter.getBalance()); // ✅ số dư sau chi
+        expense.setFundBalanceAfter(fundAfter.getBalance()); // số dư sau chi
 
         User approver = userRepository.findByEmail(username)
                 .orElseThrow(() -> new EntityNotFoundException("Approver not found"));
