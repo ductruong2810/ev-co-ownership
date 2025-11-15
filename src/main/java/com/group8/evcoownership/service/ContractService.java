@@ -290,6 +290,24 @@ public class ContractService {
 
         Contract saved = contractRepository.saveAndFlush(contract);
 
+        // Set lastAdminAction = APPROVE để isProcessed = true
+        // Reset status về PENDING để có thể approve lại
+        List<ContractFeedback> feedbacks = feedbackRepository.findByContractId(saved.getId());
+        if (!feedbacks.isEmpty()) {
+            feedbacks.forEach(f -> {
+                if (f.getLastAdminAction() == null) {
+                    f.setLastAdminAction(FeedbackAdminAction.APPROVE);
+                    f.setLastAdminActionAt(LocalDateTime.now());
+                }
+                // Reset status về PENDING để có thể approve lại
+                if (f.getStatus() == MemberFeedbackStatus.APPROVED) {
+                    f.setStatus(MemberFeedbackStatus.PENDING);
+                }
+                f.setUpdatedAt(LocalDateTime.now());
+            });
+            feedbackRepository.saveAll(feedbacks);
+        }
+
         String termLabel = calculateTermLabel(saved.getStartDate(), saved.getEndDate());
         ContractUpdateResponseDTO contractData = ContractUpdateResponseDTO.builder()
                 .contractId(saved.getId())
