@@ -154,8 +154,9 @@ public class AdminContractController { // Khai báo class controller cho phần 
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<ContractDTO>> getPendingMemberApprovalContracts() {
         // Gọi service lọc theo trạng thái PENDING_MEMBER_APPROVAL
-        List<ContractDTO> contracts = contractService.getContractsByStatus(ContractApprovalStatus.PENDING_MEMBER_APPROVAL);
-        // Trả danh sách về client
+        List<ContractDTO> contracts = contractService.getContractsByStatuses(
+                List.of(ContractApprovalStatus.PENDING, ContractApprovalStatus.PENDING_MEMBER_APPROVAL)
+        );        // Trả danh sách về client
         return ResponseEntity.ok(contracts);
     }
 

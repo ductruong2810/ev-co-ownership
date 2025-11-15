@@ -219,6 +219,24 @@ public class ContractService {
 
         Contract savedContract = contractRepository.saveAndFlush(contract);
 
+        // Set lastAdminAction = CONTRACT_UPDATED để isProcessed = true
+        // Reset status về PENDING để có thể approve lại
+        List<ContractFeedback> feedbacks = feedbackRepository.findByContractId(savedContract.getId());
+        if (!feedbacks.isEmpty()) {
+            feedbacks.forEach(f -> {
+                if (f.getLastAdminAction() == null) {
+                    f.setLastAdminAction(FeedbackAdminAction.CONTRACT_UPDATED);
+                    f.setLastAdminActionAt(LocalDateTime.now());
+                }
+                // Reset status về PENDING để có thể approve lại
+                if (f.getStatus() == MemberFeedbackStatus.APPROVED) {
+                    f.setStatus(MemberFeedbackStatus.PENDING);
+                }
+                f.setUpdatedAt(LocalDateTime.now());
+            });
+            feedbackRepository.saveAll(feedbacks);
+        }
+
         ContractUpdateResponseDTO contractData = ContractUpdateResponseDTO.builder()
                 .contractId(savedContract.getId())
                 .approvalStatus(savedContract.getApprovalStatus())
@@ -767,8 +785,16 @@ public class ContractService {
                 Optional<ContractFeedback> userFeedbackOpt =
                         feedbackRepository.findTopByContractIdAndUser_UserIdOrderBySubmittedAtDesc(
                                 contract.getId(), userId);
+
+                // Kiểm tra user có phải admin không
+                OwnershipShare userShare = shareRepository.findById(
+                        new OwnershipShareId(userId, contract.getGroup().getGroupId())
+                ).orElse(null);
+                boolean isAdmin = userShare != null && userShare.getGroupRole() == GroupRole.ADMIN;
+
+                boolean isPending = contract.getApprovalStatus() == ContractApprovalStatus.PENDING;
                 boolean isPendingMemberApproval = contract.getApprovalStatus() == ContractApprovalStatus.PENDING_MEMBER_APPROVAL;
-                boolean canSubmitFeedback = isPendingMemberApproval;
+                boolean canSubmitFeedback = false;
 
                 if (userFeedbackOpt.isPresent()) {
                     ContractFeedback userFeedback = userFeedbackOpt.get();
@@ -779,21 +805,32 @@ public class ContractService {
                             .userFeedbackSubmittedAt(userFeedback.getSubmittedAt())
                             .userFeedbackRejected(userFeedback.getStatus() == MemberFeedbackStatus.REJECTED);
 
-                    LocalDateTime contractUpdatedAt = contract.getUpdatedAt() != null
-                            ? contract.getUpdatedAt()
-                            : contract.getCreatedAt();
-                    LocalDateTime feedbackSubmittedAt = userFeedback.getSubmittedAt();
-                    boolean isSameContractVersion = feedbackSubmittedAt != null
-                            && contractUpdatedAt != null
-                            && feedbackSubmittedAt.isAfter(contractUpdatedAt);
+                    if (isPending) {
+                        // Khi contract ở PENDING, chỉ admin group có thể submit feedback
+                        // Nếu đã có feedback và bị REJECTED, admin có thể submit lại
+                        canSubmitFeedback = isAdmin && userFeedback.getStatus() == MemberFeedbackStatus.REJECTED;
+                    } else if (isPendingMemberApproval) {
+                        // Khi contract ở PENDING_MEMBER_APPROVAL, chỉ members (không phải admin) có thể submit
+                        if (!isAdmin) {
+                            boolean isSameContractVersion = isIsSameContractVersion(contract, userFeedback);
 
-                    canSubmitFeedback = isPendingMemberApproval && (
-                            userFeedback.getStatus() == MemberFeedbackStatus.REJECTED
-                                    || !isSameContractVersion
-                    );
+                            canSubmitFeedback = userFeedback.getStatus() == MemberFeedbackStatus.REJECTED
+                                    || !isSameContractVersion;
+                        }
+                        // Admin không thể submit khi ở PENDING_MEMBER_APPROVAL (canSubmitFeedback đã là false)
+                    }
                 } else {
                     builder.userHasSubmittedFeedback(false)
                             .userFeedbackRejected(false);
+
+                    // Nếu chưa có feedback
+                    if (isPending) {
+                        // Khi contract ở PENDING, chỉ admin group có thể submit feedback
+                        canSubmitFeedback = isAdmin;
+                    } else if (isPendingMemberApproval) {
+                        // Khi contract ở PENDING_MEMBER_APPROVAL, chỉ members (không phải admin) có thể submit
+                        canSubmitFeedback = !isAdmin;
+                    }
                 }
 
                 builder.userCanSubmitFeedback(canSubmitFeedback);
@@ -809,6 +846,16 @@ public class ContractService {
         }
 
         return builder.build();
+    }
+
+    private static boolean isIsSameContractVersion(Contract contract, ContractFeedback userFeedback) {
+        LocalDateTime contractUpdatedAt = contract.getUpdatedAt() != null
+                ? contract.getUpdatedAt()
+                : contract.getCreatedAt();
+        LocalDateTime feedbackSubmittedAt = userFeedback.getSubmittedAt();
+        return feedbackSubmittedAt != null
+                && contractUpdatedAt != null
+                && feedbackSubmittedAt.isAfter(contractUpdatedAt);
     }
 
 
@@ -1384,6 +1431,12 @@ public class ContractService {
                 .toList();
     }
 
+    public List<ContractDTO> getContractsByStatuses(List<ContractApprovalStatus> statuses) {
+        return contractRepository.findByApprovalStatusIn(statuses).stream()
+                .map(this::convertToDTO)
+                .toList();
+    }
+
     /**
      * ADMIN: Lấy tất cả contracts của một group
      */
@@ -1510,7 +1563,7 @@ public class ContractService {
 
     /**
      * Admin reject một feedback cụ thể (theo feedbackId)
-     * Chỉ có thể reject feedbacks có status = PENDING
+     * Chỉ có thể reject feedbacks có status = PENDING và isProcessed = false
      * Chuyển về PENDING để member làm lại và lưu adminNote vào reason
      * Gửi notification và email cho member kèm adminNote
      */
@@ -1524,6 +1577,13 @@ public class ContractService {
         if (feedback.getStatus() != MemberFeedbackStatus.PENDING) {
             throw new IllegalStateException(
                     "Only PENDING feedbacks can be rejected. Current status: " + feedback.getStatus()
+            );
+        }
+        
+        // Không cho phép reject feedback đã được processed (isProcessed = true)
+        if (isFeedbackProcessed(feedback)) {
+            throw new IllegalStateException(
+                    "Cannot reject feedback that has already been processed. Feedback is already processed."
             );
         }
         
@@ -1682,10 +1742,11 @@ public class ContractService {
         Contract contract = contractRepository.findById(contractId)
                 .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
 
-        // Kiểm tra contract phải ở trạng thái PENDING_MEMBER_APPROVAL
-        if (contract.getApprovalStatus() != ContractApprovalStatus.PENDING_MEMBER_APPROVAL) {
+        // Cho phép gửi feedback khi contract ở PENDING hoặc PENDING_MEMBER_APPROVAL
+        if (contract.getApprovalStatus() != ContractApprovalStatus.PENDING
+                && contract.getApprovalStatus() != ContractApprovalStatus.PENDING_MEMBER_APPROVAL) {
             throw new IllegalStateException(
-                    "Contract is not in PENDING_MEMBER_APPROVAL status. Current status: " + contract.getApprovalStatus()
+                    "Contract is not in PENDING or PENDING_MEMBER_APPROVAL status. Current status: " + contract.getApprovalStatus()
             );
         }
 
@@ -1695,9 +1756,22 @@ public class ContractService {
                 new OwnershipShareId(userId, groupId)
         ).orElseThrow(() -> new IllegalStateException("User is not a member of this group"));
 
-        // Không cho phép admin group submit feedback (admin đã ký rồi)
-        if (share.getGroupRole() == GroupRole.ADMIN) {
-            throw new IllegalStateException("Group admin cannot submit feedback. Admin has already signed the contract.");
+        boolean isAdmin = share.getGroupRole() == GroupRole.ADMIN;
+        boolean isPending = contract.getApprovalStatus() == ContractApprovalStatus.PENDING;
+        boolean isPendingMemberApproval = contract.getApprovalStatus() == ContractApprovalStatus.PENDING_MEMBER_APPROVAL;
+
+        // Nếu contract ở PENDING, chỉ cho phép admin group gửi feedback
+        if (isPending && !isAdmin) {
+            throw new IllegalStateException(
+                    "Contract is in PENDING status. Only admin group can submit feedback. Please wait for admin to sign the contract."
+            );
+        }
+
+        // Nếu contract ở PENDING_MEMBER_APPROVAL, KHÔNG cho phép admin group gửi feedback
+        if (isPendingMemberApproval && isAdmin) {
+            throw new IllegalStateException(
+                    "Group admin cannot submit feedback when contract is in PENDING_MEMBER_APPROVAL status. Admin has already signed the contract."
+            );
         }
 
         // Validate request
@@ -1722,8 +1796,7 @@ public class ContractService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
         
-        ContractFeedback feedback;
-        
+        // Kiểm tra nếu đã có feedback và không bị REJECTED thì không cho phép tạo mới
         if (existingFeedback.isPresent()) {
             ContractFeedback latestFeedback = existingFeedback.get();
             boolean isRejected = latestFeedback.getStatus() == MemberFeedbackStatus.REJECTED;
@@ -1734,28 +1807,18 @@ public class ContractService {
                         "You have already submitted feedback for this contract. Only REJECTED feedbacks can be resubmitted."
                 );
             }
-            
-            // Nếu feedback bị REJECTED, cho phép tạo feedback mới
-            // Bản ghi REJECTED cũ sẽ được giữ lại, lịch sử đã được lưu trong ContractFeedbackHistory
-            feedback = ContractFeedback.builder()
-                    .contract(contract)
-                    .user(user)
-                    .status(feedbackStatus)
-                    .reactionType(reactionType)
-                    .reason(request.reason())
-                    .adminNote(null)
-                    .build();
-        } else {
-            // Tạo feedback mới nếu chưa có feedback nào
-            feedback = ContractFeedback.builder()
-                    .contract(contract)
-                    .user(user)
-                    .status(feedbackStatus)
-                    .reactionType(reactionType)
-                    .reason(request.reason())
-                    .adminNote(null)
-                    .build();
         }
+        
+        // Tạo feedback mới (nếu chưa có feedback hoặc feedback cũ bị REJECTED)
+        // Bản ghi REJECTED cũ sẽ được giữ lại, lịch sử đã được lưu trong ContractFeedbackHistory
+        ContractFeedback feedback = ContractFeedback.builder()
+                .contract(contract)
+                .user(user)
+                .status(feedbackStatus)
+                .reactionType(reactionType)
+                .reason(request.reason())
+                .adminNote(null)
+                .build();
         
         feedbackRepository.save(feedback);
 
@@ -1855,12 +1918,20 @@ public class ContractService {
                 .filter(share -> share.getGroupRole() != GroupRole.ADMIN)
                 .toList();
 
+        // Tạo Map để lookup groupRole nhanh theo userId
+        Map<Long, GroupRole> userRoleMap = allMembers.stream()
+                .collect(Collectors.toMap(
+                        share -> share.getUser().getUserId(),
+                        OwnershipShare::getGroupRole
+                ));
+
         List<ContractFeedbackResponseDTO> feedbackList = feedbacks.stream()
                 .map(f -> ContractFeedbackResponseDTO.builder()
                         .feedbackId(f.getId())
                         .userId(f.getUser().getUserId())
                         .fullName(f.getUser().getFullName())
                         .email(f.getUser().getEmail())
+                        .groupRole(userRoleMap.getOrDefault(f.getUser().getUserId(), GroupRole.MEMBER))  // Thêm dòng này
                         .status(f.getStatus())
                         .isProcessed(isFeedbackProcessed(f))
                         .lastAdminAction(f.getLastAdminAction())

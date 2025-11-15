@@ -3,6 +3,7 @@ package com.group8.evcoownership.dto;
 import com.group8.evcoownership.enums.MemberFeedbackStatus;
 import com.group8.evcoownership.enums.ReactionType;
 import com.group8.evcoownership.enums.FeedbackAdminAction;
+import com.group8.evcoownership.enums.GroupRole;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -19,6 +20,7 @@ public class ContractFeedbackResponseDTO {
     private Long userId;
     private String fullName;
     private String email;
+    private GroupRole groupRole;
     private MemberFeedbackStatus status;
     private Boolean isProcessed;
     private FeedbackAdminAction lastAdminAction;
