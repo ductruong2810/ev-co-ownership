@@ -1775,19 +1775,22 @@ public class ContractService {
     }
 
     /**
-     * Kiểm tra và tự động chuyển sang SIGNED nếu admin đã approve và tất cả members đã approve
+     * Kiểm tra và tự động chuyển sang SIGNED nếu tất cả thành viên (bao gồm cả admin) đã approve
      */
     @Transactional
     protected void checkAndAutoSignIfAllApproved(Contract contract) {
         Long groupId = contract.getGroup().getGroupId();
-        List<OwnershipShare> allMembers = shareRepository.findByGroup_GroupId(groupId);
+        OwnershipGroup group = contract.getGroup();
         
-        // Lọc ra members (không tính admin)
-        List<OwnershipShare> members = allMembers.stream()
-                .filter(share -> share.getGroupRole() != GroupRole.ADMIN)
-                .toList();
+        // Lấy memberCapacity từ group (đã tính cả admin)
+        Integer memberCapacity = group.getMemberCapacity();
+        if (memberCapacity == null || memberCapacity <= 0) {
+            return;
+        }
 
-        if (members.isEmpty()) {
+        // Lấy danh sách tất cả thành viên để lọc feedbacks
+        List<OwnershipShare> allMembers = shareRepository.findByGroup_GroupId(groupId);
+        if (allMembers.isEmpty()) {
             return;
         }
 
@@ -1797,18 +1800,25 @@ public class ContractService {
             return; // Admin chưa approve, không thể chuyển sang SIGNED
         }
 
-        // Đếm số members đã approve (status = APPROVED)
+        // Đếm số thành viên đã approve (status = APPROVED) - bao gồm cả admin và members
         // APPROVED có thể là: Member AGREE hoặc Admin đã approve feedback DISAGREE
         // Lưu ý: Logic submit đã hạn chế mỗi user chỉ có 1 feedback APPROVED (trừ khi resubmit sau REJECTED)
         // Khi resubmit sau REJECTED, feedback cũ vẫn là REJECTED, feedback mới là APPROVED
         // Nên đếm số feedbacks APPROVED vẫn đúng với số users đã approve
-        long approvedCount = feedbackRepository.countByContractIdAndStatus(
-                contract.getId(), 
-                MemberFeedbackStatus.APPROVED
-        );
+        // QUAN TRỌNG: Đếm feedbacks của tất cả thành viên (bao gồm cả admin)
+        Set<Long> allUserIds = allMembers.stream()
+                .map(share -> share.getUser().getUserId())
+                .collect(Collectors.toSet());
+        
+        List<ContractFeedback> allFeedbacks = feedbackRepository.findByContractId(contract.getId());
+        long approvedCount = allFeedbacks.stream()
+                .filter(f -> f.getStatus() == MemberFeedbackStatus.APPROVED)
+                .filter(f -> allUserIds.contains(f.getUser().getUserId()))
+                .count();
 
-        // Nếu admin đã approve VÀ tất cả members đã approve, chuyển sang SIGNED
-        if (approvedCount == members.size()) {
+        // Nếu tất cả thành viên (bao gồm cả admin) đã approve, chuyển sang SIGNED
+        // Sử dụng memberCapacity thay vì allMembers.size() vì memberCapacity đã tính cả admin
+        if (approvedCount == memberCapacity) {
             contract.setApprovalStatus(ContractApprovalStatus.SIGNED);
             contract.setUpdatedAt(LocalDateTime.now());
             contractRepository.saveAndFlush(contract);
