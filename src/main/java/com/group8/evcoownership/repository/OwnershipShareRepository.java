@@ -74,5 +74,4 @@ public interface OwnershipShareRepository extends JpaRepository<OwnershipShare, 
     Optional<OwnershipShare> findByUserIdAndFundId(@Param("userId") Long userId,
                                                    @Param("fundId") Long fundId);
 
-
 }
