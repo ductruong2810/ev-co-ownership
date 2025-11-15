@@ -37,48 +37,56 @@ public class MaintenanceAfterCheckOutController {
     /**
      * Technician tạo yêu cầu bảo trì PERSONAL sau khi xe được trả về
      */
-    @PostMapping
+    @PostMapping("/vehicles/{vehicleId}")
     @PreAuthorize("hasAnyRole('TECHNICIAN')")
     @Operation(
             summary = "[Technician] Tạo yêu cầu bảo trì sau khi đi xe về (PERSONAL)",
             description = """
-                    Technician mở yêu cầu bảo trì khi phát hiện co-owner làm hư xe sau khi trả xe.
-                    - coverageType = PERSONAL.
-                    - Nhập: vehicleId, liableUserId (co-owner làm hư), description, cost, estimatedDurationDays.
-                    - Trạng thái ban đầu: PENDING.
-                    """
+                Technician mở yêu cầu bảo trì khi phát hiện co-owner làm hư xe sau khi trả xe.
+                - coverageType = PERSONAL.
+                - Path: vehicleId (xe đang kiểm tra).
+                - Body: description, cost, estimatedDurationDays.
+                - Backend tự tìm booking đã checkout gần nhất của xe đó
+                  và gán liableUser = user của booking đó.
+                - Trạng thái ban đầu: PENDING.
+                """
     )
     public ResponseEntity<MaintenanceResponseDTO> createAfterCheckOut(
+            @PathVariable Long vehicleId,
             @Valid @RequestBody MaintenanceAfterCheckOutCreateRequestDTO req,
             Authentication auth
     ) {
         return ResponseEntity.ok(
-                maintenanceAfterCheckOutService.createAfterCheckOut(req, auth.getName())
+                maintenanceAfterCheckOutService.createAfterCheckOut(
+                        vehicleId,
+                        req,
+                        auth.getName()
+                )
         );
     }
 
     /**
      * Technician cập nhật yêu cầu bảo trì PERSONAL khi vẫn còn PENDING
      */
-    @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TECHNICIAN')")
-    @Operation(
-            summary = "[Technician] Cập nhật yêu cầu bảo trì PENDING (PERSONAL)",
-            description = """
-                    Chỉ cho phép cập nhật khi trạng thái là PENDING và người cập nhật chính là technician đã tạo.
-                    - Cho phép sửa: description, cost, nextDueDate, estimatedDurationDays.
-                    - Không cho phép đổi vehicle hoặc liableUser.
-                    """
-    )
-    public ResponseEntity<MaintenanceResponseDTO> updatePending(
-            @PathVariable Long id,
-            @Valid @RequestBody MaintenanceUpdateRequestDTO req,
-            Authentication auth
-    ) {
-        return ResponseEntity.ok(
-                maintenanceAfterCheckOutService.update(id, req, auth.getName())
-        );
-    }
+//    @PutMapping("/{id}")
+//    @PreAuthorize("hasAnyRole('TECHNICIAN')")
+//    @Operation(
+//            summary = "[Technician] Cập nhật yêu cầu bảo trì PENDING (PERSONAL)",
+//            description = """
+//                    Chỉ cho phép cập nhật khi trạng thái là PENDING và người cập nhật chính là technician đã tạo.
+//                    - Cho phép sửa: description, cost, nextDueDate, estimatedDurationDays.
+//                    - Không cho phép đổi vehicle hoặc liableUser.
+//                    """
+//    )
+//    public ResponseEntity<MaintenanceResponseDTO> updatePending(
+//            @PathVariable Long id,
+//            @Valid @RequestBody MaintenanceUpdateRequestDTO req,
+//            Authentication auth
+//    ) {
+//        return ResponseEntity.ok(
+//                maintenanceAfterCheckOutService.update(id, req, auth.getName())
+//        );
+//    }
 
     // ==================== Technician get his PERSONAL maintenance requests =============
 
