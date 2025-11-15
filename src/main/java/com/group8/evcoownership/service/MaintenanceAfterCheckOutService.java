@@ -37,6 +37,7 @@ public class MaintenanceAfterCheckOutService {
      * Technician
      * Create
      * UPDATE WHEN PENDING
+     * Get my request list
      */
     // =============== CREATE PERSONAL MAINTENANCE SAU CHECKOUT ===============
     public MaintenanceResponseDTO createAfterCheckOut(MaintenanceAfterCheckOutCreateRequestDTO req,
@@ -86,7 +87,6 @@ public class MaintenanceAfterCheckOutService {
 
         m = maintenanceRepository.save(m);
 
-        // TODO (optional): tạo Payment PERSONAL cho maintenance này tại đây
 
         return mapToDTO(m);
     }
@@ -134,6 +134,23 @@ public class MaintenanceAfterCheckOutService {
 
         return mapToDTO(maintenance);
     }
+
+    // =============== Technician: xem các yêu cầu PERSONAL do mình tạo ===============
+    @Transactional(readOnly = true)
+    public List<MaintenanceResponseDTO> getMyPersonalRequests(String technicianEmail) {
+        User technician = userRepository.findByEmail(technicianEmail)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+        return maintenanceRepository
+                .findByCoverageTypeAndRequestedBy_UserIdOrderByRequestDateDesc(
+                        MaintenanceCoverageType.PERSONAL,
+                        technician.getUserId()
+                )
+                .stream()
+                .map(this::mapToDTO)
+                .toList();
+    }
+
 
 
     /**

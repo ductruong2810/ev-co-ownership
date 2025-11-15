@@ -87,6 +87,11 @@ public interface MaintenanceRepository extends JpaRepository<Maintenance, Long> 
 
     // Lấy tất cả maintenance theo coverage type, sort mới nhất trước
     List<Maintenance> findByCoverageTypeOrderByRequestDateDesc(MaintenanceCoverageType coverageType);
+
+    List<Maintenance> findByCoverageTypeAndStatusOrderByRequestDateDesc(MaintenanceCoverageType coverageType, String status);
+
+    List<Maintenance> findByCoverageTypeAndRequestedBy_UserIdOrderByRequestDateDesc(MaintenanceCoverageType coverageType, Long requestedByUserId);
+
 }
 
 
