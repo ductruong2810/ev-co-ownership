@@ -2,17 +2,27 @@ package com.group8.evcoownership.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.group8.evcoownership.dto.*;
-import com.group8.evcoownership.entity.*;
-import com.group8.evcoownership.exception.ResourceNotFoundException;
+import com.group8.evcoownership.dto.CreateVotingRequestDTO;
+import com.group8.evcoownership.dto.VoteRequestDTO;
+import com.group8.evcoownership.dto.VotingResponseDTO;
+import com.group8.evcoownership.entity.User;
+import com.group8.evcoownership.entity.VoteRecord;
+import com.group8.evcoownership.entity.Voting;
 import com.group8.evcoownership.exception.BadRequestException;
-import com.group8.evcoownership.repository.*;
+import com.group8.evcoownership.exception.ResourceNotFoundException;
+import com.group8.evcoownership.repository.OwnershipShareRepository;
+import com.group8.evcoownership.repository.UserRepository;
+import com.group8.evcoownership.repository.VoteRecordRepository;
+import com.group8.evcoownership.repository.VotingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -141,17 +151,19 @@ public class VotingService {
 
     private VotingResponseDTO mapToResponse(Voting voting, Long userId) {
         try {
-            Map<String, Object> options = objectMapper.readValue(voting.getOptions(), new TypeReference<>() {});
+            Map<String, Object> options = objectMapper.readValue(voting.getOptions(), new TypeReference<>() {
+            });
             Map<String, Object> results = voting.getResults() != null ?
-                    objectMapper.readValue(voting.getResults(), new TypeReference<>() {}) : new HashMap<>();
+                    objectMapper.readValue(voting.getResults(), new TypeReference<>() {
+                    }) : new HashMap<>();
 
             Optional<VoteRecord> userVote = voteRecordRepository.findByVotingIdAndUserId(voting.getVotingId(), userId);
 
             // Tính tổng số votes
-            int totalVotes = (int)voteRecordRepository.countByVotingId(voting.getVotingId());
+            int totalVotes = (int) voteRecordRepository.countByVotingId(voting.getVotingId());
 
             // Tính tổng số members trong group
-            int totalMembers = (int)ownershipShareRepository.countByGroup_GroupId(voting.getGroupId());
+            int totalMembers = (int) ownershipShareRepository.countByGroup_GroupId(voting.getGroupId());
 
             // Tính voting progress
             String votingProgress = totalMembers > 0

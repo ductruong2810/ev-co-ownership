@@ -4,11 +4,7 @@ import com.group8.evcoownership.entity.Contract;
 import com.group8.evcoownership.entity.ContractFeedback;
 import com.group8.evcoownership.entity.OwnershipShare;
 import com.group8.evcoownership.entity.Payment;
-import com.group8.evcoownership.enums.ContractApprovalStatus;
-import com.group8.evcoownership.enums.DepositStatus;
-import com.group8.evcoownership.enums.NotificationType;
-import com.group8.evcoownership.enums.PaymentStatus;
-import com.group8.evcoownership.enums.PaymentType;
+import com.group8.evcoownership.enums.*;
 import com.group8.evcoownership.repository.ContractFeedbackRepository;
 import com.group8.evcoownership.repository.ContractRepository;
 import com.group8.evcoownership.repository.OwnershipShareRepository;
@@ -133,7 +129,7 @@ public class ContractDeadlineScheduler {
                     // Xóa tất cả feedbacks
                     feedbackRepository.deleteAll(feedbacks);
                     feedbackRepository.flush();
-                    log.info("Deleted {} feedbacks for contract {} due to deposit deadline expiration", 
+                    log.info("Deleted {} feedbacks for contract {} due to deposit deadline expiration",
                             feedbacks.size(), contract.getId());
                 }
 

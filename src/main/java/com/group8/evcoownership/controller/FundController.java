@@ -1,6 +1,8 @@
 package com.group8.evcoownership.controller;
 
-import com.group8.evcoownership.dto.*;
+import com.group8.evcoownership.dto.FundsSummaryDTO;
+import com.group8.evcoownership.dto.LedgerSummaryDTO;
+import com.group8.evcoownership.dto.SharedFundDTO;
 import com.group8.evcoownership.enums.FundType;
 import com.group8.evcoownership.service.FundService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -55,6 +57,7 @@ public class FundController {
 //    }
 
 // ================== READ ==================
+
     /**
      * API: Lấy sổ quỹ (Ledger) theo nhóm
      * hiển thị lịch sử giao dịch quỹ (thu/chi) trong một khoảng thời gian.
@@ -73,7 +76,6 @@ public class FundController {
 
         return ResponseEntity.ok(fundService.getLedgerSummary(groupId, fundType, from, to));
     }
-
 
 
 //    @GetMapping("/groups/{groupId}/ledger")
@@ -112,7 +114,6 @@ public class FundController {
     public List<SharedFundDTO> listAll(@ParameterObject Pageable pageable) {
         return fundService.list(pageable); // đã map sang SharedFundDTO có fundType/spendable
     }
-
 
 
     // ====== DELETE ======

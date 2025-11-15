@@ -53,11 +53,11 @@ public class PaymentService {
     ) {
         if (userId == null) throw new IllegalArgumentException("userId required");
 
-        int p = (page == null) ? 0  : Math.max(0, page);
+        int p = (page == null) ? 0 : Math.max(0, page);
         int s = (size == null) ? 20 : Math.min(Math.max(1, size), 200);
 
         LocalDateTime fromAt = (fromDate == null) ? null : fromDate.atStartOfDay();
-        LocalDateTime toAt   = (toDate   == null) ? null : toDate.atTime(23,59,59);
+        LocalDateTime toAt = (toDate == null) ? null : toDate.atTime(23, 59, 59);
 
         Pageable pageable = PageRequest.of(
                 p, s,
@@ -68,9 +68,9 @@ public class PaymentService {
         var pageResult = paymentRepo.searchUserHistoryCompleted(userId, fromAt, toAt, pageable);
 
         var items = pageResult.getContent().stream().map(pmt -> {
-            Long fundId  = (pmt.getFund() != null) ? pmt.getFund().getFundId() : null;
+            Long fundId = (pmt.getFund() != null) ? pmt.getFund().getFundId() : null;
             // lấy groupId/Name qua fund; gọi getId của proxy Hibernate không ép load
-            Long gid     = null;
+            Long gid = null;
             String gname = null;
             if (pmt.getFund() != null && pmt.getFund().getGroup() != null) {
                 gid = pmt.getFund().getGroup().getGroupId();
@@ -102,8 +102,8 @@ public class PaymentService {
 
 
     /**
-     *  Helper for Payment History\
-     *  Mapper nhỏ: Payment -> PaymentHistoryItemDTO
+     * Helper for Payment History\
+     * Mapper nhỏ: Payment -> PaymentHistoryItemDTO
      */
     // ====== Mapper nhỏ: Payment -> PaymentHistoryItemDTO ======
     private PaymentHistoryItemDTO toHistoryItem(Payment p) {
@@ -182,7 +182,7 @@ public class PaymentService {
 
     @Transactional(readOnly = true)
     public List<PaymentResponseDTO> search(Long userId, String status, String type,
-                                        int page, int size, String sort, boolean asc) {
+                                           int page, int size, String sort, boolean asc) {
         // sort: dùng tên field của entity Payment (vd: id, paymentDate, amount)
         Sort sortObj = asc ? Sort.by(sort).ascending() : Sort.by(sort).descending();
         Pageable pageable = PageRequest.of(Math.max(0, page), Math.min(size, 200), sortObj);
@@ -317,7 +317,7 @@ public class PaymentService {
 
     @Transactional
     public PaymentResponseDTO updateStatus(Long paymentId, PaymentStatus target,
-                                        String transactionCode, String providerResponseJson) {
+                                           String transactionCode, String providerResponseJson) {
 
         Payment p = paymentRepo.findById(paymentId)
                 .orElseThrow(() -> new EntityNotFoundException("Payment not found: " + paymentId));

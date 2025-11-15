@@ -5,6 +5,7 @@ import lombok.Builder;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+
 @Builder
 public record FundTopupResponseDTO(
         Long paymentId,
@@ -18,4 +19,5 @@ public record FundTopupResponseDTO(
         LocalDateTime paidAt,
         String vnpayUrl,
         String message
-) {}
+) {
+}

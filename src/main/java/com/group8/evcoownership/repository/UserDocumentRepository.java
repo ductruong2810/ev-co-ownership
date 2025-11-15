@@ -18,7 +18,9 @@ public interface UserDocumentRepository extends JpaRepository<UserDocument, Long
 
     // Tìm tất cả document theo type của user
     List<UserDocument> findByUserIdAndDocumentType(Long userId, String documentType);
+
     List<UserDocument> findByUserIdAndDocumentNumber(Long userId, String documentNumber);
+
     // Kiểm tra user đã có document type + side chưa
     boolean existsByUserIdAndDocumentTypeAndSide(Long userId, String documentType, String side);
 
@@ -30,7 +32,9 @@ public interface UserDocumentRepository extends JpaRepository<UserDocument, Long
 
     // Đếm số document chờ duyệt
     long countByStatus(String status);
+
     Optional<UserDocument> findByDocumentNumber(String documentNumber);
+
     boolean existsByDocumentNumber(String documentNumber);
 
 

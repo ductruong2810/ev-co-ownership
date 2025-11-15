@@ -7,4 +7,5 @@ public record BreakdownItemDTO(
         String sourceType,  // CONTRIBUTION | INCIDENT | MAINTENANCE | ...
         BigDecimal income,  // >= 0
         BigDecimal expense  // >= 0
-) {}
+) {
+}

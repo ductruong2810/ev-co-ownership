@@ -11,11 +11,7 @@ import com.group8.evcoownership.enums.GroupRole;
 import com.group8.evcoownership.enums.GroupStatus;
 import com.group8.evcoownership.enums.NotificationType;
 import com.group8.evcoownership.exception.InsufficientDocumentsException;
-import com.group8.evcoownership.repository.OwnershipGroupRepository;
-import com.group8.evcoownership.repository.OwnershipShareRepository;
-import com.group8.evcoownership.repository.UserDocumentRepository;
-import com.group8.evcoownership.repository.UserRepository;
-import com.group8.evcoownership.repository.ContractRepository;
+import com.group8.evcoownership.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -629,10 +625,10 @@ public class OwnershipGroupService {
      * - fromDate/toDate: lọc theo CreatedAt (inclusive), dùng BETWEEN các method đã khai báo
      */
     public Page<OwnershipGroupResponseDTO> list(String keyword,
-                                             GroupStatus status,
-                                             LocalDate fromDate,
-                                             LocalDate toDate,
-                                             Pageable pageable) {
+                                                GroupStatus status,
+                                                LocalDate fromDate,
+                                                LocalDate toDate,
+                                                Pageable pageable) {
         Page<OwnershipGroup> page = querySortedGroups(keyword, status, fromDate, toDate, pageable);
         return page.map(this::toDto);
     }
@@ -641,10 +637,10 @@ public class OwnershipGroupService {
      * listForStaff: API dành cho staff với custom vehicle description
      */
     public Page<StaffOwnershipGroupResponseDTO> listForStaff(String keyword,
-                                                          GroupStatus status,
-                                                          LocalDate fromDate,
-                                                          LocalDate toDate,
-                                                          Pageable pageable) {
+                                                             GroupStatus status,
+                                                             LocalDate fromDate,
+                                                             LocalDate toDate,
+                                                             Pageable pageable) {
         Page<OwnershipGroup> page = querySortedGroups(keyword, status, fromDate, toDate, pageable);
         return page.map(this::toStaffDto);
     }

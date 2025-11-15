@@ -18,13 +18,13 @@ import java.io.IOException;
 public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
     private final ObjectMapper objectMapper; // Dùng để chuyển Java object sang JSON,
-                                             // đảm bảo trả lỗi chuẩn REST API.
+    // đảm bảo trả lỗi chuẩn REST API.
 
     // Constructor: Khởi tạo ObjectMapper và cấu hình hỗ trợ kiểu ngày/giờ (JavaTimeModule)
     public JwtAuthenticationEntryPoint() {
         this.objectMapper = new ObjectMapper(); // Khởi tạo object mapper mặc định cho JSON.
         this.objectMapper.registerModule(new JavaTimeModule()); // Đăng ký module hỗ trợ serialize các kiểu
-                                                                // LocalDateTime trong DTO sang JSON (giải quyết lỗi thời gian).
+        // LocalDateTime trong DTO sang JSON (giải quyết lỗi thời gian).
     }
 
     // Phương thức này được gọi mỗi khi Security phát hiện

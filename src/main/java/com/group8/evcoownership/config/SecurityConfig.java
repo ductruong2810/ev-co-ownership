@@ -25,7 +25,7 @@ import java.util.List;
 @Configuration
 @EnableMethodSecurity //Bật hỗ trợ annotation như @PreAuthorize trên controller/service
 @RequiredArgsConstructor // thằng loombok sẽ tự tạo constructor cho tất cả final fields
-                         // (jwtAuthFilter, jwtAuthenticationEntryPoint)
+// (jwtAuthFilter, jwtAuthenticationEntryPoint)
 public class SecurityConfig {
 
     // khai báo bean PasswordEncoder để dùng toàn ứng dụng (vd: luu password)
@@ -83,13 +83,13 @@ public class SecurityConfig {
                         .anyRequest().authenticated() // Các request khác phải xác thực mới được truy cập
                 )
                 .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint(jwtAuthenticationEntryPoint)
-                        // Khi thiếu auth => chuyển cho jwtAuthenticationEntryPoint xử lý (thường trả 401)
-                        .accessDeniedHandler((req, res, e) -> res.sendError(HttpServletResponse.SC_FORBIDDEN))
+                                .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                                // Khi thiếu auth => chuyển cho jwtAuthenticationEntryPoint xử lý (thường trả 401)
+                                .accessDeniedHandler((req, res, e) -> res.sendError(HttpServletResponse.SC_FORBIDDEN))
                         // Khi có auth nhưng không đủ quyền => trả 403 (FORBIDDEN)
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
-                // Thêm custom jwtAuthFilter trước UsernamePasswordAuthenticationFilter để kiểm tra token JWT trước
+        // Thêm custom jwtAuthFilter trước UsernamePasswordAuthenticationFilter để kiểm tra token JWT trước
 
         return http.build(); // build và trả về SecurityFilterChain bean
     }

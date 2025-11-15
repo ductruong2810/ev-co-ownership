@@ -8,7 +8,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,30 +15,30 @@ import java.util.Optional;
 public interface MaintenanceRepository extends JpaRepository<Maintenance, Long> {
     // ===== GET ALL (sort theo status -> createdAt DESC) =====
     @Query("""
-        SELECT m FROM Maintenance m
-        ORDER BY
-          CASE
-            WHEN m.status = 'PENDING' THEN 1
-            WHEN m.status = 'APPROVED' THEN 2
-            WHEN m.status = 'REJECTED' THEN 3
-            ELSE 4
-          END,
-          m.createdAt DESC
-    """)
+                SELECT m FROM Maintenance m
+                ORDER BY
+                  CASE
+                    WHEN m.status = 'PENDING' THEN 1
+                    WHEN m.status = 'APPROVED' THEN 2
+                    WHEN m.status = 'REJECTED' THEN 3
+                    ELSE 4
+                  END,
+                  m.createdAt DESC
+            """)
     List<Maintenance> findAllSorted();
 
     @Query("""
-    SELECT m FROM Maintenance m
-    WHERE m.requestedBy.email = :email
-    ORDER BY
-      CASE 
-        WHEN m.status = 'PENDING' THEN 1
-        WHEN m.status = 'APPROVED' THEN 3
-        WHEN m.status = 'REJECTED' THEN 5
-        ELSE 4
-      END,
-      m.createdAt DESC
-""")
+                SELECT m FROM Maintenance m
+                WHERE m.requestedBy.email = :email
+                ORDER BY
+                  CASE 
+                    WHEN m.status = 'PENDING' THEN 1
+                    WHEN m.status = 'APPROVED' THEN 3
+                    WHEN m.status = 'REJECTED' THEN 5
+                    ELSE 4
+                  END,
+                  m.createdAt DESC
+            """)
     List<Maintenance> findAllByTechnicianEmailSorted(@Param("email") String email);
 
     // ===================================================
@@ -63,7 +62,7 @@ public interface MaintenanceRepository extends JpaRepository<Maintenance, Long> 
     // Kiểm tra có maintenance đang PENDING không (theo vehicleId và groupId)
     @Query("SELECT COUNT(m) > 0 FROM Maintenance m JOIN m.vehicle v WHERE v.Id = :vehicleId AND v.ownershipGroup.groupId = :groupId AND m.status = 'PENDING'")
     boolean existsByVehicle_IdAndGroupIdAndStatusPending(@Param("vehicleId") Long vehicleId, @Param("groupId") Long groupId);
-    
+
     // Kiểm tra có maintenance đang được thực hiện không (APPROVED với ApprovalDate là hôm nay hoặc gần đây)
     @Query("""
                 SELECT COUNT(m) > 0

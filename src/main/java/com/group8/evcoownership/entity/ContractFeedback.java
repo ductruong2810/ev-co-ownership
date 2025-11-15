@@ -1,8 +1,8 @@
 package com.group8.evcoownership.entity;
 
+import com.group8.evcoownership.enums.FeedbackAdminAction;
 import com.group8.evcoownership.enums.MemberFeedbackStatus;
 import com.group8.evcoownership.enums.ReactionType;
-import com.group8.evcoownership.enums.FeedbackAdminAction;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Size;
 public record ContractMemberFeedbackRequestDTO(
         @NotBlank(message = "Reaction type is required")
         String reactionType, // "AGREE" or "DISAGREE"
-        
+
         @Size(max = 1000, message = "Reason must not exceed 1000 characters")
         String reason // Required if reactionType is DISAGREE
 ) {

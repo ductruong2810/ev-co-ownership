@@ -27,11 +27,11 @@ public class OcrController {
     @PreAuthorize("hasAnyRole('CO_OWNER','STAFF','ADMIN')")
     @Operation(summary = "[CO_OWNER/STAFF/ADMIN] Trích xuất thông tin xe từ hình ảnh (Async)",
             description = """
-                Sử dụng OCR để đọc và trích xuất thông tin brand, model từ hình ảnh cà vẹt xe.
-                - Co-owner: dùng khi tạo hồ sơ xe mới hoặc hợp đồng.
-                - Staff/Admin: có thể dùng để hỗ trợ xác minh hình ảnh xe.
-                Trả về CompletableFuture (async).
-                """)
+                    Sử dụng OCR để đọc và trích xuất thông tin brand, model từ hình ảnh cà vẹt xe.
+                    - Co-owner: dùng khi tạo hồ sơ xe mới hoặc hợp đồng.
+                    - Staff/Admin: có thể dùng để hỗ trợ xác minh hình ảnh xe.
+                    Trả về CompletableFuture (async).
+                    """)
     public CompletableFuture<GroupWithVehicleResponseDTO.AutoFillInfo> extractVehicleInfo(
             @RequestParam("image") MultipartFile image) {
 
@@ -64,9 +64,9 @@ public class OcrController {
     @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     @Operation(summary = "[ADMIN/STAFF] Trích xuất text thô từ hình ảnh (debug)",
             description = """
-                Sử dụng OCR để đọc text từ hình ảnh.
-                Dành cho mục đích kiểm thử hoặc xác minh OCR trong môi trường nội bộ.
-                """)
+                    Sử dụng OCR để đọc text từ hình ảnh.
+                    Dành cho mục đích kiểm thử hoặc xác minh OCR trong môi trường nội bộ.
+                    """)
     public CompletableFuture<String> extractText(@RequestParam("image") MultipartFile image) {
         return ocrService.extractTextFromImage(image);
     }
@@ -126,9 +126,9 @@ public class OcrController {
     @PreAuthorize("hasAnyRole('CO_OWNER','STAFF','ADMIN')")
     @Operation(summary = "[CO_OWNER/STAFF/ADMIN] Kiểm tra hình ảnh có phải cà vẹt xe không",
             description = """
-                Kiểm tra xem hình ảnh có phải là giấy đăng ký xe dựa trên từ khóa nhận dạng.
-                - Dùng để xác thực ảnh do người dùng upload trong quá trình đăng ký xe hoặc hợp đồng.
-                """)
+                    Kiểm tra xem hình ảnh có phải là giấy đăng ký xe dựa trên từ khóa nhận dạng.
+                    - Dùng để xác thực ảnh do người dùng upload trong quá trình đăng ký xe hoặc hợp đồng.
+                    """)
     public CompletableFuture<Boolean> validateRegistrationDocument(@RequestParam("image") MultipartFile image) {
         return ocrService.extractTextFromImage(image)
                 .thenApply(ocrService::isVehicleRegistrationDocument);

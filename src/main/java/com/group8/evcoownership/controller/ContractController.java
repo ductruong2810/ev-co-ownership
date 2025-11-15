@@ -185,7 +185,7 @@ public class ContractController {
             @PathVariable Long contractId,
             @Valid @RequestBody ContractMemberFeedbackRequestDTO request,
             @AuthenticationPrincipal String userEmail) {
-        
+
         Long userId = contractService.getUserIdByEmail(userEmail);
         ApiResponseDTO<SubmitMemberFeedbackResponseDTO> result = contractService.submitMemberFeedback(contractId, userId, request);
         return ResponseEntity.ok(result);
@@ -202,7 +202,7 @@ public class ContractController {
     )
     public ResponseEntity<ContractFeedbacksResponseDTO> getContractMemberFeedbacks(
             @PathVariable Long contractId) {
-        
+
         ContractFeedbacksResponseDTO feedbacks = contractService.getContractFeedbacks(contractId);
         return ResponseEntity.ok(feedbacks);
     }
@@ -221,7 +221,7 @@ public class ContractController {
     )
     public ResponseEntity<ContractFeedbacksResponseDTO> getGroupMemberFeedbacks(
             @PathVariable Long groupId) {
-        
+
         ContractFeedbacksResponseDTO feedbacks = contractService.getContractFeedbacksByGroup(groupId);
         return ResponseEntity.ok(feedbacks);
     }

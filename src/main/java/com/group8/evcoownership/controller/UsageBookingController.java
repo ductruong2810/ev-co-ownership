@@ -148,6 +148,7 @@ public class UsageBookingController {
         Map<String, Object> result = usageBookingService.cancelBookingWithReason(bookingId, request);
         return ResponseEntity.ok(result);
     }
+
     private Long getUserIdByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found for email: " + email))
