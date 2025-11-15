@@ -146,6 +146,12 @@
             <artifactId>logback-classic</artifactId>
             <version>1.5.19</version>
         </dependency>
+        <!-- Explicitly add logback-core to ensure all classes are included -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-core</artifactId>
+            <version>1.5.19</version>
+        </dependency>
     </dependencies>
 
     <dependencyManagement>
