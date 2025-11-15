@@ -144,113 +144,6 @@ public class ContractService {
     }
 
     /**
-     * Cập nhật hợp đồng (chỉ cho phép khi contract ở trạng thái PENDING hoặc PENDING_MEMBER_APPROVAL có rejections)
-     * Chỉ được sửa: StartDate, EndDate
-     * RequiredDepositAmount được tính tự động bởi hệ thống
-     */
-    @Transactional
-    public ApiResponseDTO<ContractUpdateResponseDTO> updateContract(Long groupId, ContractUpdateRequestDTO request) {
-        Contract contract = getContractByGroup(groupId);
-        OwnershipGroup group = contract.getGroup();
-
-        validateContractEditable(contract, "Cannot update contract: Contract is in %s status. Only PENDING contracts or PENDING_MEMBER_APPROVAL contracts with rejections can be updated.");
-        validateContractDatesOrThrow(request.startDate(), request.endDate());
-
-        // Tính toán lại deposit amount tự động (theo quy định của hệ thống)
-        BigDecimal calculatedDepositAmount = depositCalculationService.calculateRequiredDepositAmount(group);
-        
-        // Cập nhật contract
-        contract.setStartDate(request.startDate());
-        contract.setEndDate(request.endDate());
-        contract.setRequiredDepositAmount(calculatedDepositAmount); // Tự động tính toán, không cho phép override
-        contract.setUpdatedAt(LocalDateTime.now());
-        
-        // Cập nhật terms để phản ánh thay đổi deposit amount và term
-        String updatedTerms = updateDepositAmountInTerms(contract.getTerms(), calculatedDepositAmount);
-        updatedTerms = updateTermInTerms(updatedTerms, request.startDate(), request.endDate());
-        contract.setTerms(updatedTerms);
-        
-        Contract savedContract = contractRepository.saveAndFlush(contract);
-
-        // Tính toán và trả về term mới
-        String termLabel = calculateTermLabel(savedContract.getStartDate(), savedContract.getEndDate());
-        String depositCalculationExplanation = "Deposit amount is automatically calculated by the system: " + 
-                formatCurrency(calculatedDepositAmount) +
-                " (10% of vehicle value or calculated based on number of members).";
-        String termExplanation = "Contract term: " + termLabel + 
-                " (from " + formatDate(savedContract.getStartDate()) + 
-                " to " + formatDate(savedContract.getEndDate()) + ")";
-
-        ContractUpdateResponseDTO contractData = ContractUpdateResponseDTO.builder()
-                .contractId(savedContract.getId())
-                .startDate(savedContract.getStartDate())
-                .endDate(savedContract.getEndDate())
-                .requiredDepositAmount(savedContract.getRequiredDepositAmount())
-                .calculatedDepositAmount(calculatedDepositAmount)
-                .depositCalculationExplanation(depositCalculationExplanation)
-                .term(termLabel)
-                .termExplanation(termExplanation)
-                .approvalStatus(savedContract.getApprovalStatus())
-                .updatedAt(savedContract.getUpdatedAt())
-                .build();
-
-        return ApiResponseDTO.<ContractUpdateResponseDTO>builder()
-                .success(true)
-                .message("Contract updated successfully")
-                .data(contractData)
-                .build();
-    }
-
-    /**
-     * Cập nhật terms của hợp đồng (chỉ cho phép khi contract ở trạng thái PENDING hoặc PENDING_MEMBER_APPROVAL có rejections)
-     */
-    @Transactional
-    public ApiResponseDTO<ContractUpdateResponseDTO> updateContractTerms(Long groupId, ContractTermsUpdateRequestDTO request) {
-        if (request.terms() == null || request.terms().trim().isEmpty()) {
-            throw new IllegalArgumentException("Terms cannot be blank");
-        }
-
-        Contract contract = getContractByGroup(groupId);
-
-        validateContractEditable(contract, "Cannot update contract terms: Contract is in %s status. Only PENDING contracts or PENDING_MEMBER_APPROVAL contracts with rejections can be updated.");
-
-        contract.setTerms(request.terms().trim());
-        contract.setUpdatedAt(LocalDateTime.now());
-
-        Contract savedContract = contractRepository.saveAndFlush(contract);
-
-        // Set lastAdminAction = CONTRACT_UPDATED để isProcessed = true
-        // Reset status về PENDING để có thể approve lại
-        List<ContractFeedback> feedbacks = feedbackRepository.findByContractId(savedContract.getId());
-        if (!feedbacks.isEmpty()) {
-            feedbacks.forEach(f -> {
-                if (f.getLastAdminAction() == null) {
-                    f.setLastAdminAction(FeedbackAdminAction.CONTRACT_UPDATED);
-                    f.setLastAdminActionAt(LocalDateTime.now());
-                }
-                // Reset status về PENDING để có thể approve lại
-                if (f.getStatus() == MemberFeedbackStatus.APPROVED) {
-                    f.setStatus(MemberFeedbackStatus.PENDING);
-                }
-                f.setUpdatedAt(LocalDateTime.now());
-            });
-            feedbackRepository.saveAll(feedbacks);
-        }
-
-        ContractUpdateResponseDTO contractData = ContractUpdateResponseDTO.builder()
-                .contractId(savedContract.getId())
-                .approvalStatus(savedContract.getApprovalStatus())
-                .updatedAt(savedContract.getUpdatedAt())
-                .build();
-
-        return ApiResponseDTO.<ContractUpdateResponseDTO>builder()
-                .success(true)
-                .message("Contract terms updated successfully")
-                .data(contractData)
-                .build();
-    }
-
-    /**
      * ADMIN-ONLY: Cập nhật theo contractId (thay vì groupId)
      */
     @Transactional
@@ -269,7 +162,7 @@ public class ContractService {
     }
 
     private ApiResponseDTO<ContractUpdateResponseDTO> updateContractAdminCommon(Contract contract, ContractAdminUpdateRequestDTO request) {
-        validateContractEditable(contract, "Cannot update contract: Contract is in %s status. Only PENDING contracts or PENDING_MEMBER_APPROVAL contracts with rejections can be updated.");
+        validateContractEditable(contract);
         validateContractDatesOrThrow(request.startDate(), request.endDate());
 
         OwnershipGroup group = contract.getGroup();
@@ -289,6 +182,20 @@ public class ContractService {
         contract.setTerms(syncedTerms);
 
         Contract saved = contractRepository.saveAndFlush(contract);
+
+        // Set lastAdminAction = APPROVE để isProcessed = true
+        // Reset status về PENDING để có thể approve lại
+        List<ContractFeedback> feedbacks = feedbackRepository.findByContractId(saved.getId());
+        if (!feedbacks.isEmpty()) {
+            feedbacks.forEach(f -> {
+                if (f.getLastAdminAction() == null) {
+                    f.setLastAdminAction(FeedbackAdminAction.CONTRACT_UPDATED);
+                    f.setLastAdminActionAt(LocalDateTime.now());
+                }
+                f.setUpdatedAt(LocalDateTime.now());
+            });
+            feedbackRepository.saveAll(feedbacks);
+        }
 
         String termLabel = calculateTermLabel(saved.getStartDate(), saved.getEndDate());
         ContractUpdateResponseDTO contractData = ContractUpdateResponseDTO.builder()
@@ -1713,7 +1620,7 @@ public class ContractService {
      * Kiểm tra và validate contract có thể chỉnh sửa được không
      * Throw exception nếu không thể chỉnh sửa
      */
-    private void validateContractEditable(Contract contract, String errorMessageTemplate) {
+    private void validateContractEditable(Contract contract) {
         // Với logic mới (chỉ cho phép feedback 1 lần), không cần check rejected feedbacks
         // vì khi contract được update, tất cả feedbacks sẽ bị xóa và members có thể submit lại
 
@@ -1731,7 +1638,7 @@ public class ContractService {
             }
         }
 
-        throw new IllegalStateException(String.format(errorMessageTemplate, contract.getApprovalStatus()));
+        throw new IllegalStateException(String.format("Cannot update contract: Contract is in %s status. Only PENDING contracts or PENDING_MEMBER_APPROVAL contracts with rejections can be updated.", contract.getApprovalStatus()));
     }
 
     /**
