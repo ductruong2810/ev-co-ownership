@@ -7,4 +7,5 @@ public record UserDocumentInfoDTO(
         String issueDate,
         String expiryDate,
         String address
-) {}
+) {
+}

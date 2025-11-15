@@ -381,11 +381,14 @@
                 </tr>
                 <tr class="detail-item" th:if="${suggestedPercentage != null}">
                     <td class="detail-label">📊 Tỷ lệ sở hữu:</td>
-                    <td class="detail-value"><span class="highlight" th:text="${suggestedPercentage} + '%'">25%</span></td>
+                    <td class="detail-value"><span class="highlight" th:text="${suggestedPercentage} + '%'">25%</span>
+                    </td>
                 </tr>
                 <tr class="detail-item">
                     <td class="detail-label">⏰ Hạn lời mời:</td>
-                    <td class="detail-value" th:text="${#temporals.format(expiresAt, 'dd/MM/yyyy HH:mm')}">01/01/2025 23:59</td>
+                    <td class="detail-value" th:text="${#temporals.format(expiresAt, 'dd/MM/yyyy HH:mm')}">01/01/2025
+                        23:59
+                    </td>
                 </tr>
             </table>
         </div>
@@ -415,7 +418,8 @@
                 </tr>
                 <tr>
                     <td class="number-col"><span class="step-number">4</span></td>
-                    <td><span class="step-text">Sau khi vào nhóm, vào mục "Tỷ lệ sở hữu" để nhập tỷ lệ của bạn</span></td>
+                    <td><span class="step-text">Sau khi vào nhóm, vào mục "Tỷ lệ sở hữu" để nhập tỷ lệ của bạn</span>
+                    </td>
                 </tr>
             </table>
         </div>

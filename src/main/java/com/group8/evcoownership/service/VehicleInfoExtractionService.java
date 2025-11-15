@@ -320,7 +320,7 @@ public class VehicleInfoExtractionService {
         if (containsLetter(brand) && containsLetter(model)) {
             return Optional.of(new String[]{brand, model});
         }
-        
+
         return Optional.empty();
     }
 

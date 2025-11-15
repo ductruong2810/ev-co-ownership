@@ -2,7 +2,6 @@ package com.group8.evcoownership.controller;
 
 import com.group8.evcoownership.dto.MaintenanceAfterCheckOutCreateRequestDTO;
 import com.group8.evcoownership.dto.MaintenanceResponseDTO;
-import com.group8.evcoownership.dto.MaintenanceUpdateRequestDTO;
 import com.group8.evcoownership.service.MaintenanceAfterCheckOutService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -42,14 +41,14 @@ public class MaintenanceAfterCheckOutController {
     @Operation(
             summary = "[Technician] Tạo yêu cầu bảo trì sau khi đi xe về (PERSONAL)",
             description = """
-                Technician mở yêu cầu bảo trì khi phát hiện co-owner làm hư xe sau khi trả xe.
-                - coverageType = PERSONAL.
-                - Path: vehicleId (xe đang kiểm tra).
-                - Body: description, cost, estimatedDurationDays.
-                - Backend tự tìm booking đã checkout gần nhất của xe đó
-                  và gán liableUser = user của booking đó.
-                - Trạng thái ban đầu: PENDING.
-                """
+                    Technician mở yêu cầu bảo trì khi phát hiện co-owner làm hư xe sau khi trả xe.
+                    - coverageType = PERSONAL.
+                    - Path: vehicleId (xe đang kiểm tra).
+                    - Body: description, cost, estimatedDurationDays.
+                    - Backend tự tìm booking đã checkout gần nhất của xe đó
+                      và gán liableUser = user của booking đó.
+                    - Trạng thái ban đầu: PENDING.
+                    """
     )
     public ResponseEntity<MaintenanceResponseDTO> createAfterCheckOut(
             @PathVariable Long vehicleId,
@@ -89,16 +88,15 @@ public class MaintenanceAfterCheckOutController {
 //    }
 
     // ==================== Technician get his PERSONAL maintenance requests =============
-
     @GetMapping("/my-requests")
     @PreAuthorize("hasAnyRole('TECHNICIAN')")
     @Operation(
             summary = "[Technician] Xem các yêu cầu bảo trì sau check-out do mình tạo (PERSONAL)",
             description = """
-                Dành cho technician xem lại các yêu cầu bảo trì coverageType = PERSONAL
-                mà chính họ đã tạo sau khi kiểm tra xe (sau khi co-owner trả xe).
-                Sắp xếp theo RequestDate giảm dần.
-                """
+                    Dành cho technician xem lại các yêu cầu bảo trì coverageType = PERSONAL
+                    mà chính họ đã tạo sau khi kiểm tra xe (sau khi co-owner trả xe).
+                    Sắp xếp theo RequestDate giảm dần.
+                    """
     )
     public ResponseEntity<List<MaintenanceResponseDTO>> getMyPersonalRequests(Authentication auth) {
         return ResponseEntity.ok(

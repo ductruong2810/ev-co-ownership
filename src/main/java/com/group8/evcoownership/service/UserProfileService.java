@@ -1,10 +1,6 @@
 package com.group8.evcoownership.service;
 
-import com.group8.evcoownership.dto.UserProfileResponseDTO;
-import com.group8.evcoownership.dto.DocumentsDTO;
-import com.group8.evcoownership.dto.DocumentTypeDTO;
-import com.group8.evcoownership.dto.DocumentDetailDTO;
-import com.group8.evcoownership.dto.StatisticsDTO;
+import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.entity.UserDocument;
 import com.group8.evcoownership.exception.ResourceNotFoundException;
@@ -50,7 +46,6 @@ public class UserProfileService {
 
         return buildProfileResponse(user);
     }
-
 
 
     private UserProfileResponseDTO buildProfileResponse(User user) {

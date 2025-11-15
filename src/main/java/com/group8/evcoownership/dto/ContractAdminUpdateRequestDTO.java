@@ -18,6 +18,7 @@ public record ContractAdminUpdateRequestDTO(
     public boolean isInvalidDateRange() {
         return !isValidDateRange();
     }
+
     public boolean isValidDateRange() {
         return endDate != null && startDate != null && endDate.isAfter(startDate);
     }

@@ -17,4 +17,5 @@ public record LedgerRowDTO(
         Long userId,                 // IN: payerId; OUT: recipientUserId (có thể null)
         BigDecimal amount,
         LocalDateTime occurredAt
-) {}
+) {
+}

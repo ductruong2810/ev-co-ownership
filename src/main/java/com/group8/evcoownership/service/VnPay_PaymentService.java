@@ -61,12 +61,12 @@ public class VnPay_PaymentService {
         String baseReturn = isDeposit ? this.vnp_DepositReturnUrl : this.vnp_ReturnUrl;
 
         // 2) Lấy groupId & type để gửi kèm cho callback
-        String gid  = (groupId != null) ? String.valueOf(groupId) : request.getParameter("groupId");
+        String gid = (groupId != null) ? String.valueOf(groupId) : request.getParameter("groupId");
         if (gid == null || gid.isEmpty()) gid = "0";          // hoặc throw nếu muốn bắt buộc
         String type = isDeposit ? "deposit" : "fund";
 
         // 3) Luôn append groupId + type vào returnUrl (dùng ? hoặc & cho đúng cú pháp)
-        String joiner   = baseReturn.contains("?") ? "&" : "?";
+        String joiner = baseReturn.contains("?") ? "&" : "?";
         String returnUrl = baseReturn + joiner + "groupId=" + gid + "&type=" + type;
 
         // 4) Set tham số bắt buộc của VNPay
@@ -91,7 +91,6 @@ public class VnPay_PaymentService {
     }
 
 
-
     /**
      * 3 Callback hiển thị kết quả thanh toán (nếu bạn dùng tạm thời)
      * Ở dự án EV Co-ownership, thực tế bạn dùng DepositController.depositCallback()
@@ -99,9 +98,9 @@ public class VnPay_PaymentService {
      */
     public void handlePaymentCallBack(HttpServletRequest req, HttpServletResponse res) throws Exception {
         String respCode = req.getParameter("vnp_ResponseCode");
-        String txnRef   = req.getParameter("vnp_TxnRef");
-        String groupId  = req.getParameter("groupId");
-        String type     = req.getParameter("type"); // "fund" | "deposit"
+        String txnRef = req.getParameter("vnp_TxnRef");
+        String groupId = req.getParameter("groupId");
+        String type = req.getParameter("type"); // "fund" | "deposit"
 
         String status = "00".equals(respCode) ? "success" : "fail";
 

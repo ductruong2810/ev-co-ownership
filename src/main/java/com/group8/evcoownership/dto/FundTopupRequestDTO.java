@@ -26,4 +26,5 @@ public record FundTopupRequestDTO(
         BigDecimal amount,
 
         String note
-) {}
+) {
+}
