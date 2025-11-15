@@ -8,23 +8,29 @@ import com.group8.evcoownership.repository.OwnershipShareRepository;
 import com.group8.evcoownership.repository.UserDocumentRepository;
 import com.group8.evcoownership.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
 @Slf4j
+@Transactional(readOnly = true)
 public class UserProfileService {
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
 
-    @Autowired
-    private UserDocumentRepository userDocumentRepository;
+    private final UserDocumentRepository userDocumentRepository;
 
-    @Autowired
-    private OwnershipShareRepository ownershipShareRepository;
+    private final OwnershipShareRepository ownershipShareRepository;
+
+    public UserProfileService(UserRepository userRepository,
+                              UserDocumentRepository userDocumentRepository,
+                              OwnershipShareRepository ownershipShareRepository) {
+        this.userRepository = userRepository;
+        this.userDocumentRepository = userDocumentRepository;
+        this.ownershipShareRepository = ownershipShareRepository;
+    }
 
 
     public UserProfileResponseDTO getUserProfile(String email) {
@@ -49,7 +55,7 @@ public class UserProfileService {
 
 
     private UserProfileResponseDTO buildProfileResponse(User user) {
-        List<UserDocument> allDocuments = userDocumentRepository.findByUserId(user.getUserId());
+        List<UserDocument> allDocuments = userDocumentRepository.findAllWithReviewerByUserId(user.getUserId());
 
         DocumentTypeDTO citizenId = buildDocumentType(allDocuments, "CITIZEN_ID");
         DocumentTypeDTO driverLicense = buildDocumentType(allDocuments, "DRIVER_LICENSE");
