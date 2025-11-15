@@ -26,7 +26,7 @@ public class ContractFeedbackHistory {
     private Long historyId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "FeedbackId", nullable = false)
+    @JoinColumn(name = "FeedbackId", nullable = true)  // Đổi từ nullable = false thành nullable = true
     private ContractFeedback feedback;
 
     @ManyToOne(fetch = FetchType.LAZY)
