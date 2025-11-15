@@ -3,10 +3,8 @@ package com.group8.evcoownership.service;
 
 import com.group8.evcoownership.dto.MaintenanceAfterCheckOutCreateRequestDTO;
 import com.group8.evcoownership.dto.MaintenanceResponseDTO;
-import com.group8.evcoownership.dto.MaintenanceUpdateRequestDTO;
 import com.group8.evcoownership.entity.Maintenance;
 import com.group8.evcoownership.entity.User;
-import com.group8.evcoownership.entity.Vehicle;
 import com.group8.evcoownership.enums.MaintenanceCoverageType;
 import com.group8.evcoownership.repository.*;
 import jakarta.persistence.EntityNotFoundException;
@@ -18,7 +16,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -99,7 +96,6 @@ public class MaintenanceAfterCheckOutService {
     }
 
 
-
     // =============== Technician: xem các yêu cầu PERSONAL do mình tạo ===============
     @Transactional(readOnly = true)
     public List<MaintenanceResponseDTO> getMyPersonalRequests(String technicianEmail) {
@@ -115,7 +111,6 @@ public class MaintenanceAfterCheckOutService {
                 .map(this::mapToDTO)
                 .toList();
     }
-
 
 
     /**
@@ -272,6 +267,7 @@ public class MaintenanceAfterCheckOutService {
         maintenanceRepository.save(m);
         return mapToDTO(m);
     }
+
     // ==========================================================
     // 6. STAFF / ADMIN SEARCH BY MANY CRITERIAS
     // ==========================================================

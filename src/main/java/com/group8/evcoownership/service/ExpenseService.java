@@ -1,11 +1,17 @@
 package com.group8.evcoownership.service;
 
 
-import com.group8.evcoownership.dto.ExpenseResponseDTO;
 import com.group8.evcoownership.dto.ExpenseCreateRequestDTO;
-import com.group8.evcoownership.entity.*;
+import com.group8.evcoownership.dto.ExpenseResponseDTO;
+import com.group8.evcoownership.entity.Expense;
+import com.group8.evcoownership.entity.Incident;
+import com.group8.evcoownership.entity.SharedFund;
+import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.enums.FundType;
-import com.group8.evcoownership.repository.*;
+import com.group8.evcoownership.repository.ExpenseRepository;
+import com.group8.evcoownership.repository.IncidentRepository;
+import com.group8.evcoownership.repository.SharedFundRepository;
+import com.group8.evcoownership.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -13,13 +19,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class ExpenseService {
 
     private final ExpenseRepository expenseRepository;
@@ -149,8 +155,6 @@ public class ExpenseService {
 
         return expenses.map(this::mapToDTO);
     }
-
-
 
 
     // =============== GET ONE ===============

@@ -35,10 +35,10 @@ public class FundPaymentController {
     @Operation(
             summary = "Tạo yêu cầu nạp quỹ (VNPay)",
             description = """
-            Tạo giao dịch nạp quỹ OPERATING thông qua VNPay.
-            - Yêu cầu đăng nhập (CO_OWNER/STAFF/ADMIN).
-            - Trả về `vnpayUrl` để FE redirect sang VNPay.
-            """
+                    Tạo giao dịch nạp quỹ OPERATING thông qua VNPay.
+                    - Yêu cầu đăng nhập (CO_OWNER/STAFF/ADMIN).
+                    - Trả về `vnpayUrl` để FE redirect sang VNPay.
+                    """
     )
     public ResponseEntity<FundTopupResponseDTO> createFundTopup(
             @Valid @RequestBody FundTopupRequestDTO request,
@@ -55,11 +55,11 @@ public class FundPaymentController {
     @Operation(
             summary = "[INTERNAL] Xác nhận thanh toán từ VNPay",
             description = """
-            Endpoint nội bộ VNPay gọi lại (server-to-server) sau khi người dùng thanh toán.
-            - Kiểm tra vnp_ResponseCode ở phía Service (khuyên dùng verify chữ ký).
-            - Cập nhật Payment sang COMPLETED và cộng vào SharedFund.balance.
-            - Không dành cho FE gọi trực tiếp.
-            """
+                    Endpoint nội bộ VNPay gọi lại (server-to-server) sau khi người dùng thanh toán.
+                    - Kiểm tra vnp_ResponseCode ở phía Service (khuyên dùng verify chữ ký).
+                    - Cập nhật Payment sang COMPLETED và cộng vào SharedFund.balance.
+                    - Không dành cho FE gọi trực tiếp.
+                    """
     )
     public ResponseEntity<FundTopupResponseDTO> confirmFundTopup(
             @ParameterObject HttpServletRequest request,
@@ -76,9 +76,9 @@ public class FundPaymentController {
     @Operation(
             summary = "Lấy thông tin nạp quỹ theo mã giao dịch",
             description = """
-            FE gọi để hiển thị kết quả thanh toán sau khi redirect từ VNPay.
-            - Truyền `txnRef` (vnp_TxnRef) để lấy Payment tương ứng.
-            """
+                    FE gọi để hiển thị kết quả thanh toán sau khi redirect từ VNPay.
+                    - Truyền `txnRef` (vnp_TxnRef) để lấy Payment tương ứng.
+                    """
     )
     public ResponseEntity<FundTopupResponseDTO> getFundTopupInfoByTxn(
             @RequestParam String txnRef
@@ -91,10 +91,10 @@ public class FundPaymentController {
     @Operation(
             summary = "Callback trả về từ VNPay (public)",
             description = """
-            VNPay redirect người dùng về đây sau khi thanh toán.
-            - Nếu vnp_ResponseCode = '00': xác nhận & cộng quỹ.
-            - Ngược lại: fail.
-            """
+                    VNPay redirect người dùng về đây sau khi thanh toán.
+                    - Nếu vnp_ResponseCode = '00': xác nhận & cộng quỹ.
+                    - Ngược lại: fail.
+                    """
     )
     public void handleFundCallback(
             HttpServletResponse response,

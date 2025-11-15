@@ -21,12 +21,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // Find users by role name
     List<User> findByRoleRoleName(RoleName roleName);
+
     Page<User> findByRoleRoleName(RoleName roleName, Pageable pageable);
+
     List<User> findByStatus(UserStatus status);
 
     // Find all users who belong to a given ownership group
     @Query("select os.user from OwnershipShare os where os.group.groupId = :groupId")
     List<User> findUsersByGroupId(@Param("groupId") Long groupId);
+
     Optional<User> findByPhoneNumber(String phoneNumber);
 
 

@@ -2,18 +2,23 @@ package com.group8.evcoownership.service;
 
 import com.group8.evcoownership.dto.FundTopupRequestDTO;
 import com.group8.evcoownership.dto.FundTopupResponseDTO;
-import com.group8.evcoownership.entity.*;
+import com.group8.evcoownership.entity.Payment;
+import com.group8.evcoownership.entity.SharedFund;
+import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.enums.FundType;
 import com.group8.evcoownership.enums.PaymentStatus;
 import com.group8.evcoownership.enums.PaymentType;
 import com.group8.evcoownership.exception.DepositPaymentException;
-import com.group8.evcoownership.repository.*;
+import com.group8.evcoownership.repository.ContractRepository;
+import com.group8.evcoownership.repository.PaymentRepository;
+import com.group8.evcoownership.repository.SharedFundRepository;
+import com.group8.evcoownership.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -26,6 +31,7 @@ import java.time.LocalDateTime;
  */
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class FundPaymentService {
 
     private final FundService fundService;
@@ -44,7 +50,6 @@ public class FundPaymentService {
             throw new DepositPaymentException(fieldName + " must be a valid number");
         }
     }
-
 
 
     // =============== CREATE ===============
@@ -75,8 +80,6 @@ public class FundPaymentService {
         // Kiểm tra contract tồn tại
         contractRepository.findByGroupGroupId(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Contract not found for this group"));
-
-
 
 
         // 1) Validate
@@ -158,7 +161,6 @@ public class FundPaymentService {
         );
 
 
-
         // 1) Cập nhật trạng thái
         payment.setStatus(PaymentStatus.COMPLETED);
         payment.setPaidAt(LocalDateTime.now());
@@ -191,7 +193,6 @@ public class FundPaymentService {
 //        } while (paymentRepository.existsByTransactionCode(tx));
 //        return tx;
 //    }
-
 
 
     private FundTopupResponseDTO map(Payment p, String message) {

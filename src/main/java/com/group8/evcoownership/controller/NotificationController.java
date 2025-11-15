@@ -4,10 +4,10 @@ import com.group8.evcoownership.dto.NotificationDTO;
 import com.group8.evcoownership.entity.Notification;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.enums.NotificationType;
+import com.group8.evcoownership.exception.ResourceNotFoundException;
 import com.group8.evcoownership.repository.NotificationRepository;
 import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.service.NotificationOrchestrator;
-import com.group8.evcoownership.exception.ResourceNotFoundException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -34,10 +34,11 @@ public class NotificationController {
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "[ALL USERS] Danh sách thông báo của người dùng hiện tại", description = """
-        Lấy danh sách thông báo của người dùng đăng nhập.
-        - Có thể truyền tham số ?isRead=true/false để lọc.
-        - Mặc định: trả về toàn bộ (ưu tiên chưa đọc trước).
-        """)    public ResponseEntity<List<NotificationDTO>> getNotifications(
+            Lấy danh sách thông báo của người dùng đăng nhập.
+            - Có thể truyền tham số ?isRead=true/false để lọc.
+            - Mặc định: trả về toàn bộ (ưu tiên chưa đọc trước).
+            """)
+    public ResponseEntity<List<NotificationDTO>> getNotifications(
             @AuthenticationPrincipal String email,
             @RequestParam(required = false) Boolean isRead) {
         User user = getUserByEmail(email);
@@ -56,9 +57,10 @@ public class NotificationController {
     @GetMapping("/unread-count")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "[ALL USERS] Số lượng thông báo chưa đọc", description = """
-        Trả về số lượng thông báo chưa đọc của người dùng hiện tại.
-        Dùng cho hiển thị badge / icon thông báo.
-        """)    public ResponseEntity<Map<String, Long>> getUnreadCount(@AuthenticationPrincipal String email) {
+            Trả về số lượng thông báo chưa đọc của người dùng hiện tại.
+            Dùng cho hiển thị badge / icon thông báo.
+            """)
+    public ResponseEntity<Map<String, Long>> getUnreadCount(@AuthenticationPrincipal String email) {
         User user = getUserByEmail(email);
 
         long count = notificationRepository.countByUserAndIsRead(user, false);
@@ -68,9 +70,9 @@ public class NotificationController {
     @PutMapping("/{notificationId}/read")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "[ALL USERS] Đánh dấu thông báo đã đọc", description = """
-        Đánh dấu một thông báo cụ thể là đã đọc.
-        - Chỉ chủ sở hữu thông báo mới có quyền thao tác.
-        """)
+            Đánh dấu một thông báo cụ thể là đã đọc.
+            - Chỉ chủ sở hữu thông báo mới có quyền thao tác.
+            """)
     public ResponseEntity<Void> markAsRead(@PathVariable Long notificationId, @AuthenticationPrincipal String email) {
         User user = getUserByEmail(email);
         Notification notification = getNotificationOrThrow(notificationId);
@@ -83,8 +85,8 @@ public class NotificationController {
     @PutMapping("/mark-all-read")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "[ALL USERS] Đánh dấu tất cả thông báo là đã đọc", description = """
-        Đánh dấu tất cả thông báo của người dùng đăng nhập là đã đọc.
-        """)
+            Đánh dấu tất cả thông báo của người dùng đăng nhập là đã đọc.
+            """)
     public ResponseEntity<Void> markAllAsRead(@AuthenticationPrincipal String email) {
         User user = getUserByEmail(email);
         List<Notification> unreadNotifications = notificationRepository.findByUserAndIsRead(user, false);
@@ -95,8 +97,8 @@ public class NotificationController {
 
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "[ALL USERS] Xóa thông báo", description = """
-        Xóa một thông báo cụ thể thuộc về người dùng hiện tại.
-        """)
+            Xóa một thông báo cụ thể thuộc về người dùng hiện tại.
+            """)
     public ResponseEntity<Void> deleteNotification(@PathVariable Long notificationId, @AuthenticationPrincipal String email) {
         User user = getUserByEmail(email);
         Notification notification = getNotificationOrThrow(notificationId);

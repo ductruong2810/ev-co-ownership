@@ -1,8 +1,8 @@
 package com.group8.evcoownership.service;
 
+import com.group8.evcoownership.entity.Contract;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.enums.NotificationType;
-import com.group8.evcoownership.entity.Contract;
 import com.group8.evcoownership.exception.ResourceNotFoundException;
 import com.group8.evcoownership.repository.UserRepository;
 import lombok.RequiredArgsConstructor;

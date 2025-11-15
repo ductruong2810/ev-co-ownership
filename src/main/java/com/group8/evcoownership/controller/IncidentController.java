@@ -1,6 +1,9 @@
 package com.group8.evcoownership.controller;
 
-import com.group8.evcoownership.dto.*;
+import com.group8.evcoownership.dto.IncidentCreateRequestDTO;
+import com.group8.evcoownership.dto.IncidentRejectRequestDTO;
+import com.group8.evcoownership.dto.IncidentResponseDTO;
+import com.group8.evcoownership.dto.IncidentUpdateRequestDTO;
 import com.group8.evcoownership.service.IncidentService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
@@ -31,7 +34,7 @@ public class IncidentController {
     )
     @PreAuthorize("hasRole('CO_OWNER')")
     public ResponseEntity<IncidentResponseDTO> createIncident(
-           @Valid @RequestBody IncidentCreateRequestDTO request,
+            @Valid @RequestBody IncidentCreateRequestDTO request,
             Authentication auth
     ) {
         String username = auth.getName();
@@ -84,7 +87,7 @@ public class IncidentController {
     @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     public ResponseEntity<IncidentResponseDTO> rejectIncident(
             @PathVariable Long id,
-             @Valid @RequestBody IncidentRejectRequestDTO request,
+            @Valid @RequestBody IncidentRejectRequestDTO request,
             Authentication auth
     ) {
         String username = auth.getName();
@@ -97,10 +100,10 @@ public class IncidentController {
     @Operation(
             summary = "[STAFF / ADMIN] Get incidents (ordered by status & date)",
             description = """
-        Returns paginated incidents filtered by status/date.
-        Always sorted by business logic:
-        PENDING → APPROVED → REJECTED → others, then newest first.
-        """
+                    Returns paginated incidents filtered by status/date.
+                    Always sorted by business logic:
+                    PENDING → APPROVED → REJECTED → others, then newest first.
+                    """
     )
     @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     public ResponseEntity<Page<IncidentResponseDTO>> getIncidents(
@@ -112,7 +115,6 @@ public class IncidentController {
     ) {
         return ResponseEntity.ok(incidentService.getFiltered(status, startDate, endDate, page, size));
     }
-
 
 
     // ===============================================================

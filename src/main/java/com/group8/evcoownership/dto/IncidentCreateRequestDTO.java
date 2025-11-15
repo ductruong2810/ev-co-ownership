@@ -2,7 +2,11 @@ package com.group8.evcoownership.dto;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.math.BigDecimal;
 
 @Data
@@ -17,7 +21,7 @@ public class IncidentCreateRequestDTO {
     private String description;
 
     @NotNull(message = "Actual cost is required")
-    @DecimalMin(value = "0.01", inclusive = true, message = "Actual cost must be greater than 0")
+    @DecimalMin(value = "0.01", message = "Actual cost must be greater than 0")
     private BigDecimal actualCost;
 
     private String imageUrls; // optional

@@ -505,26 +505,26 @@ GO
 
 CREATE TABLE VoteRecord
 (
-    VoteRecordId   BIGINT IDENTITY(1,1) PRIMARY KEY,
+    VoteRecordId   BIGINT IDENTITY (1,1) PRIMARY KEY,
     VotingId       BIGINT       NOT NULL,
     UserId         BIGINT       NOT NULL,
     SelectedOption NVARCHAR(50) NOT NULL,
     VotedAt        DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
-    FOREIGN KEY (VotingId) REFERENCES Voting(VotingId),
-    FOREIGN KEY (UserId) REFERENCES Users(UserId),
+    FOREIGN KEY (VotingId) REFERENCES Voting (VotingId),
+    FOREIGN KEY (UserId) REFERENCES Users (UserId),
     CONSTRAINT UQ_VoteRecord UNIQUE (VotingId, UserId)
 );
 
-CREATE INDEX IX_VoteRecord_VotingId ON VoteRecord(VotingId);
-CREATE INDEX IX_VoteRecord_UserId ON VoteRecord(UserId);
+CREATE INDEX IX_VoteRecord_VotingId ON VoteRecord (VotingId);
+CREATE INDEX IX_VoteRecord_UserId ON VoteRecord (UserId);
 
 ALTER TABLE Voting
     ADD RelatedExpenseId BIGINT NULL,
-        EstimatedAmount DECIMAL(12,2) NULL;
+        EstimatedAmount DECIMAL(12, 2) NULL;
 
 ALTER TABLE Voting
     ADD CONSTRAINT FK_Voting_Expense
-        FOREIGN KEY (RelatedExpenseId) REFERENCES Expense(ExpenseId);
+        FOREIGN KEY (RelatedExpenseId) REFERENCES Expense (ExpenseId);
 
 
 -- =============================================
@@ -886,7 +886,8 @@ ALTER TABLE Expense
 GO
 
 ---------------------------- tạo maintenanceDate
-ALTER TABLE Maintenance ADD MaintenanceDate DATE NULL;
+ALTER TABLE Maintenance
+    ADD MaintenanceDate DATE NULL;
 
 UPDATE Maintenance
 SET MaintenanceDate = DATEADD(DAY, 7, CAST(SYSUTCDATETIME() AS DATE))
@@ -905,7 +906,7 @@ GO
 
 -- Thêm cột FundBalanceAfter
 ALTER TABLE Expense
-    ADD FundBalanceAfter DECIMAL(15,2) NULL;
+    ADD FundBalanceAfter DECIMAL(15, 2) NULL;
 GO
 
 ALTER TABLE Expense

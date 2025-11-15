@@ -41,12 +41,13 @@ public class DepositPaymentController {
     @Operation(
             summary = "Tạo yêu cầu thanh toán tiền cọc",
             description = """
-            Tạo giao dịch thanh toán tiền cọc thông qua cổng thanh toán VNPay.  
-            - Yêu cầu phải đăng nhập.  
-            - Người dùng (CO_OWNER) chỉ có thể tạo thanh toán tiền cọc cho nhóm mà họ thuộc về.  
-            - Hệ thống sẽ trả về `vnpayUrl` để redirect người dùng tới trang VNPay.
-            """
-    )    public ResponseEntity<DepositPaymentResponseDTO> createDepositPayment(
+                    Tạo giao dịch thanh toán tiền cọc thông qua cổng thanh toán VNPay.  
+                    - Yêu cầu phải đăng nhập.  
+                    - Người dùng (CO_OWNER) chỉ có thể tạo thanh toán tiền cọc cho nhóm mà họ thuộc về.  
+                    - Hệ thống sẽ trả về `vnpayUrl` để redirect người dùng tới trang VNPay.
+                    """
+    )
+    public ResponseEntity<DepositPaymentResponseDTO> createDepositPayment(
             @Valid @RequestBody DepositPaymentRequestDTO request,
             HttpServletRequest httpRequest,
             Authentication authentication) {
@@ -63,11 +64,12 @@ public class DepositPaymentController {
     @Operation(
             summary = "Xác nhận thanh toán từ VNPay",
             description = """
-            Endpoint nội bộ được VNPay gọi lại sau khi người dùng thanh toán thành công.  
-            - Cập nhật trạng thái `COMPLETED` cho Payment.  
-            - Không được FE gọi trực tiếp.
-            """
-    )    public ResponseEntity<DepositPaymentResponseDTO> confirmDepositPayment(
+                    Endpoint nội bộ được VNPay gọi lại sau khi người dùng thanh toán thành công.  
+                    - Cập nhật trạng thái `COMPLETED` cho Payment.  
+                    - Không được FE gọi trực tiếp.
+                    """
+    )
+    public ResponseEntity<DepositPaymentResponseDTO> confirmDepositPayment(
             @RequestParam("vnp_TxnRef") String txnRef,
             @RequestParam("vnp_TxnRef") String transactionNo) {
 
@@ -82,15 +84,14 @@ public class DepositPaymentController {
     @Operation(
             summary = "Lấy thông tin thanh toán theo mã giao dịch",
             description = """
-            Dùng để FE hiển thị chi tiết kết quả thanh toán sau khi redirect từ VNPay.  
-            Truyền `txnRef` (mã giao dịch) để truy xuất thông tin Payment tương ứng.
-            """
+                    Dùng để FE hiển thị chi tiết kết quả thanh toán sau khi redirect từ VNPay.  
+                    Truyền `txnRef` (mã giao dịch) để truy xuất thông tin Payment tương ứng.
+                    """
     )
     public ResponseEntity<DepositPaymentResponseDTO> getDepositInfoByTxn(@RequestParam String txnRef) {
         DepositPaymentResponseDTO response = depositPaymentService.getDepositInfoByTxn(txnRef);
         return ResponseEntity.ok(response);
     }
-
 
 
     // ===============================================
@@ -101,11 +102,11 @@ public class DepositPaymentController {
     @Operation(
             summary = "Thông tin tiền cọc cá nhân",
             description = """
-            Trả về thông tin chi tiết tiền cọc của một người dùng trong nhóm.  
-            - Dành cho người dùng đang xem chi tiết của chính họ hoặc quản trị viên nhóm.  
-            """
+                    Trả về thông tin chi tiết tiền cọc của một người dùng trong nhóm.  
+                    - Dành cho người dùng đang xem chi tiết của chính họ hoặc quản trị viên nhóm.  
+                    """
     )
-       public ResponseEntity<Map<String, Object>> getDepositInfo(
+    public ResponseEntity<Map<String, Object>> getDepositInfo(
             @PathVariable Long userId,
             @PathVariable Long groupId) {
 
@@ -121,10 +122,10 @@ public class DepositPaymentController {
     @Operation(
             summary = "Lấy trạng thái tiền cọc của nhóm",
             description = """
-            Hiển thị trạng thái đóng cọc của tất cả thành viên trong nhóm sở hữu.  
-            - Chỉ quản trị viên nhóm hoặc admin được phép truy cập.  
-            - Trả về danh sách userId + depositStatus.
-            """
+                    Hiển thị trạng thái đóng cọc của tất cả thành viên trong nhóm sở hữu.  
+                    - Chỉ quản trị viên nhóm hoặc admin được phép truy cập.  
+                    - Trả về danh sách userId + depositStatus.
+                    """
     )
     public ResponseEntity<List<Map<String, Object>>> getGroupDepositStatus(
             @PathVariable Long groupId) {
@@ -140,12 +141,13 @@ public class DepositPaymentController {
     @Operation(
             summary = "Callback trả về từ VNPay (public)",
             description = """
-            Đây là URL mà VNPay redirect người dùng sau khi thanh toán.  
-            - Nếu mã `vnp_ResponseCode = '00'`: cập nhật thanh toán thành công và redirect về FE.  
-            - Nếu khác '00': redirect về FE hiển thị lỗi hoặc thất bại.  
-            - FE có thể truyền `groupId` để redirect chính xác về nhóm tương ứng.
-            """
-    )    public void handleDepositCallback(
+                    Đây là URL mà VNPay redirect người dùng sau khi thanh toán.  
+                    - Nếu mã `vnp_ResponseCode = '00'`: cập nhật thanh toán thành công và redirect về FE.  
+                    - Nếu khác '00': redirect về FE hiển thị lỗi hoặc thất bại.  
+                    - FE có thể truyền `groupId` để redirect chính xác về nhóm tương ứng.
+                    """
+    )
+    public void handleDepositCallback(
             HttpServletResponse response,
             @RequestParam("vnp_TxnRef") String txnRef,
             @RequestParam("vnp_ResponseCode") String responseCode,

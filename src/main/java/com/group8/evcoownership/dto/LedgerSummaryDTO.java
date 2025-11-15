@@ -10,4 +10,5 @@ public record LedgerSummaryDTO(
         BigDecimal operatingBalance, // số dư quỹ OPERATING hiện tại
         BigDecimal depositBalance,   // số dư quỹ DEPOSIT_RESERVE hiện tại
         List<LedgerRowDTO> rows      // các dòng in/out đã map trước đó
-) {}
+) {
+}

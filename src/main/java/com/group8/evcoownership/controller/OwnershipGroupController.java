@@ -32,7 +32,8 @@ public class OwnershipGroupController {
             summary = "Tạo nhóm với phương tiện",
             description = "Tạo nhóm đồng sở hữu mới kèm theo phương tiện và nhiều hình ảnh với OCR auto-fill"
     )
-    @PreAuthorize("hasAnyRole('CO_OWNER','STAFF','ADMIN')")    public GroupWithVehicleResponseDTO createGroupWithVehicle(
+    @PreAuthorize("hasAnyRole('CO_OWNER','STAFF','ADMIN')")
+    public GroupWithVehicleResponseDTO createGroupWithVehicle(
             @Valid @ModelAttribute CreateGroupWithVehicleRequestDTO request,
             @AuthenticationPrincipal String userEmail) {
         Integer memberCapacity = Integer.parseInt(request.memberCapacity());

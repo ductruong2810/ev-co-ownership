@@ -9,7 +9,6 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 public interface OwnershipGroupRepository extends JpaRepository<OwnershipGroup, Long> {
     /**
@@ -54,14 +53,12 @@ public interface OwnershipGroupRepository extends JpaRepository<OwnershipGroup, 
     boolean existsByGroupNameIgnoreCase(String groupName);
 
     @Query("""
-    SELECT DISTINCT og
-    FROM OwnershipGroup og
-    JOIN OwnershipShare os ON og = os.group
-    WHERE os.user.userId = :userId
-    """)
+            SELECT DISTINCT og
+            FROM OwnershipGroup og
+            JOIN OwnershipShare os ON og = os.group
+            WHERE os.user.userId = :userId
+            """)
     List<OwnershipGroup> findByMembersUserId(@Param("userId") Long userId);
-
-
 
 
 }

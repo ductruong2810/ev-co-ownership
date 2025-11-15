@@ -14,11 +14,11 @@ import java.util.Optional;
 
 @Repository
 public interface ContractFeedbackRepository extends JpaRepository<ContractFeedback, Long> {
-    
+
     List<ContractFeedback> findByContractId(Long contractId);
 
     Optional<ContractFeedback> findTopByContractIdAndUser_UserIdOrderBySubmittedAtDesc(Long contractId, Long userId);
-    
+
     boolean existsByContractIdAndUser_UserId(Long contractId, Long userId);
 
     long countByContractIdAndStatusAndReactionType(Long contractId, MemberFeedbackStatus status, ReactionType reactionType);

@@ -88,15 +88,15 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
     // lay tat ca cac booking cua co-owner trong tuan nhung chia ra
     // theo tung group
     @Query("""
-    SELECT ub
-    FROM UsageBooking ub
-    WHERE ub.user.userId = :userId
-      AND ub.vehicle.ownershipGroup.groupId = :groupId
-      AND ub.status = 'CONFIRMED'
-      AND ub.startDateTime >= :weekStart
-      AND ub.startDateTime < :weekEnd
-    ORDER BY ub.startDateTime ASC
-    """)
+            SELECT ub
+            FROM UsageBooking ub
+            WHERE ub.user.userId = :userId
+              AND ub.vehicle.ownershipGroup.groupId = :groupId
+              AND ub.status = 'CONFIRMED'
+              AND ub.startDateTime >= :weekStart
+              AND ub.startDateTime < :weekEnd
+            ORDER BY ub.startDateTime ASC
+            """)
     List<UsageBooking> findBookingsByUserInWeekAndGroup(
             @Param("userId") Long userId,
             @Param("groupId") Long groupId,
@@ -116,11 +116,11 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
                                                   Pageable pageable);
 
     @Query("""
-    SELECT ub
-    FROM UsageBooking ub
-    WHERE ub.vehicle.ownershipGroup.groupId = :groupId
-    ORDER BY ub.startDateTime DESC
-    """)
+            SELECT ub
+            FROM UsageBooking ub
+            WHERE ub.vehicle.ownershipGroup.groupId = :groupId
+            ORDER BY ub.startDateTime DESC
+            """)
     List<UsageBooking> findAllBookingsByGroupId(@Param("groupId") Long groupId);
 
     // Lần gần nhất xe này đã checkout (user đã trả xe)

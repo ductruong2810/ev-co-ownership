@@ -2,7 +2,6 @@ package com.group8.evcoownership.service;
 
 import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.entity.OwnershipGroup;
-import com.group8.evcoownership.dto.ImageCountsDTO;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.entity.Vehicle;
 import com.group8.evcoownership.entity.VehicleImage;
