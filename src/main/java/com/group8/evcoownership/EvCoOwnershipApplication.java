@@ -17,6 +17,10 @@ public class EvCoOwnershipApplication {
     }
 
     public static void main(String[] args) {
-        SpringApplication.run(EvCoOwnershipApplication.class, args);
+        SpringApplication app = new SpringApplication(EvCoOwnershipApplication.class);
+        // Disable shutdown hook to prevent NoClassDefFoundError on Azure
+        // Azure App Service handles shutdown gracefully without needing Spring's shutdown hook
+        app.setRegisterShutdownHook(false);
+        app.run(args);
     }
 }
