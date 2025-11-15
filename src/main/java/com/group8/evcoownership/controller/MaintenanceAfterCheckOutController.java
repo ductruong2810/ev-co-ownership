@@ -80,6 +80,25 @@ public class MaintenanceAfterCheckOutController {
         );
     }
 
+    // ==================== Technician get his PERSONAL maintenance requests =============
+
+    @GetMapping("/my-requests")
+    @PreAuthorize("hasAnyRole('TECHNICIAN')")
+    @Operation(
+            summary = "[Technician] Xem các yêu cầu bảo trì sau check-out do mình tạo (PERSONAL)",
+            description = """
+                Dành cho technician xem lại các yêu cầu bảo trì coverageType = PERSONAL
+                mà chính họ đã tạo sau khi kiểm tra xe (sau khi co-owner trả xe).
+                Sắp xếp theo RequestDate giảm dần.
+                """
+    )
+    public ResponseEntity<List<MaintenanceResponseDTO>> getMyPersonalRequests(Authentication auth) {
+        return ResponseEntity.ok(
+                maintenanceAfterCheckOutService.getMyPersonalRequests(auth.getName())
+        );
+    }
+
+
     // ======================================================
     // ===================== CO-OWNER =======================
     // ======================================================
@@ -115,7 +134,7 @@ public class MaintenanceAfterCheckOutController {
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
     @Operation(
-            summary = "[Staff/Admin] Xem chi tiết maintenance sau check-out",
+            summary = "[Staff/Admin] Xem chi tiết tat ca maintenance(PERSONAL AND GROUP) ",
             description = """
                     Staff và Admin có thể xem chi tiết yêu cầu bảo trì (bao gồm thông tin xe, technician, liableUser, cost, status...).
                     Dùng cho việc kiểm tra trước khi duyệt/từ chối hoặc theo dõi tiến độ.
