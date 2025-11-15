@@ -1563,7 +1563,7 @@ public class ContractService {
 
     /**
      * Admin reject một feedback cụ thể (theo feedbackId)
-     * Chỉ có thể reject feedbacks có status = PENDING
+     * Chỉ có thể reject feedbacks có status = PENDING và isProcessed = false
      * Chuyển về PENDING để member làm lại và lưu adminNote vào reason
      * Gửi notification và email cho member kèm adminNote
      */
@@ -1577,6 +1577,13 @@ public class ContractService {
         if (feedback.getStatus() != MemberFeedbackStatus.PENDING) {
             throw new IllegalStateException(
                     "Only PENDING feedbacks can be rejected. Current status: " + feedback.getStatus()
+            );
+        }
+        
+        // Không cho phép reject feedback đã được processed (isProcessed = true)
+        if (isFeedbackProcessed(feedback)) {
+            throw new IllegalStateException(
+                    "Cannot reject feedback that has already been processed. Feedback is already processed."
             );
         }
         
