@@ -247,14 +247,14 @@ public class ContractController {
      * - Nếu DISAGREE, phải có lý do (ít nhất 10 ký tự)
      */
     @PostMapping("/{contractId}/member-feedback")
-    @PreAuthorize("@ownershipGroupService.isGroupMemberForContract(authentication.name, #contractId)")
+    @PreAuthorize("hasAnyRole('CO_OWNER')")
     @Operation(
             summary = "Member agree/disagree với contract",
             description = "Member có thể agree hoặc disagree với contract. Nếu disagree, phải có lý do."
     )
     public ResponseEntity<ApiResponseDTO<SubmitMemberFeedbackResponseDTO>> submitMemberFeedback(
             @PathVariable Long contractId,
-            @Valid @RequestBody com.group8.evcoownership.dto.ContractMemberFeedbackRequestDTO request,
+            @Valid @RequestBody ContractMemberFeedbackRequestDTO request,
             @AuthenticationPrincipal String userEmail) {
         
         Long userId = contractService.getUserIdByEmail(userEmail);
