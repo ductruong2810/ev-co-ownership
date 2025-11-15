@@ -264,9 +264,6 @@ public class ContractController {
 
     /**
      * API: Lấy tất cả feedback của members cho contract (cho admin group)
-     * ------------------------------------------------------------
-     * Dành cho:
-     * - Group Admin
      */
     @GetMapping("/{contractId}/member-feedbacks")
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")

@@ -1893,12 +1893,20 @@ public class ContractService {
                 .filter(share -> share.getGroupRole() != GroupRole.ADMIN)
                 .toList();
 
+        // Tạo Map để lookup groupRole nhanh theo userId
+        Map<Long, GroupRole> userRoleMap = allMembers.stream()
+                .collect(Collectors.toMap(
+                        share -> share.getUser().getUserId(),
+                        OwnershipShare::getGroupRole
+                ));
+
         List<ContractFeedbackResponseDTO> feedbackList = feedbacks.stream()
                 .map(f -> ContractFeedbackResponseDTO.builder()
                         .feedbackId(f.getId())
                         .userId(f.getUser().getUserId())
                         .fullName(f.getUser().getFullName())
                         .email(f.getUser().getEmail())
+                        .groupRole(userRoleMap.getOrDefault(f.getUser().getUserId(), GroupRole.MEMBER))  // Thêm dòng này
                         .status(f.getStatus())
                         .isProcessed(isFeedbackProcessed(f))
                         .lastAdminAction(f.getLastAdminAction())
