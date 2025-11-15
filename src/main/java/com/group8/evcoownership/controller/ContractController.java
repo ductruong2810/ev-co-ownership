@@ -103,67 +103,6 @@ public class ContractController {
         return ResponseEntity.ok(calculation);
     }
 
-
-    /**
-     * API: Cập nhật hợp đồng (chỉ admin group)
-     * ------------------------------------------------------------
-     * Dành cho:
-     * - Group Admin
-     * <p>
-     * Điều kiện:
-     * - Contract phải ở trạng thái PENDING (chưa ký)
-     * - Chỉ được sửa: StartDate, EndDate
-     * - RequiredDepositAmount được tính tự động bởi hệ thống (không cho phép sửa)
-     * - EndDate phải sau StartDate (kỳ hạn tối thiểu 1 tháng, tối đa 5 năm)
-     */
-    @PutMapping("/{groupId}")
-    @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
-    @Operation(
-            summary = "Cập nhật hợp đồng",
-            description = "Chỉ admin của nhóm được phép cập nhật hợp đồng. Chỉ có thể sửa khi hợp đồng ở trạng thái PENDING (chưa ký)."
-    )
-    public ResponseEntity<ApiResponseDTO<ContractUpdateResponseDTO>> updateContract(
-            @PathVariable Long groupId,
-            @Valid @RequestBody ContractUpdateRequestDTO request) {
-
-        // Validate date range
-        if (request.isInvalidDateRange()) {
-            ApiResponseDTO<ContractUpdateResponseDTO> error = ApiResponseDTO.<ContractUpdateResponseDTO>builder()
-                    .success(false)
-                    .message("End date must be after start date")
-                    .data(null)
-                    .build();
-            return ResponseEntity.badRequest().body(error);
-        }
-
-        ApiResponseDTO<ContractUpdateResponseDTO> result = contractService.updateContract(groupId, request);
-
-        return ResponseEntity.ok(result);
-    }
-
-    /**
-     * API: Cập nhật terms của hợp đồng (chỉ admin group)
-     * ------------------------------------------------------------
-     * Dành cho:
-     * - Group Admin
-     * <p>
-     * Điều kiện:
-     * - Contract phải ở trạng thái PENDING hoặc PENDING_MEMBER_APPROVAL có phản hồi DISAGREE
-     */
-    @PutMapping("/{groupId}/terms")
-    @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
-    @Operation(
-            summary = "Cập nhật terms của hợp đồng",
-            description = "Cho phép group admin cập nhật nội dung terms khi hợp đồng chưa được tất cả members phê duyệt."
-    )
-    public ResponseEntity<ApiResponseDTO<ContractUpdateResponseDTO>> updateContractTerms(
-            @PathVariable Long groupId,
-            @Valid @RequestBody ContractTermsUpdateRequestDTO request) {
-
-        ApiResponseDTO<ContractUpdateResponseDTO> result = contractService.updateContractTerms(groupId, request);
-        return ResponseEntity.ok(result);
-    }
-
     /**
      * Hủy contract (chỉ admin group)
      */
