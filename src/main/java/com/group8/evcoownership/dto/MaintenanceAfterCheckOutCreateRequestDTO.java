@@ -16,7 +16,7 @@ public class MaintenanceAfterCheckOutCreateRequestDTO {
     private String description;
 
     @NotNull(message = "cost is required")
-    @DecimalMin(value = "0.01", message = "cost must be > 0")
+    @DecimalMin(value = "10000", message = "cost must be > 10000")
     private BigDecimal cost;
 
     @NotNull(message = "estimatedDurationDays is required")
