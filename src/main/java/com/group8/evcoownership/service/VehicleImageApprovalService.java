@@ -15,6 +15,7 @@ import com.group8.evcoownership.repository.VehicleRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.Hibernate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -27,6 +28,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional(readOnly = true)
 public class VehicleImageApprovalService {
 
     private final VehicleImageRepository vehicleImageRepository;
@@ -51,7 +53,7 @@ public class VehicleImageApprovalService {
                 .orElseThrow(() -> new EntityNotFoundException("Vehicle not found for group"));
 
         // Lấy tất cả hình ảnh của vehicle
-        List<VehicleImage> images = vehicleImageRepository.findByVehicleId(vehicle.getId());
+        List<VehicleImage> images = vehicleImageRepository.findDetailedByVehicleId(vehicle.getId());
         List<VehicleImageResponseDTO> imageResponses = mapToResponses(images);
         ImageCountsDTO counts = computeCounts(images);
 
@@ -85,7 +87,7 @@ public class VehicleImageApprovalService {
      * Lấy danh sách hình ảnh của một group (backward compatibility)
      */
     public List<VehicleImageResponseDTO> getImagesByGroupId(Long groupId) {
-        return mapToResponses(vehicleImageRepository.findByVehicle_OwnershipGroup_GroupId(groupId));
+        return mapToResponses(vehicleImageRepository.findDetailedByGroupId(groupId));
     }
 
     /**
@@ -116,7 +118,7 @@ public class VehicleImageApprovalService {
         assertStaffPermissions(staff);
 
         // Lấy tất cả hình ảnh của group
-        List<VehicleImage> groupImages = vehicleImageRepository.findByVehicle_OwnershipGroup_GroupId(groupId);
+        List<VehicleImage> groupImages = vehicleImageRepository.findDetailedByGroupId(groupId);
 
         if (groupImages.isEmpty()) {
             throw new EntityNotFoundException("No images found for this group");
@@ -258,13 +260,24 @@ public class VehicleImageApprovalService {
      * Convert entity to response DTO
      */
     private VehicleImageResponseDTO toResponse(VehicleImage image) {
+        String approvedByName = null;
+        User approver = image.getApprovedBy();
+        if (approver != null) {
+            if (!Hibernate.isInitialized(approver)) {
+                approver = userRepository.findById(approver.getUserId()).orElse(null);
+            }
+            if (approver != null) {
+                approvedByName = approver.getFullName();
+            }
+        }
+
         return VehicleImageResponseDTO.builder()
                 .imageId(image.getImageId())
                 .vehicleId(image.getVehicle().getId())
                 .imageUrl(image.getImageUrl())
                 .imageType(image.getImageType())
                 .approvalStatus(image.getApprovalStatus())
-                .approvedByName(image.getApprovedBy() != null ? image.getApprovedBy().getFullName() : null)
+                .approvedByName(approvedByName)
                 .approvedAt(image.getApprovedAt())
                 .rejectionReason(image.getRejectionReason())
                 .uploadedAt(image.getUploadedAt())
@@ -275,7 +288,7 @@ public class VehicleImageApprovalService {
      * Convert OwnershipGroup to GroupImageApprovalSummary
      */
     private GroupImageApprovalSummaryDTO toGroupSummary(OwnershipGroup group) {
-        List<VehicleImage> groupImages = vehicleImageRepository.findByVehicle_OwnershipGroup_GroupId(group.getGroupId());
+        List<VehicleImage> groupImages = vehicleImageRepository.findDetailedByGroupId(group.getGroupId());
         ImageCountsDTO counts = computeCounts(groupImages);
 
         return GroupImageApprovalSummaryDTO.builder()
