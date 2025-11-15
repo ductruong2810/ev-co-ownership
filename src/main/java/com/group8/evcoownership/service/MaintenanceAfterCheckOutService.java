@@ -58,7 +58,7 @@ public class MaintenanceAfterCheckOutService {
         }
 
         var shares = ownershipShareRepository
-                .findByOwnershipGroup_GroupId(group.getGroupId());
+                .findByGroupGroupId(group.getGroupId());
 
         boolean isMember = shares.stream()
                 .anyMatch(share -> share.getUser().getUserId().equals(liableUser.getUserId()));
