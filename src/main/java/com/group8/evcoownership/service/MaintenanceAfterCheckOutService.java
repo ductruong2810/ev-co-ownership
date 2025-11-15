@@ -158,93 +158,93 @@ public class MaintenanceAfterCheckOutService {
     // ==========================================================
     // 2. STAFF/ADMIN: PENDING -> APPROVED (PERSONAL, không chia tiền)
     // ==========================================================
-    public MaintenanceResponseDTO approveAfterCheckOut(Long id, String staffEmail) {
-        Maintenance m = maintenanceRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Maintenance not found"));
-
-        User staff = userRepository.findByEmail(staffEmail)
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
-
-        if (m.getCoverageType() != MaintenanceCoverageType.PERSONAL) {
-            throw new IllegalStateException("This approve method is only for PERSONAL maintenance.");
-        }
-
-        if (!"PENDING".equals(m.getStatus())) {
-            throw new IllegalStateException("Only PENDING maintenance can be approved.");
-        }
-
-        LocalDateTime now = LocalDateTime.now();
-        m.setStatus("APPROVED");
-        m.setApprovedBy(staff);
-        m.setApprovalDate(now);
-        m.setUpdatedAt(now);
-
-        maintenanceRepository.save(m);
-        return mapToDTO(m);
-    }
+//    public MaintenanceResponseDTO approveAfterCheckOut(Long id, String staffEmail) {
+//        Maintenance m = maintenanceRepository.findById(id)
+//                .orElseThrow(() -> new EntityNotFoundException("Maintenance not found"));
+//
+//        User staff = userRepository.findByEmail(staffEmail)
+//                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+//
+//        if (m.getCoverageType() != MaintenanceCoverageType.PERSONAL) {
+//            throw new IllegalStateException("This approve method is only for PERSONAL maintenance.");
+//        }
+//
+//        if (!"PENDING".equals(m.getStatus())) {
+//            throw new IllegalStateException("Only PENDING maintenance can be approved.");
+//        }
+//
+//        LocalDateTime now = LocalDateTime.now();
+//        m.setStatus("APPROVED");
+//        m.setApprovedBy(staff);
+//        m.setApprovalDate(now);
+//        m.setUpdatedAt(now);
+//
+//        maintenanceRepository.save(m);
+//        return mapToDTO(m);
+//    }
 
     // ==========================================================
     // 3. STAFF/ADMIN: PENDING -> REJECTED (PERSONAL)
     // ==========================================================
-    public MaintenanceResponseDTO rejectAfterCheckOut(Long id, String staffEmail) {
-        Maintenance m = maintenanceRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Maintenance not found"));
-
-        User staff = userRepository.findByEmail(staffEmail)
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
-
-        if (m.getCoverageType() != MaintenanceCoverageType.PERSONAL) {
-            throw new IllegalStateException("This reject method is only for PERSONAL maintenance.");
-        }
-
-        if (!"PENDING".equals(m.getStatus())) {
-            throw new IllegalStateException("Only PENDING maintenance can be rejected.");
-        }
-
-        LocalDateTime now = LocalDateTime.now();
-        m.setStatus("REJECTED");
-        m.setApprovedBy(staff);
-        m.setApprovalDate(now);
-        m.setUpdatedAt(now);
-
-        maintenanceRepository.save(m);
-        return mapToDTO(m);
-    }
+//    public MaintenanceResponseDTO rejectAfterCheckOut(Long id, String staffEmail) {
+//        Maintenance m = maintenanceRepository.findById(id)
+//                .orElseThrow(() -> new EntityNotFoundException("Maintenance not found"));
+//
+//        User staff = userRepository.findByEmail(staffEmail)
+//                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+//
+//        if (m.getCoverageType() != MaintenanceCoverageType.PERSONAL) {
+//            throw new IllegalStateException("This reject method is only for PERSONAL maintenance.");
+//        }
+//
+//        if (!"PENDING".equals(m.getStatus())) {
+//            throw new IllegalStateException("Only PENDING maintenance can be rejected.");
+//        }
+//
+//        LocalDateTime now = LocalDateTime.now();
+//        m.setStatus("REJECTED");
+//        m.setApprovedBy(staff);
+//        m.setApprovalDate(now);
+//        m.setUpdatedAt(now);
+//
+//        maintenanceRepository.save(m);
+//        return mapToDTO(m);
+//    }
 
     // ==========================================================
     // 4. STAFF: FUNDED -> IN_PROGRESS (PERSONAL sau checkout)
     // ==========================================================
-    public MaintenanceResponseDTO startAfterCheckOut(Long id, String staffEmail) {
-        Maintenance m = maintenanceRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Maintenance not found"));
-
-        User staff = userRepository.findByEmail(staffEmail)
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
-
-        if (m.getCoverageType() != MaintenanceCoverageType.PERSONAL) {
-            throw new IllegalStateException("This start method is only for PERSONAL maintenance.");
-        }
-
-        if (!"FUNDED".equals(m.getStatus())) {
-            throw new IllegalStateException("Only FUNDED maintenance can be started.");
-        }
-
-        LocalDateTime now = LocalDateTime.now();
-        m.setStatus("IN_PROGRESS");
-        m.setMaintenanceStartAt(now);
-
-        if (m.getEstimatedDurationDays() != null && m.getEstimatedDurationDays() > 0) {
-            m.setExpectedFinishAt(now.plusDays(m.getEstimatedDurationDays()));
-        }
-
-        m.setUpdatedAt(now);
-        maintenanceRepository.save(m);
-
-        return mapToDTO(m);
-    }
+//    public MaintenanceResponseDTO startAfterCheckOut(Long id, String staffEmail) {
+//        Maintenance m = maintenanceRepository.findById(id)
+//                .orElseThrow(() -> new EntityNotFoundException("Maintenance not found"));
+//
+//        User staff = userRepository.findByEmail(staffEmail)
+//                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+//
+//        if (m.getCoverageType() != MaintenanceCoverageType.PERSONAL) {
+//            throw new IllegalStateException("This start method is only for PERSONAL maintenance.");
+//        }
+//
+//        if (!"FUNDED".equals(m.getStatus())) {
+//            throw new IllegalStateException("Only FUNDED maintenance can be started.");
+//        }
+//
+//        LocalDateTime now = LocalDateTime.now();
+//        m.setStatus("IN_PROGRESS");
+//        m.setMaintenanceStartAt(now);
+//
+//        if (m.getEstimatedDurationDays() != null && m.getEstimatedDurationDays() > 0) {
+//            m.setExpectedFinishAt(now.plusDays(m.getEstimatedDurationDays()));
+//        }
+//
+//        m.setUpdatedAt(now);
+//        maintenanceRepository.save(m);
+//
+//        return mapToDTO(m);
+//    }
 
     // ==========================================================
-    // 5. STAFF: IN_PROGRESS -> COMPLETED (PERSONAL sau checkout)
+    // 5. STAFF: FUNDED -> COMPLETED (PERSONAL sau checkout)
     // ==========================================================
     public MaintenanceResponseDTO completeAfterCheckOut(Long id, String staffEmail) {
         Maintenance m = maintenanceRepository.findById(id)
@@ -257,8 +257,8 @@ public class MaintenanceAfterCheckOutService {
             throw new IllegalStateException("This complete method is only for PERSONAL maintenance.");
         }
 
-        if (!"IN_PROGRESS".equals(m.getStatus())) {
-            throw new IllegalStateException("Only IN_PROGRESS maintenance can be completed.");
+        if (!"FUNDED".equals(m.getStatus())) {
+            throw new IllegalStateException("Only FUNDED maintenance can be completed.");
         }
 
         LocalDateTime now = LocalDateTime.now();

@@ -157,80 +157,80 @@ public class MaintenanceAfterCheckOutController {
     /**
      * Staff/Admin duyệt yêu cầu bảo trì PERSONAL: PENDING → APPROVED
      */
-    @PutMapping("/{id}/approve")
-    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
-    @Operation(
-            summary = "[Staff/Admin] Duyệt yêu cầu bảo trì sau check-out (PENDING → APPROVED)",
-            description = """
-                    Chỉ áp dụng cho các yêu cầu coverageType = PERSONAL.
-                    - Chuyển trạng thái từ PENDING sang APPROVED.
-                    - Ghi nhận người duyệt và thời điểm duyệt.
-                    - Không chia tiền theo tỷ lệ sở hữu, không tạo Expense từ quỹ nhóm.
-                    """
-    )
-    public ResponseEntity<MaintenanceResponseDTO> approveAfterCheckOut(
-            @PathVariable Long id,
-            Authentication auth
-    ) {
-        return ResponseEntity.ok(
-                maintenanceAfterCheckOutService.approveAfterCheckOut(id, auth.getName())
-        );
-    }
+//    @PutMapping("/{id}/approve")
+//    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
+//    @Operation(
+//            summary = "[Staff/Admin] Duyệt yêu cầu bảo trì sau check-out (PENDING → APPROVED)",
+//            description = """
+//                    Chỉ áp dụng cho các yêu cầu coverageType = PERSONAL.
+//                    - Chuyển trạng thái từ PENDING sang APPROVED.
+//                    - Ghi nhận người duyệt và thời điểm duyệt.
+//                    - Không chia tiền theo tỷ lệ sở hữu, không tạo Expense từ quỹ nhóm.
+//                    """
+//    )
+//    public ResponseEntity<MaintenanceResponseDTO> approveAfterCheckOut(
+//            @PathVariable Long id,
+//            Authentication auth
+//    ) {
+//        return ResponseEntity.ok(
+//                maintenanceAfterCheckOutService.approveAfterCheckOut(id, auth.getName())
+//        );
+//    }
 
     /**
      * Staff/Admin từ chối yêu cầu bảo trì PERSONAL: PENDING → REJECTED
      */
-    @PutMapping("/{id}/reject")
-    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
-    @Operation(
-            summary = "[Staff/Admin] Từ chối yêu cầu bảo trì sau check-out (PENDING → REJECTED)",
-            description = """
-                    Chỉ áp dụng cho các yêu cầu coverageType = PERSONAL.
-                    - Chuyển trạng thái từ PENDING sang REJECTED.
-                    - Ghi nhận người xử lý và thời điểm.
-                    """
-    )
-    public ResponseEntity<MaintenanceResponseDTO> rejectAfterCheckOut(
-            @PathVariable Long id,
-            Authentication auth
-    ) {
-        return ResponseEntity.ok(
-                maintenanceAfterCheckOutService.rejectAfterCheckOut(id, auth.getName())
-        );
-    }
+//    @PutMapping("/{id}/reject")
+//    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
+//    @Operation(
+//            summary = "[Staff/Admin] Từ chối yêu cầu bảo trì sau check-out (PENDING → REJECTED)",
+//            description = """
+//                    Chỉ áp dụng cho các yêu cầu coverageType = PERSONAL.
+//                    - Chuyển trạng thái từ PENDING sang REJECTED.
+//                    - Ghi nhận người xử lý và thời điểm.
+//                    """
+//    )
+//    public ResponseEntity<MaintenanceResponseDTO> rejectAfterCheckOut(
+//            @PathVariable Long id,
+//            Authentication auth
+//    ) {
+//        return ResponseEntity.ok(
+//                maintenanceAfterCheckOutService.rejectAfterCheckOut(id, auth.getName())
+//        );
+//    }
 
     /**
      * Staff/Admin: FUNDED → IN_PROGRESS cho flow sau check-out (PERSONAL)
      */
-    @PutMapping("/{id}/start")
-    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
-    @Operation(
-            summary = "[Staff/Admin] Bắt đầu bảo trì sau check-out (FUNDED → IN_PROGRESS)",
-            description = """
-                    Dùng cho flow after check-out, coverageType = PERSONAL.
-                    - Chỉ cho phép khi trạng thái hiện tại là FUNDED (co-owner đã thanh toán xong).
-                    - Ghi lại thời điểm bắt đầu và thời điểm dự kiến hoàn tất (nếu có estimatedDurationDays).
-                    """
-    )
-    public ResponseEntity<MaintenanceResponseDTO> startAfterCheckOut(
-            @PathVariable Long id,
-            Authentication auth
-    ) {
-        return ResponseEntity.ok(
-                maintenanceAfterCheckOutService.startAfterCheckOut(id, auth.getName())
-        );
-    }
+//    @PutMapping("/{id}/start")
+//    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
+//    @Operation(
+//            summary = "[Staff/Admin] Bắt đầu bảo trì sau check-out (FUNDED → IN_PROGRESS)",
+//            description = """
+//                    Dùng cho flow after check-out, coverageType = PERSONAL.
+//                    - Chỉ cho phép khi trạng thái hiện tại là FUNDED (co-owner đã thanh toán xong).
+//                    - Ghi lại thời điểm bắt đầu và thời điểm dự kiến hoàn tất (nếu có estimatedDurationDays).
+//                    """
+//    )
+//    public ResponseEntity<MaintenanceResponseDTO> startAfterCheckOut(
+//            @PathVariable Long id,
+//            Authentication auth
+//    ) {
+//        return ResponseEntity.ok(
+//                maintenanceAfterCheckOutService.startAfterCheckOut(id, auth.getName())
+//        );
+//    }
 
     /**
-     * Staff/Admin: IN_PROGRESS → COMPLETED cho flow sau check-out (PERSONAL)
+     * Staff/Admin: FUNDED → COMPLETED cho flow sau check-out (PERSONAL)
      */
     @PutMapping("/{id}/complete")
-    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('TECHNICIAN')")
     @Operation(
-            summary = "[Staff/Admin] Hoàn tất bảo trì sau check-out (IN_PROGRESS → COMPLETED)",
+            summary = "[Staff/Admin] Hoàn tất bảo trì sau check-out (FUNDED → COMPLETED)",
             description = """
                     Chỉ áp dụng cho coverageType = PERSONAL.
-                    - Chỉ được hoàn tất khi trạng thái hiện tại là IN_PROGRESS.
+                    - Chỉ được hoàn tất khi trạng thái hiện tại là FUNDED
                     - Ghi lại thời điểm hoàn tất.
                     - Đây là case sự cố, không phải bảo trì định kỳ nên thường không đặt nextDueDate.
                     """
