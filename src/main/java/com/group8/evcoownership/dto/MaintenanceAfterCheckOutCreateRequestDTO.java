@@ -11,18 +11,12 @@ import java.math.BigDecimal;
 @Builder
 public class MaintenanceAfterCheckOutCreateRequestDTO {
 
-    @NotNull(message = "vehicleId is required")
-    private Long vehicleId;
-
-    @NotNull(message = "liableUserId is required")
-    private Long liableUserId;   // co-owner làm hư xe
-
     @NotBlank(message = "description is required")
     @Size(min = 5, max = 2000, message = "description must be 5-2000 characters")
     private String description;
 
     @NotNull(message = "cost is required")
-    @DecimalMin(value = "0.01", message = "cost must be > 0")
+    @DecimalMin(value = "10000", message = "cost must be > 10000")
     private BigDecimal cost;
 
     @NotNull(message = "estimatedDurationDays is required")
