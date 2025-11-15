@@ -1,5 +1,6 @@
 package com.group8.evcoownership.repository;
 
+import com.group8.evcoownership.entity.OwnershipGroup;
 import com.group8.evcoownership.entity.VehicleImage;
 import com.group8.evcoownership.enums.ImageApprovalStatus;
 import org.springframework.data.domain.Page;
@@ -16,8 +17,6 @@ public interface VehicleImageRepository extends JpaRepository<VehicleImage, Long
 
     List<VehicleImage> findByVehicleId(Long vehicleId);
 
-    List<VehicleImage> findByVehicleIdAndImageType(Long vehicleId, String imageType);
-
     List<VehicleImage> findByApprovalStatus(ImageApprovalStatus status);
 
     Page<VehicleImage> findByApprovalStatus(ImageApprovalStatus status, Pageable pageable);
@@ -30,13 +29,26 @@ public interface VehicleImageRepository extends JpaRepository<VehicleImage, Long
     @Query("SELECT COUNT(vi) FROM VehicleImage vi WHERE vi.vehicle.Id = :vehicleId AND vi.approvalStatus = :status")
     long countByVehicleIdAndApprovalStatus(@Param("vehicleId") Long vehicleId, @Param("status") ImageApprovalStatus status);
 
-    List<VehicleImage> findByVehicle_OwnershipGroup_GroupId(Long groupId);
+    @Query("""
+            SELECT DISTINCT vi
+            FROM VehicleImage vi
+            LEFT JOIN FETCH vi.approvedBy
+            LEFT JOIN FETCH vi.vehicle v
+            LEFT JOIN FETCH v.ownershipGroup g
+            WHERE v.Id = :vehicleId
+            """)
+    List<VehicleImage> findDetailedByVehicleId(@Param("vehicleId") Long vehicleId);
+
+    @Query("""
+            SELECT DISTINCT vi
+            FROM VehicleImage vi
+            LEFT JOIN FETCH vi.approvedBy
+            LEFT JOIN FETCH vi.vehicle v
+            LEFT JOIN FETCH v.ownershipGroup g
+            WHERE g.groupId = :groupId
+            """)
+    List<VehicleImage> findDetailedByGroupId(@Param("groupId") Long groupId);
 
     @Query("SELECT DISTINCT v.ownershipGroup FROM VehicleImage vi JOIN vi.vehicle v WHERE vi.approvalStatus = 'PENDING'")
-    List<com.group8.evcoownership.entity.OwnershipGroup> findGroupsWithPendingImages();
-
-    void deleteByVehicleId(Long vehicleId);
-
-    @Query("SELECT vi FROM VehicleImage vi WHERE vi.vehicle.Id = :vehicleId ORDER BY vi.uploadedAt DESC")
-    List<VehicleImage> findByVehicleIdOrderByUploadedAtDesc(@Param("vehicleId") Long vehicleId);
+    List<OwnershipGroup> findGroupsWithPendingImages();
 }
