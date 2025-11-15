@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long> {
 
@@ -121,5 +122,10 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
     ORDER BY ub.startDateTime DESC
     """)
     List<UsageBooking> findAllBookingsByGroupId(@Param("groupId") Long groupId);
+
+    // Lần gần nhất xe này đã checkout (user đã trả xe)
+    Optional<UsageBooking> findTopByVehicle_idAndCheckoutStatusTrueOrderByCheckoutTimeDesc(Long vehicleId);
+
+
 }
 
