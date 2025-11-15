@@ -175,16 +175,6 @@ public class ContractController {
         return ResponseEntity.ok(result);
     }
 
-    /**
-     * API: Member agree/disagree với contract
-     * ------------------------------------------------------------
-     * Dành cho:
-     * - Members trong nhóm (không phải admin)
-     * <p>
-     * Điều kiện:
-     * - Contract phải ở trạng thái PENDING_MEMBER_APPROVAL
-     * - Nếu DISAGREE, phải có lý do (ít nhất 10 ký tự)
-     */
     @PostMapping("/{contractId}/member-feedback")
     @PreAuthorize("hasAnyRole('CO_OWNER')")
     @Operation(

@@ -498,6 +498,43 @@ public class ContractService {
 
         Contract savedContract = contractRepository.saveAndFlush(contract);
 
+        // Tạo feedback APPROVED cho admin khi autoSignContract
+        // Để logic đếm có thể đếm được admin đã approve
+        List<OwnershipShare> allShares = shareRepository.findByGroup_GroupId(groupId);
+        OwnershipShare adminShare = allShares.stream()
+                .filter(share -> share.getGroupRole() == GroupRole.ADMIN)
+                .findFirst()
+                .orElse(null);
+        
+        if (adminShare != null) {
+            // Kiểm tra xem admin đã có feedback chưa
+            boolean adminHasFeedback = feedbackRepository.existsByContractIdAndUser_UserId(
+                    savedContract.getId(), 
+                    adminShare.getUser().getUserId()
+            );
+            
+            // Nếu admin chưa có feedback, tạo feedback APPROVED cho admin
+            if (!adminHasFeedback) {
+                ContractFeedback adminFeedback = ContractFeedback.builder()
+                        .contract(savedContract)
+                        .user(adminShare.getUser())
+                        .status(MemberFeedbackStatus.APPROVED)
+                        .reactionType(ReactionType.AGREE)
+                        .reason(null)
+                        .adminNote(null)
+                        .build();
+                
+                feedbackRepository.save(adminFeedback);
+                
+                // Ghi lại lịch sử
+                recordFeedbackHistorySnapshot(
+                        adminFeedback,
+                        FeedbackHistoryAction.MEMBER_REVIEW,
+                        "Admin auto-signed contract via autoSignContract"
+                );
+            }
+        }
+
         // Gửi notification cho tất cả thành viên (trừ admin group) để approve/reject contract
         if (notificationOrchestrator != null) {
             Map<String, Object> emailData = notificationOrchestrator.buildContractEmailData(savedContract);
