@@ -31,8 +31,8 @@ public class Payment {
     @JoinColumn(name = "PayerUserId", nullable = false)
     private User payer;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "FundId", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "FundId", nullable = true)
     private SharedFund fund;
 
     @NotNull
