@@ -1161,14 +1161,30 @@ public class ContractService {
             throw new IllegalStateException("Only signed contracts can be rejected");
         }
 
-        // Sau khi reject, contract quay về trạng thái REJECTED (moi sua 11/14/2025 by thinh)
-        contract.setApprovalStatus(ContractApprovalStatus.REJECTED);
+        // Sau khi reject, contract quay về trạng thái PENDING
+        contract.setApprovalStatus(ContractApprovalStatus.PENDING);
         contract.setApprovedBy(admin);
         contract.setApprovedAt(LocalDateTime.now());
         contract.setRejectionReason(reason);
         contract.setIsActive(false);
+        contract.setUpdatedAt(LocalDateTime.now());
 
         Contract savedContract = contractRepository.saveAndFlush(contract);
+
+        // Xóa tất cả feedbacks cũ để có thể tạo lại feedback mới
+        List<ContractFeedback> feedbacks = feedbackRepository.findByContractId(contractId);
+        if (!feedbacks.isEmpty()) {
+            // Ghi lại history trước khi xóa (nếu cần giữ lịch sử)
+            feedbacks.forEach(f -> recordFeedbackHistorySnapshot(
+                    f,
+                    FeedbackHistoryAction.MEMBER_REVIEW,
+                    "Contract rejected by system admin - feedbacks cleared"
+            ));
+            
+            // Xóa tất cả feedbacks
+            feedbackRepository.deleteAll(feedbacks);
+            feedbackRepository.flush();
+        }
 
         // Hoàn tiền cọc cho các thành viên đã đóng khi contract bị reject
         Long groupId = savedContract.getGroup().getGroupId();
@@ -1567,7 +1583,7 @@ public class ContractService {
         return feedback != null && feedback.getLastAdminAction() != null;
     }
 
-    private void recordFeedbackHistorySnapshot(ContractFeedback feedback,
+    public void recordFeedbackHistorySnapshot(ContractFeedback feedback,
                                                FeedbackHistoryAction action,
                                                String note) {
         if (feedback == null || feedback.getId() == null) {
