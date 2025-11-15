@@ -1413,6 +1413,12 @@ public class ContractService {
                 .toList();
     }
 
+    public List<ContractDTO> getContractsByStatuses(List<ContractApprovalStatus> statuses) {
+        return contractRepository.findByApprovalStatusIn(statuses).stream()
+                .map(this::convertToDTO)
+                .toList();
+    }
+
     /**
      * ADMIN: Lấy tất cả contracts của một group
      */
