@@ -75,4 +75,6 @@ public interface OwnershipShareRepository extends JpaRepository<OwnershipShare, 
                                                    @Param("fundId") Long fundId);
 
 
-}
+    // Lấy tất cả share theo groupId
+    //
+    List<OwnershipShare> findByOwnershipGroup_GroupId(Long groupId);}

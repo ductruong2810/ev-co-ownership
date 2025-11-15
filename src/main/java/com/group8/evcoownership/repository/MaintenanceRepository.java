@@ -2,11 +2,13 @@ package com.group8.evcoownership.repository;
 
 import com.group8.evcoownership.entity.Maintenance;
 import com.group8.evcoownership.entity.User;
+import com.group8.evcoownership.enums.MaintenanceCoverageType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -73,7 +75,15 @@ public interface MaintenanceRepository extends JpaRepository<Maintenance, Long> 
                   AND CAST(m.approvalDate AS date) = CURRENT_DATE
             """)
     boolean existsActiveMaintenance(@Param("vehicleId") Long vehicleId, @Param("groupId") Long groupId);
-}
+
+    // Nếu muốn lấy tất cả maintenance mà user là người phải trả
+    List<Maintenance> findByLiableUser_UserIdOrderByRequestDateDesc(Long userId);
+
+    // Nếu muốn filter riêng cho PERSONAL
+    List<Maintenance> findByCoverageTypeAndLiableUser_UserIdOrderByRequestDateDesc(
+            MaintenanceCoverageType coverageType,
+            Long userId
+    );}
 
 
 
