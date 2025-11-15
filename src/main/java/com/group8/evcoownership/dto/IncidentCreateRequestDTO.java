@@ -21,7 +21,7 @@ public class IncidentCreateRequestDTO {
     private String description;
 
     @NotNull(message = "Actual cost is required")
-    @DecimalMin(value = "0.01", inclusive = true, message = "Actual cost must be greater than 0")
+    @DecimalMin(value = "0.01", message = "Actual cost must be greater than 0")
     private BigDecimal actualCost;
 
     private String imageUrls; // optional

@@ -16,7 +16,7 @@ public interface IncidentRepository extends JpaRepository<Incident, Long> {
 
     // ✅ Tìm các incident chưa được xử lý (PENDING) cho 1 xe cụ thể trong nhóm cụ thể
     @Query("""
-                SELECT COUNT(i) > 0 
+                SELECT COUNT(i) > 0
                 FROM Incident i
                 WHERE i.booking.vehicle.Id = :vehicleId
                   AND i.booking.vehicle.ownershipGroup.groupId = :groupId
@@ -29,8 +29,8 @@ public interface IncidentRepository extends JpaRepository<Incident, Long> {
                 WHERE (:status IS NULL OR i.status = :status)
                   AND (:startDate IS NULL OR i.createdAt >= CAST(:startDate AS timestamp))
                   AND (:endDate IS NULL OR i.createdAt <= CAST(:endDate AS timestamp))
-                ORDER BY 
-                  CASE 
+                ORDER BY
+                  CASE
                     WHEN i.status = 'PENDING' THEN 1
                     WHEN i.status = 'APPROVED' THEN 2
                     WHEN i.status = 'REJECTED' THEN 3
