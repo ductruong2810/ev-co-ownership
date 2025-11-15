@@ -83,7 +83,11 @@ public interface MaintenanceRepository extends JpaRepository<Maintenance, Long> 
     List<Maintenance> findByCoverageTypeAndLiableUser_UserIdOrderByRequestDateDesc(
             MaintenanceCoverageType coverageType,
             Long userId
-    );}
+    );
+
+    // Lấy tất cả maintenance theo coverage type, sort mới nhất trước
+    List<Maintenance> findByCoverageTypeOrderByRequestDateDesc(MaintenanceCoverageType coverageType);
+}
 
 
 

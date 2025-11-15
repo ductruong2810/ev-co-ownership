@@ -3,6 +3,7 @@ package com.group8.evcoownership.service;
 
 import com.group8.evcoownership.dto.MaintenanceAfterCheckOutCreateRequestDTO;
 import com.group8.evcoownership.dto.MaintenanceResponseDTO;
+import com.group8.evcoownership.dto.MaintenanceUpdateRequestDTO;
 import com.group8.evcoownership.entity.Maintenance;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.entity.Vehicle;
@@ -16,6 +17,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -31,6 +34,7 @@ public class MaintenanceAfterCheckOutService {
     private final OwnershipShareRepository ownershipShareRepository;
 
     /**
+     * Technician
      * Create
      * UPDATE WHEN PENDING
      */
@@ -87,6 +91,51 @@ public class MaintenanceAfterCheckOutService {
         return mapToDTO(m);
     }
 
+    // =================== UPDATE (TECHNICIAN UPDATE KHI CÒN PENDING) ===================
+    public MaintenanceResponseDTO update(Long id, MaintenanceUpdateRequestDTO req, String username) {
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+        Maintenance maintenance = maintenanceRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Maintenance not found"));
+
+        if (!"PENDING".equals(maintenance.getStatus())) {
+            throw new IllegalStateException("Only PENDING maintenance requests can be updated.");
+        }
+
+        // Chỉ technician (người tạo) mới được sửa
+        if (!maintenance.getRequestedBy().getUserId().equals(user.getUserId())) {
+            throw new SecurityException("Only the technician who created this request can update it.");
+        }
+
+        if (maintenance.getCoverageType() != MaintenanceCoverageType.PERSONAL) {
+            throw new IllegalStateException("This update is only for PERSONAL maintenance.");
+        }
+
+
+        if (req.getDescription() != null && !req.getDescription().isBlank()) {
+            maintenance.setDescription(req.getDescription());
+        }
+
+        if (req.getCost() != null && req.getCost().compareTo(BigDecimal.ZERO) > 0) {
+            maintenance.setActualCost(req.getCost());
+        }
+
+        if (req.getNextDueDate() != null && req.getNextDueDate().isAfter(LocalDate.now())) {
+            maintenance.setNextDueDate(req.getNextDueDate());
+        }
+
+        if (req.getEstimatedDurationDays() != null && req.getEstimatedDurationDays() > 0) {
+            maintenance.setEstimatedDurationDays(req.getEstimatedDurationDays());
+        }
+
+        maintenance.setUpdatedAt(LocalDateTime.now());
+        maintenanceRepository.save(maintenance);
+
+        return mapToDTO(maintenance);
+    }
+
+
     /**
      * CO-OWNER
      * Get List
@@ -117,12 +166,180 @@ public class MaintenanceAfterCheckOutService {
      * UPDATE FUNDED -> IN_PROGRESS
      * UPDATE IN_PROGRESS -> COMPLETED
      */
-    // =============== GET DETAIL 1 MAINTENANCE (PERSONAL HOẶC GROUP) ===============
+    // =============== 1. GET DETAIL 1 MAINTENANCE (PERSONAL HOẶC GROUP) ===============
     public MaintenanceResponseDTO getOne(Long id) {
         Maintenance m = maintenanceRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Maintenance not found"));
         return mapToDTO(m);
     }
+
+    // ==========================================================
+    // 2. STAFF/ADMIN: PENDING -> APPROVED (PERSONAL, không chia tiền)
+    // ==========================================================
+    public MaintenanceResponseDTO approveAfterCheckOut(Long id, String staffEmail) {
+        Maintenance m = maintenanceRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Maintenance not found"));
+
+        User staff = userRepository.findByEmail(staffEmail)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+        if (m.getCoverageType() != MaintenanceCoverageType.PERSONAL) {
+            throw new IllegalStateException("This approve method is only for PERSONAL maintenance.");
+        }
+
+        if (!"PENDING".equals(m.getStatus())) {
+            throw new IllegalStateException("Only PENDING maintenance can be approved.");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        m.setStatus("APPROVED");
+        m.setApprovedBy(staff);
+        m.setApprovalDate(now);
+        m.setUpdatedAt(now);
+
+        maintenanceRepository.save(m);
+        return mapToDTO(m);
+    }
+
+    // ==========================================================
+    // 3. STAFF/ADMIN: PENDING -> REJECTED (PERSONAL)
+    // ==========================================================
+    public MaintenanceResponseDTO rejectAfterCheckOut(Long id, String staffEmail) {
+        Maintenance m = maintenanceRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Maintenance not found"));
+
+        User staff = userRepository.findByEmail(staffEmail)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+        if (m.getCoverageType() != MaintenanceCoverageType.PERSONAL) {
+            throw new IllegalStateException("This reject method is only for PERSONAL maintenance.");
+        }
+
+        if (!"PENDING".equals(m.getStatus())) {
+            throw new IllegalStateException("Only PENDING maintenance can be rejected.");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        m.setStatus("REJECTED");
+        m.setApprovedBy(staff);
+        m.setApprovalDate(now);
+        m.setUpdatedAt(now);
+
+        maintenanceRepository.save(m);
+        return mapToDTO(m);
+    }
+
+    // ==========================================================
+    // 4. STAFF: FUNDED -> IN_PROGRESS (PERSONAL sau checkout)
+    // ==========================================================
+    public MaintenanceResponseDTO startAfterCheckOut(Long id, String staffEmail) {
+        Maintenance m = maintenanceRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Maintenance not found"));
+
+        User staff = userRepository.findByEmail(staffEmail)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+        if (m.getCoverageType() != MaintenanceCoverageType.PERSONAL) {
+            throw new IllegalStateException("This start method is only for PERSONAL maintenance.");
+        }
+
+        if (!"FUNDED".equals(m.getStatus())) {
+            throw new IllegalStateException("Only FUNDED maintenance can be started.");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        m.setStatus("IN_PROGRESS");
+        m.setMaintenanceStartAt(now);
+
+        if (m.getEstimatedDurationDays() != null && m.getEstimatedDurationDays() > 0) {
+            m.setExpectedFinishAt(now.plusDays(m.getEstimatedDurationDays()));
+        }
+
+        m.setUpdatedAt(now);
+        maintenanceRepository.save(m);
+
+        return mapToDTO(m);
+    }
+
+    // ==========================================================
+    // 5. STAFF: IN_PROGRESS -> COMPLETED (PERSONAL sau checkout)
+    // ==========================================================
+    public MaintenanceResponseDTO completeAfterCheckOut(Long id, String staffEmail) {
+        Maintenance m = maintenanceRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Maintenance not found"));
+
+        User staff = userRepository.findByEmail(staffEmail)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+        if (m.getCoverageType() != MaintenanceCoverageType.PERSONAL) {
+            throw new IllegalStateException("This complete method is only for PERSONAL maintenance.");
+        }
+
+        if (!"IN_PROGRESS".equals(m.getStatus())) {
+            throw new IllegalStateException("Only IN_PROGRESS maintenance can be completed.");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        m.setStatus("COMPLETED");
+        m.setMaintenanceCompletedAt(now);
+        m.setUpdatedAt(now);
+
+        // Case after checkout là sự cố, không phải bảo trì định kỳ
+        // nên thường không set nextDueDate (để null là đúng)
+
+        maintenanceRepository.save(m);
+        return mapToDTO(m);
+    }
+    // ==========================================================
+    // 6. STAFF / ADMIN SEARCH BY MANY CRITERIAS
+    // ==========================================================
+    @Transactional(readOnly = true)
+    public List<MaintenanceResponseDTO> searchPersonalForStaff(
+            String status,
+            Long groupId,
+            Long vehicleId,
+            Long liableUserId,
+            Long requestedById,
+            LocalDate fromRequestDate,
+            LocalDate toRequestDate,
+            BigDecimal costFrom,
+            BigDecimal costTo
+    ) {
+        var list = maintenanceRepository
+                .findByCoverageTypeOrderByRequestDateDesc(MaintenanceCoverageType.PERSONAL);
+
+        return list.stream()
+                .filter(m -> status == null
+                        || m.getStatus().equalsIgnoreCase(status))
+                .filter(m -> groupId == null
+                        || (m.getVehicle().getOwnershipGroup() != null
+                        && m.getVehicle().getOwnershipGroup().getGroupId().equals(groupId)))
+                .filter(m -> vehicleId == null
+                        || m.getVehicle().getId().equals(vehicleId))
+                .filter(m -> liableUserId == null
+                        || (m.getLiableUser() != null
+                        && m.getLiableUser().getUserId().equals(liableUserId)))
+                .filter(m -> requestedById == null
+                        || m.getRequestedBy().getUserId().equals(requestedById))
+                .filter(m -> {
+                    if (fromRequestDate == null && toRequestDate == null) return true;
+                    var d = m.getRequestDate().toLocalDate();
+                    if (fromRequestDate != null && d.isBefore(fromRequestDate)) return false;
+                    if (toRequestDate != null && d.isAfter(toRequestDate)) return false;
+                    return true;
+                })
+                .filter(m -> {
+                    if (costFrom == null && costTo == null) return true;
+                    var cost = m.getActualCost();
+                    if (cost == null) return false;
+                    if (costFrom != null && cost.compareTo(costFrom) < 0) return false;
+                    if (costTo != null && cost.compareTo(costTo) > 0) return false;
+                    return true;
+                })
+                .map(this::mapToDTO)
+                .toList();
+    }
+
 
     /**
      * Helper - Mapping
