@@ -6,7 +6,6 @@ import com.group8.evcoownership.entity.OwnershipShare;
 import com.group8.evcoownership.entity.Payment;
 import com.group8.evcoownership.enums.ContractApprovalStatus;
 import com.group8.evcoownership.enums.DepositStatus;
-import com.group8.evcoownership.enums.FeedbackHistoryAction;
 import com.group8.evcoownership.enums.NotificationType;
 import com.group8.evcoownership.enums.PaymentStatus;
 import com.group8.evcoownership.enums.PaymentType;
@@ -42,7 +41,6 @@ public class ContractDeadlineScheduler {
     private final DepositPaymentService depositPaymentService;
     private final PaymentRepository paymentRepository;
     private final ContractFeedbackRepository feedbackRepository;
-    private final ContractService contractService;
 
     /**
      * Gửi thông báo nhắc nhở cho các member chưa đóng cọc khi gần hết hạn
@@ -130,21 +128,8 @@ public class ContractDeadlineScheduler {
                 contractRepository.save(contract);
 
                 // Xóa tất cả feedbacks cũ để có thể tạo lại feedback mới
-                // Ghi lại lịch sử trước khi xóa
                 List<ContractFeedback> feedbacks = feedbackRepository.findByContractId(contract.getId());
                 if (!feedbacks.isEmpty()) {
-                    for (ContractFeedback feedback : feedbacks) {
-                        try {
-                            contractService.recordFeedbackHistorySnapshot(
-                                    feedback,
-                                    FeedbackHistoryAction.MEMBER_REVIEW,
-                                    "Contract auto-rejected due to deposit deadline expiration - feedbacks cleared"
-                            );
-                        } catch (Exception ex) {
-                            log.error("Failed to record feedback history for feedback {}", feedback.getId(), ex);
-                        }
-                    }
-                    
                     // Xóa tất cả feedbacks
                     feedbackRepository.deleteAll(feedbacks);
                     feedbackRepository.flush();

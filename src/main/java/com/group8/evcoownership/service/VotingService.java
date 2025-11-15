@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class VotingService {
     private final VotingRepository votingRepository;
     private final VoteRecordRepository voteRecordRepository;

@@ -31,6 +31,7 @@ import static com.group8.evcoownership.enums.RoleName.*;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class FundService {
     private final SharedFundRepository fundRepo;
     private final OwnershipGroupRepository groupRepo;

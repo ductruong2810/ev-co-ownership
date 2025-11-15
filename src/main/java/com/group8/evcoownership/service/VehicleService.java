@@ -12,17 +12,18 @@ import com.group8.evcoownership.repository.OwnershipGroupRepository;
 import com.group8.evcoownership.repository.VehicleImageRepository;
 import com.group8.evcoownership.repository.VehicleRepository;
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.*;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class VehicleService {
 
     private final VehicleRepository vehicleRepo;

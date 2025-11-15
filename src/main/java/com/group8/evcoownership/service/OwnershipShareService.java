@@ -11,9 +11,9 @@ import com.group8.evcoownership.enums.GroupStatus;
 import com.group8.evcoownership.enums.NotificationType;
 import com.group8.evcoownership.repository.*;
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -22,6 +22,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class OwnershipShareService {
 
     private final OwnershipShareRepository shareRepo;

@@ -29,6 +29,7 @@ import static org.hibernate.Hibernate.isInitialized;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class PaymentService {
 
     private final PaymentRepository paymentRepo;

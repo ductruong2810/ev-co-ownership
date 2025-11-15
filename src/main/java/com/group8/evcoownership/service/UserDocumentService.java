@@ -24,6 +24,7 @@ import java.util.regex.Pattern;
 
 @Service
 @Slf4j
+@Transactional
 public class UserDocumentService {
 
     @Autowired

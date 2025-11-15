@@ -30,6 +30,7 @@ import java.util.concurrent.ThreadLocalRandom;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional
 public class DepositPaymentService {
 
     private final FundService fundService;
