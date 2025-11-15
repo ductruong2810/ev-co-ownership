@@ -1,5 +1,6 @@
 package com.group8.evcoownership.dto;
 
+import com.group8.evcoownership.enums.MaintenanceCoverageType;
 import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -19,6 +20,9 @@ public class MaintenanceResponseDTO {
 
     private String requestedByName; // technician
     private String approvedByName;  // Staff/Admin
+
+    private String liableUserName;              // co-owner phải trả
+    private MaintenanceCoverageType coverageType; // PERSONAL OR GROUP
 
     private String description;
 
