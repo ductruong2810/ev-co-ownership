@@ -2,7 +2,12 @@ package com.group8.evcoownership.controller;
 
 import com.group8.evcoownership.dto.FundTopupRequestDTO;
 import com.group8.evcoownership.dto.FundTopupResponseDTO;
+import com.group8.evcoownership.entity.Payment;
+import com.group8.evcoownership.enums.PaymentType;
+import com.group8.evcoownership.repository.PaymentRepository;
 import com.group8.evcoownership.service.FundPaymentService;
+import com.group8.evcoownership.service.MaintenancePaymentService;
+import com.group8.evcoownership.service.MaintenanceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,6 +30,8 @@ import java.io.IOException;
 public class FundPaymentController {
 
     private final FundPaymentService fundPaymentService;
+    private final PaymentRepository paymentRepository;
+    private final MaintenancePaymentService maintenancePaymentService;
 
     @Value("${frontend.base.url}")
     private String frontendBaseUrl;
@@ -92,7 +99,10 @@ public class FundPaymentController {
             summary = "Callback trả về từ VNPay (public)",
             description = """
             VNPay redirect người dùng về đây sau khi thanh toán.
-            - Nếu vnp_ResponseCode = '00': xác nhận & cộng quỹ.
+            - Dựa vào txnRef để tìm Payment và phân biệt loại:
+              + CONTRIBUTION  -> nạp quỹ (fund topup)
+              + MAINTENANCE_FEE -> thanh toán maintenance PERSONAL
+            - Nếu vnp_ResponseCode = '00': xác nhận & cập nhật tương ứng.
             - Ngược lại: fail.
             """
     )
@@ -104,17 +114,51 @@ public class FundPaymentController {
             @RequestParam(value = "groupId", required = false) Long groupId
     ) throws IOException {
 
+        String typeForFrontend = "fund"; // default
+
         try {
             if ("00".equals(responseCode)) {
-                fundPaymentService.confirmFundTopup(txnRef, transactionNo);
-                redirect(response, groupId, "success", txnRef);
+                // 1) Tìm payment theo txnRef
+                Payment payment = paymentRepository.findByTransactionCode(txnRef)
+                        .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + txnRef));
+
+                // 2) Phân nhánh theo PaymentType
+                if (payment.getPaymentType() == PaymentType.CONTRIBUTION) {
+                    // Nạp quỹ OPERATING
+                    fundPaymentService.confirmFundTopup(txnRef, transactionNo);
+                    typeForFrontend = "fund";
+                } else if (payment.getPaymentType() == PaymentType.MAINTENANCE_FEE) {
+                    // Thanh toán maintenance PERSONAL
+                    maintenancePaymentService.confirmMaintenancePayment(txnRef, transactionNo);
+                    typeForFrontend = "maintenance";
+                } else {
+                    // Nếu là loại khác, tuỳ bạn xử lý (báo lỗi / bỏ qua)
+                    throw new IllegalStateException("Unsupported payment type for callback: " + payment.getPaymentType());
+                }
+
+                redirect(response, groupId, typeForFrontend, "success", txnRef);
             } else {
-                redirect(response, groupId, "fail", txnRef);
+                // Thanh toán không thành công
+                redirect(response, groupId, "fund", "fail", txnRef);
             }
         } catch (Exception ex) {
-            redirect(response, groupId, "error", txnRef);
+            redirect(response, groupId, "fund", "error", txnRef);
         }
     }
+
+    // ===== Helper redirect =====
+    private void redirect(HttpServletResponse res, Long groupId, String type, String status, String txnRef) throws IOException {
+        if (groupId != null) {
+            res.sendRedirect(String.format(
+                    "%s/dashboard/viewGroups/%d/payment-result?type=%s&status=%s&txnRef=%s",
+                    frontendBaseUrl, groupId, type, status, txnRef));
+        } else {
+            res.sendRedirect(String.format(
+                    "%s/payment-result?type=%s&status=%s&txnRef=%s",
+                    frontendBaseUrl, type, status, txnRef));
+        }
+    }
+
 
     // ===== Helper redirect =====
     private void redirect(HttpServletResponse res, Long groupId, String status, String txnRef) throws IOException {

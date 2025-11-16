@@ -80,9 +80,8 @@ public class MaintenancePaymentService {
         payment.setPersonalReason("MAINTENANCE");
         payment.setFund(null); // IMPORTANT: không đụng SharedFund
 
-        // nếu có sourceType/sourceId:
-        // payment.setSourceType("MAINTENANCE");
-        // payment.setSourceId(m.getId());
+        // -> cột MaintenanceId trong bảng Payment sẽ được fill
+        payment.setMaintenance(m);
 
         payment = paymentRepository.save(payment);
 
@@ -114,40 +113,54 @@ public class MaintenancePaymentService {
 
     @Transactional
     public FundTopupResponseDTO confirmMaintenancePayment(String txnRef, String transactionNo) {
+        // lay payment theo txnRef
         Payment payment = depositPaymentService.getLatestPaymentByTxnRef(txnRef);
 
+        // payment cho maintenance, khong phai loai khac
         if (payment.getPaymentType() != PaymentType.MAINTENANCE_FEE) {
             throw new IllegalStateException("TxnRef does not belong to MAINTENANCE payment");
         }
 
-        // Idempotent
+        // Neu PAYMENT COMPLETED roi thi khong xu ly lai
         if (payment.getStatus() == PaymentStatus.COMPLETED) {
+            // Chỗ này có thể đảm bảo lại maintenance đã FUNDED (phòng call lại nhiều lần)
+            Maintenance already = payment.getMaintenance();
+            if (already != null
+                    && !"FUNDED".equalsIgnoreCase(already.getStatus())
+                    && !"COMPLETED".equalsIgnoreCase(already.getStatus())) {
+
+                already.setStatus("FUNDED");
+                already.setFundedAt(LocalDateTime.now());
+                maintenanceRepository.save(already);
+            }
             return map(payment, "Already completed");
         }
 
-        // providerResponse
+        // luu thong tin phan hoi tu VNPay (transactionNo + txnRef)
         String providerResponse = String.format(
                 "{\"vnp_TransactionNo\":\"%s\",\"vnp_TxnRef\":\"%s\"}",
                 transactionNo, txnRef
         );
 
+        // cap nhat payment thanh COMPLETED
         payment.setStatus(PaymentStatus.COMPLETED);
         payment.setPaidAt(LocalDateTime.now());
         payment.setProviderResponse(providerResponse);
         paymentRepository.save(payment);
 
-        // Ở đây KHÔNG cộng SharedFund
-        // Nhưng có thể update Maintenance → FUNDED
-        // Giả sử có field Maintenance.fundedAt:
+        // Lay Maintenance gan voi Payment nay
+        Maintenance m = payment.getMaintenance();
+        if (m == null) {
+            // Nếu null ==> create khong set payment.setMaintenance(m)
+            throw new IllegalStateException("Payment is not linked to any Maintenance");
+        }
 
-        // Tìm maintenance tương ứng:
-        // Nếu bạn có sourceType/sourceId thì truy trực tiếp, còn không thì phải query ngược:
-        // ví dụ: maintenanceRepository.findById(payment.getSourceId())...
-
-        // Tạm giả sử bạn tìm được m:
-        // m.setStatus("FUNDED");
-        // m.setFundedAt(LocalDateTime.now());
-        // maintenanceRepository.save(m);
+        // chuyen trang thai cua maintenance moi tim duoc sang FUNDED
+        if ("PENDING".equalsIgnoreCase(m.getStatus())) {
+            m.setStatus("FUNDED");
+            m.setFundedAt(LocalDateTime.now());
+            maintenanceRepository.save(m);
+        }
 
         return map(payment, "Maintenance personal payment completed");
     }
