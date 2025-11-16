@@ -1,31 +1,22 @@
 package com.group8.evcoownership.service;
 
 import com.group8.evcoownership.dto.*;
-import com.group8.evcoownership.entity.OwnershipGroup;
-import com.group8.evcoownership.entity.UsageBooking;
-import com.group8.evcoownership.entity.Vehicle;
+import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.enums.BookingStatus;
 import com.group8.evcoownership.exception.BookingValidationException;
-import com.group8.evcoownership.entity.VehicleCheck;
-import com.group8.evcoownership.entity.Maintenance;
-import com.group8.evcoownership.repository.IncidentRepository;
-import com.group8.evcoownership.repository.MaintenanceRepository;
-import com.group8.evcoownership.repository.OwnershipGroupRepository;
-import com.group8.evcoownership.repository.OwnershipShareRepository;
-import com.group8.evcoownership.repository.UsageBookingRepository;
-import com.group8.evcoownership.repository.UserRepository;
-import com.group8.evcoownership.repository.VehicleCheckRepository;
-import com.group8.evcoownership.repository.VehicleRepository;
+import com.group8.evcoownership.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.*;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
-
-import org.springframework.data.domain.PageRequest;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor

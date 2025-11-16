@@ -3,7 +3,6 @@ package com.group8.evcoownership.service;
 import com.group8.evcoownership.dto.MaintenanceCreateRequestDTO;
 import com.group8.evcoownership.dto.MaintenanceResponseDTO;
 import com.group8.evcoownership.dto.MaintenanceUpdateRequestDTO;
-import com.group8.evcoownership.entity.Expense;
 import com.group8.evcoownership.entity.Maintenance;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.entity.Vehicle;
@@ -34,7 +33,7 @@ public class MaintenanceService {
     private final ExpenseRepository expenseRepository;
 
     // =================== CREATE ===================
-    public MaintenanceResponseDTO create(MaintenanceCreateRequestDTO req, String username){
+    public MaintenanceResponseDTO create(MaintenanceCreateRequestDTO req, String username) {
         User technician = userRepository.findByEmail(username)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
@@ -55,6 +54,7 @@ public class MaintenanceService {
         maintenance = maintenanceRepository.save(maintenance);
         return mapToDTO(maintenance);
     }
+
     // =================== GET ONE ===================
     public MaintenanceResponseDTO getOne(Long id) {
         Maintenance maintenance = maintenanceRepository.findById(id)
@@ -77,7 +77,6 @@ public class MaintenanceService {
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
     }
-
 
 
     // =================== UPDATE ===================
@@ -203,8 +202,8 @@ public class MaintenanceService {
 
     /**
      * cac api moi de hoan thien flow maintenance
-     *  status Funded -> In_progress
-     *  status In_progress -> Completed
+     * status Funded -> In_progress
+     * status In_progress -> Completed
      */
     // =================== START (FUNDED → IN_PROGRESS) ===================
     public MaintenanceResponseDTO startMaintenance(Long id, String staffEmail) {

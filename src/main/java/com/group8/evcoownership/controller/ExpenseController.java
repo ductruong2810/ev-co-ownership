@@ -1,6 +1,7 @@
 package com.group8.evcoownership.controller;
-import com.group8.evcoownership.dto.ExpenseResponseDTO;
+
 import com.group8.evcoownership.dto.ExpenseCreateRequestDTO;
+import com.group8.evcoownership.dto.ExpenseResponseDTO;
 import com.group8.evcoownership.service.ExpenseService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -9,8 +10,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -64,14 +63,14 @@ public class ExpenseController {
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     @Operation(summary = "[STAFF/ADMIN] Danh sách Expense (lọc linh hoạt)", description = """
-        Lấy danh sách chi phí có thể lọc theo nhiều điều kiện:
-        - fundId: ID của quỹ
-        - sourceType: MAINTENANCE / INCIDENT
-        - status: PENDING / COMPLETED
-        - approvedById: ID người duyệt
-        - recipientUserId: ID người nhận tiền
-        Nếu không truyền tham số nào, sẽ trả về toàn bộ danh sách (có phân trang).
-        """)
+            Lấy danh sách chi phí có thể lọc theo nhiều điều kiện:
+            - fundId: ID của quỹ
+            - sourceType: MAINTENANCE / INCIDENT
+            - status: PENDING / COMPLETED
+            - approvedById: ID người duyệt
+            - recipientUserId: ID người nhận tiền
+            Nếu không truyền tham số nào, sẽ trả về toàn bộ danh sách (có phân trang).
+            """)
     public ResponseEntity<Page<ExpenseResponseDTO>> getAll(
             @RequestParam(required = false) Long fundId,
             @RequestParam(required = false) String sourceType,

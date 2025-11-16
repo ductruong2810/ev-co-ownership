@@ -2,7 +2,6 @@
 package com.group8.evcoownership.repository;
 
 import com.group8.evcoownership.entity.Payment;
-import com.group8.evcoownership.enums.DepositStatus;
 import com.group8.evcoownership.enums.FundType;
 import com.group8.evcoownership.enums.PaymentStatus;
 import com.group8.evcoownership.enums.PaymentType;
@@ -64,18 +63,18 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
      * cho ham getLedgerSummary
      */
     @Query("""
-   select coalesce(sum(p.amount), 0)
-   from Payment p
-   where p.fund.group.groupId = :groupId
-     and (:fundType is null or p.fund.fundType = :fundType)
-     and p.status = com.group8.evcoownership.enums.PaymentStatus.COMPLETED
-     and (:from is null or p.paidAt >= :from)
-     and (:to   is null or p.paidAt <  :to)
-""")
+               select coalesce(sum(p.amount), 0)
+               from Payment p
+               where p.fund.group.groupId = :groupId
+                 and (:fundType is null or p.fund.fundType = :fundType)
+                 and p.status = com.group8.evcoownership.enums.PaymentStatus.COMPLETED
+                 and (:from is null or p.paidAt >= :from)
+                 and (:to   is null or p.paidAt <  :to)
+            """)
     BigDecimal sumCompletedIn(Long groupId,
                               @Param("fundType") FundType fundType,
                               @Param("from") LocalDateTime from,
-                              @Param("to")   LocalDateTime to);
+                              @Param("to") LocalDateTime to);
 
 
     /**
@@ -83,34 +82,34 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
      */
 
     @Query("""
-  SELECT p FROM Payment p
-  JOIN p.fund f
-  JOIN f.group g
-  WHERE p.payer.userId = :userId
-    AND p.status = com.group8.evcoownership.enums.PaymentStatus.COMPLETED
-    AND (:fromAt IS NULL OR p.paymentDate >= :fromAt)
-    AND (:toAt   IS NULL OR p.paymentDate <= :toAt)
-""")
+              SELECT p FROM Payment p
+              JOIN p.fund f
+              JOIN f.group g
+              WHERE p.payer.userId = :userId
+                AND p.status = com.group8.evcoownership.enums.PaymentStatus.COMPLETED
+                AND (:fromAt IS NULL OR p.paymentDate >= :fromAt)
+                AND (:toAt   IS NULL OR p.paymentDate <= :toAt)
+            """)
     Page<Payment> searchUserHistoryCompleted(
             @Param("userId") Long userId,
             @Param("fromAt") LocalDateTime fromAt,
-            @Param("toAt")   LocalDateTime toAt,
+            @Param("toAt") LocalDateTime toAt,
             Pageable pageable
     );
 
     @Query("""
-  SELECT COALESCE(SUM(p.amount), 0) FROM Payment p
-  JOIN p.fund f
-  JOIN f.group g
-  WHERE p.payer.userId = :userId
-    AND p.status = com.group8.evcoownership.enums.PaymentStatus.COMPLETED
-    AND (:fromAt IS NULL OR p.paymentDate >= :fromAt)
-    AND (:toAt   IS NULL OR p.paymentDate <= :toAt)
-""")
+              SELECT COALESCE(SUM(p.amount), 0) FROM Payment p
+              JOIN p.fund f
+              JOIN f.group g
+              WHERE p.payer.userId = :userId
+                AND p.status = com.group8.evcoownership.enums.PaymentStatus.COMPLETED
+                AND (:fromAt IS NULL OR p.paymentDate >= :fromAt)
+                AND (:toAt   IS NULL OR p.paymentDate <= :toAt)
+            """)
     BigDecimal sumUserCompleted(
             @Param("userId") Long userId,
             @Param("fromAt") LocalDateTime fromAt,
-            @Param("toAt")   LocalDateTime toAt
+            @Param("toAt") LocalDateTime toAt
     );
 
 

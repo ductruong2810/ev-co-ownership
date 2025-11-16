@@ -33,7 +33,7 @@ public class VehicleController {
     @Operation(summary = "Cập nhật phương tiện", description = "Cập nhật thông tin của một phương tiện theo ID")
     @PreAuthorize("hasAnyRole('STAFF','ADMIN', 'CO_OWNER')")
     public VehicleResponseDTO update(@PathVariable Long vehicleId,
-                                  @RequestBody @Valid VehicleUpdateRequestDTO req) {
+                                     @RequestBody @Valid VehicleUpdateRequestDTO req) {
         return service.update(vehicleId, req);
     }
 
@@ -48,8 +48,8 @@ public class VehicleController {
     @Operation(summary = "Danh sách phương tiện theo nhóm", description = "Lấy danh sách phương tiện thuộc một nhóm cụ thể")
     @PreAuthorize("hasAnyRole('STAFF','ADMIN', 'CO_OWNER', 'TECHNICIAN')")
     public Page<VehicleResponseDTO> listByGroup(@RequestParam Long groupId,
-                                             @RequestParam(defaultValue = "0") int page,
-                                             @RequestParam(defaultValue = "20") int size) {
+                                                @RequestParam(defaultValue = "0") int page,
+                                                @RequestParam(defaultValue = "20") int size) {
         return service.listByGroup(groupId, PageRequest.of(page, size));
     }
 

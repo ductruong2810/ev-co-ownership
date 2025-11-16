@@ -45,7 +45,7 @@ public class DepositCalculationService {
 
     /**
      * Tính toán required deposit amount dựa trên OwnershipGroup
-     *
+     * <p>
      * Công thức ưu tiên:
      * 1. Nếu có Vehicle với vehicleValue: vehicleValue * 10% (tổng deposit cho cả group)
      * 2. Nếu không có Vehicle hoặc vehicleValue: BASE_DEPOSIT_AMOUNT + (memberCapacity * CAPACITY_MULTIPLIER * BASE_DEPOSIT_AMOUNT)

@@ -1,7 +1,9 @@
 package com.group8.evcoownership.service;
 
-import com.group8.evcoownership.dto.*;
+import com.group8.evcoownership.dto.IncidentCreateRequestDTO;
+import com.group8.evcoownership.dto.IncidentRejectRequestDTO;
 import com.group8.evcoownership.dto.IncidentResponseDTO;
+import com.group8.evcoownership.dto.IncidentUpdateRequestDTO;
 import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.enums.BookingStatus;
 import com.group8.evcoownership.enums.FundType;
@@ -43,7 +45,7 @@ public class IncidentService {
 
         // Cho phép report nếu đang IN_USE, CONFIRMED, hoặc COMPLETED trong 24h
         if (!List.of(BookingStatus.CONFIRMED, BookingStatus.AWAITING_REVIEW,
-                BookingStatus.NEEDS_ATTENTION, BookingStatus.COMPLETED)
+                        BookingStatus.NEEDS_ATTENTION, BookingStatus.COMPLETED)
                 .contains(booking.getStatus())) {
             throw new IllegalStateException("Booking not eligible for incident reporting.");
         }
@@ -155,7 +157,7 @@ public class IncidentService {
             throw new IllegalStateException("Only PENDING incidents can be rejected.");
         }
 
-        if (req.getRejectionCategory() == null ) {
+        if (req.getRejectionCategory() == null) {
             throw new IllegalArgumentException("Rejection category is required.");
         }
 

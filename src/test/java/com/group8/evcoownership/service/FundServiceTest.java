@@ -1,9 +1,7 @@
 package com.group8.evcoownership.service;
 
-import com.group8.evcoownership.dto.FundBalanceResponseDTO;
 import com.group8.evcoownership.dto.SharedFundCreateRequestDTO;
 import com.group8.evcoownership.dto.SharedFundDTO;
-import com.group8.evcoownership.dto.SharedFundUpdateRequestDTO;
 import com.group8.evcoownership.entity.OwnershipGroup;
 import com.group8.evcoownership.entity.SharedFund;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;

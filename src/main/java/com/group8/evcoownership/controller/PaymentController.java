@@ -1,7 +1,6 @@
 package com.group8.evcoownership.controller;
 
 import com.group8.evcoownership.dto.*;
-import com.group8.evcoownership.entity.Payment;
 import com.group8.evcoownership.service.PaymentService;
 import com.group8.evcoownership.service.VnPay_PaymentService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -18,8 +17,6 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
-
-import static jdk.jfr.FlightRecorder.isInitialized;
 
 @RestController
 @RequiredArgsConstructor
@@ -41,10 +38,9 @@ public class PaymentController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate
 
-    ){
-        return ResponseEntity.ok(paymentService.getPersonalHistoryAllGroups( userId, fromDate, toDate, 0, 20));
+    ) {
+        return ResponseEntity.ok(paymentService.getPersonalHistoryAllGroups(userId, fromDate, toDate, 0, 20));
     }
-
 
 
     /**
@@ -106,7 +102,7 @@ public class PaymentController {
     @Operation(summary = "Cập nhật thanh toán", description = "Cập nhật thông tin của một giao dịch thanh toán")
     @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     public PaymentResponseDTO update(@PathVariable Long id,
-                                  @Valid @RequestBody UpdatePaymentRequestDTO req) {
+                                     @Valid @RequestBody UpdatePaymentRequestDTO req) {
         return paymentService.update(id, req);
     }
 
@@ -132,8 +128,8 @@ public class PaymentController {
     @Operation(summary = "Đánh dấu đã thanh toán", description = "Đánh dấu giao dịch đã được thanh toán thành công")
     @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     public PaymentResponseDTO markPaid(@PathVariable Long id,
-                                    @RequestParam(required = false) String transactionCode,
-                                    @RequestBody(required = false) String providerResponseJson) {
+                                       @RequestParam(required = false) String transactionCode,
+                                       @RequestBody(required = false) String providerResponseJson) {
         return paymentService.markPaid(id, transactionCode, providerResponseJson);
     }
 
@@ -142,7 +138,7 @@ public class PaymentController {
     @Operation(summary = "Đánh dấu thanh toán thất bại", description = "Đánh dấu giao dịch thanh toán thất bại")
     @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     public PaymentResponseDTO markFailed(@PathVariable Long id,
-                                      @RequestBody(required = false) String providerResponseJson) {
+                                         @RequestBody(required = false) String providerResponseJson) {
         return paymentService.markFailed(id, providerResponseJson);
     }
 
@@ -151,7 +147,7 @@ public class PaymentController {
     @Operation(summary = "Đánh dấu đã hoàn tiền", description = "Đánh dấu giao dịch đã được hoàn tiền")
     @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     public PaymentResponseDTO markRefunded(@PathVariable Long id,
-                                        @RequestBody(required = false) String providerResponseJson) {
+                                           @RequestBody(required = false) String providerResponseJson) {
         return paymentService.markRefunded(id, providerResponseJson);
     }
 }

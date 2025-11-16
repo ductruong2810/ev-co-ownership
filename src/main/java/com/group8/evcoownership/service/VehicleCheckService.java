@@ -10,12 +10,12 @@ import com.group8.evcoownership.entity.VehicleCheck;
 import com.group8.evcoownership.enums.BookingStatus;
 import com.group8.evcoownership.repository.UsageBookingRepository;
 import com.group8.evcoownership.repository.VehicleCheckRepository;
-import org.springframework.beans.factory.annotation.Value;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.PageRequest;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -103,7 +103,8 @@ public class VehicleCheckService {
         if (booking != null && normalizedStatus != null) {
             switch (normalizedStatus) {
                 case "APPROVED", "PASSED", "COMPLETED" -> finalizeBookingAfterApproval(booking);
-                case "REJECTED", "FAILED", "NEEDS_ATTENTION" -> handleTechnicianRejection(booking, notes, issues, check, normalizedStatus);
+                case "REJECTED", "FAILED", "NEEDS_ATTENTION" ->
+                        handleTechnicianRejection(booking, notes, issues, check, normalizedStatus);
                 default -> {
                     // no-op for other statuses
                 }
@@ -190,8 +191,8 @@ public class VehicleCheckService {
         LocalDateTime startTime = booking.getStartDateTime();
         LocalDateTime earliestCheckIn = startTime != null
                 ? (checkInEarliestOffsetMinutes < 0
-                    ? LocalDateTime.MIN
-                    : startTime.minusMinutes(checkInEarliestOffsetMinutes))
+                ? LocalDateTime.MIN
+                : startTime.minusMinutes(checkInEarliestOffsetMinutes))
                 : LocalDateTime.MIN;
         LocalDateTime lockTime = startTime != null
                 ? startTime.plusMinutes(checkInLockOffsetMinutes)
@@ -679,7 +680,6 @@ public class VehicleCheckService {
 
         return new BookingContext(booking, qrData);
     }
-
 
 
     private BookingQrData parseBookingQr(String qrCode) throws IOException {

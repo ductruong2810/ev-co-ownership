@@ -10,36 +10,42 @@ import com.group8.evcoownership.repository.UserDocumentRepository;
 import com.group8.evcoownership.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Service
 @Slf4j
+@Transactional
 public class UserDocumentService {
 
-    @Autowired
-    private UserDocumentRepository userDocumentRepository;
+    private final UserDocumentRepository userDocumentRepository;
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
 
-    @Autowired
-    private AzureBlobStorageService azureBlobStorageService;
+    private final AzureBlobStorageService azureBlobStorageService;
 
-    @Autowired
-    private OcrService ocrService;
+    private final OcrService ocrService;
 
-    @Autowired
-    private TransactionTemplate transactionTemplate;
+    private final TransactionTemplate transactionTemplate;
+
+    public UserDocumentService(UserDocumentRepository userDocumentRepository, UserRepository userRepository, AzureBlobStorageService azureBlobStorageService, OcrService ocrService, TransactionTemplate transactionTemplate) {
+        this.userDocumentRepository = userDocumentRepository;
+        this.userRepository = userRepository;
+        this.azureBlobStorageService = azureBlobStorageService;
+        this.ocrService = ocrService;
+        this.transactionTemplate = transactionTemplate;
+    }
 
     // ================= UPLOAD BATCH DOCUMENTS =================
     public CompletableFuture<Map<String, Object>> uploadBatchDocuments(
@@ -58,7 +64,7 @@ public class UserDocumentService {
             String frontHash = calculateFileHash(frontFile);
             String backHash = backFile != null ? calculateFileHash(backFile) : null;
 
-            if (backHash != null && frontHash.equals(backHash)) {
+            if (frontHash.equals(backHash)) {
                 throw new IllegalArgumentException(
                         "Front and back images must be different. Please choose two different images."
                 );
@@ -111,6 +117,32 @@ public class UserDocumentService {
             throw new IllegalArgumentException("Unable to extract text from image");
         }
 
+        // VALIDATION: Kiểm tra loại giấy tờ thực tế có khớp với loại user chọn không
+        String detectedType = detectDocumentType(extractedText);
+
+        if ("UNKNOWN".equals(detectedType)) {
+            throw new IllegalArgumentException(
+                    "Unable to identify document type from image. Please ensure the image is clear and shows a valid document."
+            );
+        }
+
+        // Kiểm tra detectedType có khớp với documentType không
+        if (!detectedType.equals(documentType)) {
+            String expectedTypeName = "CITIZEN_ID".equals(documentType)
+                    ? "Citizen ID (CCCD)"
+                    : "Driver License (GPLX)";
+            String detectedTypeName = "CITIZEN_ID".equals(detectedType)
+                    ? "Citizen ID (CCCD)"
+                    : "Driver License (GPLX)";
+
+            throw new IllegalArgumentException(
+                    String.format(
+                            "Document type mismatch. You selected %s but the image is %s. Please upload the correct document type.",
+                            expectedTypeName, detectedTypeName
+                    )
+            );
+        }
+
         UserDocumentInfoDTO documentInfo = documentType.equals("CITIZEN_ID")
                 ? extractCitizenIdInfo(extractedText)
                 : extractDriverLicenseInfo(extractedText);
@@ -148,7 +180,7 @@ public class UserDocumentService {
                 "success", true,
                 "uploadedDocuments", uploadedDocs,
                 "documentInfo", documentInfo,
-                "detectedType", detectDocumentType(extractedText),
+                "detectedType", detectedType,
                 "processingTime", (System.currentTimeMillis() - startTime) + "ms"
         );
     }

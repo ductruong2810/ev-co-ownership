@@ -2,7 +2,6 @@ package com.group8.evcoownership.service;
 
 import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.entity.*;
-import com.group8.evcoownership.enums.DepositStatus;
 import com.group8.evcoownership.enums.FundType;
 import com.group8.evcoownership.enums.PaymentStatus;
 import com.group8.evcoownership.repository.ExpenseRepository;
@@ -19,18 +18,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.locks.LockSupport;
 import java.util.stream.Stream;
-
-import static com.group8.evcoownership.enums.RoleName.*;
 
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class FundService {
     private final SharedFundRepository fundRepo;
     private final OwnershipGroupRepository groupRepo;
@@ -40,6 +39,7 @@ public class FundService {
     // =========================================================
     // New Functions after Database Update
     // =========================================================
+
     /**
      * Ham getLedgerSummary de xem day du thong tin Fund cua 1 group
      * Ham nay se duoc goi api o controller
@@ -50,7 +50,7 @@ public class FundService {
                                              @Nullable LocalDateTime from,
                                              @Nullable LocalDateTime to) {
         // 1) Tổng thu / chi trong khoản thời gian
-        BigDecimal totalIn  = nz(PaymentRepository.sumCompletedIn(groupId, fundType, from, to));
+        BigDecimal totalIn = nz(PaymentRepository.sumCompletedIn(groupId, fundType, from, to));
         BigDecimal totalOut = nz(expenseRepository.sumApprovedOut(groupId, fundType, from, to));
 
         // 2) Số dư hiện tại của 2 quỹ
@@ -65,7 +65,7 @@ public class FundService {
         // 3) Lấy danh sách dòng sổ quỹ (tái dùng hàm getLedger bạn đã có)
         List<LedgerRowDTO> rows = getLedger(groupId, fundType,
                 (from != null ? from.toLocalDate() : null),
-                (to   != null ? to.toLocalDate()   : null));
+                (to != null ? to.toLocalDate() : null));
 
         return new LedgerSummaryDTO(totalIn, totalOut, operatingBal, depositBal, rows);
     }
@@ -83,13 +83,13 @@ public class FundService {
         // Neu fromD la null thi mac dinh 30 ngay truoc
         // Neu toD la null thi mac dinh ngay ket thuc la hom nay
         LocalDate fromD = (fromDate == null) ? LocalDate.now().minusDays(30) : fromDate;
-        LocalDate toD   = (toDate   == null) ? LocalDate.now()              : toDate;
+        LocalDate toD = (toDate == null) ? LocalDate.now() : toDate;
 
         // du lieu tu fe la LocalDate
         // ==> phai chuyen ve LocalDateTime
         // inclusive range: [00:00:00, 23:59:59.999999999]
         LocalDateTime from = fromD.atStartOfDay();
-        LocalDateTime to   = toD.plusDays(1).atStartOfDay().minusNanos(1);
+        LocalDateTime to = toD.plusDays(1).atStartOfDay().minusNanos(1);
 
         // ===== IN (nạp tiền, chỉ lấy PAID) =====
         List<Payment> ins = (fundType == null)
@@ -132,36 +132,36 @@ public class FundService {
     }
 
     // -------- helpers (nhỏ gọn) ----------
-    private String safeName(User u){ return u==null ? "N/A" : (u.getFullName()!=null ? u.getFullName() : u.getEmail()); }
-    private String displayRole(User u){
-        if (u==null || u.getRole()==null) return "";
-        return switch (u.getRole().getRoleName()){
+    private String safeName(User u) {
+        return u == null ? "N/A" : (u.getFullName() != null ? u.getFullName() : u.getEmail());
+    }
+
+    private String displayRole(User u) {
+        if (u == null || u.getRole() == null) return "";
+        return switch (u.getRole().getRoleName()) {
             case ADMIN -> "Admin";
             case STAFF -> "Staff";
-            case CO_OWNER -> "Co-owner";
             default -> "Co-owner";
         };
     }
-    private String mapExpenseTitle(String sourceType){
-        if (sourceType==null) return "Chi phí";
-        return switch (sourceType){
+
+    private String mapExpenseTitle(String sourceType) {
+        if (sourceType == null) return "Chi phí";
+        return switch (sourceType) {
             case "MAINTENANCE", "INCIDENT", "EXPENSE" -> "Bảo Trì & Chi Phí";
             default -> "Chi phí";
         };
     }
-    private String nzStr(String s){ return s==null ? "" : s; }
-//    private LocalDateTime toLocalDateTime(OffsetDateTime odt){ return odt==null ? null : odt.toLocalDateTime(); }
-    private LocalDateTime coalesce(LocalDateTime a, LocalDateTime b){ return a!=null ? a : b; }
 
+    private String nzStr(String s) {
+        return s == null ? "" : s;
+    }
 
+    //    private LocalDateTime toLocalDateTime(OffsetDateTime odt){ return odt==null ? null : odt.toLocalDateTime(); }
+    private LocalDateTime coalesce(LocalDateTime a, LocalDateTime b) {
+        return a != null ? a : b;
+    }
 
-    /**
-     * 1) initTwoFundIfMIssing : su dung cho OwnerShipGroupService
-     * 2) addDepositToReserve  : su dung cho confirmDepositPayment
-     * 3) refundFromReserve
-     * 4) topUpOperating
-     * 5) spendOperating
-     */
 
     /**
      * initTwoFundIfMIssing
@@ -194,36 +194,29 @@ public class FundService {
      * 4 hàm nghiệp vụ
      * addDepositToReserve được sử dụng trong confirmDepositPayment
      */
-    @Transactional public void addDepositToReserve(Long groupId, BigDecimal amt) {
+    @Transactional
+    public void addDepositToReserve(Long groupId, BigDecimal amt) {
         SharedFund r = fundRepo.findByGroup_GroupIdAndFundType(groupId, FundType.DEPOSIT_RESERVE).orElseThrow();
         increaseBalance(r.getFundId(), amt);
     }
 
-    @Transactional public void refundFromReserve(Long groupId, BigDecimal amt) {
-        SharedFund r = fundRepo.findByGroup_GroupIdAndFundType(groupId, FundType.DEPOSIT_RESERVE).orElseThrow();
-        decreaseBalance(r.getFundId(), amt);
-    }
-
-    @Transactional public void topUpOperating(Long groupId, BigDecimal amt) {
+    @Transactional
+    public void topUpOperating(Long groupId, BigDecimal amt) {
         SharedFund op = fundRepo.findByGroup_GroupIdAndFundType(groupId, FundType.OPERATING).orElseThrow();
         increaseBalance(op.getFundId(), amt);
     }
 
-    @Transactional public void spendOperating(Long groupId, BigDecimal amt) {
-        SharedFund op = fundRepo.findByGroup_GroupIdAndFundType(groupId, FundType.OPERATING).orElseThrow();
-        if (!op.isSpendable()) throw new IllegalStateException("Operating fund is not spendable");
-        decreaseBalance(op.getFundId(), amt);
-    }
-
     /**
-     * New read functions after updating database
+     * New read functions after updating a database
      */
-    private BigDecimal nz(BigDecimal x) { return x == null ? BigDecimal.ZERO : x; }
+    private BigDecimal nz(BigDecimal x) {
+        return x == null ? BigDecimal.ZERO : x;
+    }
 
 
     // Get List Fund by GroupID
     // ham nay se lay groupId
-    // ==> roi tra ve 1 list: 2 bang ghi, 1 cho deposit và 1 cho operating
+    // ==> roi trả ve 1 list: 2 bang ghi, 1 cho deposit và 1 cho operating
     @Transactional(readOnly = true)
     public List<SharedFundDTO> listFundsByGroup(Long groupId) {
         List<SharedFund> funds = fundRepo.findAllByGroup_GroupId(groupId);
@@ -257,6 +250,7 @@ public class FundService {
         BigDecimal rb = nz(rs.getBalance());
         return new FundsSummaryDTO(groupId, ob, rb, ob.add(rb));
     }
+
     @Transactional(readOnly = true)
     public List<SharedFundDTO> list(Pageable pageable) {
         return fundRepo.findAll(pageable)
@@ -376,9 +370,11 @@ public class FundService {
                     throw new IllegalStateException("Cập nhật quỹ thất bại do tranh chấp đồng thời. Vui lòng thử lại.", e);
                 }
                 // ngắt nhịp rất ngắn trước khi thử lại (tùy chọn)
-                try {
-                    Thread.sleep(20L * attempts);
-                } catch (InterruptedException ignored) {
+                long backoffMillis = Math.min(200L, 20L * attempts);
+                LockSupport.parkNanos(Duration.ofMillis(backoffMillis).toNanos());
+                if (Thread.currentThread().isInterrupted()) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException("Thread interrupted while retrying fund balance update", e);
                 }
             }
         }

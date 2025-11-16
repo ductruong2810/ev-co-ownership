@@ -30,6 +30,7 @@ import java.util.concurrent.ThreadLocalRandom;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional
 public class DepositPaymentService {
 
     private final FundService fundService;
@@ -470,7 +471,6 @@ public class DepositPaymentService {
         log.info("Successfully refunded payment {} - Amount: {} VND",
                 payment.getId(), payment.getAmount());
     }
-
 
 
 }

@@ -1,7 +1,11 @@
 package com.group8.evcoownership.dto;
 
 import com.group8.evcoownership.enums.MaintenanceCoverageType;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
