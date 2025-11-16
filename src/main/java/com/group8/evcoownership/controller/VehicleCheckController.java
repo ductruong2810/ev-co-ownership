@@ -112,12 +112,15 @@ public class VehicleCheckController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<VehicleCheck>> getAllChecks(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "30") int size) {
+    public ResponseEntity<List<VehicleCheck>> getAllChecks() {
 
-        Page<VehicleCheck> checks = vehicleCheckService.getAllChecks(PageRequest.of(page, size));
-        return ResponseEntity.ok(checks);
+        // backend tự quyết định page/size mặc định, ví dụ: 0, 100
+        Page<VehicleCheck> page = vehicleCheckService.getAllChecks(
+                PageRequest.of(0, 100)
+        );
+
+        // FE chỉ nhận list, không thấy Page metadata
+        return ResponseEntity.ok(page.getContent());
     }
 
     /**
