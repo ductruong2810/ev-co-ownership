@@ -78,7 +78,7 @@ public class MaintenancePaymentService {
         payment.setPaymentCategory("PERSONAL");
         payment.setChargedUser(m.getLiableUser());
         payment.setPersonalReason("MAINTENANCE");
-        payment.setFund(null); // ✨ IMPORTANT: không đụng SharedFund
+        payment.setFund(null); // IMPORTANT: không đụng SharedFund
 
         // nếu có sourceType/sourceId:
         // payment.setSourceType("MAINTENANCE");
