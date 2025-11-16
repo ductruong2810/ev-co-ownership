@@ -18,7 +18,7 @@ public interface VehicleCheckRepository extends JpaRepository<VehicleCheck, Long
 
     List<VehicleCheck> findByBookingId(Long bookingId);
 
-    // Find latest POST_USE check from bookings of a specific group and vehicle
+    // Find the latest POST_USE check from bookings of a specific group and vehicle
     @Query("""
                 SELECT vc FROM VehicleCheck vc
                 JOIN vc.booking b
