@@ -80,6 +80,15 @@ public class Payment {
     @Column(name = "PersonalReason")
     private String personalReason;
 
+    // Payment.java
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "MaintenanceId")
+    private Maintenance maintenance;
+// - Đây là link NGƯỢC từ Payment -> Maintenance.
+// - Chỉ những payment nào thuộc loại MAINTENANCE_FEE mới set field này (maintenance != null).
+// - Các payment khác (DEPOSIT, CONTRIBUTION, v.v.) sẽ để maintenance = null.
+
 
     @Version
     @Column(name = "Version", nullable = false)
