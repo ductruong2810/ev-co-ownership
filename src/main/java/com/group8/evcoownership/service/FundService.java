@@ -42,7 +42,7 @@ public class FundService {
 
     /**
      * Ham getLedgerSummary de xem day du thong tin Fund cua 1 group
-     * Ham nay se duoc goi api o controller
+     * Ham nay se duoc goi
      */
     @Transactional(readOnly = true)
     public LedgerSummaryDTO getLedgerSummary(Long groupId,
@@ -194,12 +194,13 @@ public class FundService {
      * 4 hàm nghiệp vụ
      * addDepositToReserve được sử dụng trong confirmDepositPayment
      */
+    // nap tien coc
     @Transactional
     public void addDepositToReserve(Long groupId, BigDecimal amt) {
         SharedFund r = fundRepo.findByGroup_GroupIdAndFundType(groupId, FundType.DEPOSIT_RESERVE).orElseThrow();
         increaseBalance(r.getFundId(), amt);
     }
-
+    // nap tien quy
     @Transactional
     public void topUpOperating(Long groupId, BigDecimal amt) {
         SharedFund op = fundRepo.findByGroup_GroupIdAndFundType(groupId, FundType.OPERATING).orElseThrow();
