@@ -7,7 +7,6 @@ import com.group8.evcoownership.enums.OtpType;
 import com.group8.evcoownership.enums.RoleName;
 import com.group8.evcoownership.enums.UserStatus;
 import com.group8.evcoownership.exception.InvalidCredentialsException;
-import com.group8.evcoownership.exception.ResourceNotFoundException;
 import com.group8.evcoownership.repository.RoleRepository;
 import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.utils.JwtUtil;

@@ -25,13 +25,13 @@ public class JwtUtil {
     private long expiration;
     // Thời gian sống của access token (tính bằng millisecon)
 
-    @Value("${jwt.refresh-expiration}")
-    private long refreshExpiration;
-    // Thời gian sống của refresh token bình thường (ví dụ 7 ngày)
+//    @Value("${jwt.refresh-expiration}")
+//    private long refreshExpiration;
+//    // Thời gian sống của refresh token bình thường (ví dụ 7 ngày)
 
-    @Value("${jwt.remember-me-expiration}")
-    private long rememberMeExpiration;
-    // Thời gian sống của refresh token khi user chọn Remember Me (ví dụ 30 ngày)
+//    @Value("${jwt.remember-me-expiration}")
+//    private long rememberMeExpiration;
+//    // Thời gian sống của refresh token khi user chọn Remember Me (ví dụ 30 ngày)
 
 
     // ========= LẤY userId TỪ TOKEN =========
