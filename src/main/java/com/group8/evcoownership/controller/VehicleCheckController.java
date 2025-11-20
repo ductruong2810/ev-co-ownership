@@ -3,6 +3,7 @@ package com.group8.evcoownership.controller;
 import com.group8.evcoownership.dto.QrCheckOutRequestDTO;
 import com.group8.evcoownership.dto.QrScanRequestDTO;
 import com.group8.evcoownership.dto.UpdateCheckStatusRequestDTO;
+import com.group8.evcoownership.dto.VehicleCheckResponseDTO;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.entity.VehicleCheck;
 import com.group8.evcoownership.exception.ResourceNotFoundException;
@@ -111,17 +112,31 @@ public class VehicleCheckController {
         return ResponseEntity.ok(checks);
     }
 
-    @GetMapping
-    public ResponseEntity<List<VehicleCheck>> getAllChecks() {
+    // lay all vehicle check
+    // tra ra bookingId
+    // khong lay ra object UsageBooking
+//    @GetMapping
+//    public ResponseEntity<List<VehicleCheck>> getAllChecks() {
+//        Page<VehicleCheck> page = vehicleCheckService.getAllChecks(
+//                PageRequest.of(0, 100)
+//        );
+//        // JSON trả về mỗi item:
+//        // { "id": ..., "bookingId": 123, ... }  // KHÔNG có "booking": { ... }
+//        return ResponseEntity.ok(page.getContent());
+//    }
 
-        // backend tự quyết định page/size mặc định, ví dụ: 0, 100
-        Page<VehicleCheck> page = vehicleCheckService.getAllChecks(
+    @GetMapping
+    @Operation(summary = "Get all vehicle checks",
+            description = "Technician lấy ra tất cả vehicle check (page 0, size 100 mặc định).")
+    @PreAuthorize("hasAnyRole('TECHNICIAN')")
+    public ResponseEntity<List<VehicleCheckResponseDTO>> getAllChecks() {
+        Page<VehicleCheckResponseDTO> page = vehicleCheckService.getAllChecks(
                 PageRequest.of(0, 100)
         );
-
-        // FE chỉ nhận list, không thấy Page metadata
         return ResponseEntity.ok(page.getContent());
     }
+
+
 
     /**
      * Kiểm tra user đã làm check chưa

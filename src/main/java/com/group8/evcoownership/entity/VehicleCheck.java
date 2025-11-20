@@ -24,10 +24,15 @@ public class VehicleCheck {
     @Column(name = "Id", nullable = false)
     private Long id;
 
+    // 1) Quan hệ tới Booking nhưng KHÔNG trả ra JSON
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "BookingId")
-    @JsonIgnoreProperties({"vehicleChecks", "user", "vehicle", "handler", "hibernateLazyInitializer"})
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private UsageBooking booking;
+
+    // 2) Mapping trực tiếp cột BookingId để đọc FK
+    @Column(name = "BookingId", insertable = false, updatable = false)
+    private Long bookingId;
 
     @Column(name = "CheckType", length = 20)
     private String checkType; // PRE_USE, POST_USE, REJECTION
