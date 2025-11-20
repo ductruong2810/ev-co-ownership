@@ -48,7 +48,7 @@ public class AzureBlobConfig {
         return client;
     }
 
-    //+Định nghĩa Bean BlobContainerClient để
+    // Định nghĩa Bean BlobContainerClient để
     // thao tác trực tiếp với một container blob cụ thể
     @Bean
     public BlobContainerClient blobContainerClient(BlobServiceClient blobServiceClient) {
