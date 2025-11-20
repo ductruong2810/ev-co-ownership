@@ -53,9 +53,8 @@ public class JwtUtil {
 
 
     // ========= TẠO ACCESS TOKEN =========
-    /**
-     * Generate Access Token
-     */
+    //Generate Access Token
+
     public String generateToken(User user) {
         Map<String, Object> claims = new HashMap<>();
         // Tạo payload chứa các thông tin muốn embed vào token
@@ -105,17 +104,17 @@ public class JwtUtil {
 
 
     // ========= HÀM LẤY THÔNG TIN TỪ TOKEN ========= //
-    /**
-     * Extract email từ token (subject)
-     */
+
+
+
+    // Extract email từ token (subject)
+
     public String extractEmail(String token) {
         // Dùng helper extractClaim với hàm lấy subject
         return extractClaim(token, Claims::getSubject);
     }
 
-    /**
-     * Extract expiration date từ token
-     */
+    // Extract expiration date từ token
     public Date extractExpiration(String token) {
         // Dùng helper extractClaim với hàm lấy expiration
         return extractClaim(token, Claims::getExpiration);
@@ -123,9 +122,7 @@ public class JwtUtil {
 
 
     // ========= VALIDATE & CHECK EXPIRED =========
-    /**
-     * Validate token (check signature và expiration)
-     */
+    // Validate token (check signature và expiration)
     public boolean validateToken(String token) {
         try {
             Jwts.parserBuilder()
