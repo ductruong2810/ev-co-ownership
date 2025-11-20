@@ -114,37 +114,40 @@ public class FundPaymentController {
             @RequestParam(value = "groupId", required = false) Long groupId
     ) throws IOException {
 
-        String typeForFrontend = "fund"; // default
+        // 1) Luôn tìm Payment theo txnRef
+        Payment payment = paymentRepository.findByTransactionCode(txnRef)
+                .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + txnRef));
+
+        // 2) Xác định typeForFrontend dựa trên PaymentType
+        String typeForFrontend;
+        if (payment.getPaymentType() == PaymentType.CONTRIBUTION) {
+            typeForFrontend = "fund";
+        } else if (payment.getPaymentType() == PaymentType.MAINTENANCE_FEE) {
+            typeForFrontend = "maintenance";
+        } else {
+            throw new IllegalStateException("Unsupported payment type for callback: " + payment.getPaymentType());
+        }
 
         try {
             if ("00".equals(responseCode)) {
-                // 1) Tìm payment theo txnRef
-                Payment payment = paymentRepository.findByTransactionCode(txnRef)
-                        .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + txnRef));
-
-                // 2) Phân nhánh theo PaymentType
+                // 3) Chỉ khi thành công mới confirm
                 if (payment.getPaymentType() == PaymentType.CONTRIBUTION) {
-                    // Nạp quỹ OPERATING
                     fundPaymentService.confirmFundTopup(txnRef, transactionNo);
-                    typeForFrontend = "fund";
                 } else if (payment.getPaymentType() == PaymentType.MAINTENANCE_FEE) {
-                    // Thanh toán maintenance PERSONAL
                     maintenancePaymentService.confirmMaintenancePayment(txnRef, transactionNo);
-                    typeForFrontend = "maintenance";
-                } else {
-                    // Nếu là loại khác, tuỳ bạn xử lý (báo lỗi / bỏ qua)
-                    throw new IllegalStateException("Unsupported payment type for callback: " + payment.getPaymentType());
                 }
 
                 redirect(response, groupId, typeForFrontend, "success", txnRef);
             } else {
-                // Thanh toán không thành công
-                redirect(response, groupId, "fund", "fail", txnRef);
+                // Fail: không confirm, nhưng vẫn redirect với type đúng
+                redirect(response, groupId, typeForFrontend, "fail", txnRef);
             }
         } catch (Exception ex) {
-            redirect(response, groupId, "error", txnRef);
+            // Có lỗi trong xử lý BE -> coi như fail, nhưng vẫn dùng type đúng
+            redirect(response, groupId, typeForFrontend, "fail", txnRef);
         }
     }
+
 
     // ===== Helper redirect =====
     private void redirect(HttpServletResponse res, Long groupId, String type, String status, String txnRef) throws IOException {
@@ -161,16 +164,17 @@ public class FundPaymentController {
 
 
     // ===== Helper redirect =====
-    private void redirect(HttpServletResponse res, Long groupId, String status, String txnRef) throws IOException {
-        if (groupId != null) {
-            res.sendRedirect(String.format(
-                    "%s/dashboard/viewGroups/%d/payment-result?type=fund&status=%s&txnRef=%s",
-                    frontendBaseUrl, groupId, status, txnRef));
-        } else {
-            res.sendRedirect(String.format(
-                    "%s/payment-result?type=fund&status=%s&txnRef=%s",
-                    frontendBaseUrl, status, txnRef));
-        }
-    }
+//    private void redirect(HttpServletResponse res, Long groupId, String status, String txnRef) throws IOException {
+//        if (groupId != null) {
+//            res.sendRedirect(String.format(
+//                    "%s/dashboard/viewGroups/%d/payment-result?type=fund&status=%s&txnRef=%s",
+//                    frontendBaseUrl, groupId, status, txnRef));
+//        } else {
+//            res.sendRedirect(String.format(
+//                    "%s/payment-result?type=fund&status=%s&txnRef=%s",
+//                    frontendBaseUrl, status, txnRef));
+//        }
+//    }
+
 }
 
