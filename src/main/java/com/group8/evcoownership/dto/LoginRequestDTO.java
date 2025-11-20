@@ -15,5 +15,5 @@ public class LoginRequestDTO {
     private String password;
 
     //bổ sung field rememberme
-    private boolean rememberMe = false;
+//    private boolean rememberMe = false;
 }
