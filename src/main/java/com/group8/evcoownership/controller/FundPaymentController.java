@@ -110,15 +110,15 @@ public class FundPaymentController {
             HttpServletResponse response,
             @RequestParam("vnp_TxnRef") String txnRef,
             @RequestParam("vnp_ResponseCode") String responseCode,
-            @RequestParam("vnp_TransactionNo") String transactionNo,
-            @RequestParam(value = "groupId", required = false) Long groupId
+            @RequestParam(value = "vnp_TransactionNo", required = false) String transactionNo,
+            @RequestParam(value = "groupId", required = false) Long groupIdParam
     ) throws IOException {
 
-        // 1) Luôn tìm Payment theo txnRef
+        // 1) Luôn lấy Payment theo txnRef
         Payment payment = paymentRepository.findByTransactionCode(txnRef)
                 .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + txnRef));
 
-        // 2) Xác định typeForFrontend dựa trên PaymentType
+        // 2) Xác định type cho FE theo PaymentType
         String typeForFrontend;
         if (payment.getPaymentType() == PaymentType.CONTRIBUTION) {
             typeForFrontend = "fund";
@@ -128,26 +128,53 @@ public class FundPaymentController {
             throw new IllegalStateException("Unsupported payment type for callback: " + payment.getPaymentType());
         }
 
+        // 3) Xác định groupId ưu tiên:
+        //    - Nếu VNPay trả về param groupId thì dùng nó
+        //    - Nếu không, tự suy ra qua maintenance → vehicle → ownershipGroup
+        Long groupIdForRedirect = (groupIdParam != null)
+                ? groupIdParam
+                : resolveGroupIdFromPayment(payment);
+
         try {
             if ("00".equals(responseCode)) {
-                // 3) Chỉ khi thành công mới confirm
+                // ====== Thành công ======
                 if (payment.getPaymentType() == PaymentType.CONTRIBUTION) {
                     fundPaymentService.confirmFundTopup(txnRef, transactionNo);
                 } else if (payment.getPaymentType() == PaymentType.MAINTENANCE_FEE) {
                     maintenancePaymentService.confirmMaintenancePayment(txnRef, transactionNo);
                 }
 
-                redirect(response, groupId, typeForFrontend, "success", txnRef);
+                redirect(response, groupIdForRedirect, typeForFrontend, "success", txnRef);
             } else {
-                // Fail: không confirm, nhưng vẫn redirect với type đúng
-                redirect(response, groupId, typeForFrontend, "fail", txnRef);
+                // ====== Thất bại VNPay (responseCode != 00) ======
+                // VẪN redirect với type đúng (maintenance) và groupId lấy qua maintenance → vehicle
+                redirect(response, groupIdForRedirect, typeForFrontend, "fail", txnRef);
             }
         } catch (Exception ex) {
-            // Có lỗi trong xử lý BE -> coi như fail, nhưng vẫn dùng type đúng
-            redirect(response, groupId, typeForFrontend, "fail", txnRef);
+            // Có lỗi BE, vẫn cố trả đúng type + groupId nếu đã lấy được
+            redirect(response, groupIdForRedirect, typeForFrontend, "fail", txnRef);
         }
     }
 
+    // ===== Helper: Lấy groupId KHÔNG cần qua fund cho maintenance =====
+    private Long resolveGroupIdFromPayment(Payment p) {
+        // ƯU TIÊN: nếu là payment gắn với Maintenance → Vehicle → OwnershipGroup
+        if (p.getMaintenance() != null
+                && p.getMaintenance().getVehicle() != null
+                && p.getMaintenance().getVehicle().getOwnershipGroup() != null) {
+            return p.getMaintenance()
+                    .getVehicle()
+                    .getOwnershipGroup()
+                    .getGroupId();
+        }
+
+        // Fallback: nếu là contribution thì lấy qua fund (nếu có)
+        if (p.getFund() != null && p.getFund().getGroup() != null) {
+            return p.getFund().getGroup().getGroupId();
+        }
+
+        return null; // trường hợp hiếm, FE tự xử lý khi groupId = null
+    }
 
     // ===== Helper redirect =====
     private void redirect(HttpServletResponse res, Long groupId, String type, String status, String txnRef) throws IOException {
@@ -161,20 +188,6 @@ public class FundPaymentController {
                     frontendBaseUrl, type, status, txnRef));
         }
     }
-
-
-    // ===== Helper redirect =====
-//    private void redirect(HttpServletResponse res, Long groupId, String status, String txnRef) throws IOException {
-//        if (groupId != null) {
-//            res.sendRedirect(String.format(
-//                    "%s/dashboard/viewGroups/%d/payment-result?type=fund&status=%s&txnRef=%s",
-//                    frontendBaseUrl, groupId, status, txnRef));
-//        } else {
-//            res.sendRedirect(String.format(
-//                    "%s/payment-result?type=fund&status=%s&txnRef=%s",
-//                    frontendBaseUrl, status, txnRef));
-//        }
-//    }
 
 }
 
