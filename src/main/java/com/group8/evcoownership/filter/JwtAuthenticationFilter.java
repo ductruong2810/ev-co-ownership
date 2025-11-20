@@ -27,6 +27,15 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.Collections;
 
+
+//Đây là filter bảo mật JWT trong Spring Boot, chịu trách nhiệm kiểm tra JWT token mỗi request gửi vào API.
+//Cụ thể, file này sẽ:
+//Đọc token từ header Authorization
+//Xác thực token (còn hạn, đúng chữ ký, chưa bị logout)
+//Lấy thông tin user và quyền truy cập từ token, thiết lập authenticated context cho cả request đó
+//Nếu token lỗi hoặc hết hạn, trả về 401 Unauthorized và không cho đi tiếp vào API protected
+//=>: file này giúp hệ thống chỉ cho phép request hợp lệ qua các API cần bảo vệ bằng JWT,
+// tự động chặn mọi truy cập không đúng quyền hoặc token không hợp lệ
 @Component
 @Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter { // Base class của Spring cho filter chỉ chạy 1 lần mỗi request
@@ -83,7 +92,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter { // Base clas
                 // Trích xuất email từ token nếu token hợp lệ
                 String email = jwtUtil.extractEmail(token);
                 log.info("Extracted email from token: {}", email);
-                // Truy vấn user theo email; nếu không tồn tại thì controller sau sẽ xử lý
+                // Truy vấn user theo email, nếu không tồn tại thì controller sau sẽ xử lý
                 User user = userRepository.findByEmail(email).orElse(null);
 
                 // Nếu user tồn tại, tạo authority cho role của user

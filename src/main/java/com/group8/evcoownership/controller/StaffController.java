@@ -29,25 +29,34 @@ public class StaffController {
 
     @Autowired
     private StaffService staffService;
+    // Service chứa toàn bộ buisiness logic cho staff va admin
 
+    //========= LẤY DANH SÁCH user =========
     @GetMapping("/users")
     @PreAuthorize("hasRole('STAFF') or hasRole('ADMIN')")
     @Operation(summary = "Danh sách người dùng", description = "Lấy danh sách tất cả người dùng với khả năng lọc theo trạng thái và tài liệu")
     public ResponseEntity<List<UserProfileResponseDTO>> getAllUsers(
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) String documentStatus) {
+            @RequestParam(required = false) String status, // filter theo trạng thái ACTIVE, BANNED
+            @RequestParam(required = false) String documentStatus) { // filter theo trạng thái tài liệu (PENDING, APPROVED)
 
+        // log hiện trên server cho dễ nhìn
         log.info("Staff fetching all users - status: {}, documentStatus: {}", status, documentStatus);
+        // mình gọi service để lấy danh sách user
         List<UserProfileResponseDTO> users = staffService.getAllUsers(status, documentStatus);
+        // trả về 200ok + list user profile
         return ResponseEntity.ok(users);
     }
 
+    // ========= LẤY CHI TIẾT 1 user=========
     @GetMapping("/users/{userId}")
     @PreAuthorize("hasRole('STAFF') or hasRole('ADMIN')")
     @Operation(summary = "Chi tiết người dùng", description = "Lấy thông tin chi tiết của một người dùng cụ thể")
     public ResponseEntity<UserProfileResponseDTO> getUserDetail(@PathVariable Long userId) {
         log.info("Staff fetching user detail for userId: {}", userId);
+
+        // Lấy profile chi tiết 1 user theo id (thông tin cá nhân, giay tờ)
         UserProfileResponseDTO user = staffService.getUserDetail(userId);
+        //tra 200ok + user profile
         return ResponseEntity.ok(user);
     }
 

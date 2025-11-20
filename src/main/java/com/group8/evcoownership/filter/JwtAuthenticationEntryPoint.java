@@ -9,18 +9,17 @@ import org.springframework.http.MediaType;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
-
 import java.io.IOException;
 
-// Đăng ký bean với Spring, để Spring Security tự động dùng khi phát sinh lỗi xác thực.
+// JwtAuthenticationEntryPoint là fil xử lý trả về lỗi khi request chưa xác thực hoặc token không hợp lệ
+// Nó trả về HTTP 401 Unauthorized kèm JSON lỗi chuẩn cho các API authe bằng JWT
 @Component
-// Interface cung cấp cho Spring Security chỗ "entry point" cuối cùng xử lý lỗi xác thực.
 public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
     private final ObjectMapper objectMapper; // Dùng để chuyển Java object sang JSON,
-    // đảm bảo trả lỗi chuẩn REST API.
+                                             // đảm bảo trả lỗi chuẩn REST API.
 
-    // Constructor: Khởi tạo ObjectMapper và cấu hình hỗ trợ kiểu ngày/giờ (JavaTimeModule)
+    // Constructor: Khởi tạo ObjectMapper và cấu hình hỗ trợ kiểu ngày/giờ (javaTimeModule)
     public JwtAuthenticationEntryPoint() {
         this.objectMapper = new ObjectMapper(); // Khởi tạo object mapper mặc định cho JSON.
         this.objectMapper.registerModule(new JavaTimeModule()); // Đăng ký module hỗ trợ serialize các kiểu
@@ -35,7 +34,7 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
                          AuthenticationException authException) throws IOException {
 
         // Lấy thông điệp lỗi đã gán trước đó bởi filter JWT
-        // (ví dụ "Token expired", "Token bị logout",...) để trả cho client.
+        // (ví dụ "Token expired", "Token bị logout") để trả cho client.
         String errorMessage = (String) request.getAttribute("jwt_error");
 
         // Nếu không có lỗi cụ thể thì mặc định
@@ -48,8 +47,8 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
         // chi tiết thông điệp, URI đã truy cập -> trả về cho front-end.
         ErrorResponseDTO errorResponse = new ErrorResponseDTO(
                 HttpServletResponse.SC_UNAUTHORIZED, // 401: Unauthorized
-                "Unauthorized", // Tiêu đề lỗi
-                errorMessage, // Nội dung lỗi (cụ thể hoặc mặc định)
+                "Unauthorized",
+                errorMessage,
                 request.getRequestURI() // Đường dẫn endpoint client vừa truy cập
         );
 
@@ -58,7 +57,8 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // Phản hồi mã HTTP 401
         response.setContentType(MediaType.APPLICATION_JSON_VALUE); // Định dạng trả về là JSON
         response.setCharacterEncoding("UTF-8"); // Đảm bảo không lỗi ký tự tiếng Việt
-        response.getWriter().write(objectMapper.writeValueAsString(errorResponse)); // Serialize DTO thành JSON, ghi ra body cho client nhận
+        response.getWriter().write(objectMapper.writeValueAsString(errorResponse)); // Serialize DTO thành JSON,
+                                                                                    // ghi ra body cho client nhận
     }
 }
 
