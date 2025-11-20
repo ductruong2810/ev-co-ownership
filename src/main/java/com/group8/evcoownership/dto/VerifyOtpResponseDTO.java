@@ -18,7 +18,7 @@ public class VerifyOtpResponseDTO {
 
     // For Registration (type = REGISTRATION)
     private String accessToken;
-    private String refreshToken;
+//    private String refreshToken;
     private UserProfileResponseDTO user;  // ← THAY ĐỔI: từ UserInfoDTO → UserProfileResponseDTO
 
     // For Password Reset (type = PASSWORD_RESET)

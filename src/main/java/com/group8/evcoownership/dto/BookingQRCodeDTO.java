@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class BookingQRCodeDTO {
     private Long bookingId;
-    //    private String qrCode;
+    //private String qrCode;
     @JsonRawValue
     private String qrCodeCheckin;
     @JsonRawValue

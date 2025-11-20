@@ -26,7 +26,6 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
             """)
     List<Contract> findAllSortedByStatus();
 
-
     Optional<Contract> findByGroupGroupId(Long groupId);
 
     Optional<Contract> findByGroup(OwnershipGroup group);
