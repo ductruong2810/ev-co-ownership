@@ -18,6 +18,7 @@ public class GroupOwnershipSummaryResponseDTO {
     private boolean isFullyAllocated;
     private BigDecimal remainingPercentage;
     private String currentUserRole;
+    private String contractStatus;
     private List<MemberOwnershipInfo> members;
 
     @Data

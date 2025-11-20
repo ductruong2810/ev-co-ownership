@@ -114,7 +114,7 @@ public class NotificationController {
 
         notificationOrchestrator.sendComprehensiveNotification(
                 user.getUserId(),
-                com.group8.evcoownership.enums.NotificationType.SYSTEM_MAINTENANCE,
+                NotificationType.SYSTEM_MAINTENANCE,
                 "Test Notification",
                 "This is a test notification to verify the system is working correctly.",
                 Map.of("test", true)
@@ -140,14 +140,14 @@ public class NotificationController {
 
     private NotificationType convertNotificationType(String typeCode) {
         if (typeCode == null) {
-            return com.group8.evcoownership.enums.NotificationType.SYSTEM_MAINTENANCE;
+            return NotificationType.SYSTEM_MAINTENANCE;
         }
         try {
-            return com.group8.evcoownership.enums.NotificationType.fromCode(typeCode);
+            return NotificationType.fromCode(typeCode);
         } catch (IllegalArgumentException e) {
             // Log the error but don't crash - return a default type
             System.err.println("Warning: Unknown notification type: " + typeCode + ". Using SYSTEM_MAINTENANCE as fallback.");
-            return com.group8.evcoownership.enums.NotificationType.SYSTEM_MAINTENANCE;
+            return NotificationType.SYSTEM_MAINTENANCE;
         }
     }
 
