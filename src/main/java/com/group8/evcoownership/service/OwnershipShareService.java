@@ -123,6 +123,7 @@ public class OwnershipShareService {
             var status = contract.getApprovalStatus();
             boolean contractLocked = status == ContractApprovalStatus.SIGNED
                     || status == ContractApprovalStatus.APPROVED
+                    || status == ContractApprovalStatus.PENDING_MEMBER_APPROVAL
                     || Boolean.TRUE.equals(contract.getIsActive());
             if (contractLocked) {
                 throw new IllegalStateException("Cannot remove member while the group's contract is signed or active. Please cancel the contract first.");
@@ -315,6 +316,11 @@ public class OwnershipShareService {
                 ? currentUserShare.getGroupRole().name()
                 : "UNKNOWN";
 
+        // Lấy trạng thái contract từ group
+        String contractStatus = contractRepository.findByGroupGroupId(groupId)
+                .map(contract -> contract.getApprovalStatus().name())
+                .orElse(null);
+
         // Danh sach thanh vien
         var members = shares.stream()
                 .map(share -> {
@@ -354,6 +360,7 @@ public class OwnershipShareService {
                 .isFullyAllocated(isFullyAllocated)
                 .remainingPercentage(remainingPercentage)
                 .currentUserRole(currentUserRole)
+                .contractStatus(contractStatus)
                 .members(members)
                 .build();
     }
