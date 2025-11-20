@@ -38,13 +38,13 @@ public class AuthController {
         return ResponseEntity.ok(authService.login(request));
     }
 
-    // 2. REFRESH TOKEN
-    @PostMapping("/refresh")
-    @Operation(summary = "Refresh token", description = "Get new access token using valid refresh token")
-    public ResponseEntity<LoginResponseDTO> refresh(@Valid @RequestBody RefreshTokenRequestDTO request) {
-        // Nhận refresh token → gọi service tạo mới access token
-        return ResponseEntity.ok(authService.refreshToken(request.getRefreshToken()));
-    }
+//    // 2. REFRESH TOKEN
+//    @PostMapping("/refresh")
+//    @Operation(summary = "Refresh token", description = "Get new access token using valid refresh token")
+//    public ResponseEntity<LoginResponseDTO> refresh(@Valid @RequestBody RefreshTokenRequestDTO request) {
+//        // Nhận refresh token → gọi service tạo mới access token
+//        return ResponseEntity.ok(authService.refreshToken(request.getRefreshToken()));
+//    }
 
     // 3. REQUEST OTP ĐĂNG KÝ
     @PostMapping("/register/request-otp")
