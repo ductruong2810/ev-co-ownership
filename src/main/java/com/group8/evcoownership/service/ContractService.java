@@ -508,14 +508,21 @@ public class ContractService {
                 .orElse(null);
 
         if (adminShare != null) {
-            // Kiểm tra xem admin đã có feedback chưa
-            boolean adminHasFeedback = feedbackRepository.existsByContractIdAndUser_UserId(
-                    savedContract.getId(),
-                    adminShare.getUser().getUserId()
-            );
+            // Kiểm tra xem admin đã có feedback APPROVED chưa
+            // Lấy feedback mới nhất của admin cho contract này
+            Optional<ContractFeedback> existingAdminFeedback = feedbackRepository
+                    .findTopByContractIdAndUser_UserIdOrderBySubmittedAtDesc(
+                            savedContract.getId(),
+                            adminShare.getUser().getUserId()
+                    );
 
-            // Nếu admin chưa có feedback, tạo feedback APPROVED cho admin
-            if (!adminHasFeedback) {
+            // Kiểm tra admin có feedback APPROVED chưa
+            boolean adminHasApprovedFeedback = existingAdminFeedback.isPresent()
+                    && existingAdminFeedback.get().getStatus() == MemberFeedbackStatus.APPROVED;
+
+            // Nếu admin chưa có feedback APPROVED, tạo feedback APPROVED cho admin
+            // (Có thể admin đã có feedback REJECTED từ lần trước, nhưng khi ký lại thì cần feedback APPROVED)
+            if (!adminHasApprovedFeedback) {
                 ContractFeedback adminFeedback = ContractFeedback.builder()
                         .contract(savedContract)
                         .user(adminShare.getUser())

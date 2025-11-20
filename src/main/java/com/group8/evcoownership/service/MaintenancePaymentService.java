@@ -185,12 +185,21 @@ public class MaintenancePaymentService {
     private FundTopupResponseDTO map(Payment p, String message) {
         Long groupId = null;
 
-        // Nếu payment này gắn với SharedFund (fund != null) thì lấy groupId từ đó
-        if (p.getFund() != null && p.getFund().getGroup() != null) {
+        // ƯU TIÊN: payment MAINTENANCE_FEE lấy groupId qua maintenance → vehicle → ownershipGroup
+        if (p.getMaintenance() != null
+                && p.getMaintenance().getVehicle() != null
+                && p.getMaintenance().getVehicle().getOwnershipGroup() != null) {
+
+            groupId = p.getMaintenance()
+                    .getVehicle()
+                    .getOwnershipGroup()
+                    .getGroupId();
+        }
+        // (Nếu sau này tái dùng map cho CONTRIBUTION thì có thể fallback qua fund)
+        else if (p.getFund() != null
+                && p.getFund().getGroup() != null) {
             groupId = p.getFund().getGroup().getGroupId();
         }
-        // Với payment PERSONAL cho maintenance: fund = null → groupId sẽ là null (OK)
-
 
         return FundTopupResponseDTO.builder()
                 .paymentId(p.getId())
@@ -204,6 +213,8 @@ public class MaintenancePaymentService {
                 .message(message)
                 .build();
     }
+
+
 }
 
 
