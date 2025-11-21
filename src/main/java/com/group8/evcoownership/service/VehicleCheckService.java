@@ -158,7 +158,6 @@ public class VehicleCheckService {
                 .build();
     }
 
-
     // Kiểm tra user đã làm check chưa
     public Boolean hasCheck(Long bookingId, String checkType) {
         return vehicleCheckRepository.findByBookingId(bookingId)
