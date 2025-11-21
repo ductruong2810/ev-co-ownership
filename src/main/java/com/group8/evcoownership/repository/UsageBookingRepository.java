@@ -123,7 +123,8 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
             """)
     List<UsageBooking> findAllBookingsByGroupId(@Param("groupId") Long groupId);
 
-    Optional<UsageBooking> findTopByVehicle_IdAndUser_UserIdAndCheckoutStatusTrueOrderByCheckoutTimeDesc(
+    Optional<UsageBooking>
+    findTopByVehicle_IdAndUser_UserIdAndCheckoutStatusTrueOrderByCheckoutTimeDesc(
             Long vehicleId,
             Long userId
     );
