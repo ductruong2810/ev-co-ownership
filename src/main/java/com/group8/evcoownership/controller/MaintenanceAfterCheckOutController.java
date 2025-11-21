@@ -2,6 +2,7 @@ package com.group8.evcoownership.controller;
 
 import com.group8.evcoownership.dto.MaintenanceAfterCheckOutCreateRequestDTO;
 import com.group8.evcoownership.dto.MaintenanceResponseDTO;
+import com.group8.evcoownership.dto.UserWithRejectedCheckDTO;
 import com.group8.evcoownership.service.MaintenanceAfterCheckOutService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -33,36 +34,45 @@ public class MaintenanceAfterCheckOutController {
     // ===================== TECHNICIAN =====================
     // ======================================================
 
-    /**
-     * Technician tạo yêu cầu bảo trì PERSONAL sau khi xe được trả về
-     */
+    @GetMapping("/rejected-users")
+    @PreAuthorize("hasAnyRole('TECHNICIAN')")
+    @Operation(
+            summary = "[Technician] Danh sách user có VehicleCheck bị reject",
+            description = """
+                Dựa trên bảng VehicleCheck:
+                - Lọc các check có status REJECTED / FAILED / NEEDS_ATTENTION
+                - Lấy booking.user
+                - Trả về danh sách user (id, name, email) không trùng.
+                """
+    )
+    public ResponseEntity<List<UserWithRejectedCheckDTO>> getUsersWithRejectedChecks() {
+        return ResponseEntity.ok(
+                maintenanceAfterCheckOutService.getUsersWithRejectedChecks()
+        );
+    }
+
     @PostMapping("/vehicles/{vehicleId}")
     @PreAuthorize("hasAnyRole('TECHNICIAN')")
     @Operation(
             summary = "[Technician] Tạo yêu cầu bảo trì sau khi đi xe về (PERSONAL)",
             description = """
-                    Technician mở yêu cầu bảo trì khi phát hiện co-owner làm hư xe sau khi trả xe.
-                    - coverageType = PERSONAL.
-                    - Path: vehicleId (xe đang kiểm tra).
-                    - Body: description, cost, estimatedDurationDays.
-                    - Backend tự tìm booking đã checkout gần nhất của xe đó
-                      và gán liableUser = user của booking đó.
-                    - Trạng thái ban đầu: PENDING.
-                    """
+                Technician mở yêu cầu bảo trì khi phát hiện co-owner làm hư xe sau khi trả xe.
+                - coverageType = PERSONAL.
+                - Path: vehicleId (xe đang kiểm tra).
+                - Body: userId (co-owner phải trả), description, cost, estimatedDurationDays.
+                - Backend kiểm tra userId có thuộc group của vehicle hay không.
+                - Trạng thái ban đầu: PENDING.
+                """
     )
     public ResponseEntity<MaintenanceResponseDTO> createAfterCheckOut(
-            @PathVariable Long vehicleId,
             @Valid @RequestBody MaintenanceAfterCheckOutCreateRequestDTO req,
             Authentication auth
     ) {
         return ResponseEntity.ok(
-                maintenanceAfterCheckOutService.createAfterCheckOut(
-                        vehicleId,
-                        req,
-                        auth.getName()
-                )
+                maintenanceAfterCheckOutService.createAfterCheckOut(req, auth.getName())
         );
     }
+
 
     /**
      * Technician cập nhật yêu cầu bảo trì PERSONAL khi vẫn còn PENDING

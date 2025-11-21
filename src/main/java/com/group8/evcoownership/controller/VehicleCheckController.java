@@ -60,7 +60,9 @@ public class VehicleCheckController {
     }
 
     /**
-     * Technician approve/reject check
+     *
+     * khi user dem xe ve , tao report vehicle
+     * Technician approve/reject check report vehicle
      * Example:
      * PUT /api/vehicle-checks/{checkId}/status
      */
