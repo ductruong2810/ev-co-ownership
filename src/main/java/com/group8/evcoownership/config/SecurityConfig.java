@@ -75,7 +75,7 @@ public class SecurityConfig {
                         .hasAnyRole("CO_OWNER", "ADMIN", "STAFF", "TECHNICIAN")
                         // Chỉ những role này mới được truy cập /api/vehicle-checks/**
 
-                        .requestMatchers("/api/staff/**", "/api/admin/**")
+                        .requestMatchers("/api/staff/**")
                         .hasAnyRole("STAFF", "ADMIN")
                         // Chỉ STAFF hoặc ADMIN truy cập các endpoint staff/admin
 
