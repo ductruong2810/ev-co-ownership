@@ -22,124 +22,112 @@ import java.util.concurrent.TimeUnit;
 public class OcrService {
 
     @Value("${azure.computer-vision.endpoint:}")
-    private String azureEndpoint;
+    private String azureEndpoint;   // Endpoint dịch vụ Azure Computer Vision
 
     @Value("${azure.computer-vision.key:}")
-    private String azureKey;
+    private String azureKey;        // API key dùng để gọi Azure Computer Vision
 
     @Value("${azure.computer-vision.enabled:true}")
-    private boolean azureEnabled;
+    private boolean azureEnabled;   // Cờ bật/tắt OCR Azure theo cấu hình
 
-    private ImageAnalysisClient azureClient;
+    private ImageAnalysisClient azureClient; // Client gọi Azure OCR (được lazy-init)
     private final VehicleInfoExtractionService vehicleInfoExtractionService;
 
     public OcrService(VehicleInfoExtractionService vehicleInfoExtractionService) {
         this.vehicleInfoExtractionService = vehicleInfoExtractionService;
     }
 
-    /**
-     * Khởi tạo Azure Computer Vision client
-     */
+    // ========= Khởi tạo client azure computer vision =========
+    // Dùng endpoint + key cấu hình để tạo client gọi API OCR Azure
+    // Chỉ khởi tạo 1 lần, dùng lại cho các lần gọi sau
     private void initializeAzureClient() {
+        // Kiểm tra nếu client chưa tạo, OCR được bật, endpoint và key có cấu hình hợp lệ
         if (azureClient == null && azureEnabled && !azureEndpoint.isEmpty() && !azureKey.isEmpty()) {
             try {
+                // Dùng builder để tạo client với endpoint và key
                 azureClient = new ImageAnalysisClientBuilder()
                         .endpoint(azureEndpoint)
                         .credential(new AzureKeyCredential(azureKey))
                         .buildClient();
-                log.info("Azure Computer Vision client initialized successfully");
+                log.info("successfully");
             } catch (Exception e) {
-                log.warn("Failed to initialize Azure Computer Vision client: {}", e.getMessage());
+                // Nếu lỗi trong quá trình tạo client, log cảnh báo nhưng không crash app
+                log.warn("Failed to initialize ACV client: {}", e.getMessage());
             }
         }
     }
 
-    /**
-     * Đọc text từ hình ảnh sử dụng Azure Computer Vision OCR
-     */
+    // ========= OCR ảnh -> text (dùng cho CCCD / GPLX và cà vẹt xe) =========
+    // OCR ảnh thành text bất đồng bộ, trả về CompletableFuture<String>
     public CompletableFuture<String> extractTextFromImage(MultipartFile imageFile) {
-        log.info("=== OCR EXTRACTION START ===");
-        log.info("Image: {} (size: {} bytes)", imageFile.getOriginalFilename(), imageFile.getSize());
-        log.info("Azure enabled: {}", azureEnabled);
-        log.info("Azure endpoint: {}", azureEndpoint);
-        log.info("Azure key configured: {}", !azureKey.isEmpty());
-
         return CompletableFuture.supplyAsync(() -> {
             try {
+                // Chỉ gọi OCR nếu chức năng đang bật và đủ cấu hình key, endpoint
                 if (azureEnabled && !azureEndpoint.isEmpty() && !azureKey.isEmpty()) {
-                    log.info("Using Azure Computer Vision for OCR extraction");
+                    // Gọi hàm dùng Azure OCR để trích xuất text
                     String azureResult = extractTextWithAzure(imageFile);
+
+                    // Nếu có kết quả text hợp lệ thì trả về
                     if (azureResult != null && !azureResult.trim().isEmpty()) {
-                        log.info("Successfully extracted text using Azure Computer Vision. Text length: {}",
-                                azureResult.length());
-                        log.debug("Extracted text preview: {}",
-                                azureResult.substring(0, Math.min(200, azureResult.length())));
                         return azureResult;
-                    } else {
-                        log.warn("Azure Computer Vision returned empty result");
                     }
                 } else {
-                    log.warn("Azure Computer Vision is disabled or not configured");
-                    log.warn("azureEnabled: {}, endpoint empty: {}, key empty: {}",
-                            azureEnabled, azureEndpoint.isEmpty(), azureKey.isEmpty());
+                    // Nếu bị tắt hoặc không đủ cấu hình, log cảnh báo
+                    log.warn("ACV is disabled or not configured");
                 }
-
-                log.warn("Failed to extract text from image using Azure Computer Vision");
+                // Trả về chuỗi rỗng nếu ocr ko thành công
                 return "";
-
             } catch (Exception e) {
-                log.error("Error extracting text from image: {}", e.getMessage(), e);
+                // Bắt lỗi phát sinh, log lỗi và trả chuỗi rỗng để tránh chết luồng
+                log.error("Error extracting text from image: {}", e.getMessage());
                 return "";
             }
-        }).orTimeout(60, TimeUnit.SECONDS);
+        }).orTimeout(60, TimeUnit.SECONDS); // Mình giới hạn timeout 60s cho thằng ocr
     }
 
-    /**
-     * Sử dụng Azure Computer Vision để đọc text
-     */
+    // ========= Hàm gọi azure computer vision =========
+    // Chỉ được gọi từ extractTextFromImage, không dùng trực tiếp ngoài service
+    // 1. Khởi tạo client nếu chưa có
+    // 2. Convert MultipartFile -> BinaryData (bytes hoặc stream)
+    // 3. Gọi azureClient.analyze(...) với VisualFeatures.READ
+    // 4. Duyệt qua blocks/lines trong kết quả, ghép lại thành text
     private String extractTextWithAzure(MultipartFile imageFile) {
         try {
-            log.info("Initializing Azure Computer Vision client...");
+            // Khoi tạo client nếu chưa có
             initializeAzureClient();
             if (azureClient == null) {
-                log.warn("Azure Computer Vision client not available");
+                // Nếu không khởi tạo được client (thiếu config)
+                // trả null để báo lỗi
                 return null;
             }
-
-            // Convert MultipartFile to BinaryData
-            log.info("Converting image to BinaryData...");
-            log.info("Original image size: {} bytes", imageFile.getSize());
-            log.info("Original image name: {}", imageFile.getOriginalFilename());
-            log.info("Original image content type: {}", imageFile.getContentType());
 
             BinaryData imageData;
             try {
-                // Try different approaches to convert MultipartFile to BinaryData
+                // Chuyển MultipartFile sang BinaryData ( vì thằng Azure yêu cầu)
+                // Nếu ảnh có bytes dùng luôn, không thì lấy InputStream
                 if (imageFile.getBytes().length > 0) {
-                    log.info("Using imageFile.getBytes() method");
                     imageData = BinaryData.fromBytes(imageFile.getBytes());
                 } else {
-                    log.info("Using imageFile.getInputStream() method");
                     imageData = BinaryData.fromStream(imageFile.getInputStream());
                 }
-                log.info("Image converted successfully, BinaryData size: {} bytes", imageData.getLength());
             } catch (Exception e) {
-                log.error("Failed to convert image to BinaryData: {}", e.getMessage(), e);
+                // Log lỗi chuyển đổi file và trả về null
+                log.error("Failed to convert image to BinaryData: {}", e.getMessage());
                 return null;
             }
 
-            // Perform OCR
-            log.info("Sending request to Azure Computer Vision API...");
+            // Gọi API ACV để phân tích ảnh
+            // chỉ lấy VisualFeatures.READ (OCR)
             long startTime = System.currentTimeMillis();
             ImageAnalysisResult result = azureClient.analyze(
                     imageData,
                     Collections.singletonList(VisualFeatures.READ),
                     null
             );
-            long endTime = System.currentTimeMillis();
-            log.info("Azure Computer Vision API response received in {} ms", endTime - startTime);
+            long processing = System.currentTimeMillis() - startTime;
+            log.info("Azure OCR call took {} ms", processing);
 
-            // Extract text from result
+            // Ghép các dòng text từ kết quả OCR thành 1 chuỗi hoàn chỉnh
             StringBuilder extractedText = new StringBuilder();
             if (result.getRead() != null && result.getRead().getBlocks() != null) {
                 result.getRead().getBlocks().forEach(block -> {
@@ -149,18 +137,17 @@ public class OcrService {
                 });
             }
 
+            // Lấy chuỗi text cuối cùng, loại bỏ khoảng trắng thừa
             String resultText = extractedText.toString().trim();
-            log.info("OCR extraction completed. Text length: {}", resultText.length());
-            if (!resultText.isEmpty()) {
-                log.info("Extracted text preview: {}",
-                        resultText.substring(0, Math.min(300, resultText.length())));
-            } else {
+            if (resultText.isEmpty()) {
                 log.warn("No text extracted from image");
+                return null;
             }
-            return resultText.isEmpty() ? null : resultText;
+            return resultText;
 
         } catch (Exception e) {
-            log.warn("Azure Computer Vision OCR failed: {}", e.getMessage());
+            // Bất kỳ lỗi nào xảy ra khi gọi Azure OCR, log và trả null
+            log.warn("ACV OCR failed: {}", e.getMessage());
         }
         return null;
     }
