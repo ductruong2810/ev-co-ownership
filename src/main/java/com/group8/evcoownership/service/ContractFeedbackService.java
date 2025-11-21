@@ -181,7 +181,7 @@ public class ContractFeedbackService {
      * @param isGroupAdmin true nếu là admin group, false nếu là system admin
      */
     @Transactional
-    private ApiResponseDTO<FeedbackActionResponseDTO> approveFeedbackInternal(
+    protected ApiResponseDTO<FeedbackActionResponseDTO> approveFeedbackInternal(
             Long feedbackId,
             FeedbackActionRequestDTO request,
             Long userId,
@@ -249,7 +249,7 @@ public class ContractFeedbackService {
      * @param isGroupAdmin true nếu là admin group, false nếu là system admin
      */
     @Transactional
-    private ApiResponseDTO<FeedbackActionResponseDTO> rejectFeedbackInternal(
+    protected ApiResponseDTO<FeedbackActionResponseDTO> rejectFeedbackInternal(
             Long feedbackId,
             FeedbackActionRequestDTO request,
             Long userId,
