@@ -2,6 +2,7 @@ package com.group8.evcoownership.controller;
 
 import com.group8.evcoownership.dto.MaintenanceAfterCheckOutCreateRequestDTO;
 import com.group8.evcoownership.dto.MaintenanceResponseDTO;
+import com.group8.evcoownership.dto.UserWithRejectedCheckDTO;
 import com.group8.evcoownership.service.MaintenanceAfterCheckOutService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -32,6 +33,23 @@ public class MaintenanceAfterCheckOutController {
     // ======================================================
     // ===================== TECHNICIAN =====================
     // ======================================================
+
+    @GetMapping("/rejected-users")
+    @PreAuthorize("hasAnyRole('TECHNICIAN')")
+    @Operation(
+            summary = "[Technician] Danh sách user có VehicleCheck bị reject",
+            description = """
+                Dựa trên bảng VehicleCheck:
+                - Lọc các check có status REJECTED / FAILED / NEEDS_ATTENTION
+                - Lấy booking.user
+                - Trả về danh sách user (id, name, email) không trùng.
+                """
+    )
+    public ResponseEntity<List<UserWithRejectedCheckDTO>> getUsersWithRejectedChecks() {
+        return ResponseEntity.ok(
+                maintenanceAfterCheckOutService.getUsersWithRejectedChecks()
+        );
+    }
 
     /**
      * Technician tạo yêu cầu bảo trì PERSONAL sau khi xe được trả về

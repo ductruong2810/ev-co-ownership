@@ -3,8 +3,11 @@ package com.group8.evcoownership.service;
 
 import com.group8.evcoownership.dto.MaintenanceAfterCheckOutCreateRequestDTO;
 import com.group8.evcoownership.dto.MaintenanceResponseDTO;
+import com.group8.evcoownership.dto.UserWithRejectedCheckDTO;
 import com.group8.evcoownership.entity.Maintenance;
+import com.group8.evcoownership.entity.UsageBooking;
 import com.group8.evcoownership.entity.User;
+import com.group8.evcoownership.entity.VehicleCheck;
 import com.group8.evcoownership.enums.MaintenanceCoverageType;
 import com.group8.evcoownership.repository.*;
 import jakarta.persistence.EntityNotFoundException;
@@ -15,7 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +33,48 @@ public class MaintenanceAfterCheckOutService {
     private final UserRepository userRepository;
     private final OwnershipShareRepository ownershipShareRepository;
     private final UsageBookingRepository usageBookingRepository;
+    private final VehicleCheckRepository vehicleCheckRepository;
+
+
+
+    /**
+     * Technician lay ra list userId ma co vehicleCheck bi technician tu choi
+     */
+    @Transactional(readOnly = true)
+    public List<UserWithRejectedCheckDTO> getUsersWithRejectedChecks() {
+        List<String> problemStatuses = List.of("REJECTED", "FAILED", "NEEDS_ATTENTION");
+
+        Set<Long> userIdSet = new HashSet<>();
+
+        for (String status : problemStatuses) {
+            List<VehicleCheck> checks = vehicleCheckRepository.findByStatus(status);
+
+            for (VehicleCheck vc : checks) {
+                UsageBooking booking = vc.getBooking();
+                if (booking == null || booking.getUser() == null) {
+                    continue;
+                }
+
+                Long userId = booking.getUser().getUserId();
+                if (userId != null) {
+                    userIdSet.add(userId);
+                }
+            }
+        }
+
+        List<User> users = userRepository.findAllById(userIdSet);
+
+        List<UserWithRejectedCheckDTO> result = new ArrayList<>();
+        for (User u : users) {
+            result.add(new UserWithRejectedCheckDTO(
+                    u.getUserId(),
+                    u.getFullName(),
+                    u.getEmail()
+            ));
+        }
+
+        return result;
+    }
 
 
     /**
@@ -35,6 +83,7 @@ public class MaintenanceAfterCheckOutService {
      * UPDATE WHEN PENDING
      * Get my request list
      */
+
     // =============== CREATE PERSONAL MAINTENANCE SAU CHECKOUT ===============
     public MaintenanceResponseDTO createAfterCheckOut(
             Long vehicleId,
