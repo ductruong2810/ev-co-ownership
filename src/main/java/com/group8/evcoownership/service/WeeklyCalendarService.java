@@ -66,20 +66,8 @@ public class WeeklyCalendarService {
         long totalQuotaHour = totalQuota != null ? totalQuota : 0L;
         int totalQuotaSlots = (int) (totalQuotaHour / slotDurationHour);
 
-        // Count slots user has booked (CONFIRMED, BOOKED_SELF...) this week
-        Set<String> quotaTypes = Set.of("BOOKED_SELF", "CONFIRMED"); // Thêm các trạng thái hợp lệ theo hệ thống của bạn
-        int usedQuotaSlots = 0;
-        for (DailySlotResponseDTO day : dailySlots) {
-            for (TimeSlotResponseDTO slot : day.getSlots()) {
-                // Sửa chỗ so sánh kiểu Long với String thành so sánh String với String
-                if (quotaTypes.contains(slot.getType())
-                        && slot.getBookedBy() != null
-                        && slot.getBookedBy().equals(String.valueOf(userId))) {
-                    usedQuotaSlots++;
-                }
-            }
-        }
-
+        // Count slots user has booked this week
+        int usedQuotaSlots = calculateUsedQuotaSlots(dailySlots);
 
         int remainingQuotaSlots = totalQuotaSlots - usedQuotaSlots;
 
@@ -372,12 +360,12 @@ public class WeeklyCalendarService {
                 .filter(b -> b.getStatus() == BookingStatus.CONFIRMED)
                 .findFirst().orElse(null);
         if (confirmedBooking != null) {
-            boolean bookedBySelf = confirmedBooking.getUser() != null && confirmedBooking.getUser().getUserId().equals(userId);
+            String slotType = getString(userId, confirmedBooking);
 
             return TimeSlotResponseDTO.builder()
                     .time(timeDisplay)
                     .status(confirmedBooking.getStatus().name())
-                    .type(bookedBySelf ? "BOOKED_SELF" : "BOOKED_OTHER")
+                    .type(slotType)
                     .bookedBy(confirmedBooking.getUser() != null ? confirmedBooking.getUser().getFullName() : "Unknown")
                     .bookable(false)
                     .bookingId(confirmedBooking.getId())
@@ -451,6 +439,37 @@ public class WeeklyCalendarService {
                 .type("AVAILABLE")
                 .bookable(true)
                 .build();
+    }
+
+    private static String getString(Long userId, UsageBooking confirmedBooking) {
+        boolean bookedBySelf = confirmedBooking.getUser() != null && confirmedBooking.getUser().getUserId().equals(userId);
+        boolean isCheckedIn = Boolean.TRUE.equals(confirmedBooking.getCheckinStatus());
+
+        // Nếu đã check-in, trả về type riêng
+        String slotType;
+        if (isCheckedIn) {
+            slotType = bookedBySelf ? "CHECKED_IN_SELF" : "CHECKED_IN_OTHER";
+        } else {
+            slotType = bookedBySelf ? "BOOKED_SELF" : "BOOKED_OTHER";
+        }
+        return slotType;
+    }
+
+    /**
+     * Calculate used quota slots for user's bookings this week
+     * Counts slots with types: BOOKED_SELF, CHECKED_IN_SELF
+     */
+    private int calculateUsedQuotaSlots(List<DailySlotResponseDTO> dailySlots) {
+        Set<String> quotaTypes = Set.of("BOOKED_SELF", "CHECKED_IN_SELF");
+        int usedQuotaSlots = 0;
+        for (DailySlotResponseDTO day : dailySlots) {
+            for (TimeSlotResponseDTO slot : day.getSlots()) {
+                if (quotaTypes.contains(slot.getType())) {
+                    usedQuotaSlots++;
+                }
+            }
+        }
+        return usedQuotaSlots;
     }
 
     /**
