@@ -311,7 +311,7 @@ public class VehicleImageApprovalService {
      * Để có thể tạo nhóm lại với thông tin xe mới
      */
     @Transactional
-    private void deleteVehicleAndImagesForGroup(Long groupId) {
+    public void deleteVehicleAndImagesForGroup(Long groupId) {
         try {
             // Tìm vehicle của group
             Optional<Vehicle> vehicleOpt = vehicleRepository.findByOwnershipGroup_GroupId(groupId);
