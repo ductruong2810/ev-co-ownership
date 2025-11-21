@@ -6,7 +6,6 @@ import com.group8.evcoownership.enums.*;
 import com.group8.evcoownership.exception.ResourceNotFoundException;
 import com.group8.evcoownership.repository.*;
 import jakarta.persistence.EntityNotFoundException;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,10 +14,10 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 @Transactional
 public class ContractFeedbackService {
@@ -28,8 +27,22 @@ public class ContractFeedbackService {
     private final OwnershipShareRepository shareRepository;
     private final UserRepository userRepository;
     private final NotificationOrchestrator notificationOrchestrator;
-    private final ContractService contractService; // For checkAndAutoSignIfAllApproved
     private final ContractHelperService contractHelperService;
+
+    public ContractFeedbackService(
+            ContractFeedbackRepository feedbackRepository,
+            ContractRepository contractRepository,
+            OwnershipShareRepository shareRepository,
+            UserRepository userRepository,
+            NotificationOrchestrator notificationOrchestrator,
+            ContractHelperService contractHelperService) {
+        this.feedbackRepository = feedbackRepository;
+        this.contractRepository = contractRepository;
+        this.shareRepository = shareRepository;
+        this.userRepository = userRepository;
+        this.notificationOrchestrator = notificationOrchestrator;
+        this.contractHelperService = contractHelperService;
+    }
 
     /**
      * Member approve hoặc reject contract
@@ -120,7 +133,7 @@ public class ContractFeedbackService {
         feedbackRepository.save(feedback);
 
         // Kiểm tra xem tất cả members đã approve chưa
-        contractService.checkAndAutoSignIfAllApproved(contract);
+        checkAndAutoSignIfAllApproved(contract);
 
         SubmitMemberFeedbackResponseDTO feedbackData = SubmitMemberFeedbackResponseDTO.builder()
                 .feedbackId(feedback.getId())
@@ -215,7 +228,7 @@ public class ContractFeedbackService {
         feedbackRepository.save(feedback);
 
         // Kiểm tra xem tất cả members đã approve chưa (có thể chuyển contract sang SIGNED)
-        contractService.checkAndAutoSignIfAllApproved(contract);
+        checkAndAutoSignIfAllApproved(contract);
 
         FeedbackActionResponseDTO feedbackData = buildFeedbackActionResponseDTO(feedback);
 
@@ -462,6 +475,68 @@ public class ContractFeedbackService {
 
         if (share.getGroupRole() != GroupRole.ADMIN) {
             throw new IllegalStateException("Only group admin can perform this action. You are not the admin of this group.");
+        }
+    }
+
+    /**
+     * Kiểm tra và tự động chuyển sang SIGNED nếu tất cả thành viên (bao gồm cả admin) đã approve
+     */
+    @Transactional
+    protected void checkAndAutoSignIfAllApproved(Contract contract) {
+        Long groupId = contract.getGroup().getGroupId();
+        OwnershipGroup group = contract.getGroup();
+
+        // Lấy memberCapacity từ group (đã tính cả admin)
+        Integer memberCapacity = group.getMemberCapacity();
+        if (memberCapacity == null || memberCapacity <= 0) {
+            return;
+        }
+
+        // Lấy danh sách tất cả thành viên để lọc feedbacks
+        List<OwnershipShare> allMembers = shareRepository.findByGroup_GroupId(groupId);
+        if (allMembers.isEmpty()) {
+            return;
+        }
+
+        // Kiểm tra admin đã approve trước (contract status = PENDING_MEMBER_APPROVAL)
+        // Nếu contract chưa ở PENDING_MEMBER_APPROVAL nghĩa là admin chưa ký
+        if (contract.getApprovalStatus() != ContractApprovalStatus.PENDING_MEMBER_APPROVAL) {
+            return; // Admin chưa approve, không thể chuyển sang SIGNED
+        }
+
+        // Đếm số thành viên đã approve (status = APPROVED) - bao gồm cả admin và members
+        // APPROVED có thể là: Member AGREE hoặc Admin đã approve feedback DISAGREE
+        // Lưu ý: Logic submit đã hạn chế mỗi user chỉ có 1 feedback APPROVED (trừ khi resubmit sau REJECTED)
+        // Khi resubmit sau REJECTED, feedback cũ vẫn là REJECTED, feedback mới là APPROVED
+        // Nên đếm số feedbacks APPROVED vẫn đúng với số users đã approve
+        // QUAN TRỌNG: Đếm feedbacks của tất cả thành viên (bao gồm cả admin)
+        Set<Long> allUserIds = allMembers.stream()
+                .map(share -> share.getUser().getUserId())
+                .collect(Collectors.toSet());
+
+        List<ContractFeedback> allFeedbacks = feedbackRepository.findByContractId(contract.getId());
+        long approvedCount = allFeedbacks.stream()
+                .filter(f -> f.getStatus() == MemberFeedbackStatus.APPROVED)
+                .filter(f -> allUserIds.contains(f.getUser().getUserId()))
+                .count();
+
+        // Nếu tất cả thành viên (bao gồm cả admin) đã approve, chuyển sang SIGNED
+        // Sử dụng memberCapacity thay vì allMembers.size() vì memberCapacity đã tính cả admin
+        if (approvedCount == memberCapacity) {
+            contract.setApprovalStatus(ContractApprovalStatus.SIGNED);
+            contract.setUpdatedAt(LocalDateTime.now());
+            contractRepository.saveAndFlush(contract);
+
+            // Gửi notification
+            if (notificationOrchestrator != null) {
+                notificationOrchestrator.sendGroupNotification(
+                        groupId,
+                        NotificationType.CONTRACT_CREATED,
+                        "All Members Approved Contract",
+                        "All members have approved the contract. The contract is now pending system admin approval.",
+                        null
+                );
+            }
         }
     }
 }
