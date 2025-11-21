@@ -65,16 +65,11 @@ public class MaintenanceAfterCheckOutController {
                 """
     )
     public ResponseEntity<MaintenanceResponseDTO> createAfterCheckOut(
-            @PathVariable Long vehicleId,
             @Valid @RequestBody MaintenanceAfterCheckOutCreateRequestDTO req,
             Authentication auth
     ) {
         return ResponseEntity.ok(
-                maintenanceAfterCheckOutService.createAfterCheckOut(
-                        vehicleId,
-                        req,
-                        auth.getName()
-                )
+                maintenanceAfterCheckOutService.createAfterCheckOut(req, auth.getName())
         );
     }
 

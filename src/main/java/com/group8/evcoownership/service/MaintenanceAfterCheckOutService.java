@@ -45,42 +45,33 @@ public class MaintenanceAfterCheckOutService {
     public List<UserWithRejectedCheckDTO> getUsersWithRejectedChecks() {
         List<String> problemStatuses = List.of("REJECTED", "FAILED", "NEEDS_ATTENTION");
 
-        Set<Long> userIdSet = new HashSet<>();
+        List<UserWithRejectedCheckDTO> result = new ArrayList<>();
 
-        // lay tung status trong problemStatus ra duyet
-        // lay check theo tung status: REJECTED, FAILED, NEEDS_ATTENTION
         for (String status : problemStatuses) {
             List<VehicleCheck> checks = vehicleCheckRepository.findByStatus(status);
 
-            // lay tung phan tu trong list Check cua tung status ra
-            // de tim userId
             for (VehicleCheck vc : checks) {
                 UsageBooking booking = vc.getBooking();
-                if (booking == null || booking.getUser() == null) {
+                if (booking == null || booking.getUser() == null || booking.getVehicle() == null) {
                     continue;
                 }
 
-                Long userId = booking.getUser().getUserId();
-                if (userId != null) {
-                    userIdSet.add(userId);
-                }
+                var user = booking.getUser();
+                var vehicle = booking.getVehicle();
+
+                result.add(new UserWithRejectedCheckDTO(
+                        user.getUserId(),
+                        user.getFullName(),
+                        vehicle.getId(),
+                        vehicle.getModel(),
+                        vehicle.getLicensePlate()
+                ));
             }
-        }
-
-        // co duoc userId
-        List<User> users = userRepository.findAllById(userIdSet);
-
-        List<UserWithRejectedCheckDTO> result = new ArrayList<>();
-        for (User u : users) {
-            result.add(new UserWithRejectedCheckDTO(
-                    u.getUserId(),
-                    u.getFullName(),
-                    u.getEmail()
-            ));
         }
 
         return result;
     }
+
 
 
     /**
@@ -91,8 +82,8 @@ public class MaintenanceAfterCheckOutService {
      */
 
     // =============== CREATE PERSONAL MAINTENANCE SAU CHECKOUT ===============
+    // =============== CREATE PERSONAL MAINTENANCE SAU CHECKOUT ===============
     public MaintenanceResponseDTO createAfterCheckOut(
-            Long vehicleId,
             MaintenanceAfterCheckOutCreateRequestDTO req,
             String technicianEmail
     ) {
@@ -100,7 +91,12 @@ public class MaintenanceAfterCheckOutService {
         var technician = userRepository.findByEmail(technicianEmail)
                 .orElseThrow(() -> new EntityNotFoundException("Technician not found"));
 
-        // 2. Lấy vehicle theo vehicleId (không cần booking nữa)
+        // 2. Lấy vehicle theo vehicleId từ body
+        Long vehicleId = req.getVehicleId();
+        if (vehicleId == null) {
+            throw new IllegalArgumentException("VehicleId is required");
+        }
+
         var vehicle = vehicleRepository.findById(vehicleId)
                 .orElseThrow(() -> new EntityNotFoundException("Vehicle not found"));
 
@@ -111,6 +107,10 @@ public class MaintenanceAfterCheckOutService {
 
         // 3. Lấy user theo userId mà technician chọn (từ body)
         Long userId = req.getUserId();
+        if (userId == null) {
+            throw new IllegalArgumentException("UserId is required");
+        }
+
         var user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
@@ -127,9 +127,9 @@ public class MaintenanceAfterCheckOutService {
         var now = LocalDateTime.now();
 
         var m = Maintenance.builder()
-                .vehicle(vehicle)
-                .requestedBy(technician)
-                .liableUser(user)  // field trong entity vẫn là liableUser, nhưng biến mình đặt là user cho dễ hiểu
+                .vehicle(vehicle)              // xe bị hư
+                .requestedBy(technician)       // technician tạo request
+                .liableUser(user)              // co-owner phải trả tiền
                 .description(req.getDescription())
                 .actualCost(req.getCost())
                 .estimatedDurationDays(req.getEstimatedDurationDays())
@@ -143,6 +143,7 @@ public class MaintenanceAfterCheckOutService {
         m = maintenanceRepository.save(m);
         return mapToDTO(m);
     }
+
 
 
 
