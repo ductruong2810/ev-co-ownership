@@ -89,7 +89,7 @@ public class AuthService {
 //        // Ghi nhận lựa chọn rememberMe để quyết định TTL của refresh token
 //        boolean rememberMe = request.isRememberMe();
 
-        // Tạo access token và refresh token; trả role hiện tại của user
+        // Tạo access token trả role hiện tại của user
         return LoginResponseDTO.builder()
                 .accessToken(jwtUtil.generateToken(user))
                 .role(user.getRole().getRoleName().name())
