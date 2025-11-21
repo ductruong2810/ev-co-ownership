@@ -32,5 +32,8 @@ public interface ContractFeedbackRepository extends JpaRepository<ContractFeedba
     @Query("SELECT COUNT(DISTINCT cf.user.userId) FROM ContractFeedback cf WHERE cf.contract.id = :contractId")
     long countDistinctUsersByContractId(@Param("contractId") Long contractId);
 
+    @Query("SELECT cf.contract.group.groupId FROM ContractFeedback cf WHERE cf.id = :feedbackId")
+    Optional<Long> findGroupIdByFeedbackId(@Param("feedbackId") Long feedbackId);
+
 }
 

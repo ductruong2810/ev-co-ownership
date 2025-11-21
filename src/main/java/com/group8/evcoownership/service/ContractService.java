@@ -252,58 +252,6 @@ public class ContractService {
     }
 
     /**
-     * Admin (system) resubmits the contract for member approval without changing content.
-     * Invalidates all existing member feedbacks (sets to PENDING) and notifies all members to review again.
-     */
-    @Transactional
-    public ApiResponseDTO<ResubmitMemberApprovalResponseDTO> resubmitMemberApproval(Long contractId, String adminNote) {
-        Contract contract = contractRepository.findById(contractId)
-                .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
-
-        // Only allow resubmitting when the contract is in member approval stage
-        if (contract.getApprovalStatus() != ContractApprovalStatus.PENDING_MEMBER_APPROVAL) {
-            throw new IllegalStateException("Resubmit is only allowed when contract is in PENDING_MEMBER_APPROVAL");
-        }
-
-        // Invalidate all member feedbacks (set to PENDING) - members need to review again
-        invalidateMemberFeedbacks(contractId);
-
-        contract.setUpdatedAt(LocalDateTime.now());
-        Contract saved = contractRepository.saveAndFlush(contract);
-
-        // Notify all members to review again
-        if (notificationOrchestrator != null) {
-            Map<String, Object> data = notificationOrchestrator.buildContractEmailData(saved);
-            if (adminNote != null && !adminNote.isBlank()) {
-                data = new HashMap<>(data);
-                data.put("adminNote", adminNote.trim());
-            }
-            notificationOrchestrator.sendGroupNotification(
-                    saved.getGroup().getGroupId(),
-                    NotificationType.CONTRACT_APPROVAL_PENDING,
-                    "Contract Resubmitted for Member Approval",
-                    (adminNote != null && !adminNote.isBlank())
-                            ? adminNote.trim()
-                            : "The system administrator has resubmitted the contract for member approval. Please review and confirm.",
-                    data
-            );
-        }
-
-        ResubmitMemberApprovalResponseDTO responseData = ResubmitMemberApprovalResponseDTO.builder()
-                .contractId(saved.getId())
-                .groupId(saved.getGroup().getGroupId())
-                .approvalStatus(saved.getApprovalStatus())
-                .feedbacksInvalidated(true) // Feedbacks set to PENDING, members need to review again
-                .build();
-
-        return ApiResponseDTO.<ResubmitMemberApprovalResponseDTO>builder()
-                .success(true)
-                .message("Resubmitted for member approval")
-                .data(responseData)
-                .build();
-    }
-
-    /**
      * Lấy thông tin tính toán deposit amount cho group admin
      * Bao gồm giá trị tính toán tự động và giải thích công thức
      */
@@ -342,22 +290,77 @@ public class ContractService {
 
 
     /**
-     * Hủy contract với lý do
+     * Tạo contract mới cho group nếu chưa có
+     */
+    private Contract createNewContractIfNotExists(Long groupId) {
+        OwnershipGroup group = getGroupById(groupId);
+        
+        Optional<Contract> contractOpt = contractRepository.findByGroupGroupId(groupId);
+        if (contractOpt.isPresent()) {
+            return contractOpt.get();
+        }
+
+        // Tạo contract mới
+        LocalDate startDate = LocalDate.now();
+        LocalDate endDate = startDate.plusYears(1);
+
+        BigDecimal requiredDepositAmount = depositCalculationService.calculateRequiredDepositAmount(group);
+        String terms = generateContractTerms(groupId);
+
+        Contract contract = Contract.builder()
+                .group(group)
+                .startDate(startDate)
+                .endDate(endDate)
+                .terms(terms)
+                .requiredDepositAmount(requiredDepositAmount)
+                .isActive(true)
+                .approvalStatus(ContractApprovalStatus.PENDING)
+                .build();
+
+        return contractRepository.saveAndFlush(contract);
+    }
+
+    /**
+     * Từ chối contract và tạo feedback DISAGREE với status APPROVED cho admin hệ thống xem
      */
     @Transactional
     public void cancelContract(Long groupId, String reason) {
-        Contract contract = getContractByGroup(groupId);
-
-        // Kiểm tra contract có thể hủy không
-        if (contract.getApprovalStatus() == ContractApprovalStatus.APPROVED) {
-            throw new IllegalStateException("Cannot cancel an approved contract");
+        // Validate reason ở service layer
+        if (reason == null) {
+            throw new IllegalArgumentException("Reason is required");
+        }
+        
+        String trimmedReason = reason.trim();
+        if (trimmedReason.isEmpty()) {
+            throw new IllegalArgumentException("Reason cannot be empty");
         }
 
-        contract.setIsActive(false);
-        contract.setApprovalStatus(ContractApprovalStatus.REJECTED);
-        contract.setRejectionReason(reason);
-        contract.setUpdatedAt(LocalDateTime.now());
-        contractRepository.saveAndFlush(contract);
+        // Tạo contract nếu chưa có (hoặc lấy contract hiện có)
+        Contract contract = createNewContractIfNotExists(groupId);
+
+        // Lấy admin group để tạo feedback
+        List<OwnershipShare> allShares = shareRepository.findByGroup_GroupId(groupId);
+        OwnershipShare adminShare = allShares.stream()
+                .filter(share -> share.getGroupRole() == GroupRole.ADMIN)
+                .findFirst()
+                .orElse(null);
+
+        if (adminShare != null) {
+            // Tạo feedback DISAGREE với status APPROVED để admin hệ thống xem luôn
+            LocalDateTime now = LocalDateTime.now();
+            ContractFeedback adminFeedback = ContractFeedback.builder()
+                    .contract(contract)
+                    .user(adminShare.getUser())
+                    .status(MemberFeedbackStatus.APPROVED)  // APPROVED để admin hệ thống xem luôn
+                    .reactionType(ReactionType.DISAGREE)    // DISAGREE vì admin group từ chối contract
+                    .reason(trimmedReason)
+                    .adminNote(null)
+                    .lastAdminAction(FeedbackAdminAction.APPROVE)  // Đánh dấu đã được approve bởi admin group (thông qua cancelContract)
+                    .lastAdminActionAt(now)
+                    .build();
+
+            feedbackRepository.save(adminFeedback);
+        }
     }
 
     /**
@@ -422,22 +425,8 @@ public class ContractService {
             // Cập nhật contract hiện có (chỉ khi chưa ký)
             contract = existingContract;
         } else {
-            // Tạo contract mới
-            LocalDate startDate = LocalDate.now();
-            LocalDate endDate = startDate.plusYears(1);
-
-            BigDecimal requiredDepositAmount = depositCalculationService.calculateRequiredDepositAmount(group);
-            String terms = generateContractTerms(groupId);
-
-            contract = Contract.builder()
-                    .group(group)
-                    .startDate(startDate)
-                    .endDate(endDate)
-                    .terms(terms)
-                    .requiredDepositAmount(requiredDepositAmount)
-                    .isActive(true)
-                    .approvalStatus(ContractApprovalStatus.PENDING)
-                    .build();
+            // Tạo contract mới (dùng method chung)
+            contract = createNewContractIfNotExists(groupId);
         }
 
         // Tự động ký contract bởi admin group
@@ -1366,15 +1355,6 @@ public class ContractService {
         return contractFeedbackService.rejectFeedback(feedbackId, request);
     }
 
-
-    /**
-     * Invalidate tất cả feedbacks của contract.
-     * <p>
-     * Giữ lại phương thức để tương thích với luồng hiện tại, nhưng không còn lưu lịch sử.
-     */
-    private void invalidateMemberFeedbacks(Long contractId) {
-        // Feedback history feature has been removed; nothing extra to do here.
-    }
 
     /**
      * Kiểm tra và validate contract có thể chỉnh sửa được không
