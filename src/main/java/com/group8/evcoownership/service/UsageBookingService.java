@@ -38,6 +38,11 @@ public class UsageBookingService {
             throw new IllegalStateException("Cannot cancel completed bookings");
         }
 
+        // Không cho phép hủy booking đã được check-in
+        if (Boolean.TRUE.equals(booking.getCheckinStatus())) {
+            throw new IllegalStateException("Cannot cancel booking that has already been checked in");
+        }
+
         if (booking.getUser() == null || !booking.getUser().getUserId().equals(userId)) {
             throw new IllegalStateException("You can only cancel your own bookings");
         }
@@ -55,6 +60,11 @@ public class UsageBookingService {
                 || booking.getStatus() == BookingStatus.AWAITING_REVIEW
                 || booking.getStatus() == BookingStatus.NEEDS_ATTENTION) {
             throw new IllegalStateException("Cannot cancel completed bookings");
+        }
+
+        // Không cho phép hủy booking đã được check-in (ngay cả admin/technician)
+        if (Boolean.TRUE.equals(booking.getCheckinStatus())) {
+            throw new IllegalStateException("Cannot cancel booking that has already been checked in");
         }
 
         booking.setStatus(BookingStatus.CANCELLED);
