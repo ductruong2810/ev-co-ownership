@@ -8,6 +8,7 @@ import com.group8.evcoownership.entity.Maintenance;
 import com.group8.evcoownership.entity.UsageBooking;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.entity.VehicleCheck;
+import com.group8.evcoownership.enums.BookingStatus;
 import com.group8.evcoownership.enums.MaintenanceCoverageType;
 import com.group8.evcoownership.repository.*;
 import jakarta.persistence.EntityNotFoundException;
@@ -309,11 +310,31 @@ public class MaintenanceAfterCheckOutService {
         m.setStatus("COMPLETED");
         m.setMaintenanceCompletedAt(now);
         m.setUpdatedAt(now);
+        maintenanceRepository.save(m);
 
         // Case after checkout là sự cố, không phải bảo trì định kỳ
         // nên thường không set nextDueDate (để null là đúng)
 
-        maintenanceRepository.save(m);
+        // phan xu ly de reopen booking
+        if (m.getVehicle() != null && m.getVehicle().getId() != null) {
+            Long vehicleId = m.getVehicle().getId();
+
+            // Lấy booking gần nhất đã checkout của xe này
+            usageBookingRepository
+                    .findTopByVehicle_idAndCheckoutStatusTrueOrderByCheckoutTimeDesc(vehicleId)
+                    .ifPresent(booking -> {
+                        // Chỉ xử lý nếu booking đang NEEDS_ATTENTION
+                        if (booking.getStatus() == BookingStatus.NEEDS_ATTENTION) {
+                            booking.setStatus(BookingStatus.COMPLETED);
+                            // nếu bạn muốn, có thể set thêm checkoutTime nếu còn null
+                            // if (booking.getCheckoutTime() == null) {
+                            //     booking.setCheckoutTime(now);
+                            // }
+                            usageBookingRepository.save(booking);
+                        }
+                    });
+        }
+
         return mapToDTO(m);
     }
 
