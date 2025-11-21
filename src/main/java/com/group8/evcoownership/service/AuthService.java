@@ -28,7 +28,7 @@ public class AuthService {
     // Logger dùng để ghi log luồng xử lý (thành công, cảnh báo, lỗi)
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
-    // Repository làm việc với bảng Users (CRUD, truy vấn theo email, v.v.)
+    // Repository làm việc với bảng Users (CRUD, truy vấn theo email)
     @Autowired
     private UserRepository userRepository;
 
@@ -36,7 +36,7 @@ public class AuthService {
     @Autowired
     private RoleRepository roleRepository;
 
-    // Tiện ích phát sinh/kiểm tra/giải mã JWT (access token, refresh token)
+    // Tiện ích phát sinh, kiểm tra,giải mã JWT (access token, refresh token)
     @Autowired
     private JwtUtil jwtUtil;
 
@@ -67,13 +67,14 @@ public class AuthService {
     // Token reset mật khẩu -> email (để đổi mật khẩu sau khi xác thực OTP)
     private final Map<String, String> resetTokens = new ConcurrentHashMap<>();
 
-    // ================= LOGIN =================
+    // ================= Login =================
     public LoginResponseDTO login(LoginRequestDTO request) {
-        // Tìm user theo email; nếu không tồn tại, ném lỗi thông tin đăng nhập sai (tránh lộ user tồn tại)
+        // Tìm user theo email nếu không tồn tại,
+        // ném lỗi thông tin đăng nhập sai (tránh lộ user tồn tại)
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new InvalidCredentialsException("Email or password is incorrect"));
 
-        // So khớp mật khẩu plaintext từ request với password hash trong DB (không so sánh thô)
+        // So khớp mật khẩu plaintext từ request với password hash trong DB
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new InvalidCredentialsException("Email or password is incorrect");
         }
@@ -134,7 +135,7 @@ public class AuthService {
 //                .build();
 //    }
 
-    // ================= REQUEST OTP (REGISTRATION) =================
+    // ================= Request otp (registration) =================
     public OtpResponseDTO requestOtp(RegisterRequestDTO request) {
         // Lấy email đăng ký từ DTO để dùng xuyên suốt
         String email = request.getEmail();
@@ -181,14 +182,14 @@ public class AuthService {
             }
             pendingUsers.remove(email); // Xóa trạng thái pending để user có thể thử lại sạch
             if (otp != null) {
-                registerOtpToEmailMap.remove(otp); // Xóa ánh xạ OTP đã tạo
+                registerOtpToEmailMap.remove(otp); // Xóa ax OTP đã tạo
             }
 
             throw new RuntimeException("Unable to send verification email. Please try again later");
         }
     }
 
-    // ================= VERIFY OTP =================
+    // ================= Verify otp =================
     public VerifyOtpResponseDTO verifyOtp(String otp, OtpType type) {
         log.info("Verifying OTP with type: {}", type);
 
@@ -218,13 +219,14 @@ public class AuthService {
             // Ném lại các lỗi hợp lệ để client nhận đúng thông điệp
             throw e;
         } catch (Exception e) {
-            // Bắt mọi lỗi không lường trước, ghi log đầy đủ stacktrace để dễ điều tra
+            // Bắt mọi lỗi không lường trước,
+            // ghi log đầy đủ stacktrace để dễ điều tra
             log.error("Unexpected error: {}", e.getMessage(), e);
             throw new RuntimeException("An error occurred during verification. Please try again");
         }
     }
 
-    // ================= VERIFY REGISTRATION OTP (PRIVATE) =================
+    // ================= Verify registration otp =================
     private VerifyOtpResponseDTO verifyRegistrationOtp(String otp) {
         log.info("Verifying registration OTP");
 
@@ -249,7 +251,7 @@ public class AuthService {
             // Nếu sai OTP: trả về số lần còn lại để UX tốt hơn
             int remainingAttempts = otpUtil.getRemainingAttempts(email);
             if (remainingAttempts == 0) {
-                // Hết lượt: hủy trạng thái pending và ánh xạ OTP để user đăng ký lại
+                // Hết lượt: hủy trạng thái pending và ax OTP để user đăng ký lại
                 pendingUsers.remove(email);
                 registerOtpToEmailMap.remove(otp);
                 log.error("Registration OTP verification failed - no attempts remaining");
@@ -267,6 +269,7 @@ public class AuthService {
 
         // Đăng nhập tự động sau đăng ký: phát hành access/refresh token
         String accessToken = jwtUtil.generateToken(user);
+        //bỏ
 //        String refreshToken = jwtUtil.generateRefreshToken(user, false);
 
         // Lấy thông tin profile để trả về front-end
@@ -284,7 +287,7 @@ public class AuthService {
                 .build();
     }
 
-    // ================= VERIFY PASSWORD RESET OTP (PRIVATE) =================
+    // ================= Verify password reset otp =================
     private VerifyOtpResponseDTO verifyPasswordResetOtp(String otp) {
         log.info("Verifying password reset OTP");
 
@@ -335,7 +338,7 @@ public class AuthService {
                 .build();
     }
 
-    // ================= CREATE USER =================
+    // ================= Create user =================
     private User createUser(RegisterRequestDTO request) {
         log.info("Creating new user with email: {}", request.getEmail());
 
@@ -360,7 +363,7 @@ public class AuthService {
         return userRepository.save(user);
     }
 
-    // ================= RESEND OTP =================
+    // ================= Resend otp =================
     public OtpResponseDTO resendOtp(String email, OtpType type) {
         log.info("Resending {} OTP for email: {}", type, email);
 
@@ -374,7 +377,7 @@ public class AuthService {
         }
     }
 
-    // ================= RESEND REGISTRATION OTP (PRIVATE) =================
+    // ================= Resend registration otp (PRIVATE) =================
     private OtpResponseDTO resendRegistrationOtp(String email) {
         log.info("Resending registration OTP for email: {}", email);
 
@@ -416,7 +419,7 @@ public class AuthService {
         }
     }
 
-    // ================= RESEND PASSWORD RESET OTP (PRIVATE) =================
+    // ================= Resend password rest Otp =================
     private OtpResponseDTO resendPasswordResetOtp(String email) {
         log.info("Resending password reset OTP for email: {}", email);
 
@@ -454,7 +457,7 @@ public class AuthService {
         }
     }
 
-    // ================= FORGOT PASSWORD =================
+    // ================= Forgot password =================
     public OtpResponseDTO forgotPassword(String email) {
         log.info("Processing forgot password request for email: {}", email);
 
@@ -507,7 +510,7 @@ public class AuthService {
         }
     }
 
-    // ================= RESET PASSWORD WITH TOKEN =================
+    // ================= Reset password voi Token =================
     public ResetPasswordResponseDTO resetPasswordWithToken(ResetPasswordRequestDTO request) {
         // Lấy reset token từ request để xác định email tương ứng
         String resetToken = request.getResetToken();
@@ -562,7 +565,7 @@ public class AuthService {
         }
     }
 
-    // ================= CHANGE PASSWORD =================
+    // ================= Change password =================
     public String changePassword(String email, ChangePasswordRequestDTO request) {
         log.info("Processing change password request for email: {}", email);
 
@@ -612,7 +615,7 @@ public class AuthService {
         }
     }
 
-    // ================= HELPER =================
+    // ================= Helper =================
     private String generateResetToken() {
         // Phát sinh chuỗi UUID ngẫu nhiên làm reset token (đủ độ dài/entropy cơ bản cho mục đích này)
         return java.util.UUID.randomUUID().toString();
