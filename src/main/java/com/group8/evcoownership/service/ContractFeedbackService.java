@@ -346,11 +346,8 @@ public class ContractFeedbackService {
                 .build();
     }
 
-    /**
-     * Lấy tất cả feedback của members cho contract
-     * CHỈ TRẢ VỀ FEEDBACK DISAGREE (để admin group xem và xử lý)
-     */
-    public ContractFeedbacksResponseDTO getContractFeedbacks(Long contractId) {
+
+    public ContractFeedbacksResponseDTO getContractFeedbacks(Long contractId, MemberFeedbackStatus filterStatus) {
         Contract contract = contractRepository.findById(contractId)
                 .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
 
@@ -358,6 +355,7 @@ public class ContractFeedbackService {
         List<ContractFeedback> allFeedbacks = feedbackRepository.findByContractId(contractId);
         List<ContractFeedback> feedbacks = allFeedbacks.stream()
                 .filter(f -> f.getReactionType() == ReactionType.DISAGREE)
+                .filter(f -> filterStatus == null || f.getStatus() == filterStatus)
                 .toList();
 
         List<OwnershipShare> allMembers = shareRepository.findByGroup_GroupId(contract.getGroup().getGroupId());
@@ -429,14 +427,25 @@ public class ContractFeedbackService {
                 .build();
     }
 
-    /**
-     * Lấy tất cả feedback của members cho contract theo groupId
-     * Mỗi group hiện chỉ có 1 contract, nên hàm này ánh xạ groupId -> contractId rồi tái sử dụng logic cũ
-     */
-    public ContractFeedbacksResponseDTO getContractFeedbacksByGroup(Long groupId) {
+
+    public ContractFeedbacksResponseDTO getContractFeedbacksByGroup(Long groupId, MemberFeedbackStatus filterStatus) {
         Contract contract = contractRepository.findByGroupGroupId(groupId)
                 .orElseThrow(() -> new ResourceNotFoundException("Contract not found for group: " + groupId));
-        return getContractFeedbacks(contract.getId());
+        return getContractFeedbacks(contract.getId(), filterStatus);
+    }
+    
+    /**
+     * Overload method để backward compatibility - trả về tất cả DISAGREE feedbacks
+     */
+    public ContractFeedbacksResponseDTO getContractFeedbacks(Long contractId) {
+        return getContractFeedbacks(contractId, null);
+    }
+    
+    /**
+     * Overload method để backward compatibility - trả về tất cả DISAGREE feedbacks
+     */
+    public ContractFeedbacksResponseDTO getContractFeedbacksByGroup(Long groupId) {
+        return getContractFeedbacksByGroup(groupId, null);
     }
 
     /**

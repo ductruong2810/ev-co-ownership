@@ -1420,15 +1420,13 @@ public class ContractService {
 
     /**
      * Lấy tất cả feedback của members cho contract
-     * Delegated to ContractFeedbackService
      */
-    public ContractFeedbacksResponseDTO getContractFeedbacks(Long contractId) {
-        return contractFeedbackService.getContractFeedbacks(contractId);
+    public ContractFeedbacksResponseDTO getContractFeedbacks(Long contractId, MemberFeedbackStatus filterStatus) {
+        return contractFeedbackService.getContractFeedbacks(contractId, filterStatus);
     }
 
     /**
-     * Lấy tất cả feedback của members cho contract theo groupId
-     * Delegated to ContractFeedbackService
+     * Overload method để backward compatibility - trả về tất cả DISAGREE feedbacks
      */
     public ContractFeedbacksResponseDTO getContractFeedbacksByGroup(Long groupId) {
         return contractFeedbackService.getContractFeedbacksByGroup(groupId);
