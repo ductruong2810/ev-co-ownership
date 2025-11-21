@@ -10,8 +10,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -146,69 +144,47 @@ public class AdminContractController { // Khai báo class controller cho phần 
 
     /**
      * Approve (chấp thuận) một feedback cụ thể
-     * Cho phép cả System Admin và Group Admin
+     * Chỉ dành cho Group Admin (CO_OWNER)
      */
     @PutMapping("/feedbacks/{feedbackId}/approve")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'CO_OWNER')")
+    @PreAuthorize("hasRole('CO_OWNER')")
     @Operation(
             summary = "Approve feedback",
-            description = "System admin hoặc Group admin approve một feedback cụ thể. Chỉ có thể approve feedbacks có status = PENDING."
+            description = "Group admin approve một feedback cụ thể. Chỉ có thể approve feedbacks có status = PENDING."
     )
     public ResponseEntity<ApiResponseDTO<FeedbackActionResponseDTO>> approveFeedback(
             @PathVariable Long feedbackId, // ID feedback cần xử lý
             // request body có thể có hoặc không (admin có thể gửi note hoặc để trống)
             @RequestBody(required = false) FeedbackActionRequestDTO request,
-            @AuthenticationPrincipal String userEmail,
-            Authentication authentication
+            @AuthenticationPrincipal String userEmail
     ) {
-        // Kiểm tra xem user là system admin hay group admin
-        boolean isSystemAdmin = authentication != null && authentication.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .anyMatch(a -> a.equals("ROLE_ADMIN") || a.equals("ROLE_STAFF"));
+        // Group admin: cần userId để validate
+        Long userId = contractService.getUserIdByEmail(userEmail);
+        ApiResponseDTO<FeedbackActionResponseDTO> result = contractService.approveFeedbackByGroupAdmin(feedbackId, request, userId);
         
-        ApiResponseDTO<FeedbackActionResponseDTO> result;
-        if (isSystemAdmin) {
-            // System admin: gọi method không cần userId
-            result = contractService.approveFeedback(feedbackId, request);
-        } else {
-            // Group admin: cần userId để validate
-            Long userId = contractService.getUserIdByEmail(userEmail);
-            result = contractService.approveFeedbackByGroupAdmin(feedbackId, request, userId);
-        }
         // Trả kết quả thành công
         return ResponseEntity.ok(result);
     }
 
     /**
      * Reject (từ chối) một feedback cụ thể
-     * Cho phép cả System Admin và Group Admin
+     * Chỉ dành cho Group Admin (CO_OWNER)
      */
     @PutMapping("/feedbacks/{feedbackId}/reject")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'CO_OWNER')")
+    @PreAuthorize("hasRole('CO_OWNER')")
     @Operation(
             summary = "Reject feedback",
-            description = "System admin hoặc Group admin reject một feedback cụ thể. Chỉ có thể reject feedbacks có status = PENDING."
+            description = "Group admin reject một feedback cụ thể. Chỉ có thể reject feedbacks có status = PENDING."
     )
     public ResponseEntity<ApiResponseDTO<FeedbackActionResponseDTO>> rejectFeedback(
             @PathVariable Long feedbackId, // ID feedback cần reject
             @RequestBody(required = false) FeedbackActionRequestDTO request, // có thể chứa lý do reject
-            @AuthenticationPrincipal String userEmail,
-            Authentication authentication
+            @AuthenticationPrincipal String userEmail
     ) {
-        // Kiểm tra xem user là system admin hay group admin
-        boolean isSystemAdmin = authentication != null && authentication.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .anyMatch(a -> a.equals("ROLE_ADMIN") || a.equals("ROLE_STAFF"));
+        // Group admin: cần userId để validate
+        Long userId = contractService.getUserIdByEmail(userEmail);
+        ApiResponseDTO<FeedbackActionResponseDTO> result = contractService.rejectFeedbackByGroupAdmin(feedbackId, request, userId);
         
-        ApiResponseDTO<FeedbackActionResponseDTO> result;
-        if (isSystemAdmin) {
-            // System admin: gọi method không cần userId
-            result = contractService.rejectFeedback(feedbackId, request);
-        } else {
-            // Group admin: cần userId để validate
-            Long userId = contractService.getUserIdByEmail(userEmail);
-            result = contractService.rejectFeedbackByGroupAdmin(feedbackId, request, userId);
-        }
         // Trả về kết quả
         return ResponseEntity.ok(result);
     }
