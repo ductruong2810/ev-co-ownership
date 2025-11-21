@@ -54,27 +54,16 @@ public class LogoutService {
         }
     }
 
-    /**
-     * Kiểm tra token có bị blacklist không
-     */
+    // Kiểm tra token có bị blacklist không
     public boolean isTokenBlacklisted(String token) {
         return blacklistedTokens.containsKey(token);
     }
 
-    /**
-     * Cleanup tokens đã hết hạn khỏi blacklist
-     * (Gọi định kỳ để tiết kiệm memory)
-     */
+    // Cleanup tokens đã hết hạn khỏi blacklist
     private void cleanupExpiredTokens() {
         Date now = new Date();
         blacklistedTokens.entrySet().removeIf(entry -> entry.getValue().before(now));
         log.debug("Cleaned up expired tokens. Remaining blacklisted: {}", blacklistedTokens.size());
     }
 
-    /**
-     * Get số lượng token trong blacklist (for debugging)
-     */
-    public int getBlacklistedTokenCount() {
-        return blacklistedTokens.size();
-    }
 }

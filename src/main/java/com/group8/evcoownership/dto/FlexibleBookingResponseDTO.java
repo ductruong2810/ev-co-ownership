@@ -17,7 +17,7 @@ public class FlexibleBookingResponseDTO {
 //    private String qrCode;//thinh moi them vo nha
 
     @JsonRawValue
-    //để trả về Json thuần ko bị esacape
+    //để trả về Json thuần ko bị escape
     private String qrCodeCheckin;
     @JsonRawValue
     private String qrCodeCheckout;

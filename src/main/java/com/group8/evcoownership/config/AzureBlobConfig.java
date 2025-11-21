@@ -37,7 +37,7 @@ public class AzureBlobConfig {
             throw new IllegalStateException("Azure connection string is not configured!");
         }
 
-        // +generate BlobServiceClient từ thằng connection string,
+        // Ggenerate BlobServiceClient từ thằng connection string,
         // cho phép truy cập các container và blob
         BlobServiceClient client = new BlobServiceClientBuilder()
                 .connectionString(connectionString)

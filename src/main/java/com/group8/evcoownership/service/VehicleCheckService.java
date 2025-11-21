@@ -158,7 +158,6 @@ public class VehicleCheckService {
                 .build();
     }
 
-
     // Kiểm tra user đã làm check chưa
     public Boolean hasCheck(Long bookingId, String checkType) {
         return vehicleCheckRepository.findByBookingId(bookingId)
@@ -550,7 +549,7 @@ public class VehicleCheckService {
 
         VehicleCheck technicianReview = VehicleCheck.builder()
                 .booking(booking)
-                .checkType("TECH_REVIEW")
+                .checkType("TECH_REVIEW")// type nay the hien check bi tu choi
                 .odometer(sourceCheck.getOdometer())
                 .batteryLevel(sourceCheck.getBatteryLevel())
                 .cleanliness(sourceCheck.getCleanliness())

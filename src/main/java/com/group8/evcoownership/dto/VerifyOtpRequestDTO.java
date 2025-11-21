@@ -20,5 +20,5 @@ public class VerifyOtpRequestDTO {
     private String otp;
 
     @NotNull(message = "Type is required")
-    private OtpType type;  // REGISTRATION or PASSWORD_RESET
+    private OtpType type;  // REGISTRATION hoac PASSWORD_RESET
 }

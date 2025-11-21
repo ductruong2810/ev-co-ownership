@@ -1172,7 +1172,7 @@ public class ContractService {
 
         Contract savedContract = contractRepository.saveAndFlush(contract);
 
-        // Notify all members that the contract has been approved by system admin
+        // Thông báo cho tất cả các thành viên rằng hợp đồng đã được quản trị hệ thống phê duyệt
         if (notificationOrchestrator != null) {
             Long groupId = savedContract.getGroup().getGroupId();
             Map<String, Object> emailData = notificationOrchestrator.buildContractEmailData(savedContract);

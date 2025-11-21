@@ -25,15 +25,13 @@ import java.util.List;
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminContractController { // Khai báo class controller cho phần quản lý hợp đồng của admin
 
-    // Inject các service cần thiết (được Spring tự động tiêm vào thông qua constructor)
+    // Inject các service cần thiết
     private final ContractService contractService; // Service chứa logic xử lý hợp đồng
     private final UserService userService; // Service chứa logic xử lý người dùng (admin)
 
     /**
      * CHỈ DÀNH CHO ADMIN: Cập nhật cả thời hạn và điều khoản hợp đồng trong một lần gọi
      */
-    // @PutMapping("/{contractId}"): mapping đến HTTP PUT /api/admin/contracts/{contractId}
-    // @Operation: mô tả cho Swagger (hiển thị trong API docs)
     @PutMapping("/{contractId}")
     @Operation(summary = "Admin update contract (duration + terms)", description = "System admin updates start/end dates and terms together")
     public ResponseEntity<ApiResponseDTO<ContractUpdateResponseDTO>> updateContractByAdmin(
@@ -45,7 +43,7 @@ public class AdminContractController { // Khai báo class controller cho phần 
     ) {
         // Kiểm tra xem ngày kết thúc có trước ngày bắt đầu không
         if (request.isInvalidDateRange()) {
-            // Nếu phạm lỗi => tạo object lỗi để trả về cho client
+            // Nếu có lõi => tạo object lỗi để trả về cho client
             ApiResponseDTO<ContractUpdateResponseDTO> error = ApiResponseDTO.<ContractUpdateResponseDTO>builder()
                     .success(false) // đánh dấu thất bại
                     .message("End date must be after start date") // nội dung thông báo lỗi
@@ -76,7 +74,7 @@ public class AdminContractController { // Khai báo class controller cho phần 
         ContractDTO contract = contractService.processContractApproval(
                 request.getContractId(), // ID hợp đồng
                 request.getAction(), // hành động (APPROVE hoặc REJECT)
-                request.getReason(), // lý do (nếu có)
+                request.getReason(), // lý do reject còn APPROVE thì k có
                 admin // thông tin admin thực hiện
         );
 
@@ -87,7 +85,7 @@ public class AdminContractController { // Khai báo class controller cho phần 
     /**
      * CHỈ DÀNH CHO ADMIN: Gửi lại hợp đồng để thành viên phê duyệt (xóa feedback cũ và gửi thông báo)
      */
-    @PostMapping("/{contractId}/resubmit-approval") // Mapping POST /api/admin/contracts/{id}/resubmit-approval
+    @PostMapping("/{contractId}/resubmit-approval")
     @Operation(summary = "Resubmit contract for member approval", description = "Clear all member feedbacks and notify all group members to review again")
     public ResponseEntity<ApiResponseDTO<ResubmitMemberApprovalResponseDTO>> resubmitApproval(
             @PathVariable Long contractId, // lấy contractId từ URL
@@ -103,7 +101,7 @@ public class AdminContractController { // Khai báo class controller cho phần 
     /**
      * Kiểm tra trạng thái đóng tiền cọc của hợp đồng (chỉ dành cho admin)
      */
-    @GetMapping("/{groupId}/deposit-status") // GET /api/admin/contracts/{groupId}/deposit-status
+    @GetMapping("/{groupId}/deposit-status")
     public ResponseEntity<ContractDepositStatusResponseDTO> checkDepositStatus(@PathVariable Long groupId) {
         ContractDepositStatusResponseDTO status = contractService.checkDepositStatus(groupId);
         return ResponseEntity.ok(status);
@@ -163,10 +161,10 @@ public class AdminContractController { // Khai báo class controller cho phần 
     /**
      * CHỈ DÀNH CHO ADMIN: Approve (chấp thuận) một feedback cụ thể
      */
-    @PutMapping("/feedbacks/{feedbackId}/approve") // PUT /api/admin/contracts/feedbacks/{feedbackId}/approve
+    @PutMapping("/feedbacks/{feedbackId}/approve")
     @Operation(
-            summary = "Approve feedback", // mô tả ngắn gọn cho Swagger
-            description = "Admin approve một feedback cụ thể. Chỉ có thể approve feedbacks có status = PENDING." // mô tả chi tiết
+            summary = "Approve feedback",
+            description = "Admin approve một feedback cụ thể. Chỉ có thể approve feedbacks có status = PENDING."
     )
     public ResponseEntity<ApiResponseDTO<FeedbackActionResponseDTO>> approveFeedback(
             @PathVariable Long feedbackId, // ID feedback cần xử lý
@@ -182,7 +180,7 @@ public class AdminContractController { // Khai báo class controller cho phần 
     /**
      * CHỈ DÀNH CHO ADMIN: Reject (từ chối) một feedback cụ thể
      */
-    @PutMapping("/feedbacks/{feedbackId}/reject") // PUT /api/admin/contracts/feedbacks/{feedbackId}/reject
+    @PutMapping("/feedbacks/{feedbackId}/reject")
     @Operation(
             summary = "Reject feedback",
             description = "Admin reject một feedback cụ thể. Chỉ có thể reject feedbacks có status = PENDING."
