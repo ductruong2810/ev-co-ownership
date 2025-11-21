@@ -14,10 +14,6 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
-
 @RestController
 @RequestMapping("/api/contracts")
 @RequiredArgsConstructor
@@ -94,18 +90,11 @@ public class ContractController {
     @PostMapping("/{groupId}/cancel")
     @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
     @Operation(summary = "Từ chối hợp đồng", description = "Admin group từ chối hợp đồng và tạo feedback DISAGREE với status APPROVED để admin hệ thống xem. Contract status không thay đổi. Reason là bắt buộc.")
-    public ResponseEntity<Map<String, Object>> cancelContract(
+    public ResponseEntity<ContractCancelResponseDTO> cancelContract(
             @PathVariable Long groupId,
-            @RequestBody Map<String, Object> cancelRequest) {
+            @Valid @RequestBody ContractCancelRequestDTO request) {
 
-        String reason = cancelRequest != null ? (String) cancelRequest.get("reason") : null;
-        contractService.cancelContract(groupId, reason);
-
-        Map<String, Object> result = new HashMap<>();
-        result.put("success", true);
-        result.put("message", "Feedback DISAGREE with status APPROVED has been created for system admin to review. Contract status remains unchanged.");
-        result.put("reason", reason != null ? reason.trim() : null);
-        result.put("createdAt", LocalDateTime.now());
+        ContractCancelResponseDTO result = contractService.cancelContract(groupId, request.getReason());
 
         return ResponseEntity.ok(result);
     }

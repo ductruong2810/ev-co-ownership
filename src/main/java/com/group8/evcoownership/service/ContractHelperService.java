@@ -101,5 +101,30 @@ public class ContractHelperService {
 
         return terms.replaceAll(depositPattern, replacement);
     }
+
+    /**
+     * Loại bỏ phần AUTO-SIGNED và LEGAL INFORMATION khỏi contract terms
+     * Để tránh lặp lại khi ký lại contract
+     */
+    public String removeAutoSignatureSection(String terms) {
+        if (terms == null || terms.isEmpty()) {
+            return terms;
+        }
+
+        // Pattern để tìm và loại bỏ phần [AUTO-SIGNED] và [LEGAL INFORMATION]
+        // Match từ [AUTO-SIGNED] đến hết phần [LEGAL INFORMATION] và tất cả nội dung sau đó đến cuối chuỗi
+        // hoặc đến khi gặp 2 dòng trống liên tiếp (đánh dấu phần mới)
+        Pattern pattern = Pattern.compile(
+                "\\s*\\[AUTO-SIGNED].*?\\[LEGAL INFORMATION].*?(?=\\n\\s*\\n|$)",
+            Pattern.DOTALL | Pattern.CASE_INSENSITIVE
+        );
+
+        String cleaned = pattern.matcher(terms).replaceAll("").trim();
+
+        // Loại bỏ các dòng trống thừa (3 dòng trống trở lên thành 2 dòng trống)
+        cleaned = cleaned.replaceAll("\\n{3,}", "\n\n");
+        
+        return cleaned.trim();
+    }
 }
 

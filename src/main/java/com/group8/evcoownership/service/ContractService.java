@@ -177,6 +177,9 @@ public class ContractService {
                 ? request.terms().trim()
                 : (contract.getTerms() != null ? contract.getTerms() : "");
 
+        // Loại bỏ phần AUTO-SIGNED cũ (nếu có) khi cập nhật terms để tránh lặp lại
+        baseTerms = contractHelperService.removeAutoSignatureSection(baseTerms);
+
         String syncedTerms = contractHelperService.updateDepositAmountInTerms(baseTerms, calculatedDepositAmount);
         syncedTerms = contractHelperService.updateTermInTerms(syncedTerms, request.startDate(), request.endDate());
         contract.setTerms(syncedTerms);
@@ -324,15 +327,15 @@ public class ContractService {
      * Từ chối contract và tạo feedback DISAGREE với status APPROVED cho admin hệ thống xem
      */
     @Transactional
-    public void cancelContract(Long groupId, String reason) {
-        // Validate reason ở service layer
-        if (reason == null) {
+    public ContractCancelResponseDTO cancelContract(Long groupId, String reason) {
+        // Validate reason ở service layer (DTO validation đã check, nhưng double-check ở đây)
+        if (reason == null || reason.trim().isEmpty()) {
             throw new IllegalArgumentException("Reason is required");
         }
         
         String trimmedReason = reason.trim();
-        if (trimmedReason.isEmpty()) {
-            throw new IllegalArgumentException("Reason cannot be empty");
+        if (trimmedReason.length() < 10) {
+            throw new IllegalArgumentException("Reason must be at least 10 characters");
         }
 
         // Tạo contract nếu chưa có (hoặc lấy contract hiện có)
@@ -361,6 +364,13 @@ public class ContractService {
 
             feedbackRepository.save(adminFeedback);
         }
+
+        return ContractCancelResponseDTO.builder()
+                .success(true)
+                .message("Feedback DISAGREE with status APPROVED has been created for system admin to review. Contract status remains unchanged.")
+                .reason(trimmedReason)
+                .createdAt(LocalDateTime.now())
+                .build();
     }
 
     /**
@@ -430,8 +440,10 @@ public class ContractService {
         }
 
         // Tự động ký contract bởi admin group
+        // Loại bỏ phần AUTO-SIGNED cũ (nếu có) để tránh lặp lại
+        String cleanedTerms = contractHelperService.removeAutoSignatureSection(contract.getTerms());
         String signatureInfo = buildAutoSignatureInfo(groupId);
-        contract.setTerms(contract.getTerms() + "\n\n" + signatureInfo);
+        contract.setTerms(cleanedTerms + "\n\n" + signatureInfo);
         contract.setApprovalStatus(ContractApprovalStatus.PENDING_MEMBER_APPROVAL); // Chờ các member approve
         contract.setUpdatedAt(LocalDateTime.now());
 
