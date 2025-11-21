@@ -28,6 +28,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static java.lang.System.currentTimeMillis;
 
@@ -42,6 +43,7 @@ public class OwnershipGroupService {
     private final UserRepository userRepository;
     private final UserDocumentRepository userDocumentRepository;
     private final ContractRepository contractRepository;
+    private final ContractFeedbackRepository contractFeedbackRepository;
     private final VehicleService vehicleService;
     private final NotificationOrchestrator notificationOrchestrator;
     private final FundService fundService;
@@ -763,6 +765,24 @@ public class OwnershipGroupService {
             }
             Long groupId = contract.getGroup().getGroupId();
             return isGroupMember(userEmail, groupId);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Kiểm tra user có phải là admin của group dựa trên feedbackId
+     * Tối ưu: Query trực tiếp groupId từ feedbackId thay vì load toàn bộ object graph
+     */
+    public boolean isGroupAdminForFeedback(String userEmail, Long feedbackId) {
+        try {
+            // Query trực tiếp groupId từ feedbackId (hiệu quả hơn)
+            Optional<Long> groupIdOpt = contractFeedbackRepository.findGroupIdByFeedbackId(feedbackId);
+            if (groupIdOpt.isEmpty()) {
+                return false;
+            }
+            Long groupId = groupIdOpt.get();
+            return isGroupAdmin(userEmail, groupId);
         } catch (Exception e) {
             return false;
         }
