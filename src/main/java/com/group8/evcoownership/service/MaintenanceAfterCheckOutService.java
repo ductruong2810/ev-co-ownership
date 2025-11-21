@@ -10,6 +10,7 @@ import com.group8.evcoownership.enums.MaintenanceCoverageType;
 import com.group8.evcoownership.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -311,14 +312,18 @@ public class MaintenanceAfterCheckOutService {
         // Case after checkout là sự cố, không phải bảo trì định kỳ
         // nên thường không set nextDueDate (để null là đúng)
 
+
+
+
         // ======= dùng vehicleId + userId để tìm Booking + VehicleCheck =======
-        if (m.getVehicle() != null && m.getVehicle().getId() != null && m.getLiableUser() != null) {
+        if (m.getVehicle().getId() != null && m.getLiableUser().getUserId() != null) {
             Long vehicleId = m.getVehicle().getId();
             Long userId = m.getLiableUser().getUserId();
 
             // 1) Tìm booking gần nhất của user này với xe này, đã checkout
             usageBookingRepository
-                    .findTopByVehicle_IdAndUser_UserIdAndCheckoutStatusTrueOrderByCheckoutTimeDesc(vehicleId, userId)
+                    .findTopByVehicle_IdAndUser_UserIdAndCheckoutStatusTrueOrderByCheckoutTimeDesc
+                            (vehicleId, userId)
                     .ifPresent(booking -> {
 
                         // (a) reopen booking nếu NEEDS_ATTENTION
@@ -338,6 +343,7 @@ public class MaintenanceAfterCheckOutService {
                                 });
                     });
         }
+
 
 
         return mapToDTO(m);
