@@ -549,7 +549,7 @@ public class VehicleCheckService {
 
         VehicleCheck technicianReview = VehicleCheck.builder()
                 .booking(booking)
-                .checkType("TECH_REVIEW")
+                .checkType("TECH_REVIEW")// type nay the hien check bi tu choi
                 .odometer(sourceCheck.getOdometer())
                 .batteryLevel(sourceCheck.getBatteryLevel())
                 .cleanliness(sourceCheck.getCleanliness())
