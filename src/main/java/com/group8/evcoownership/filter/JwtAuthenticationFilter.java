@@ -41,13 +41,13 @@ import java.util.Collections;
 public class JwtAuthenticationFilter extends OncePerRequestFilter { // Base class của Spring cho filter chỉ chạy 1 lần mỗi request
 
     @Autowired
-    private JwtUtil jwtUtil; // Tiện ích xác thực, giải mã, trích xuất giá trị từ JWT
+    private JwtUtil jwtUtil; // TDùng để giải mã, xác thực JWT
 
     @Autowired
-    private UserRepository userRepository; // Repository để truy vấn user theo email có trong JWT
+    private UserRepository userRepository; // Lấy thông tin user từ DB bằng email trích xuất từ token
 
     @Autowired
-    private LogoutService logoutService; // Quản lý blacklist token (token bị revoke khi logout)
+    private LogoutService logoutService; // Kiểm tra blacklist token (token bị thu hồi khi logout)
 
     private final ObjectMapper objectMapper; // Dùng để serialize ErrorResponseDTO thành JSON
 
@@ -56,11 +56,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter { // Base clas
         this.objectMapper.registerModule(new JavaTimeModule());
     }
 
+    // Hàm chính: nhận mọi request vào API (trừ route public), kiểm tra và xác thực JWT.
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
-        // Đọc header Authorization từ request (theo chuẩn Bearer)
+        // Đọc header Authorization từ req (chuẩn JWT Bearer <token>)
         final String authHeader = request.getHeader("Authorization");
 
         // Nếu header không có hoặc không bắt đầu bằng "Bearer ",
@@ -73,7 +74,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter { // Base clas
         // Cắt "Bearer " để lấy chuỗi JWT thực sự
         String token = authHeader.substring(7);
 
-        // Kiểm tra token rỗng (có thể toàn khoảng trắng); nếu lỗi, trả về 401 ngay
+        // Kiểm tra token rỗng (có thể toàn space)
+        // nếu lỗi, trả về 401 ngay
         if (token.trim().isEmpty()) {
             log.warn("Empty token detected"); // Ghi cảnh báo
             sendErrorResponse(response, request, "Invalid token");

@@ -34,7 +34,7 @@ public class JwtUtil {
 //    // Thời gian sống của refresh token khi user chọn Remember Me (ví dụ 30 ngày)
 
 
-    // ========= LẤY userId TỪ TOKEN =========
+    // ========= Lấy userId Từ TOKEN =========
     // Extract userId từ token
     public Long getUserIdFromToken(String token) {
         Claims claims = Jwts.parserBuilder()
@@ -121,7 +121,7 @@ public class JwtUtil {
     }
 
 
-    // ========= VALIDATE & CHECK EXPIRED =========
+    // ========= Validate va check expired toekn =========
     // Validate token (check signature và expiration)
     public boolean validateToken(String token) {
         try {
@@ -135,7 +135,7 @@ public class JwtUtil {
         }
     }
 
-    // ========= HELPER EXTRACT CLAIM =========
+    // ========= Helper Extract claim =========
     // Extract 1 claim cụ thể từ token
     // <T> là kiểu generic, nghĩa là hàm này ko fix cứng kiểu trả về
     // tuỳ theo claimsResolver mà T có thể là String, Date, Long,...
@@ -163,7 +163,7 @@ public class JwtUtil {
     }
 
 
-    // ========= TẠO SIGNING KEY TỪ SECRET =========
+    // ========= Tạo signing Key Từ secret =========
     //Get signing key từ secret
     //Chuyển chuỗi secret trong cấu hình thành SecretKey dùng cho HMAC-SHA
     private SecretKey getSigningKey() {

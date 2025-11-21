@@ -21,11 +21,10 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/auth") // Định nghĩa prefix cho tất cả API xác thực là /api/auth
 @Tag(name = "Authentication", description = "Login, Register, OTP, Password Management")
-// Dùng cho Swagger để mô tả nhóm API
 public class AuthController {
 
     @Autowired
-    private AuthService authService; // Service xử lý logic đăng nhập, đăng ký, token,...
+    private AuthService authService; // Service xử lý logic đăng nhập, đăng ký, token
 
     @Autowired
     private LogoutService logoutService; // Service xử lý logic đăng xuất (invalidate token)

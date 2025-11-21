@@ -1,6 +1,7 @@
 package com.group8.evcoownership.controller;
 
 import com.group8.evcoownership.dto.*;
+import com.group8.evcoownership.enums.MemberFeedbackStatus;
 import com.group8.evcoownership.service.ContractService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -8,6 +9,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,17 +29,6 @@ public class ContractController {
 
     /**
      * API: Xem chi tiết hợp đồng của một nhóm
-     * ------------------------------------------------------------
-     * Dành cho:
-     * - Group Admin
-     * - Các thành viên trong nhóm
-     * <p>
-     * Mục đích:
-     * Khi người dùng bấm "Xem hợp đồng" ở giao diện FE,
-     * API này sẽ trả về thông tin chi tiết gồm:
-     * 1. Hợp đồng (terms, deposit, startDate, endDate, ...)
-     * 2. Nhóm (tên, trạng thái, ngày tạo, ...)
-     * 3. Danh sách thành viên (tên, email, vai trò, % sở hữu, trạng thái cọc, ...)
      */
     @GetMapping("/{groupId}/details")
     @PreAuthorize("@ownershipGroupService.isGroupMember(authentication.name, #groupId) or hasAnyRole('ADMIN','STAFF')")
@@ -84,13 +76,6 @@ public class ContractController {
 
     /**
      * API: Lấy thông tin tính toán deposit amount (cho group admin hiểu công thức)
-     * ------------------------------------------------------------
-     * Dành cho:
-     * - Group Admin
-     * <p>
-     * Mục đích:
-     * Hiển thị giá trị deposit được tính toán tự động và giải thích công thức
-     * để admin có thể quyết định có override hay không
      */
     @GetMapping("/{groupId}/deposit-calculation")
     @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
@@ -104,38 +89,29 @@ public class ContractController {
     }
 
     /**
-     * Hủy contract (chỉ admin group)
+     * Từ chối contract và tạo feedback DISAGREE với status APPROVED (chỉ admin group)
      */
     @PostMapping("/{groupId}/cancel")
     @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
-    @Operation(summary = "Hủy hợp đồng", description = "Chỉ admin của nhóm được phép hủy hợp đồng với lý do")
+    @Operation(summary = "Từ chối hợp đồng", description = "Admin group từ chối hợp đồng và tạo feedback DISAGREE với status APPROVED để admin hệ thống xem. Contract status không thay đổi. Reason là bắt buộc.")
     public ResponseEntity<Map<String, Object>> cancelContract(
             @PathVariable Long groupId,
             @RequestBody Map<String, Object> cancelRequest) {
 
-        String reason = (String) cancelRequest.getOrDefault("reason", "Contract cancelled by group admin");
+        String reason = cancelRequest != null ? (String) cancelRequest.get("reason") : null;
         contractService.cancelContract(groupId, reason);
 
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);
-        result.put("message", "Contract has been cancelled successfully");
-        result.put("reason", reason);
-        result.put("cancelledAt", LocalDateTime.now());
+        result.put("message", "Feedback DISAGREE with status APPROVED has been created for system admin to review. Contract status remains unchanged.");
+        result.put("reason", reason != null ? reason.trim() : null);
+        result.put("createdAt", LocalDateTime.now());
 
         return ResponseEntity.ok(result);
     }
 
     /**
      * API: Tự động ký contract cho group
-     * ------------------------------------------------------------
-     * Dành cho:
-     * - Group Admin
-     * - System (tự động trigger)
-     * <p>
-     * Điều kiện:
-     * - Group đã có đủ thành viên theo memberCapacity
-     * - Group đã có vehicle với vehicleValue
-     * - Contract chưa được ký
      */
     @PostMapping("/{groupId}/auto-sign")
     @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
@@ -147,10 +123,6 @@ public class ContractController {
 
     /**
      * API: Kiểm tra điều kiện ký tự động contract
-     * ------------------------------------------------------------
-     * Dành cho:
-     * - Group Admin
-     * - Các thành viên trong nhóm
      */
     @GetMapping("/{groupId}/auto-sign-conditions")
     @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
@@ -162,10 +134,6 @@ public class ContractController {
 
     /**
      * API: Tự động kiểm tra và ký contract nếu đủ điều kiện
-     * ------------------------------------------------------------
-     * Dành cho:
-     * - System (scheduler)
-     * - Group Admin
      */
     @PostMapping("/{groupId}/check-and-auto-sign")
     @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
@@ -192,32 +160,42 @@ public class ContractController {
     }
 
     /**
-     * API: Lấy tất cả feedback của members cho contract (cho admin group)
+     * API: Lấy tất cả feedback DISAGREE của members cho contract
+     * - Admin group: xem tất cả DISAGREE với mọi status (PENDING, APPROVED, REJECTED)
+     * - System admin: chỉ xem DISAGREE với status APPROVED (đã được approve)
      */
     @GetMapping("/{contractId}/member-feedbacks")
-    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
+    @PreAuthorize("@ownershipGroupService.isGroupAdminForContract(authentication.name, #contractId) or hasAnyRole('ADMIN','STAFF')")
     @Operation(
-            summary = "Get contract member feedbacks",
-            description = "Lấy tất cả feedback của members cho contract. Chỉ group admin có quyền xem."
+            summary = "Get contract member feedbacks (DISAGREE only)",
+            description = "Admin group xem tất cả DISAGREE (PENDING, APPROVED, REJECTED), System admin xem DISAGREE APPROVED"
     )
     public ResponseEntity<ContractFeedbacksResponseDTO> getContractMemberFeedbacks(
-            @PathVariable Long contractId) {
+            @PathVariable Long contractId,
+            Authentication authentication) {
 
-        ContractFeedbacksResponseDTO feedbacks = contractService.getContractFeedbacks(contractId);
+        // Kiểm tra xem user là system admin hay group admin
+        boolean isSystemAdmin = authentication != null && authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(a -> a.equals("ROLE_ADMIN") || a.equals("ROLE_STAFF"));
+        
+        // Admin group: xem tất cả status (null = không filter), System admin: chỉ xem APPROVED
+        MemberFeedbackStatus filterStatus = isSystemAdmin
+                ? MemberFeedbackStatus.APPROVED
+                : null; // null = trả về tất cả status
+
+        ContractFeedbacksResponseDTO feedbacks = contractService.getContractFeedbacks(contractId, filterStatus);
         return ResponseEntity.ok(feedbacks);
     }
 
     /**
-     * API: Lấy tất cả feedback của members theo groupId (cho admin group)
-     * ------------------------------------------------------------
-     * Dành cho:
-     * - Group Admin
+     * API: Lấy tất cả feedback DISAGREE của members theo groupId (cho admin group)
      */
     @GetMapping("/group/{groupId}/member-feedbacks")
-    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
+    @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId) or hasAnyRole('ADMIN','STAFF')")
     @Operation(
-            summary = "Get member feedbacks by groupId",
-            description = "Lấy tất cả feedback của members theo groupId. Áp dụng cho nhóm có 1 hợp đồng hiện tại."
+            summary = "Get member feedbacks by groupId (DISAGREE only)",
+            description = "Lấy tất cả feedback DISAGREE của members theo groupId. Áp dụng cho nhóm có 1 hợp đồng hiện tại."
     )
     public ResponseEntity<ContractFeedbacksResponseDTO> getGroupMemberFeedbacks(
             @PathVariable Long groupId) {
@@ -225,6 +203,4 @@ public class ContractController {
         ContractFeedbacksResponseDTO feedbacks = contractService.getContractFeedbacksByGroup(groupId);
         return ResponseEntity.ok(feedbacks);
     }
-
-    // Removed manual approval endpoints - contracts are now auto-approved
 }

@@ -62,7 +62,7 @@ public class Contract {
 
     // Contract Approval Fields
     @Enumerated(EnumType.STRING)
-    @Column(name = "ApprovalStatus", nullable = false)
+    @Column(name = "ApprovalStatus", nullable = false, length = 30)
     @Builder.Default
     private ContractApprovalStatus approvalStatus = ContractApprovalStatus.PENDING;
 
