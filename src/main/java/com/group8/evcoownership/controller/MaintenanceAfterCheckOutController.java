@@ -51,22 +51,18 @@ public class MaintenanceAfterCheckOutController {
         );
     }
 
-    /**
-     * Technician tạo yêu cầu bảo trì PERSONAL sau khi xe được trả về
-     */
     @PostMapping("/vehicles/{vehicleId}")
     @PreAuthorize("hasAnyRole('TECHNICIAN')")
     @Operation(
             summary = "[Technician] Tạo yêu cầu bảo trì sau khi đi xe về (PERSONAL)",
             description = """
-                    Technician mở yêu cầu bảo trì khi phát hiện co-owner làm hư xe sau khi trả xe.
-                    - coverageType = PERSONAL.
-                    - Path: vehicleId (xe đang kiểm tra).
-                    - Body: description, cost, estimatedDurationDays.
-                    - Backend tự tìm booking đã checkout gần nhất của xe đó
-                      và gán liableUser = user của booking đó.
-                    - Trạng thái ban đầu: PENDING.
-                    """
+                Technician mở yêu cầu bảo trì khi phát hiện co-owner làm hư xe sau khi trả xe.
+                - coverageType = PERSONAL.
+                - Path: vehicleId (xe đang kiểm tra).
+                - Body: userId (co-owner phải trả), description, cost, estimatedDurationDays.
+                - Backend kiểm tra userId có thuộc group của vehicle hay không.
+                - Trạng thái ban đầu: PENDING.
+                """
     )
     public ResponseEntity<MaintenanceResponseDTO> createAfterCheckOut(
             @PathVariable Long vehicleId,
@@ -81,6 +77,7 @@ public class MaintenanceAfterCheckOutController {
                 )
         );
     }
+
 
     /**
      * Technician cập nhật yêu cầu bảo trì PERSONAL khi vẫn còn PENDING

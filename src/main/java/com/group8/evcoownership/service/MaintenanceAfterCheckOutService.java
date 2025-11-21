@@ -46,9 +46,13 @@ public class MaintenanceAfterCheckOutService {
 
         Set<Long> userIdSet = new HashSet<>();
 
+        // lay tung status trong problemStatus ra duyet
+        // lay check theo tung status: REJECTED, FAILED, NEEDS_ATTENTION
         for (String status : problemStatuses) {
             List<VehicleCheck> checks = vehicleCheckRepository.findByStatus(status);
 
+            // lay tung phan tu trong list Check cua tung status ra
+            // de tim userId
             for (VehicleCheck vc : checks) {
                 UsageBooking booking = vc.getBooking();
                 if (booking == null || booking.getUser() == null) {
@@ -62,6 +66,7 @@ public class MaintenanceAfterCheckOutService {
             }
         }
 
+        // co duoc userId
         List<User> users = userRepository.findAllById(userIdSet);
 
         List<UserWithRejectedCheckDTO> result = new ArrayList<>();
@@ -90,46 +95,40 @@ public class MaintenanceAfterCheckOutService {
             MaintenanceAfterCheckOutCreateRequestDTO req,
             String technicianEmail
     ) {
+        // 1. Lấy technician từ email
         var technician = userRepository.findByEmail(technicianEmail)
                 .orElseThrow(() -> new EntityNotFoundException("Technician not found"));
 
-        // 1. Lấy booking gần nhất đã checkout của xe này
-        var booking = usageBookingRepository
-                .findTopByVehicle_idAndCheckoutStatusTrueOrderByCheckoutTimeDesc(vehicleId)
-                .orElseThrow(() -> new EntityNotFoundException(
-                        "No checked-out booking found for this vehicle")
-                );
-
-        var vehicle = booking.getVehicle();
-        if (vehicle == null) {
-            throw new IllegalStateException("Booking does not have an associated vehicle");
-        }
-
-        // 2. liableUser = user đã đi xe ở booking đó
-        var liableUser = booking.getUser();
-        if (liableUser == null) {
-            throw new IllegalStateException("Booking does not have an associated user");
-        }
+        // 2. Lấy vehicle theo vehicleId (không cần booking nữa)
+        var vehicle = vehicleRepository.findById(vehicleId)
+                .orElseThrow(() -> new EntityNotFoundException("Vehicle not found"));
 
         var group = vehicle.getOwnershipGroup();
         if (group == null) {
             throw new IllegalStateException("Vehicle does not belong to any ownership group.");
         }
 
+        // 3. Lấy user theo userId mà technician chọn (từ body)
+        Long userId = req.getUserId();
+        var user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+        // 4. Check user này có phải co-owner của group này không
         var shares = ownershipShareRepository.findByGroupGroupId(group.getGroupId());
         boolean isMember = shares.stream()
-                .anyMatch(share -> share.getUser().getUserId().equals(liableUser.getUserId()));
+                .anyMatch(share -> share.getUser().getUserId().equals(user.getUserId()));
 
         if (!isMember) {
-            throw new IllegalArgumentException("Liable user must be a co-owner of this vehicle's group.");
+            throw new IllegalArgumentException("Selected user must be a co-owner of this vehicle's group.");
         }
 
+        // 5. Tạo maintenance
         var now = LocalDateTime.now();
 
         var m = Maintenance.builder()
                 .vehicle(vehicle)
                 .requestedBy(technician)
-                .liableUser(liableUser)
+                .liableUser(user)  // field trong entity vẫn là liableUser, nhưng biến mình đặt là user cho dễ hiểu
                 .description(req.getDescription())
                 .actualCost(req.getCost())
                 .estimatedDurationDays(req.getEstimatedDurationDays())
@@ -143,6 +142,7 @@ public class MaintenanceAfterCheckOutService {
         m = maintenanceRepository.save(m);
         return mapToDTO(m);
     }
+
 
 
     // =============== Technician: xem các yêu cầu PERSONAL do mình tạo ===============
