@@ -15,10 +15,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-// @RestController: Kết hợp @Controller + @ResponseBody, trả JSON cho các method
-// @RequestMapping: prefix route cho tất cả endpoints trong controller này
-// @RequiredArgsConstructor: Lombok tự sinh constructor cho các field final (inject services)
-// @PreAuthorize("hasRole('ADMIN')"): Áp dụng rule trên toàn controller - chỉ role ADMIN mới vào được (trừ khi override ở method)
 @RestController
 @RequestMapping("/api/admin/contracts")
 @RequiredArgsConstructor
