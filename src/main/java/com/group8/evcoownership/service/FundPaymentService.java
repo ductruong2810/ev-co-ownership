@@ -185,15 +185,6 @@ public class FundPaymentService {
         return map(payment, "OK");
     }
 
-    // =============== Helpers ===============
-//    private String uniqueTxnRef() {
-//        String tx;
-//        do {
-//            tx = "FUND-" + UUID.randomUUID().toString().replace("-", "").substring(0, 18);
-//        } while (paymentRepository.existsByTransactionCode(tx));
-//        return tx;
-//    }
-
 
     private FundTopupResponseDTO map(Payment p, String message) {
         return FundTopupResponseDTO.builder()
