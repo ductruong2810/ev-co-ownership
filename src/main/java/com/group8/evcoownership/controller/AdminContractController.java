@@ -4,7 +4,6 @@ import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.enums.ContractApprovalStatus;
 import com.group8.evcoownership.service.ContractService;
-import com.group8.evcoownership.service.OwnershipGroupService;
 import com.group8.evcoownership.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
@@ -21,18 +20,17 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/admin/contracts")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
 public class AdminContractController { // Khai báo class controller cho phần quản lý hợp đồng của admin
 
     // Inject các service cần thiết
     private final ContractService contractService; // Service chứa logic xử lý hợp đồng
     private final UserService userService; // Service chứa logic xử lý người dùng (admin)
-    private final OwnershipGroupService ownershipGroupService; // Service để kiểm tra admin group
 
     /**
      * CHỈ DÀNH CHO ADMIN: Cập nhật cả thời hạn và điều khoản hợp đồng trong một lần gọi
      */
     @PutMapping("/{contractId}")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Admin update contract (duration + terms)", description = "System admin updates start/end dates and terms together")
     public ResponseEntity<ApiResponseDTO<ContractUpdateResponseDTO>> updateContractByAdmin(
             // @PathVariable: lấy giá trị {contractId} từ URL
@@ -61,6 +59,7 @@ public class AdminContractController { // Khai báo class controller cho phần 
 
     // API xử lý việc admin approve hoặc reject hợp đồng
     @PutMapping("/approve")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ContractDTO> processContractApproval(
             // Lấy dữ liệu từ body request và validate
             @Valid @RequestBody ContractApprovalRequestDTO request,
@@ -86,6 +85,7 @@ public class AdminContractController { // Khai báo class controller cho phần 
      * Kiểm tra trạng thái đóng tiền cọc của hợp đồng (chỉ dành cho admin)
      */
     @GetMapping("/{groupId}/deposit-status")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ContractDepositStatusResponseDTO> checkDepositStatus(@PathVariable Long groupId) {
         ContractDepositStatusResponseDTO status = contractService.checkDepositStatus(groupId);
         return ResponseEntity.ok(status);
@@ -93,6 +93,7 @@ public class AdminContractController { // Khai báo class controller cho phần 
 
     // Lấy danh sách tất cả hợp đồng (chỉ admin)
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<ContractDTO>> getAllContracts() {
         // Gọi service lấy toàn bộ hợp đồng
         List<ContractDTO> contracts = contractService.getAllContracts();
@@ -102,6 +103,7 @@ public class AdminContractController { // Khai báo class controller cho phần 
 
     // Lấy thông tin chi tiết 1 hợp đồng theo ID
     @GetMapping("/{contractId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ContractDTO> getContractById(@PathVariable Long contractId) {
         // Gọi service để lấy hợp đồng theo ID
         ContractDTO contract = contractService.getContractById(contractId);
@@ -147,7 +149,7 @@ public class AdminContractController { // Khai báo class controller cho phần 
      * Cho phép cả System Admin và Group Admin
      */
     @PutMapping("/feedbacks/{feedbackId}/approve")
-    @PreAuthorize("hasAnyRole('CO_OWNER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'CO_OWNER')")
     @Operation(
             summary = "Approve feedback",
             description = "System admin hoặc Group admin approve một feedback cụ thể. Chỉ có thể approve feedbacks có status = PENDING."
@@ -182,7 +184,7 @@ public class AdminContractController { // Khai báo class controller cho phần 
      * Cho phép cả System Admin và Group Admin
      */
     @PutMapping("/feedbacks/{feedbackId}/reject")
-    @PreAuthorize("hasAnyRole('CO_OWNER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'CO_OWNER')")
     @Operation(
             summary = "Reject feedback",
             description = "System admin hoặc Group admin reject một feedback cụ thể. Chỉ có thể reject feedbacks có status = PENDING."
