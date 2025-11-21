@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.group8.evcoownership.dto.QrCheckOutRequestDTO;
+import com.group8.evcoownership.dto.VehicleCheckResponseDTO;
 import com.group8.evcoownership.entity.UsageBooking;
 import com.group8.evcoownership.entity.Vehicle;
 import com.group8.evcoownership.entity.VehicleCheck;
@@ -133,8 +134,28 @@ public class VehicleCheckService {
         return vehicleCheckRepository.findByStatus(status);
     }
 
-    public Page<VehicleCheck> getAllChecks(Pageable pageable) {
-        return vehicleCheckRepository.findAll(pageable);
+
+    public Page<VehicleCheckResponseDTO> getAllChecks(Pageable pageable) {
+        return vehicleCheckRepository.findAll(pageable)
+                .map(this::toDto);
+    }
+    // ham helper cho getAllChecks
+    private VehicleCheckResponseDTO toDto(VehicleCheck vc) {
+        return VehicleCheckResponseDTO.builder()
+                .id(vc.getId())
+                // nếu bạn đã có field bookingId trong entity thì dùng luôn:
+                .bookingId(vc.getBookingId())
+                // nếu KHÔNG có field bookingId, có thể dùng:
+                // .bookingId(vc.getBooking() != null ? vc.getBooking().getId() : null)
+                .checkType(vc.getCheckType())
+                .odometer(vc.getOdometer())
+                .batteryLevel(vc.getBatteryLevel())
+                .cleanliness(vc.getCleanliness())
+                .notes(vc.getNotes())
+                .issues(vc.getIssues())
+                .status(vc.getStatus())
+                .createdAt(vc.getCreatedAt())
+                .build();
     }
 
     // Kiểm tra user đã làm check chưa
@@ -528,7 +549,7 @@ public class VehicleCheckService {
 
         VehicleCheck technicianReview = VehicleCheck.builder()
                 .booking(booking)
-                .checkType("TECH_REVIEW")
+                .checkType("TECH_REVIEW")// type nay the hien check bi tu choi
                 .odometer(sourceCheck.getOdometer())
                 .batteryLevel(sourceCheck.getBatteryLevel())
                 .cleanliness(sourceCheck.getCleanliness())

@@ -3,9 +3,9 @@ package com.group8.evcoownership.service;
 import com.group8.evcoownership.dto.UserDocumentInfoDTO;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.entity.UserDocument;
-import com.group8.evcoownership.exception.FileStorageException;
-import com.group8.evcoownership.exception.ResourceNotFoundException;
-import com.group8.evcoownership.exception.UnauthorizedException;
+import com.group8.evcoownership.exception.DuplicateDocumentException;
+import com.group8.evcoownership.exception.FileProcessingException;
+import com.group8.evcoownership.exception.InvalidDocumentException;
 import com.group8.evcoownership.repository.UserDocumentRepository;
 import com.group8.evcoownership.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -30,16 +30,16 @@ import java.util.regex.Pattern;
 public class UserDocumentService {
 
     private final UserDocumentRepository userDocumentRepository;
-
     private final UserRepository userRepository;
-
     private final AzureBlobStorageService azureBlobStorageService;
-
     private final OcrService ocrService;
-
     private final TransactionTemplate transactionTemplate;
 
-    public UserDocumentService(UserDocumentRepository userDocumentRepository, UserRepository userRepository, AzureBlobStorageService azureBlobStorageService, OcrService ocrService, TransactionTemplate transactionTemplate) {
+    public UserDocumentService(UserDocumentRepository userDocumentRepository,
+                               UserRepository userRepository,
+                               AzureBlobStorageService azureBlobStorageService,
+                               OcrService ocrService,
+                               TransactionTemplate transactionTemplate) {
         this.userDocumentRepository = userDocumentRepository;
         this.userRepository = userRepository;
         this.azureBlobStorageService = azureBlobStorageService;
@@ -47,7 +47,6 @@ public class UserDocumentService {
         this.transactionTemplate = transactionTemplate;
     }
 
-    // ================= UPLOAD BATCH DOCUMENTS =================
     public CompletableFuture<Map<String, Object>> uploadBatchDocuments(
             String email,
             String documentType,
@@ -65,15 +64,12 @@ public class UserDocumentService {
             String backHash = backFile != null ? calculateFileHash(backFile) : null;
 
             if (frontHash.equals(backHash)) {
-                throw new IllegalArgumentException(
-                        "Front and back images must be different. Please choose two different images."
-                );
+                throw new InvalidDocumentException("Front and back images must be different. Please choose two different images.");
             }
 
             User user = userRepository.findByEmail(email)
-                    .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                    .orElseThrow(() -> new InvalidDocumentException("User not found"));
 
-            // LẤY userId TRƯỚC KHI VÀO ASYNC CONTEXT
             Long userId = user.getUserId();
             long startTime = System.currentTimeMillis();
 
@@ -81,52 +77,61 @@ public class UserDocumentService {
                     .thenApply(extractedText ->
                             transactionTemplate.execute(status -> {
                                 try {
-                                    return processUpload(userId, documentType, frontFile,
-                                            backFile, extractedText, startTime);
+                                    return processUpload(
+                                            userId,
+                                            documentType,
+                                            frontFile,
+                                            backFile,
+                                            extractedText,
+                                            startTime
+                                    );
                                 } catch (Exception e) {
                                     log.error("Upload failed: {}", e.getMessage(), e);
-                                    throw new RuntimeException("Upload failed: " + e.getMessage(), e);
+                                    throw new FileProcessingException("Upload failed: " + e.getMessage());
                                 }
                             })
                     )
                     .exceptionally(ex -> {
                         log.error("Async upload failed: {}", ex.getMessage(), ex);
-                        throw new RuntimeException("Upload failed: " + ex.getMessage(), ex);
+                        throw new FileProcessingException("Upload failed: " + ex.getMessage());
                     });
 
-        } catch (IllegalArgumentException e) {
+        } catch (InvalidDocumentException e) {
             log.warn("Validation failed: {}", e.getMessage());
             return CompletableFuture.failedFuture(e);
         } catch (IOException e) {
             log.error("File processing error: {}", e.getMessage());
             return CompletableFuture.failedFuture(
-                    new RuntimeException("Unable to process file. Please try again."));
+                    new FileProcessingException("Unable to process file. Please try again.")
+            );
         } catch (Exception e) {
             log.error("Unexpected error: {}", e.getMessage(), e);
             return CompletableFuture.failedFuture(
-                    new RuntimeException("Upload failed: " + e.getMessage()));
+                    new FileProcessingException("Upload failed: " + e.getMessage())
+            );
         }
     }
 
-    // ================= PROCESS UPLOAD - NHẬN userId THAY VÌ User =================
     private Map<String, Object> processUpload(
-            Long userId, String documentType, MultipartFile frontFile,
-            MultipartFile backFile, String extractedText, long startTime) {
+            Long userId,
+            String documentType,
+            MultipartFile frontFile,
+            MultipartFile backFile,
+            String extractedText,
+            long startTime) {
 
         if (extractedText == null || extractedText.trim().isEmpty()) {
-            throw new IllegalArgumentException("Unable to extract text from image");
+            throw new InvalidDocumentException("Unable to extract text from image");
         }
 
-        // VALIDATION: Kiểm tra loại giấy tờ thực tế có khớp với loại user chọn không
         String detectedType = detectDocumentType(extractedText);
 
         if ("UNKNOWN".equals(detectedType)) {
-            throw new IllegalArgumentException(
+            throw new InvalidDocumentException(
                     "Unable to identify document type from image. Please ensure the image is clear and shows a valid document."
             );
         }
 
-        // Kiểm tra detectedType có khớp với documentType không
         if (!detectedType.equals(documentType)) {
             String expectedTypeName = "CITIZEN_ID".equals(documentType)
                     ? "Citizen ID (CCCD)"
@@ -135,7 +140,7 @@ public class UserDocumentService {
                     ? "Citizen ID (CCCD)"
                     : "Driver License (GPLX)";
 
-            throw new IllegalArgumentException(
+            throw new InvalidDocumentException(
                     String.format(
                             "Document type mismatch. You selected %s but the image is %s. Please upload the correct document type.",
                             expectedTypeName, detectedTypeName
@@ -149,12 +154,11 @@ public class UserDocumentService {
 
         String documentNumber = documentInfo.idNumber();
 
-        // Check duplicate document number
         if (documentNumber != null && !documentNumber.isEmpty()) {
             userDocumentRepository.findByDocumentNumber(documentNumber)
                     .ifPresent(existing -> {
                         if (!existing.getUserId().equals(userId)) {
-                            throw new IllegalArgumentException(
+                            throw new DuplicateDocumentException(
                                     String.format("Document number %s is already registered by another user",
                                             documentNumber)
                             );
@@ -163,7 +167,6 @@ public class UserDocumentService {
                     });
         }
 
-        // Upload files - TRUYỀN userId THAY VÌ User
         Map<String, UserDocument> uploadedDocs = new HashMap<>();
         uploadedDocs.put("FRONT", uploadSingleSideWithDocNumber(
                 userId, documentType, "FRONT", frontFile, documentNumber, documentInfo));
@@ -185,29 +188,30 @@ public class UserDocumentService {
         );
     }
 
-    // ================= UPLOAD SINGLE SIDE - NHẬN userId THAY VÌ User =================
     private UserDocument uploadSingleSideWithDocNumber(
-            Long userId, String documentType, String side,
-            MultipartFile file, String documentNumber, UserDocumentInfoDTO documentInfo) {
+            Long userId,
+            String documentType,
+            String side,
+            MultipartFile file,
+            String documentNumber,
+            UserDocumentInfoDTO documentInfo) {
 
         log.info("Uploading: userId={}, type={}, side={}, docNumber={}",
                 userId, documentType, side, documentNumber);
 
-        // 1. Check duplicate với user khác
         if (documentNumber != null && !documentNumber.isEmpty()) {
             Optional<UserDocument> otherUserDoc = userDocumentRepository
                     .findByDocumentNumber(documentNumber)
                     .filter(doc -> !doc.getUserId().equals(userId));
 
             if (otherUserDoc.isPresent()) {
-                throw new IllegalArgumentException(
+                throw new DuplicateDocumentException(
                         String.format("Document number %s is already registered by another user",
                                 documentNumber)
                 );
             }
         }
 
-        // 2. CHỈ XÓA DOCUMENT CỦA CÙNG SIDE
         userDocumentRepository
                 .findByUserIdAndDocumentTypeAndSide(userId, documentType, side)
                 .ifPresent(oldDoc -> {
@@ -223,13 +227,10 @@ public class UserDocumentService {
                     userDocumentRepository.delete(oldDoc);
                 });
 
-        // 3. Flush để đảm bảo xóa hoàn tất
         userDocumentRepository.flush();
 
-        // 4. Upload file mới
         String fileUrl = azureBlobStorageService.uploadFile(file);
 
-        // 5. CHỈ LƯU documentNumber CHO FRONT
         String savedDocNumber = "FRONT".equals(side)
                 ? (documentNumber != null ? documentNumber : "")
                 : "";
@@ -241,7 +242,6 @@ public class UserDocumentService {
                 .imageUrl(fileUrl)
                 .documentNumber(savedDocNumber)
                 .status("PENDING")
-                // Chuyển null thành "" trước khi set
                 .dateOfBirth("FRONT".equals(side) && documentInfo.dateOfBirth() != null
                         ? documentInfo.dateOfBirth()
                         : "")
@@ -258,9 +258,6 @@ public class UserDocumentService {
 
         return userDocumentRepository.save(document);
     }
-
-
-    // ================= OCR HELPER METHODS =================
 
     private String detectDocumentType(String extractedText) {
         if (extractedText == null || extractedText.trim().isEmpty()) {
@@ -350,7 +347,6 @@ public class UserDocumentService {
         return matcher.find() ? matcher.group(1).trim() : null;
     }
 
-    // ================= CALCULATE FILE HASH =================
     private String calculateFileHash(MultipartFile file) throws IOException {
         try {
             byte[] fileBytes = file.getBytes();
@@ -363,75 +359,38 @@ public class UserDocumentService {
         }
     }
 
-    // ================= GET ALL MY DOCUMENTS =================
     public List<UserDocument> getMyDocuments(String email) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new InvalidDocumentException("User not found"));
 
         return userDocumentRepository.findByUserId(user.getUserId());
     }
 
-    // ================= GET DOCUMENTS BY TYPE =================
     public List<UserDocument> getDocumentsByType(String email, String documentType) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("User không tồn tại"));
+                .orElseThrow(() -> new InvalidDocumentException("User không tồn tại"));
 
         return userDocumentRepository.findByUserIdAndDocumentType(user.getUserId(), documentType);
     }
 
-    // ================= DELETE DOCUMENT =================
-    public void deleteDocument(String email, Long documentId) {
-        if (documentId == null || documentId <= 0) {
-            throw new IllegalArgumentException("Invalid document ID");
-        }
-
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-
-        UserDocument document = userDocumentRepository.findById(documentId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        String.format("Document not found with ID: %d. Please check again", documentId)
-                ));
-
-        if (!document.getUserId().equals(user.getUserId())) {
-            throw new UnauthorizedException("You do not have permission to delete this document");
-        }
-
-        try {
-            azureBlobStorageService.deleteFile(document.getImageUrl());
-        } catch (Exception e) {
-            log.error("Failed to delete file from Azure: {}", e.getMessage(), e);
-            throw new FileStorageException("Unable to delete file from storage. Please try again");
-        }
-
-        try {
-            userDocumentRepository.delete(document);
-            log.info("Document deleted successfully: documentId={}, userId={}", documentId, user.getUserId());
-        } catch (Exception e) {
-            log.error("Failed to delete document from database: {}", e.getMessage(), e);
-            throw new RuntimeException("Unable to delete document information. Please try again");
-        }
-    }
-
-    // ================= VALIDATION HELPERS =================
     private void validateDocumentType(String documentType) {
         if (!documentType.equals("CITIZEN_ID") && !documentType.equals("DRIVER_LICENSE")) {
-            throw new IllegalArgumentException("DocumentType must be CITIZEN_ID or DRIVER_LICENSE");
+            throw new InvalidDocumentException("DocumentType must be CITIZEN_ID or DRIVER_LICENSE");
         }
     }
 
     private void validateImage(MultipartFile file) {
         if (file.isEmpty()) {
-            throw new IllegalArgumentException("File must not be empty");
+            throw new InvalidDocumentException("File must not be empty");
         }
 
         if (file.getSize() > 10 * 1024 * 1024) {
-            throw new IllegalArgumentException("File is too large. Maximum size: 10MB");
+            throw new InvalidDocumentException("File is too large. Maximum size: 10MB");
         }
 
         String contentType = file.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
-            throw new IllegalArgumentException("File must be an image (jpg, png, ...)");
+            throw new InvalidDocumentException("File must be an image (jpg, png, ...)");
         }
     }
 }

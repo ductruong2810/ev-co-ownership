@@ -27,18 +27,27 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.Collections;
 
+
+//Đây là filter bảo mật JWT trong Spring Boot, chịu trách nhiệm kiểm tra JWT token mỗi request gửi vào API.
+//Cụ thể, file này sẽ:
+//Đọc token từ header Authorization
+//Xác thực token (còn hạn, đúng chữ ký, chưa bị logout)
+//Lấy thông tin user và quyền truy cập từ token, thiết lập authenticated context cho cả request đó
+//Nếu token lỗi hoặc hết hạn, trả về 401 Unauthorized và không cho đi tiếp vào API protected
+//=>: file này giúp hệ thống chỉ cho phép request hợp lệ qua các API cần bảo vệ bằng JWT,
+// tự động chặn mọi truy cập không đúng quyền hoặc token không hợp lệ
 @Component
 @Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter { // Base class của Spring cho filter chỉ chạy 1 lần mỗi request
 
     @Autowired
-    private JwtUtil jwtUtil; // Tiện ích xác thực, giải mã, trích xuất giá trị từ JWT
+    private JwtUtil jwtUtil; // TDùng để giải mã, xác thực JWT
 
     @Autowired
-    private UserRepository userRepository; // Repository để truy vấn user theo email có trong JWT
+    private UserRepository userRepository; // Lấy thông tin user từ DB bằng email trích xuất từ token
 
     @Autowired
-    private LogoutService logoutService; // Quản lý blacklist token (token bị revoke khi logout)
+    private LogoutService logoutService; // Kiểm tra blacklist token (token bị thu hồi khi logout)
 
     private final ObjectMapper objectMapper; // Dùng để serialize ErrorResponseDTO thành JSON
 
@@ -47,11 +56,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter { // Base clas
         this.objectMapper.registerModule(new JavaTimeModule());
     }
 
+    // Hàm chính: nhận mọi request vào API (trừ route public), kiểm tra và xác thực JWT.
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
-        // Đọc header Authorization từ request (theo chuẩn Bearer)
+        // Đọc header Authorization từ req (chuẩn JWT Bearer <token>)
         final String authHeader = request.getHeader("Authorization");
 
         // Nếu header không có hoặc không bắt đầu bằng "Bearer ",
@@ -64,7 +74,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter { // Base clas
         // Cắt "Bearer " để lấy chuỗi JWT thực sự
         String token = authHeader.substring(7);
 
-        // Kiểm tra token rỗng (có thể toàn khoảng trắng); nếu lỗi, trả về 401 ngay
+        // Kiểm tra token rỗng (có thể toàn space)
+        // nếu lỗi, trả về 401 ngay
         if (token.trim().isEmpty()) {
             log.warn("Empty token detected"); // Ghi cảnh báo
             sendErrorResponse(response, request, "Invalid token");
@@ -83,7 +94,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter { // Base clas
                 // Trích xuất email từ token nếu token hợp lệ
                 String email = jwtUtil.extractEmail(token);
                 log.info("Extracted email from token: {}", email);
-                // Truy vấn user theo email; nếu không tồn tại thì controller sau sẽ xử lý
+                // Truy vấn user theo email, nếu không tồn tại thì controller sau sẽ xử lý
                 User user = userRepository.findByEmail(email).orElse(null);
 
                 // Nếu user tồn tại, tạo authority cho role của user

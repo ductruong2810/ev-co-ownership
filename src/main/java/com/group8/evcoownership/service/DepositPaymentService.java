@@ -210,17 +210,39 @@ public class DepositPaymentService {
     }
 
     private DepositPaymentResponseDTO convertToResponse(Payment p) {
+
+        Long groupId = null;
+
+        // 1) Nếu là payment gắn với SharedFund (deposit / fund topup)
+        if (p.getFund() != null && p.getFund().getGroup() != null) {
+            groupId = p.getFund().getGroup().getGroupId();
+        }
+        // 2) Nếu là payment MAINTENANCE_FEE (PERSONAL) → lấy qua maintenance → vehicle → ownershipGroup
+        // khi thanh toan cho maintenance thi khong co fundId
+        // ==> khong lay duoc groupId qua fundId
+        // lay qua maintenance -> vehicle -> ownershipGroup -> groupId
+        else if (p.getMaintenance() != null
+                && p.getMaintenance().getVehicle() != null
+                && p.getMaintenance().getVehicle().getOwnershipGroup() != null) {
+
+            groupId = p.getMaintenance()
+                    .getVehicle()
+                    .getOwnershipGroup()
+                    .getGroupId();
+        }
+
         return DepositPaymentResponseDTO.builder()
                 .paymentId(p.getId())
                 .userId(p.getPayer() != null ? p.getPayer().getUserId() : null)
-                .groupId(p.getFund() != null && p.getFund().getGroup() != null ? p.getFund().getGroup().getGroupId() : null)
+                .groupId(groupId)  // <== dùng biến groupId đã tính ở trên
                 .amount(p.getAmount())
                 .paymentMethod("VNPAY")
                 .status(PaymentStatus.valueOf(p.getStatus().name()))
                 .transactionCode(p.getTransactionCode())
-                .paidAt(p.getPaymentDate())
+                .paidAt(p.getPaymentDate())  // nếu muốn chuẩn hơn có thể chuyển sang p.getPaidAt()
                 .build();
     }
+
 
 
     /**

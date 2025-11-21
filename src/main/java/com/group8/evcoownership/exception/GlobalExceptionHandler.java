@@ -556,7 +556,7 @@ public class GlobalExceptionHandler {
 
             return ResponseEntity.status(HttpStatus.CONFLICT).body(
                     ValidationErrorResponseDTO.singleError(409, "Duplicate Document",
-                            "Số giấy tờ " + documentNumber + " đã được đăng ký bởi người dùng khác",
+                            "Document number " + documentNumber + " has been registered by another user",
                             "documentNumber",
                             request.getDescription(false).replace("uri=", ""))
             );
@@ -566,7 +566,7 @@ public class GlobalExceptionHandler {
         if (errorMessage != null && errorMessage.contains("unique index")) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(
                     ValidationErrorResponseDTO.singleError(409, "Duplicate Document",
-                            "Số giấy tờ này đã tồn tại trong hệ thống",
+                            "This document number already exists in the system",
                             "documentNumber",
                             request.getDescription(false).replace("uri=", ""))
             );
@@ -574,8 +574,8 @@ public class GlobalExceptionHandler {
 
         // Generic upload error
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
-                ValidationErrorResponseDTO.singleError(500, "Upload Failed",
-                        "Tải tài liệu thất bại. Vui lòng thử lại sau",
+                ValidationErrorResponseDTO.singleError(400, "Upload Failed",
+                        "Document download failed. Please try again later",
                         "file",
                         request.getDescription(false).replace("uri=", ""))
         );
@@ -596,7 +596,7 @@ public class GlobalExceptionHandler {
         if (matcher.find()) {
             return matcher.group(1);
         }
-        return "không xác định";
+        return "undetermined";
     }
 
 

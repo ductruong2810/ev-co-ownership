@@ -3,8 +3,12 @@ package com.group8.evcoownership.service;
 
 import com.group8.evcoownership.dto.MaintenanceAfterCheckOutCreateRequestDTO;
 import com.group8.evcoownership.dto.MaintenanceResponseDTO;
+import com.group8.evcoownership.dto.UserWithRejectedCheckDTO;
 import com.group8.evcoownership.entity.Maintenance;
+import com.group8.evcoownership.entity.UsageBooking;
 import com.group8.evcoownership.entity.User;
+import com.group8.evcoownership.entity.VehicleCheck;
+import com.group8.evcoownership.enums.BookingStatus;
 import com.group8.evcoownership.enums.MaintenanceCoverageType;
 import com.group8.evcoownership.repository.*;
 import jakarta.persistence.EntityNotFoundException;
@@ -15,7 +19,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +34,44 @@ public class MaintenanceAfterCheckOutService {
     private final UserRepository userRepository;
     private final OwnershipShareRepository ownershipShareRepository;
     private final UsageBookingRepository usageBookingRepository;
+    private final VehicleCheckRepository vehicleCheckRepository;
+
+
+
+    /**
+     * Technician lay ra list userId ma co vehicleCheck bi technician tu choi
+     */
+    @Transactional(readOnly = true)
+    public List<UserWithRejectedCheckDTO> getUsersWithRejectedChecks() {
+        List<String> problemStatuses = List.of("REJECTED", "FAILED", "NEEDS_ATTENTION");
+
+        List<UserWithRejectedCheckDTO> result = new ArrayList<>();
+
+        for (String status : problemStatuses) {
+            List<VehicleCheck> checks = vehicleCheckRepository.findByStatus(status);
+
+            for (VehicleCheck vc : checks) {
+                UsageBooking booking = vc.getBooking();
+                if (booking == null || booking.getUser() == null || booking.getVehicle() == null) {
+                    continue;
+                }
+
+                var user = booking.getUser();
+                var vehicle = booking.getVehicle();
+
+                result.add(new UserWithRejectedCheckDTO(
+                        user.getUserId(),
+                        user.getFullName(),
+                        vehicle.getId(),
+                        vehicle.getModel(),
+                        vehicle.getLicensePlate()
+                ));
+            }
+        }
+
+        return result;
+    }
+
 
 
     /**
@@ -35,52 +80,56 @@ public class MaintenanceAfterCheckOutService {
      * UPDATE WHEN PENDING
      * Get my request list
      */
+
+    // =============== CREATE PERSONAL MAINTENANCE SAU CHECKOUT ===============
     // =============== CREATE PERSONAL MAINTENANCE SAU CHECKOUT ===============
     public MaintenanceResponseDTO createAfterCheckOut(
-            Long vehicleId,
             MaintenanceAfterCheckOutCreateRequestDTO req,
             String technicianEmail
     ) {
+        // 1. Lấy technician từ email
         var technician = userRepository.findByEmail(technicianEmail)
                 .orElseThrow(() -> new EntityNotFoundException("Technician not found"));
 
-        // 1. Lấy booking gần nhất đã checkout của xe này
-        var booking = usageBookingRepository
-                .findTopByVehicle_idAndCheckoutStatusTrueOrderByCheckoutTimeDesc(vehicleId)
-                .orElseThrow(() -> new EntityNotFoundException(
-                        "No checked-out booking found for this vehicle")
-                );
-
-        var vehicle = booking.getVehicle();
-        if (vehicle == null) {
-            throw new IllegalStateException("Booking does not have an associated vehicle");
+        // 2. Lấy vehicle theo vehicleId từ body
+        Long vehicleId = req.getVehicleId();
+        if (vehicleId == null) {
+            throw new IllegalArgumentException("VehicleId is required");
         }
 
-        // 2. liableUser = user đã đi xe ở booking đó
-        var liableUser = booking.getUser();
-        if (liableUser == null) {
-            throw new IllegalStateException("Booking does not have an associated user");
-        }
+        var vehicle = vehicleRepository.findById(vehicleId)
+                .orElseThrow(() -> new EntityNotFoundException("Vehicle not found"));
 
         var group = vehicle.getOwnershipGroup();
         if (group == null) {
             throw new IllegalStateException("Vehicle does not belong to any ownership group.");
         }
 
-        var shares = ownershipShareRepository.findByGroupGroupId(group.getGroupId());
-        boolean isMember = shares.stream()
-                .anyMatch(share -> share.getUser().getUserId().equals(liableUser.getUserId()));
-
-        if (!isMember) {
-            throw new IllegalArgumentException("Liable user must be a co-owner of this vehicle's group.");
+        // 3. Lấy user theo userId mà technician chọn (từ body)
+        Long userId = req.getUserId();
+        if (userId == null) {
+            throw new IllegalArgumentException("UserId is required");
         }
 
+        var user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+        // 4. Check user này có phải co-owner của group này không
+        var shares = ownershipShareRepository.findByGroupGroupId(group.getGroupId());
+        boolean isMember = shares.stream()
+                .anyMatch(share -> share.getUser().getUserId().equals(user.getUserId()));
+
+        if (!isMember) {
+            throw new IllegalArgumentException("Selected user must be a co-owner of this vehicle's group.");
+        }
+
+        // 5. Tạo maintenance
         var now = LocalDateTime.now();
 
         var m = Maintenance.builder()
-                .vehicle(vehicle)
-                .requestedBy(technician)
-                .liableUser(liableUser)
+                .vehicle(vehicle)              // xe bị hư
+                .requestedBy(technician)       // technician tạo request
+                .liableUser(user)              // co-owner phải trả tiền
                 .description(req.getDescription())
                 .actualCost(req.getCost())
                 .estimatedDurationDays(req.getEstimatedDurationDays())
@@ -94,6 +143,8 @@ public class MaintenanceAfterCheckOutService {
         m = maintenanceRepository.save(m);
         return mapToDTO(m);
     }
+
+
 
 
     // =============== Technician: xem các yêu cầu PERSONAL do mình tạo ===============
@@ -260,11 +311,31 @@ public class MaintenanceAfterCheckOutService {
         m.setStatus("COMPLETED");
         m.setMaintenanceCompletedAt(now);
         m.setUpdatedAt(now);
+        maintenanceRepository.save(m);
 
         // Case after checkout là sự cố, không phải bảo trì định kỳ
         // nên thường không set nextDueDate (để null là đúng)
 
-        maintenanceRepository.save(m);
+        // phan xu ly de reopen booking
+        if (m.getVehicle() != null && m.getVehicle().getId() != null) {
+            Long vehicleId = m.getVehicle().getId();
+
+            // Lấy booking gần nhất đã checkout của xe này
+            usageBookingRepository
+                    .findTopByVehicle_idAndCheckoutStatusTrueOrderByCheckoutTimeDesc(vehicleId)
+                    .ifPresent(booking -> {
+                        // Chỉ xử lý nếu booking đang NEEDS_ATTENTION
+                        if (booking.getStatus() == BookingStatus.NEEDS_ATTENTION) {
+                            booking.setStatus(BookingStatus.COMPLETED);
+                            // nếu bạn muốn, có thể set thêm checkoutTime nếu còn null
+                            // if (booking.getCheckoutTime() == null) {
+                            //     booking.setCheckoutTime(now);
+                            // }
+                            usageBookingRepository.save(booking);
+                        }
+                    });
+        }
+
         return mapToDTO(m);
     }
 

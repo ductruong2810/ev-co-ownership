@@ -14,6 +14,12 @@ import java.math.BigDecimal;
 @Builder
 public class MaintenanceAfterCheckOutCreateRequestDTO {
 
+    @NotNull
+    private Long userId;
+
+    @NotNull
+    Long vehicleId;
+
     @NotBlank(message = "description is required")
     @Size(min = 5, max = 2000, message = "description must be 5-2000 characters")
     private String description;
