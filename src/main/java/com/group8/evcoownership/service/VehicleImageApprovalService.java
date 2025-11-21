@@ -7,6 +7,7 @@ import com.group8.evcoownership.entity.Vehicle;
 import com.group8.evcoownership.entity.VehicleImage;
 import com.group8.evcoownership.enums.GroupStatus;
 import com.group8.evcoownership.enums.ImageApprovalStatus;
+import com.group8.evcoownership.enums.NotificationType;
 import com.group8.evcoownership.enums.RoleName;
 import com.group8.evcoownership.repository.OwnershipGroupRepository;
 import com.group8.evcoownership.repository.UserRepository;
@@ -22,7 +23,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -35,6 +38,7 @@ public class VehicleImageApprovalService {
     private final UserRepository userRepository;
     private final VehicleRepository vehicleRepository;
     private final OwnershipGroupRepository ownershipGroupRepository;
+    private final NotificationOrchestrator notificationOrchestrator;
 
     /**
      * Lấy danh sách hình ảnh chờ duyệt
@@ -159,6 +163,29 @@ public class VehicleImageApprovalService {
                 group.setRejectionReason(request.rejectionReason()); // Lưu lý do từ chối hình ảnh làm lý do INACTIVE của group
                 ownershipGroupRepository.save(group);
                 logGroupStatusUpdate(groupId, GroupStatus.INACTIVE, request.rejectionReason());
+                
+                // Gửi thông báo cho tất cả thành viên trong group
+                if (notificationOrchestrator != null) {
+                    String title = "Group Registration Rejected";
+                    String message = "Your group registration has been rejected due to vehicle image issues.";
+                    if (request.rejectionReason() != null && !request.rejectionReason().trim().isEmpty()) {
+                        message += "\n\nReason: " + request.rejectionReason();
+                    }
+                    
+                    Map<String, Object> notificationData = new HashMap<>();
+                    notificationData.put("groupId", groupId);
+                    notificationData.put("groupName", group.getGroupName());
+                    notificationData.put("rejectionReason", request.rejectionReason() != null ? request.rejectionReason() : "");
+                    notificationData.put("status", GroupStatus.INACTIVE.name());
+                    
+                    notificationOrchestrator.sendGroupNotification(
+                            groupId,
+                            NotificationType.GROUP_STATUS_CHANGED,
+                            title,
+                            message,
+                            notificationData
+                    );
+                }
             }
         }
 
@@ -246,6 +273,29 @@ public class VehicleImageApprovalService {
             logGroupStatusUpdate(groupId, GroupStatus.INACTIVE, rejectionReason);
 
             ownershipGroupRepository.save(group);
+            
+            // Gửi thông báo cho tất cả thành viên trong group
+            if (notificationOrchestrator != null) {
+                String title = "Group Registration Rejected";
+                String message = "Your group registration has been rejected due to vehicle image issues.";
+                if (rejectionReason != null && !rejectionReason.trim().isEmpty()) {
+                    message += "\n\nReason: " + rejectionReason;
+                }
+                
+                Map<String, Object> notificationData = new HashMap<>();
+                notificationData.put("groupId", groupId);
+                notificationData.put("groupName", group.getGroupName());
+                notificationData.put("rejectionReason", rejectionReason != null ? rejectionReason : "");
+                notificationData.put("status", GroupStatus.INACTIVE.name());
+                
+                notificationOrchestrator.sendGroupNotification(
+                        groupId,
+                        NotificationType.GROUP_STATUS_CHANGED,
+                        title,
+                        message,
+                        notificationData
+                );
+            }
         }
     }
 
