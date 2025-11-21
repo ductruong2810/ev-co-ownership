@@ -67,14 +67,20 @@ public class WeeklyCalendarService {
         int totalQuotaSlots = (int) (totalQuotaHour / slotDurationHour);
 
         // Count slots user has booked (CONFIRMED, BOOKED_SELF...) this week
+        Set<String> quotaTypes = Set.of("BOOKED_SELF", "CONFIRMED"); // Thêm các trạng thái hợp lệ theo hệ thống của bạn
         int usedQuotaSlots = 0;
         for (DailySlotResponseDTO day : dailySlots) {
             for (TimeSlotResponseDTO slot : day.getSlots()) {
-                if ("BOOKED_SELF".equals(slot.getType()) && slot.getBookedBy() != null) {
+                // Sửa chỗ so sánh kiểu Long với String thành so sánh String với String
+                if (quotaTypes.contains(slot.getType())
+                        && slot.getBookedBy() != null
+                        && slot.getBookedBy().equals(String.valueOf(userId))) {
                     usedQuotaSlots++;
                 }
             }
         }
+
+
         int remainingQuotaSlots = totalQuotaSlots - usedQuotaSlots;
 
         // Get dashboard summary
