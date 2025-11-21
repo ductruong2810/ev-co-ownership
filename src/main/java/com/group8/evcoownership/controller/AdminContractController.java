@@ -147,7 +147,7 @@ public class AdminContractController { // Khai báo class controller cho phần 
      * Cho phép cả System Admin và Group Admin
      */
     @PutMapping("/feedbacks/{feedbackId}/approve")
-    @PreAuthorize("hasAnyRole('ADMIN','STAFF') or @ownershipGroupService.isGroupAdminForFeedback(authentication.name, #feedbackId)")
+    @PreAuthorize("hasAnyRole('CO_OWNER')")
     @Operation(
             summary = "Approve feedback",
             description = "System admin hoặc Group admin approve một feedback cụ thể. Chỉ có thể approve feedbacks có status = PENDING."
@@ -182,7 +182,7 @@ public class AdminContractController { // Khai báo class controller cho phần 
      * Cho phép cả System Admin và Group Admin
      */
     @PutMapping("/feedbacks/{feedbackId}/reject")
-    @PreAuthorize("hasAnyRole('ADMIN','STAFF') or @ownershipGroupService.isGroupAdminForFeedback(authentication.name, #feedbackId)")
+    @PreAuthorize("hasAnyRole('CO_OWNER')")
     @Operation(
             summary = "Reject feedback",
             description = "System admin hoặc Group admin reject một feedback cụ thể. Chỉ có thể reject feedbacks có status = PENDING."
