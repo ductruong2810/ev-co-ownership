@@ -89,23 +89,23 @@ public class ContractController {
     }
 
     /**
-     * Hủy contract (chỉ admin group)
+     * Từ chối contract và tạo feedback DISAGREE với status APPROVED (chỉ admin group)
      */
     @PostMapping("/{groupId}/cancel")
     @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
-    @Operation(summary = "Hủy hợp đồng", description = "Chỉ admin của nhóm được phép hủy hợp đồng với lý do")
+    @Operation(summary = "Từ chối hợp đồng", description = "Admin group từ chối hợp đồng và tạo feedback DISAGREE với status APPROVED để admin hệ thống xem. Contract status không thay đổi. Reason là bắt buộc.")
     public ResponseEntity<Map<String, Object>> cancelContract(
             @PathVariable Long groupId,
             @RequestBody Map<String, Object> cancelRequest) {
 
-        String reason = (String) cancelRequest.getOrDefault("reason", "Contract cancelled by group admin");
+        String reason = cancelRequest != null ? (String) cancelRequest.get("reason") : null;
         contractService.cancelContract(groupId, reason);
 
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);
-        result.put("message", "Contract has been cancelled successfully");
-        result.put("reason", reason);
-        result.put("cancelledAt", LocalDateTime.now());
+        result.put("message", "Feedback DISAGREE with status APPROVED has been created for system admin to review. Contract status remains unchanged.");
+        result.put("reason", reason != null ? reason.trim() : null);
+        result.put("createdAt", LocalDateTime.now());
 
         return ResponseEntity.ok(result);
     }
@@ -202,45 +202,5 @@ public class ContractController {
 
         ContractFeedbacksResponseDTO feedbacks = contractService.getContractFeedbacksByGroup(groupId);
         return ResponseEntity.ok(feedbacks);
-    }
-
-    /**
-     * API: Admin group approve một feedback cụ thể (theo feedbackId)
-     * CHỈ ADMIN GROUP của contract mới có quyền approve feedback
-     */
-    @PutMapping("/feedbacks/{feedbackId}/approve")
-    @PreAuthorize("hasAnyRole('CO_OWNER')")
-    @Operation(
-            summary = "Group admin approve feedback",
-            description = "Group admin approve một feedback DISAGREE cụ thể. Chỉ có thể approve feedbacks có status = PENDING."
-    )
-    public ResponseEntity<ApiResponseDTO<FeedbackActionResponseDTO>> approveFeedbackByGroupAdmin(
-            @PathVariable Long feedbackId,
-            @RequestBody(required = false) FeedbackActionRequestDTO request,
-            @AuthenticationPrincipal String userEmail) {
-        
-        Long userId = contractService.getUserIdByEmail(userEmail);
-        ApiResponseDTO<FeedbackActionResponseDTO> result = contractService.approveFeedbackByGroupAdmin(feedbackId, request, userId);
-        return ResponseEntity.ok(result);
-    }
-
-    /**
-     * API: Admin group reject một feedback cụ thể (theo feedbackId)
-     * CHỈ ADMIN GROUP của contract mới có quyền reject feedback
-     */
-    @PutMapping("/feedbacks/{feedbackId}/reject")
-    @PreAuthorize("hasAnyRole('CO_OWNER')")
-    @Operation(
-            summary = "Group admin reject feedback",
-            description = "Group admin reject một feedback DISAGREE cụ thể. Chỉ có thể reject feedbacks có status = PENDING."
-    )
-    public ResponseEntity<ApiResponseDTO<FeedbackActionResponseDTO>> rejectFeedbackByGroupAdmin(
-            @PathVariable Long feedbackId,
-            @RequestBody(required = false) FeedbackActionRequestDTO request,
-            @AuthenticationPrincipal String userEmail) {
-        
-        Long userId = contractService.getUserIdByEmail(userEmail);
-        ApiResponseDTO<FeedbackActionResponseDTO> result = contractService.rejectFeedbackByGroupAdmin(feedbackId, request, userId);
-        return ResponseEntity.ok(result);
     }
 }
