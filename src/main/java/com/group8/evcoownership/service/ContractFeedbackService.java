@@ -148,43 +148,7 @@ public class ContractFeedbackService {
             Long feedbackId,
             FeedbackActionRequestDTO request,
             Long userId) {
-
-        String adminNote = request != null ? request.adminNote() : null;
-        adminNote = (adminNote != null && !adminNote.trim().isEmpty()) ? adminNote.trim() : null;
-
-        ContractFeedback feedback = feedbackRepository.findById(feedbackId)
-                .orElseThrow(() -> new ResourceNotFoundException("Feedback not found"));
-
-        if (feedback.getStatus() != MemberFeedbackStatus.PENDING) {
-            throw new IllegalStateException(
-                    "Only PENDING feedbacks can be approved. Current status: " + feedback.getStatus()
-            );
-        }
-
-        Contract contract = feedback.getContract();
-
-        // Kiểm tra user có phải là admin group không
-        validateGroupAdmin(userId, contract.getId());
-
-        // Admin group approve feedback DISAGREE: Chuyển status thành APPROVED
-        // Sau khi admin group approve, system admin có thể sửa contract terms
-        feedback.setStatus(MemberFeedbackStatus.APPROVED);
-        feedback.setLastAdminAction(FeedbackAdminAction.APPROVE);
-        feedback.setLastAdminActionAt(LocalDateTime.now());
-        feedback.setAdminNote(adminNote);
-        feedback.setUpdatedAt(LocalDateTime.now());
-        feedbackRepository.save(feedback);
-
-        // Kiểm tra xem tất cả members đã approve chưa (có thể chuyển contract sang SIGNED)
-        contractService.checkAndAutoSignIfAllApproved(contract);
-
-        FeedbackActionResponseDTO feedbackData = buildFeedbackActionResponseDTO(feedback);
-
-        return ApiResponseDTO.<FeedbackActionResponseDTO>builder()
-                .success(true)
-                .message("Feedback approved by group admin. Feedback status changed to APPROVED.")
-                .data(feedbackData)
-                .build();
+        return approveFeedbackInternal(feedbackId, request, userId, true);
     }
 
     /**
@@ -197,72 +161,7 @@ public class ContractFeedbackService {
             Long feedbackId,
             FeedbackActionRequestDTO request,
             Long userId) {
-
-        String adminNote = request != null ? request.adminNote() : null;
-        adminNote = (adminNote != null && !adminNote.trim().isEmpty()) ? adminNote.trim() : null;
-
-        ContractFeedback feedback = feedbackRepository.findById(feedbackId)
-                .orElseThrow(() -> new ResourceNotFoundException("Feedback not found"));
-
-        if (feedback.getStatus() != MemberFeedbackStatus.PENDING) {
-            throw new IllegalStateException(
-                    "Only PENDING feedbacks can be rejected. Current status: " + feedback.getStatus()
-            );
-        }
-
-        // Không cho phép reject feedback đã được processed
-        if (isFeedbackProcessed(feedback)) {
-            throw new IllegalStateException(
-                    "Cannot reject feedback that has already been processed. Feedback is already processed."
-            );
-        }
-
-        Contract contract = feedback.getContract();
-
-        // Kiểm tra user có phải là admin group không
-        validateGroupAdmin(userId, contract.getId());
-
-        // Admin group reject feedback: Chuyển status thành REJECTED
-        feedback.setStatus(MemberFeedbackStatus.REJECTED);
-        feedback.setAdminNote(adminNote);
-        feedback.setLastAdminAction(FeedbackAdminAction.REJECT);
-        feedback.setLastAdminActionAt(LocalDateTime.now());
-        feedback.setUpdatedAt(LocalDateTime.now());
-        feedbackRepository.save(feedback);
-
-        // Gửi notification và email cho member
-        if (notificationOrchestrator != null) {
-            Long memberUserId = feedback.getUser().getUserId();
-
-            String title = "Feedback Rejected";
-            String message = "Your feedback has been rejected by group admin.";
-            if (adminNote != null) {
-                message += "\n\nAdmin note: " + adminNote;
-            }
-
-            Map<String, Object> notificationData = new HashMap<>();
-            notificationData.put("feedbackId", feedback.getId());
-            notificationData.put("contractId", contract.getId());
-            notificationData.put("contractNumber", contractHelperService.generateContractNumber(contract.getId()));
-            notificationData.put("reactionType", feedback.getReactionType());
-            notificationData.put("adminNote", adminNote != null ? adminNote : "");
-
-            notificationOrchestrator.sendComprehensiveNotification(
-                    memberUserId,
-                    NotificationType.CONTRACT_REJECTED,
-                    title,
-                    message,
-                    notificationData
-            );
-        }
-
-        FeedbackActionResponseDTO feedbackData = buildFeedbackActionResponseDTO(feedback);
-
-        return ApiResponseDTO.<FeedbackActionResponseDTO>builder()
-                .success(true)
-                .message("Feedback rejected by group admin. Admin note has been sent to the member.")
-                .data(feedbackData)
-                .build();
+        return rejectFeedbackInternal(feedbackId, request, userId, true);
     }
 
     /**
@@ -271,8 +170,26 @@ public class ContractFeedbackService {
      */
     @Transactional
     public ApiResponseDTO<FeedbackActionResponseDTO> approveFeedback(Long feedbackId, FeedbackActionRequestDTO request) {
+        return approveFeedbackInternal(feedbackId, request, null, false);
+    }
+
+    /**
+     * Internal method để approve feedback - dùng chung cho admin group và system admin
+     * @param feedbackId ID của feedback
+     * @param request Request chứa adminNote
+     * @param userId User ID (null nếu là system admin)
+     * @param isGroupAdmin true nếu là admin group, false nếu là system admin
+     */
+    @Transactional
+    private ApiResponseDTO<FeedbackActionResponseDTO> approveFeedbackInternal(
+            Long feedbackId,
+            FeedbackActionRequestDTO request,
+            Long userId,
+            boolean isGroupAdmin) {
+
         String adminNote = request != null ? request.adminNote() : null;
         adminNote = (adminNote != null && !adminNote.trim().isEmpty()) ? adminNote.trim() : null;
+
         ContractFeedback feedback = feedbackRepository.findById(feedbackId)
                 .orElseThrow(() -> new ResourceNotFoundException("Feedback not found"));
 
@@ -284,8 +201,12 @@ public class ContractFeedbackService {
 
         Contract contract = feedback.getContract();
 
-        // Admin approve feedback DISAGREE: Chuyển status thành APPROVED
-        // (Admin đã xem lý do và đồng ý sửa contract nếu cần)
+        // Kiểm tra user có phải là admin group không (chỉ khi là group admin)
+        if (isGroupAdmin) {
+            validateGroupAdmin(userId, contract.getId());
+        }
+
+        // Approve feedback: Chuyển status thành APPROVED
         feedback.setStatus(MemberFeedbackStatus.APPROVED);
         feedback.setLastAdminAction(FeedbackAdminAction.APPROVE);
         feedback.setLastAdminActionAt(LocalDateTime.now());
@@ -298,9 +219,13 @@ public class ContractFeedbackService {
 
         FeedbackActionResponseDTO feedbackData = buildFeedbackActionResponseDTO(feedback);
 
+        String message = isGroupAdmin
+                ? "Feedback approved by group admin. Feedback status changed to APPROVED."
+                : "Feedback approved. Feedback status changed to APPROVED.";
+
         return ApiResponseDTO.<FeedbackActionResponseDTO>builder()
                 .success(true)
-                .message("Feedback approved. Feedback status changed to APPROVED.")
+                .message(message)
                 .data(feedbackData)
                 .build();
     }
@@ -313,8 +238,26 @@ public class ContractFeedbackService {
      */
     @Transactional
     public ApiResponseDTO<FeedbackActionResponseDTO> rejectFeedback(Long feedbackId, FeedbackActionRequestDTO request) {
+        return rejectFeedbackInternal(feedbackId, request, null, false);
+    }
+
+    /**
+     * Internal method để reject feedback - dùng chung cho admin group và system admin
+     * @param feedbackId ID của feedback
+     * @param request Request chứa adminNote
+     * @param userId User ID (null nếu là system admin)
+     * @param isGroupAdmin true nếu là admin group, false nếu là system admin
+     */
+    @Transactional
+    private ApiResponseDTO<FeedbackActionResponseDTO> rejectFeedbackInternal(
+            Long feedbackId,
+            FeedbackActionRequestDTO request,
+            Long userId,
+            boolean isGroupAdmin) {
+
         String adminNote = request != null ? request.adminNote() : null;
         adminNote = (adminNote != null && !adminNote.trim().isEmpty()) ? adminNote.trim() : null;
+
         ContractFeedback feedback = feedbackRepository.findById(feedbackId)
                 .orElseThrow(() -> new ResourceNotFoundException("Feedback not found"));
 
@@ -331,8 +274,14 @@ public class ContractFeedbackService {
             );
         }
 
-        // Admin reject feedback DISAGREE: Chuyển status thành REJECTED
-        // Ghi adminNote và gửi notification cho member - workflow kết thúc
+        Contract contract = feedback.getContract();
+
+        // Kiểm tra user có phải là admin group không (chỉ khi là group admin)
+        if (isGroupAdmin) {
+            validateGroupAdmin(userId, contract.getId());
+        }
+
+        // Reject feedback: Chuyển status thành REJECTED
         feedback.setStatus(MemberFeedbackStatus.REJECTED);
         feedback.setAdminNote(adminNote);
         feedback.setLastAdminAction(FeedbackAdminAction.REJECT);
@@ -342,11 +291,12 @@ public class ContractFeedbackService {
 
         // Gửi notification và email cho member
         if (notificationOrchestrator != null) {
-            Long userId = feedback.getUser().getUserId();
-            Contract contract = feedback.getContract();
+            Long memberUserId = feedback.getUser().getUserId();
 
             String title = "Feedback Rejected";
-            String message = "Your feedback has been rejected by admin.";
+            String message = isGroupAdmin
+                    ? "Your feedback has been rejected by group admin."
+                    : "Your feedback has been rejected by admin.";
             if (adminNote != null) {
                 message += "\n\nAdmin note: " + adminNote;
             }
@@ -354,12 +304,15 @@ public class ContractFeedbackService {
             Map<String, Object> notificationData = new HashMap<>();
             notificationData.put("feedbackId", feedback.getId());
             notificationData.put("contractId", contract.getId());
-            notificationData.put("contractStatus", contract.getApprovalStatus());
-            notificationData.put("adminNote", adminNote != null ? adminNote : "");
+            notificationData.put("contractNumber", contractHelperService.generateContractNumber(contract.getId()));
+            if (!isGroupAdmin) {
+                notificationData.put("contractStatus", contract.getApprovalStatus());
+            }
             notificationData.put("reactionType", feedback.getReactionType());
+            notificationData.put("adminNote", adminNote != null ? adminNote : "");
 
             notificationOrchestrator.sendComprehensiveNotification(
-                    userId,
+                    memberUserId,
                     NotificationType.CONTRACT_REJECTED,
                     title,
                     message,
@@ -369,9 +322,13 @@ public class ContractFeedbackService {
 
         FeedbackActionResponseDTO feedbackData = buildFeedbackActionResponseDTO(feedback);
 
+        String responseMessage = isGroupAdmin
+                ? "Feedback rejected by group admin. Admin note has been sent to the member."
+                : "Feedback rejected. Admin note has been sent to the member.";
+
         return ApiResponseDTO.<FeedbackActionResponseDTO>builder()
                 .success(true)
-                .message("Feedback rejected. Admin note has been sent to the member.")
+                .message(responseMessage)
                 .data(feedbackData)
                 .build();
     }
