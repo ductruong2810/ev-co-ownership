@@ -4,10 +4,7 @@ package com.group8.evcoownership.service;
 import com.group8.evcoownership.dto.MaintenanceAfterCheckOutCreateRequestDTO;
 import com.group8.evcoownership.dto.MaintenanceResponseDTO;
 import com.group8.evcoownership.dto.UserWithRejectedCheckDTO;
-import com.group8.evcoownership.entity.Maintenance;
-import com.group8.evcoownership.entity.UsageBooking;
-import com.group8.evcoownership.entity.User;
-import com.group8.evcoownership.entity.VehicleCheck;
+import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.enums.BookingStatus;
 import com.group8.evcoownership.enums.MaintenanceCoverageType;
 import com.group8.evcoownership.repository.*;
@@ -20,9 +17,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -316,25 +311,34 @@ public class MaintenanceAfterCheckOutService {
         // Case after checkout là sự cố, không phải bảo trì định kỳ
         // nên thường không set nextDueDate (để null là đúng)
 
-        // phan xu ly de reopen booking
-        if (m.getVehicle() != null && m.getVehicle().getId() != null) {
+        // ======= dùng vehicleId + userId để tìm Booking + VehicleCheck =======
+        if (m.getVehicle() != null && m.getVehicle().getId() != null && m.getLiableUser() != null) {
             Long vehicleId = m.getVehicle().getId();
+            Long userId = m.getLiableUser().getUserId();
 
-            // Lấy booking gần nhất đã checkout của xe này
+            // 1) Tìm booking gần nhất của user này với xe này, đã checkout
             usageBookingRepository
-                    .findTopByVehicle_idAndCheckoutStatusTrueOrderByCheckoutTimeDesc(vehicleId)
+                    .findTopByVehicle_IdAndUser_UserIdAndCheckoutStatusTrueOrderByCheckoutTimeDesc(vehicleId, userId)
                     .ifPresent(booking -> {
-                        // Chỉ xử lý nếu booking đang NEEDS_ATTENTION
+
+                        // (a) reopen booking nếu NEEDS_ATTENTION
                         if (booking.getStatus() == BookingStatus.NEEDS_ATTENTION) {
                             booking.setStatus(BookingStatus.COMPLETED);
-                            // nếu bạn muốn, có thể set thêm checkoutTime nếu còn null
-                            // if (booking.getCheckoutTime() == null) {
-                            //     booking.setCheckoutTime(now);
-                            // }
                             usageBookingRepository.save(booking);
                         }
+
+                        // (b) từ bookingId tìm đúng VehicleCheck POST_USE và set PASSED
+                        vehicleCheckRepository
+                                .findTopByBooking_IdAndCheckTypeOrderByCreatedAtDesc(booking.getId(), "POST_USE")
+                                .ifPresent(check -> {
+                                    check.setStatus("PASSED");
+                                    // nếu có updatedAt trong VehicleCheck thì set luôn
+                                    // check.setUpdatedAt(now);
+                                    vehicleCheckRepository.save(check);
+                                });
                     });
         }
+
 
         return mapToDTO(m);
     }

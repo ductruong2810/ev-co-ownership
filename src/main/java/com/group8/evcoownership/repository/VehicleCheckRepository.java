@@ -45,4 +45,8 @@ public interface VehicleCheckRepository extends JpaRepository<VehicleCheck, Long
     List<VehicleCheck> findByStatus(String status);
 
     Optional<VehicleCheck> findByBooking_IdAndCheckType(Long bookingId, String checkType);
+
+    // VehicleCheck theo bookingId + loại POST_USE (check sau khi trả xe)
+    Optional<VehicleCheck> findTopByBooking_IdAndCheckTypeOrderByCreatedAtDesc(Long bookingId, String checkType);
+
 }

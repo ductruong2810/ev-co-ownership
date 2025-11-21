@@ -69,6 +69,7 @@ public class DepositPaymentService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + userId));
 
+        // lay email cua user dang dang nhap
         String authenticatedEmail = authentication.getName();
         if (!user.getEmail().equals(authenticatedEmail)) {
             throw new DepositPaymentException("You can only create deposit payment for your own account");
@@ -78,6 +79,7 @@ public class DepositPaymentService {
         OwnershipGroup group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
 
+        // kiem tra va lay ra xem trong DB co Ownershipshare nào có cặp khóa chính(userId, groupId) khong
         OwnershipShare share = shareRepository.findById(new OwnershipShareId(userId, groupId))
                 .orElseThrow(() -> new EntityNotFoundException("User is not a member of this group"));
 
@@ -90,6 +92,7 @@ public class DepositPaymentService {
         contractRepository.findByGroupGroupId(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Contract not found for this group"));
 
+        // kiem tra xem group nay da co fund loai deposit chua
         SharedFund reserveFund = sharedFundRepository
                 .findByGroup_GroupIdAndFundType(groupId, FundType.DEPOSIT_RESERVE)
                 .orElseThrow(() -> new EntityNotFoundException("Reserve fund not found for group: " + groupId));
@@ -123,7 +126,6 @@ public class DepositPaymentService {
         payment = paymentRepository.save(payment);
 
         // Sinh link thanh toán VNPay
-        //String paymentUrl = vnPayPaymentService.createDepositPaymentUrl(requiredAmount.longValue(), servletRequest);
         String paymentUrl = vnPayPaymentService.createDepositPaymentUrl(requiredAmount.longValue(), servletRequest, txnRef, groupId);
 
 
@@ -154,6 +156,7 @@ public class DepositPaymentService {
             return convertToResponse(payment);
         }
 
+        // tao provide luuthong tin --> luu vao payment
         String providerResponse = String.format(
                 "{\"vnp_TransactionNo\":\"%s\",\"vnp_TxnRef\":\"%s\"}",
                 transactionNo, txnRef
@@ -167,7 +170,6 @@ public class DepositPaymentService {
 
         // 2. Cập nhật quỹ (Fund)
         Long groupId = payment.getFund().getGroup().getGroupId();
-        // fundService.increaseBalance(payment.getFund().getFundId(), payment.getAmount());
         fundService.addDepositToReserve(groupId, payment.getAmount()); // cộng vào RESERVE
 
         // 3. Cập nhật trạng thái tiền cọc trong OwnershipShare
@@ -209,6 +211,9 @@ public class DepositPaymentService {
         return convertToResponse(payment);
     }
 
+    /**
+     * ham nay duoc goi trong ham confirmDepositPayment, confirmFund, confirmMainternance
+     */
     private DepositPaymentResponseDTO convertToResponse(Payment p) {
 
         Long groupId = null;
@@ -371,6 +376,8 @@ public class DepositPaymentService {
         return payments.get(0);
     }
 
+
+    // tao random txnRef cho payment
     public String generateUniqueTxnRef() {
         final int maxAttempts = 10;
 
@@ -386,7 +393,7 @@ public class DepositPaymentService {
         throw new DepositPaymentException("Unable to generate a unique transaction reference. Please try again later.");
     }
 
-    // ========== DEPOSIT REFUND METHODS ==========
+    // ========== DEPOSIT REFUND METHODS A.Truong==========
 
     /**
      * Hoàn tiền cọc cho tất cả members đã đóng khi contract bị reject
