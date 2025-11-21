@@ -177,6 +177,9 @@ public class ContractService {
                 ? request.terms().trim()
                 : (contract.getTerms() != null ? contract.getTerms() : "");
 
+        // Loại bỏ phần AUTO-SIGNED cũ (nếu có) khi cập nhật terms để tránh lặp lại
+        baseTerms = contractHelperService.removeAutoSignatureSection(baseTerms);
+
         String syncedTerms = contractHelperService.updateDepositAmountInTerms(baseTerms, calculatedDepositAmount);
         syncedTerms = contractHelperService.updateTermInTerms(syncedTerms, request.startDate(), request.endDate());
         contract.setTerms(syncedTerms);
@@ -430,8 +433,10 @@ public class ContractService {
         }
 
         // Tự động ký contract bởi admin group
+        // Loại bỏ phần AUTO-SIGNED cũ (nếu có) để tránh lặp lại
+        String cleanedTerms = contractHelperService.removeAutoSignatureSection(contract.getTerms());
         String signatureInfo = buildAutoSignatureInfo(groupId);
-        contract.setTerms(contract.getTerms() + "\n\n" + signatureInfo);
+        contract.setTerms(cleanedTerms + "\n\n" + signatureInfo);
         contract.setApprovalStatus(ContractApprovalStatus.PENDING_MEMBER_APPROVAL); // Chờ các member approve
         contract.setUpdatedAt(LocalDateTime.now());
 
