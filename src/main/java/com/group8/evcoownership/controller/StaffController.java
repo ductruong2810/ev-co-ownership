@@ -31,7 +31,7 @@ public class StaffController {
     private StaffService staffService;
     // Service chứa toàn bộ buisiness logic cho staff va admin
 
-    //========= LẤY DANH SÁCH user =========
+    //========= Lấy danh sách user =========
     @GetMapping("/users")
     @PreAuthorize("hasRole('STAFF') or hasRole('ADMIN')")
     @Operation(summary = "Danh sách người dùng", description = "Lấy danh sách tất cả người dùng với khả năng lọc theo trạng thái và tài liệu")
@@ -47,7 +47,7 @@ public class StaffController {
         return ResponseEntity.ok(users);
     }
 
-    // ========= LẤY CHI TIẾT 1 user=========
+    // ========= Lấy chi tiết 1 user=========
     @GetMapping("/users/{userId}")
     @PreAuthorize("hasRole('STAFF') or hasRole('ADMIN')")
     @Operation(summary = "Chi tiết người dùng", description = "Lấy thông tin chi tiết của một người dùng cụ thể")
@@ -60,37 +60,45 @@ public class StaffController {
         return ResponseEntity.ok(user);
     }
 
+    // ========= Lấy danh sách group hoặc booking theo user=========
     //11/3/2025
     @GetMapping("/users/{userId}/groups")
     public ResponseEntity<List<GroupBookingDTO>> getGroupsByUserId(@PathVariable Long userId) {
+        // Lấy danh sách group + booking mà user này tham gia
         List<GroupBookingDTO> groups = staffService.getGroupsByUserId(userId);
         return ResponseEntity.ok(groups);
     }
 
+    // ========= Lấy danh sách user có document pending =========
     @GetMapping("/documents/pending")
     @PreAuthorize("hasRole('STAFF') or hasRole('ADMIN')")
     @Operation(summary = "Tài liệu chờ duyệt", description = "Lấy danh sách người dùng có tài liệu chờ duyệt")
     public ResponseEntity<List<UserProfileResponseDTO>> getUsersWithPendingDocuments() {
         log.info("Staff fetching users with pending documents");
+        // Gọi service lấy các user có document đang ở trạng thái PENDING
         List<UserProfileResponseDTO> users = staffService.getUsersWithPendingDocuments();
         return ResponseEntity.ok(users);
     }
 
+    // ========= Review document APPROVE/REJECT và reason =========
     @PostMapping("/documents/review/{documentId}")
     @PreAuthorize("hasRole('STAFF') or hasRole('ADMIN')")
     @Operation(summary = "Duyệt tài liệu", description = "Nhân viên duyệt tài liệu của người dùng")
     public ResponseEntity<Map<String, String>> reviewDocument(
-            @PathVariable Long documentId,
-            @Valid @RequestBody ReviewDocumentRequestDTO request,
-            Authentication authentication) {
+            @PathVariable Long documentId, //id của tài liệu cần duyêt
+            @Valid @RequestBody ReviewDocumentRequestDTO request, // request gồm trạng thái mới và reason (nếu reject)
+            Authentication authentication)  { // chứa thông tin staff hiện tại (JWT)
 
+        // Lấy email của staff từ Authentication được set bởi thằng JwtAuthenticationFilter
         String staffEmail = AuthUtils.getCurrentUserEmail(authentication);
         log.info("Staff {} reviewing document {}", staffEmail, documentId);
 
+        // Gọi service xử lý review (approve/reject) tài liệu
         String message = staffService.reviewDocument(documentId, request, staffEmail);
         return ResponseEntity.ok(Map.of("message", message));
     }
 
+    // ========= Phê duyệt document =========
     @PostMapping("/documents/approve/{documentId}")
     @PreAuthorize("hasRole('STAFF') or hasRole('ADMIN')")
     @Operation(summary = "Phê duyệt tài liệu", description = "Phê duyệt tài liệu của người dùng")
@@ -101,21 +109,24 @@ public class StaffController {
         String staffEmail = AuthUtils.getCurrentUserEmail(authentication);
         log.info("Staff {} approving document {}", staffEmail, documentId);
 
+        // Service thực hiện logic approve đơn giản, chỉ cần documentId + staffEmail
         String message = staffService.approveDocument(documentId, staffEmail);
         return ResponseEntity.ok(Map.of("message", message));
     }
 
+    // ========= Từ chối document với lý do =========
     @PostMapping("/documents/reject/{documentId}")
     @PreAuthorize("hasRole('STAFF') or hasRole('ADMIN')")
     @Operation(summary = "Từ chối tài liệu", description = "Từ chối tài liệu của người dùng với lý do cụ thể")
     public ResponseEntity<Map<String, String>> rejectDocument(
             @PathVariable Long documentId,
-            @RequestParam String reason,
+            @RequestParam String reason, //ở đây truyền thêm lý do mình từ chối
             Authentication authentication) {
 
         String staffEmail = AuthUtils.getCurrentUserEmail(authentication);
         log.info("Staff {} rejecting document {}", staffEmail, documentId);
 
+        // Service xử lý reject + lưu reason + log lại staff xử lý
         String message = staffService.rejectDocument(documentId, reason, staffEmail);
         return ResponseEntity.ok(Map.of("message", message));
     }
@@ -132,15 +143,16 @@ public class StaffController {
     @PreAuthorize("hasRole('STAFF') or hasRole('ADMIN')")
     @Operation(summary = "Lấy QR Code tất cả users", description = "Lấy tất cả QR Code của tất cả users từ các group và booking (mỗi trang tối đa 10 users)")
     public ResponseEntity<Page<UserGroupBookingsResponseDTO>> getAllUsersQRCode(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "0") int page, //số trang mac dinh 0
+            @RequestParam(defaultValue = "10") int size) { //tối đa là 10
 
-        // Đảm bảo size không vượt quá 10
+        // Đảm bảo size không vượt quá 10 vì nếu k trả nhiều quá scroll mệt và rối
         if (size > 10) {
             size = 10;
         }
 
         log.info("Staff fetching all users QR codes - page: {}, size: {}", page, size);
+        // Gọi service lấy danh sách user + group + booking + QRCode, trả dưới dạng Page
         Page<UserGroupBookingsResponseDTO> response = staffService.getAllUsersQRCode(page, size);
         return ResponseEntity.ok(response);
     }
