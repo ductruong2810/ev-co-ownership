@@ -123,9 +123,10 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
             """)
     List<UsageBooking> findAllBookingsByGroupId(@Param("groupId") Long groupId);
 
-    // Lần gần nhất xe này đã checkout (user đã trả xe)
-    Optional<UsageBooking> findTopByVehicle_idAndCheckoutStatusTrueOrderByCheckoutTimeDesc(Long vehicleId);
-
+    Optional<UsageBooking> findTopByVehicle_IdAndUser_UserIdAndCheckoutStatusTrueOrderByCheckoutTimeDesc(
+            Long vehicleId,
+            Long userId
+    );
 
 }
 
