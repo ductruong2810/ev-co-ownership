@@ -28,7 +28,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import static java.lang.System.currentTimeMillis;
 
@@ -754,37 +753,4 @@ public class OwnershipGroupService {
         }
     }
 
-    /**
-     * Kiểm tra user có phải là member của group dựa trên contractId
-     */
-    public boolean isGroupMemberForContract(String userEmail, Long contractId) {
-        try {
-            var contract = contractRepository.findById(contractId).orElse(null);
-            if (contract == null || contract.getGroup() == null) {
-                return false;
-            }
-            Long groupId = contract.getGroup().getGroupId();
-            return isGroupMember(userEmail, groupId);
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    /**
-     * Kiểm tra user có phải là admin của group dựa trên feedbackId
-     * Tối ưu: Query trực tiếp groupId từ feedbackId thay vì load toàn bộ object graph
-     */
-    public boolean isGroupAdminForFeedback(String userEmail, Long feedbackId) {
-        try {
-            // Query trực tiếp groupId từ feedbackId (hiệu quả hơn)
-            Optional<Long> groupIdOpt = contractFeedbackRepository.findGroupIdByFeedbackId(feedbackId);
-            if (groupIdOpt.isEmpty()) {
-                return false;
-            }
-            Long groupId = groupIdOpt.get();
-            return isGroupAdmin(userEmail, groupId);
-        } catch (Exception e) {
-            return false;
-        }
-    }
 }
