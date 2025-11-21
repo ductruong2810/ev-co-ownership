@@ -192,13 +192,13 @@ public class ContractController {
     }
 
     /**
-     * API: Lấy tất cả feedback của members cho contract (cho admin group)
+     * API: Lấy tất cả feedback DISAGREE của members cho contract (cho admin group)
      */
     @GetMapping("/{contractId}/member-feedbacks")
-    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
+    @PreAuthorize("@ownershipGroupService.isGroupAdminForContract(authentication.name, #contractId) or hasAnyRole('ADMIN','STAFF')")
     @Operation(
-            summary = "Get contract member feedbacks",
-            description = "Lấy tất cả feedback của members cho contract. Chỉ group admin có quyền xem."
+            summary = "Get contract member feedbacks (DISAGREE only)",
+            description = "Lấy tất cả feedback DISAGREE của members cho contract. Chỉ group admin có quyền xem."
     )
     public ResponseEntity<ContractFeedbacksResponseDTO> getContractMemberFeedbacks(
             @PathVariable Long contractId) {
@@ -208,16 +208,16 @@ public class ContractController {
     }
 
     /**
-     * API: Lấy tất cả feedback của members theo groupId (cho admin group)
+     * API: Lấy tất cả feedback DISAGREE của members theo groupId (cho admin group)
      * ------------------------------------------------------------
      * Dành cho:
      * - Group Admin
      */
     @GetMapping("/group/{groupId}/member-feedbacks")
-    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
+    @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId) or hasAnyRole('ADMIN','STAFF')")
     @Operation(
-            summary = "Get member feedbacks by groupId",
-            description = "Lấy tất cả feedback của members theo groupId. Áp dụng cho nhóm có 1 hợp đồng hiện tại."
+            summary = "Get member feedbacks by groupId (DISAGREE only)",
+            description = "Lấy tất cả feedback DISAGREE của members theo groupId. Áp dụng cho nhóm có 1 hợp đồng hiện tại."
     )
     public ResponseEntity<ContractFeedbacksResponseDTO> getGroupMemberFeedbacks(
             @PathVariable Long groupId) {
@@ -226,5 +226,43 @@ public class ContractController {
         return ResponseEntity.ok(feedbacks);
     }
 
-    // Removed manual approval endpoints - contracts are now auto-approved
+    /**
+     * API: Admin group approve một feedback cụ thể (theo feedbackId)
+     * CHỈ ADMIN GROUP của contract mới có quyền approve feedback
+     */
+    @PutMapping("/feedbacks/{feedbackId}/approve")
+    @PreAuthorize("hasAnyRole('CO_OWNER')")
+    @Operation(
+            summary = "Group admin approve feedback",
+            description = "Group admin approve một feedback DISAGREE cụ thể. Chỉ có thể approve feedbacks có status = PENDING."
+    )
+    public ResponseEntity<ApiResponseDTO<FeedbackActionResponseDTO>> approveFeedbackByGroupAdmin(
+            @PathVariable Long feedbackId,
+            @RequestBody(required = false) FeedbackActionRequestDTO request,
+            @AuthenticationPrincipal String userEmail) {
+        
+        Long userId = contractService.getUserIdByEmail(userEmail);
+        ApiResponseDTO<FeedbackActionResponseDTO> result = contractService.approveFeedbackByGroupAdmin(feedbackId, request, userId);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * API: Admin group reject một feedback cụ thể (theo feedbackId)
+     * CHỈ ADMIN GROUP của contract mới có quyền reject feedback
+     */
+    @PutMapping("/feedbacks/{feedbackId}/reject")
+    @PreAuthorize("hasAnyRole('CO_OWNER')")
+    @Operation(
+            summary = "Group admin reject feedback",
+            description = "Group admin reject một feedback DISAGREE cụ thể. Chỉ có thể reject feedbacks có status = PENDING."
+    )
+    public ResponseEntity<ApiResponseDTO<FeedbackActionResponseDTO>> rejectFeedbackByGroupAdmin(
+            @PathVariable Long feedbackId,
+            @RequestBody(required = false) FeedbackActionRequestDTO request,
+            @AuthenticationPrincipal String userEmail) {
+        
+        Long userId = contractService.getUserIdByEmail(userEmail);
+        ApiResponseDTO<FeedbackActionResponseDTO> result = contractService.rejectFeedbackByGroupAdmin(feedbackId, request, userId);
+        return ResponseEntity.ok(result);
+    }
 }

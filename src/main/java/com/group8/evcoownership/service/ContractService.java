@@ -19,8 +19,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -39,6 +37,8 @@ public class ContractService {
     private final ContractDeadlinePolicy deadlinePolicy;
     private final DepositPaymentService depositPaymentService;
     private final ContractFeedbackRepository feedbackRepository;
+    private final ContractFeedbackService contractFeedbackService;
+    private final ContractHelperService contractHelperService;
 
     @Value("${contract.deposit.deadline.minutes:5}")
     private long depositDeadlineMinutes;
@@ -177,14 +177,15 @@ public class ContractService {
                 ? request.terms().trim()
                 : (contract.getTerms() != null ? contract.getTerms() : "");
 
-        String syncedTerms = updateDepositAmountInTerms(baseTerms, calculatedDepositAmount);
-        syncedTerms = updateTermInTerms(syncedTerms, request.startDate(), request.endDate());
+        String syncedTerms = contractHelperService.updateDepositAmountInTerms(baseTerms, calculatedDepositAmount);
+        syncedTerms = contractHelperService.updateTermInTerms(syncedTerms, request.startDate(), request.endDate());
         contract.setTerms(syncedTerms);
 
         Contract saved = contractRepository.saveAndFlush(contract);
 
-        // Set lastAdminAction = APPROVE để isProcessed = true
-        // Reset status về PENDING để có thể approve lại
+        // Cập nhật feedbacks để đánh dấu contract đã được update
+        // Nếu contract ở SIGNED: giữ nguyên status SIGNED, admin có thể approve luôn sau khi sửa
+        // Nếu contract ở PENDING hoặc PENDING_MEMBER_APPROVAL: feedbacks được đánh dấu CONTRACT_UPDATED
         List<ContractFeedback> feedbacks = feedbackRepository.findByContractId(saved.getId());
         if (!feedbacks.isEmpty()) {
             feedbacks.forEach(f -> {
@@ -197,7 +198,21 @@ public class ContractService {
             feedbackRepository.saveAll(feedbacks);
         }
 
-        String termLabel = calculateTermLabel(saved.getStartDate(), saved.getEndDate());
+        // Gửi notification cho members khi admin update contract ở SIGNED
+        // Thông báo cho members biết contract đã được cập nhật dựa trên feedback DISAGREE của họ
+        if (saved.getApprovalStatus() == ContractApprovalStatus.SIGNED && notificationOrchestrator != null) {
+            Long groupId = saved.getGroup().getGroupId();
+            Map<String, Object> emailData = notificationOrchestrator.buildContractEmailData(saved);
+            notificationOrchestrator.sendGroupNotification(
+                    groupId,
+                    NotificationType.CONTRACT_CREATED,
+                    "Contract Updated by System Admin",
+                    "The system administrator has updated the contract terms based on member feedback. The contract is still pending final approval.",
+                    emailData
+            );
+        }
+
+        String termLabel = contractHelperService.calculateTermLabel(saved.getStartDate(), saved.getEndDate());
         ContractUpdateResponseDTO contractData = ContractUpdateResponseDTO.builder()
                 .contractId(saved.getId())
                 .startDate(saved.getStartDate())
@@ -300,21 +315,21 @@ public class ContractService {
 
         DepositCalculationInfoDTO.DepositCalculationInfoDTOBuilder builder = DepositCalculationInfoDTO.builder()
                 .calculatedDepositAmount(calculatedAmount)
-                .formattedAmount(formatCurrency(calculatedAmount));
+                .formattedAmount(contractHelperService.formatCurrency(calculatedAmount));
 
         // Giải thích công thức tính toán
         StringBuilder explanation = new StringBuilder();
         if (vehicle != null && vehicle.getVehicleValue() != null && vehicle.getVehicleValue().compareTo(BigDecimal.ZERO) > 0) {
             explanation.append("Formula: Vehicle value × 10% = ")
-                    .append(formatCurrency(vehicle.getVehicleValue()))
+                    .append(contractHelperService.formatCurrency(vehicle.getVehicleValue()))
                     .append(" × 10% = ")
-                    .append(formatCurrency(calculatedAmount));
+                    .append(contractHelperService.formatCurrency(calculatedAmount));
             builder.calculationMethod("VEHICLE_VALUE_PERCENTAGE")
                     .vehicleValue(vehicle.getVehicleValue())
                     .percentage("10%");
         } else {
             explanation.append("Formula: Base amount + (Number of members × 10% × Base amount) = ")
-                    .append(formatCurrency(calculatedAmount));
+                    .append(contractHelperService.formatCurrency(calculatedAmount));
             builder.calculationMethod("MEMBER_CAPACITY")
                     .memberCapacity(group.getMemberCapacity());
         }
@@ -325,72 +340,6 @@ public class ContractService {
         return builder.build();
     }
 
-    /**
-     * Tính toán kỳ hạn hợp đồng từ startDate và endDate
-     * Trả về string mô tả kỳ hạn (ví dụ: "1 year", "6 months", "2 years 3 months", "90 days")
-     */
-    private String calculateTermLabel(LocalDate startDate, LocalDate endDate) {
-        if (startDate == null || endDate == null) {
-            return "N/A";
-        }
-
-        long days = java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate);
-        long months = java.time.temporal.ChronoUnit.MONTHS.between(startDate, endDate);
-        long years = java.time.temporal.ChronoUnit.YEARS.between(startDate, endDate);
-
-        if (years > 0) {
-            long remainingMonths = months % 12;
-            if (remainingMonths == 0) {
-                return years + (years == 1 ? " year" : " years");
-            } else {
-                return years + (years == 1 ? " year" : " years") + " " + remainingMonths + (remainingMonths == 1 ? " month" : " months");
-            }
-        } else if (months > 0) {
-            return months + (months == 1 ? " month" : " months");
-        } else {
-            return days + (days == 1 ? " day" : " days");
-        }
-    }
-
-    /**
-     * Cập nhật term trong contract terms (nếu có)
-     */
-    private String updateTermInTerms(String terms, LocalDate startDate, LocalDate endDate) {
-        if (terms == null || terms.isEmpty() || startDate == null || endDate == null) {
-            return terms;
-        }
-
-        // Tính toán term mới
-        String newTermLabel = calculateTermLabel(startDate, endDate);
-
-        String noteSuffix = " (minimum 1 month, maximum 5 years)";
-        Pattern pattern = Pattern.compile("(?i)(Kỳ hạn|Term|Period):\\s*[^\\n]+");
-        Matcher matcher = pattern.matcher(terms);
-
-        if (matcher.find()) {
-            String label = matcher.group(1);
-            String replacement = label + ": " + newTermLabel + noteSuffix;
-            return matcher.replaceAll(replacement);
-        }
-
-        // Nếu không tìm thấy pattern, append term line vào đầu
-        return "Term: " + newTermLabel + noteSuffix + "\n" + terms;
-    }
-
-    /**
-     * Cập nhật deposit amount trong contract terms
-     */
-    private String updateDepositAmountInTerms(String terms, BigDecimal newDepositAmount) {
-        if (terms == null || terms.isEmpty()) {
-            return terms;
-        }
-
-        // Tìm và thay thế dòng "- Deposit amount: ..."
-        String depositPattern = "- Deposit amount:.*";
-        String replacement = "- Deposit amount: " + formatCurrency(newDepositAmount);
-
-        return terms.replaceAll(depositPattern, replacement);
-    }
 
     /**
      * Hủy contract với lý do
@@ -551,7 +500,7 @@ public class ContractService {
         return AutoSignContractResponseDTO.builder()
                 .success(true)
                 .contractId(savedContract.getId())
-                .contractNumber(generateContractNumber(savedContract.getId()))
+                .contractNumber(contractHelperService.generateContractNumber(savedContract.getId()))
                 .status("PENDING_MEMBER_APPROVAL")
                 .signedAt(LocalDateTime.now())
                 .message("Contract has been signed by group admin. Waiting for member approvals.")
@@ -817,16 +766,16 @@ public class ContractService {
                 ContractGenerationResponseDTO.ContractSection.builder()
                         .number("TBD")
                         .location("HCM")
-                        .signDate(formatDate(LocalDate.now()));
+                        .signDate(contractHelperService.formatDate(LocalDate.now()));
 
         ContractGenerationResponseDTO.ContractGenerationResponseDTOBuilder responseBuilder = ContractGenerationResponseDTO.builder();
 
         if (existingContract.isPresent()) {
             Contract contract = existingContract.get();
             contractSectionBuilder
-                    .effectiveDate(formatDate(contract.getStartDate()))
-                    .endDate(formatDate(contract.getEndDate()))
-                    .termLabel(calculateTermLabel(contract.getStartDate(), contract.getEndDate()))
+                    .effectiveDate(contractHelperService.formatDate(contract.getStartDate()))
+                    .endDate(contractHelperService.formatDate(contract.getEndDate()))
+                    .termLabel(contractHelperService.calculateTermLabel(contract.getStartDate(), contract.getEndDate()))
                     .status(contract.getApprovalStatus());
 
             responseBuilder.contractId(contract.getId())
@@ -843,9 +792,9 @@ public class ContractService {
             LocalDate defaultStartDate = LocalDate.now();
             LocalDate defaultEndDate = defaultStartDate.plusYears(1);
             contractSectionBuilder
-                    .effectiveDate(formatDate(defaultStartDate))
-                    .endDate(formatDate(defaultEndDate))
-                    .termLabel(calculateTermLabel(defaultStartDate, defaultEndDate))
+                    .effectiveDate(contractHelperService.formatDate(defaultStartDate))
+                    .endDate(contractHelperService.formatDate(defaultEndDate))
+                    .termLabel(contractHelperService.calculateTermLabel(defaultStartDate, defaultEndDate))
                     .status(ContractApprovalStatus.PENDING);
 
             responseBuilder.status(ContractApprovalStatus.PENDING)
@@ -908,29 +857,6 @@ public class ContractService {
                 .build();
     }
 
-    /**
-     * Format date
-     */
-    private String formatDate(LocalDate date) {
-        if (date == null) return "—";
-        return date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-    }
-
-    /**
-     * Format currency to Vietnamese format
-     */
-    private String formatCurrency(BigDecimal amount) {
-        if (amount == null) return "0 VND";
-        return String.format("%,.0f VND", amount.doubleValue());
-    }
-
-    /**
-     * Generate contract number
-     */
-    private String generateContractNumber(Long contractId) {
-        return "EVS-" + String.format("%04d", contractId) + "-" +
-                LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy"));
-    }
 
     /**
      * Tự động generate nội dung contract dựa trên template HTML
@@ -943,7 +869,7 @@ public class ContractService {
         LocalDate startDate = existingContract != null ? existingContract.getStartDate() : LocalDate.now();
         LocalDate endDate = existingContract != null ? existingContract.getEndDate()
                 : startDate.plusYears(1);
-        String termLabel = calculateTermLabel(startDate, endDate);
+        String termLabel = contractHelperService.calculateTermLabel(startDate, endDate);
         String termSuffix = " (minimum 1 month, maximum 5 years)";
 
         BigDecimal depositAmount = (existingContract != null && existingContract.getRequiredDepositAmount() != null)
@@ -952,9 +878,9 @@ public class ContractService {
 
         String existingTerms = existingContract != null ? existingContract.getTerms() : null;
         if (existingTerms != null && !existingTerms.trim().isEmpty()) {
-            String syncedTerms = updateDepositAmountInTerms(existingTerms, depositAmount);
+            String syncedTerms = contractHelperService.updateDepositAmountInTerms(existingTerms, depositAmount);
             if (startDate != null && endDate != null) {
-                syncedTerms = updateTermInTerms(syncedTerms, startDate, endDate);
+                syncedTerms = contractHelperService.updateTermInTerms(syncedTerms, startDate, endDate);
             }
             return syncedTerms;
         }
@@ -964,11 +890,11 @@ public class ContractService {
 // 1. CAPITAL CONTRIBUTION & OPERATING FUND
         terms.append("1. CAPITAL CONTRIBUTION & OPERATING FUND\n");
         if (vehicle != null) {
-            terms.append("- Vehicle value: ").append(formatCurrency(vehicle.getVehicleValue())).append("\n");
+            terms.append("- Vehicle value: ").append(contractHelperService.formatCurrency(vehicle.getVehicleValue())).append("\n");
         } else {
             terms.append("- Vehicle value: To be updated later\n");
         }
-        terms.append("- Deposit amount: ").append(formatCurrency(depositAmount)).append("\n");
+        terms.append("- Deposit amount: ").append(contractHelperService.formatCurrency(depositAmount)).append("\n");
         if (!"N/A".equalsIgnoreCase(termLabel)) {
             terms.append("Term: ").append(termLabel).append(termSuffix).append("\n");
         } else {
@@ -1037,7 +963,7 @@ public class ContractService {
 // 6. SIGNATURES
         terms.append("6. SIGNATURES\n");
         terms.append("Group Representative: Admin Group\n");
-        terms.append("Date of Signing: ").append(formatDate(LocalDate.now())).append("\n");
+        terms.append("Date of Signing: ").append(contractHelperService.formatDate(LocalDate.now())).append("\n");
         terms.append(
                 "This contract takes effect on the signing date and is acknowledged by all members of the co-ownership group.\n"
         );
@@ -1399,138 +1325,47 @@ public class ContractService {
     }
 
     /**
+     * Admin group approve một feedback cụ thể (theo feedbackId)
+     * Delegated to ContractFeedbackService
+     */
+    @Transactional
+    public ApiResponseDTO<FeedbackActionResponseDTO> approveFeedbackByGroupAdmin(
+            Long feedbackId,
+            FeedbackActionRequestDTO request,
+            Long userId) {
+        return contractFeedbackService.approveFeedbackByGroupAdmin(feedbackId, request, userId);
+    }
+
+    /**
+     * Admin group reject một feedback cụ thể (theo feedbackId)
+     * Delegated to ContractFeedbackService
+     */
+    @Transactional
+    public ApiResponseDTO<FeedbackActionResponseDTO> rejectFeedbackByGroupAdmin(
+            Long feedbackId,
+            FeedbackActionRequestDTO request,
+            Long userId) {
+        return contractFeedbackService.rejectFeedbackByGroupAdmin(feedbackId, request, userId);
+    }
+
+    /**
      * Admin approve một feedback cụ thể (theo feedbackId)
-     * Chỉ có thể approve feedbacks có status = PENDING
-     * Invalidate tất cả feedbacks và gửi thông báo cho members để review lại contract
+     * Delegated to ContractFeedbackService
      */
     @Transactional
     public ApiResponseDTO<FeedbackActionResponseDTO> approveFeedback(Long feedbackId, FeedbackActionRequestDTO request) {
-        String adminNote = request != null ? request.adminNote() : null;
-        adminNote = (adminNote != null && !adminNote.trim().isEmpty()) ? adminNote.trim() : null;
-        ContractFeedback feedback = feedbackRepository.findById(feedbackId)
-                .orElseThrow(() -> new ResourceNotFoundException("Feedback not found"));
-
-        if (feedback.getStatus() != MemberFeedbackStatus.PENDING) {
-            throw new IllegalStateException(
-                    "Only PENDING feedbacks can be approved. Current status: " + feedback.getStatus()
-            );
-        }
-
-        Contract contract = feedback.getContract();
-
-        // Admin approve feedback DISAGREE: Chuyển status thành APPROVED
-        // (Admin đã xem lý do và đồng ý sửa contract nếu cần)
-        feedback.setStatus(MemberFeedbackStatus.APPROVED);
-        feedback.setLastAdminAction(FeedbackAdminAction.APPROVE);
-        feedback.setLastAdminActionAt(LocalDateTime.now());
-        feedback.setAdminNote(adminNote);
-        feedback.setUpdatedAt(LocalDateTime.now());
-        feedbackRepository.save(feedback);
-
-        // Kiểm tra xem tất cả members đã approve chưa (có thể chuyển contract sang SIGNED)
-        checkAndAutoSignIfAllApproved(contract);
-
-        FeedbackActionResponseDTO feedbackData = buildFeedbackActionResponseDTO(feedback);
-
-        return ApiResponseDTO.<FeedbackActionResponseDTO>builder()
-                .success(true)
-                .message("Feedback approved. Feedback status changed to APPROVED.")
-                .data(feedbackData)
-                .build();
+        return contractFeedbackService.approveFeedback(feedbackId, request);
     }
 
     /**
      * Admin reject một feedback cụ thể (theo feedbackId)
-     * Chỉ có thể reject feedbacks có status = PENDING và isProcessed = false
-     * Chuyển về PENDING để member làm lại và lưu adminNote vào reason
-     * Gửi notification và email cho member kèm adminNote
+     * Delegated to ContractFeedbackService
      */
     @Transactional
     public ApiResponseDTO<FeedbackActionResponseDTO> rejectFeedback(Long feedbackId, FeedbackActionRequestDTO request) {
-        String adminNote = request != null ? request.adminNote() : null;
-        adminNote = (adminNote != null && !adminNote.trim().isEmpty()) ? adminNote.trim() : null;
-        ContractFeedback feedback = feedbackRepository.findById(feedbackId)
-                .orElseThrow(() -> new ResourceNotFoundException("Feedback not found"));
-
-        if (feedback.getStatus() != MemberFeedbackStatus.PENDING) {
-            throw new IllegalStateException(
-                    "Only PENDING feedbacks can be rejected. Current status: " + feedback.getStatus()
-            );
-        }
-
-        // Không cho phép reject feedback đã được processed (isProcessed = true)
-        if (isFeedbackProcessed(feedback)) {
-            throw new IllegalStateException(
-                    "Cannot reject feedback that has already been processed. Feedback is already processed."
-            );
-        }
-
-        // Admin reject feedback DISAGREE: Chuyển status thành REJECTED
-        // Ghi adminNote và gửi notification cho member - workflow kết thúc
-        feedback.setStatus(MemberFeedbackStatus.REJECTED);
-        feedback.setAdminNote(adminNote);
-        feedback.setLastAdminAction(FeedbackAdminAction.REJECT);
-        feedback.setLastAdminActionAt(LocalDateTime.now());
-        feedback.setUpdatedAt(LocalDateTime.now());
-        feedbackRepository.save(feedback);
-
-        // Gửi notification và email cho member
-        if (notificationOrchestrator != null) {
-            Long userId = feedback.getUser().getUserId();
-            Contract contract = feedback.getContract();
-
-            String title = "Feedback Rejected";
-            String message = "Your feedback has been rejected by admin.";
-            if (adminNote != null) {
-                message += "\n\nAdmin note: " + adminNote;
-            }
-
-            Map<String, Object> notificationData = new HashMap<>();
-            notificationData.put("feedbackId", feedback.getId());
-            notificationData.put("contractId", contract.getId());
-            notificationData.put("contractStatus", contract.getApprovalStatus());
-            notificationData.put("adminNote", adminNote != null ? adminNote : "");
-            notificationData.put("reactionType", feedback.getReactionType());
-
-            notificationOrchestrator.sendComprehensiveNotification(
-                    userId,
-                    NotificationType.CONTRACT_REJECTED,
-                    title,
-                    message,
-                    notificationData
-            );
-        }
-
-        FeedbackActionResponseDTO feedbackData = buildFeedbackActionResponseDTO(feedback);
-
-        return ApiResponseDTO.<FeedbackActionResponseDTO>builder()
-                .success(true)
-                .message("Feedback rejected. Admin note has been sent to the member.")
-                .data(feedbackData)
-                .build();
+        return contractFeedbackService.rejectFeedback(feedbackId, request);
     }
 
-    /**
-     * Build FeedbackActionResponseDTO từ ContractFeedback
-     */
-    private FeedbackActionResponseDTO buildFeedbackActionResponseDTO(ContractFeedback feedback) {
-        return FeedbackActionResponseDTO.builder()
-                .feedbackId(feedback.getId())
-                .status(feedback.getStatus())
-                .isProcessed(isFeedbackProcessed(feedback))
-                .lastAdminAction(feedback.getLastAdminAction())
-                .lastAdminActionAt(feedback.getLastAdminActionAt())
-                .reactionType(feedback.getReactionType())
-                .userId(feedback.getUser().getUserId())
-                .contractId(feedback.getContract().getId())
-                .reason(feedback.getReason() != null ? feedback.getReason() : "")
-                .adminNote(feedback.getAdminNote() != null ? feedback.getAdminNote() : "")
-                .build();
-    }
-
-    private boolean isFeedbackProcessed(ContractFeedback feedback) {
-        return feedback != null && feedback.getLastAdminAction() != null;
-    }
 
     /**
      * Invalidate tất cả feedbacks của contract.
@@ -1563,113 +1398,23 @@ public class ContractService {
             }
         }
 
-        throw new IllegalStateException(String.format("Cannot update contract: Contract is in %s status. Only PENDING contracts or PENDING_MEMBER_APPROVAL contracts with rejections can be updated.", contract.getApprovalStatus()));
+        // Cho phép admin sửa contract khi ở SIGNED để xem feedback DISAGREE và sửa terms
+        // Sau đó admin có thể approve luôn mà không cần members review lại
+        if (contract.getApprovalStatus() == ContractApprovalStatus.SIGNED) {
+            return;
+        }
+
+        throw new IllegalStateException(String.format("Cannot update contract: Contract is in %s status. Only PENDING contracts, PENDING_MEMBER_APPROVAL contracts with rejections, or SIGNED contracts can be updated.", contract.getApprovalStatus()));
     }
 
     /**
      * Member approve hoặc reject contract
+     * Delegated to ContractFeedbackService
      */
     @Transactional
-    public ApiResponseDTO<SubmitMemberFeedbackResponseDTO> submitMemberFeedback(Long contractId, Long userId, ContractMemberFeedbackRequestDTO request) {
-        Contract contract = contractRepository.findById(contractId)
-                .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
-
-        // Cho phép gửi feedback khi contract ở PENDING hoặc PENDING_MEMBER_APPROVAL
-        if (contract.getApprovalStatus() != ContractApprovalStatus.PENDING
-                && contract.getApprovalStatus() != ContractApprovalStatus.PENDING_MEMBER_APPROVAL) {
-            throw new IllegalStateException(
-                    "Contract is not in PENDING or PENDING_MEMBER_APPROVAL status. Current status: " + contract.getApprovalStatus()
-            );
-        }
-
-        // Kiểm tra user là member của group
-        Long groupId = contract.getGroup().getGroupId();
-        OwnershipShare share = shareRepository.findById(
-                new OwnershipShareId(userId, groupId)
-        ).orElseThrow(() -> new IllegalStateException("User is not a member of this group"));
-
-        boolean isAdmin = share.getGroupRole() == GroupRole.ADMIN;
-        boolean isPending = contract.getApprovalStatus() == ContractApprovalStatus.PENDING;
-        boolean isPendingMemberApproval = contract.getApprovalStatus() == ContractApprovalStatus.PENDING_MEMBER_APPROVAL;
-
-        // Nếu contract ở PENDING, chỉ cho phép admin group gửi feedback
-        if (isPending && !isAdmin) {
-            throw new IllegalStateException(
-                    "Contract is in PENDING status. Only admin group can submit feedback. Please wait for admin to sign the contract."
-            );
-        }
-
-        // Nếu contract ở PENDING_MEMBER_APPROVAL, KHÔNG cho phép admin group gửi feedback
-        if (isPendingMemberApproval && isAdmin) {
-            throw new IllegalStateException(
-                    "Group admin cannot submit feedback when contract is in PENDING_MEMBER_APPROVAL status. Admin has already signed the contract."
-            );
-        }
-
-        // Validate request
-        if (!request.isValid()) {
-            throw new IllegalArgumentException("Invalid feedback. If DISAGREE, reason must be at least 10 characters.");
-        }
-
-        ReactionType reactionType =
-                "AGREE".equalsIgnoreCase(request.reactionType())
-                        ? ReactionType.AGREE
-                        : ReactionType.DISAGREE;
-
-        // Kiểm tra đã submit feedback cho contract chưa
-        var existingFeedback = feedbackRepository
-                .findTopByContractIdAndUser_UserIdOrderBySubmittedAtDesc(contractId, userId);
-
-        // Set status dựa trên reactionType
-        MemberFeedbackStatus feedbackStatus = (reactionType == ReactionType.AGREE)
-                ? MemberFeedbackStatus.APPROVED  // AGREE → APPROVED (đã approve luôn)
-                : MemberFeedbackStatus.PENDING;  // DISAGREE → PENDING (cần admin xử lý)
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
-
-        // Kiểm tra nếu đã có feedback và không bị REJECTED thì không cho phép tạo mới
-        if (existingFeedback.isPresent()) {
-            ContractFeedback latestFeedback = existingFeedback.get();
-            boolean isRejected = latestFeedback.getStatus() == MemberFeedbackStatus.REJECTED;
-
-            // Chỉ cho phép tạo feedback mới khi feedback bị REJECTED
-            if (!isRejected) {
-                throw new IllegalStateException(
-                        "You have already submitted feedback for this contract. Only REJECTED feedbacks can be resubmitted."
-                );
-            }
-        }
-
-        // Tạo feedback mới (nếu chưa có feedback hoặc feedback cũ bị REJECTED)
-        ContractFeedback feedback = ContractFeedback.builder()
-                .contract(contract)
-                .user(user)
-                .status(feedbackStatus)
-                .reactionType(reactionType)
-                .reason(request.reason())
-                .adminNote(null)
-                .build();
-
-        feedbackRepository.save(feedback);
-
-        // Kiểm tra xem tất cả members đã approve chưa
-        checkAndAutoSignIfAllApproved(contract);
-
-        SubmitMemberFeedbackResponseDTO feedbackData = SubmitMemberFeedbackResponseDTO.builder()
-                .feedbackId(feedback.getId())
-                .status(feedback.getStatus())
-                .isProcessed(isFeedbackProcessed(feedback))
-                .reactionType(feedback.getReactionType())
-                .reason(feedback.getReason() != null ? feedback.getReason() : "")
-                .submittedAt(feedback.getSubmittedAt())
-                .build();
-
-        return ApiResponseDTO.<SubmitMemberFeedbackResponseDTO>builder()
-                .success(true)
-                .message("Feedback submitted successfully")
-                .data(feedbackData)
-                .build();
+    public ApiResponseDTO<SubmitMemberFeedbackResponseDTO> submitMemberFeedback(
+            Long contractId, Long userId, ContractMemberFeedbackRequestDTO request) {
+        return contractFeedbackService.submitMemberFeedback(contractId, userId, request);
     }
 
     /**
@@ -1736,87 +1481,18 @@ public class ContractService {
 
     /**
      * Lấy tất cả feedback của members cho contract
+     * Delegated to ContractFeedbackService
      */
     public ContractFeedbacksResponseDTO getContractFeedbacks(Long contractId) {
-        Contract contract = contractRepository.findById(contractId)
-                .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
-
-        List<ContractFeedback> feedbacks =
-                feedbackRepository.findByContractId(contractId);
-
-        List<OwnershipShare> allMembers = shareRepository.findByGroup_GroupId(contract.getGroup().getGroupId());
-        List<OwnershipShare> members = allMembers.stream()
-                .filter(share -> share.getGroupRole() != GroupRole.ADMIN)
-                .toList();
-
-        // Tạo Map để lookup groupRole nhanh theo userId
-        Map<Long, GroupRole> userRoleMap = allMembers.stream()
-                .collect(Collectors.toMap(
-                        share -> share.getUser().getUserId(),
-                        OwnershipShare::getGroupRole
-                ));
-
-        List<ContractFeedbackResponseDTO> feedbackList = feedbacks.stream()
-                .map(f -> ContractFeedbackResponseDTO.builder()
-                        .feedbackId(f.getId())
-                        .userId(f.getUser().getUserId())
-                        .fullName(f.getUser().getFullName())
-                        .email(f.getUser().getEmail())
-                        .groupRole(userRoleMap.getOrDefault(f.getUser().getUserId(), GroupRole.MEMBER))  // Thêm dòng này
-                        .status(f.getStatus())
-                        .isProcessed(isFeedbackProcessed(f))
-                        .lastAdminAction(f.getLastAdminAction())
-                        .lastAdminActionAt(f.getLastAdminActionAt())
-                        .reactionType(f.getReactionType())
-                        .reason(f.getReason() != null ? f.getReason() : "")
-                        .adminNote(f.getAdminNote() != null ? f.getAdminNote() : "")
-                        .submittedAt(f.getSubmittedAt())
-                        .build())
-                .toList();
-
-        List<PendingMemberDTO> pendingMembers = members.stream()
-                .filter(m -> !feedbackRepository.existsByContractIdAndUser_UserId(contractId, m.getUser().getUserId()))
-                .map(m -> PendingMemberDTO.builder()
-                        .userId(m.getUser().getUserId())
-                        .fullName(m.getUser().getFullName())
-                        .email(m.getUser().getEmail())
-                        .build())
-                .toList();
-
-        // Đếm các status khác nhau
-        // Lưu ý: PENDING = DISAGREE (vì AGREE → APPROVED ngay), nên chỉ cần đếm PENDING
-        long approvedCount = feedbackRepository.countByContractIdAndStatus(
-                contractId, MemberFeedbackStatus.APPROVED);
-        long pendingDisagreeCount = feedbackRepository.countByContractIdAndStatus(
-                contractId, MemberFeedbackStatus.PENDING);  // PENDING = DISAGREE
-        long rejectedCount = feedbackRepository.countByContractIdAndStatus(
-                contractId, MemberFeedbackStatus.REJECTED);
-
-        return ContractFeedbacksResponseDTO.builder()
-                .contractId(contractId)
-                .contractStatus(contract.getApprovalStatus())
-                .totalMembers(members.size())
-                .totalFeedbacks(feedbacks.size())
-                .acceptedCount(approvedCount)
-                .pendingDisagreeCount(pendingDisagreeCount)
-                .rejectedCount(rejectedCount)
-                .approvedFeedbacksCount(feedbackRepository.countByContractIdAndLastAdminAction(
-                        contractId, FeedbackAdminAction.APPROVE))
-                .rejectedFeedbacksCount(feedbackRepository.countByContractIdAndLastAdminAction(
-                        contractId, FeedbackAdminAction.REJECT))
-                .feedbacks(feedbackList)
-                .pendingMembers(pendingMembers)
-                .build();
+        return contractFeedbackService.getContractFeedbacks(contractId);
     }
 
     /**
      * Lấy tất cả feedback của members cho contract theo groupId
-     * Mỗi group hiện chỉ có 1 contract, nên hàm này ánh xạ groupId -> contractId rồi tái sử dụng logic cũ
+     * Delegated to ContractFeedbackService
      */
     public ContractFeedbacksResponseDTO getContractFeedbacksByGroup(Long groupId) {
-        Contract contract = contractRepository.findByGroupGroupId(groupId)
-                .orElseThrow(() -> new ResourceNotFoundException("Contract not found for group: " + groupId));
-        return getContractFeedbacks(contract.getId());
+        return contractFeedbackService.getContractFeedbacksByGroup(groupId);
     }
 
     public boolean contractExists(Long contractId) {
