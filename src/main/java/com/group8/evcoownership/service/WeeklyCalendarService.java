@@ -420,6 +420,7 @@ public class WeeklyCalendarService {
                     .build();
         }
 
+        //
         if (now.isAfter(lockThreshold) && now.isBefore(end)) {
             return TimeSlotResponseDTO.builder()
                     .time(timeDisplay)
@@ -493,59 +494,74 @@ public class WeeklyCalendarService {
         return suggestions;
     }
 
-    /**
-     * Create flexible booking (supports overnight and custom duration)
-     */
+    // ========= Tạo booking flexible có qua đêm =========
     @Transactional
     public FlexibleBookingResponseDTO createFlexibleBooking(FlexibleBookingRequestDTO request, String userEmail) {
-        // Validate user and vehicle
+        // 1. Validate user và vehicle tồn tại trong hệ thống
         var user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
         var vehicle = vehicleRepository.findById(request.getVehicleId())
                 .orElseThrow(() -> new EntityNotFoundException("Vehicle not found"));
 
+        // 2. Kiểm tra các ràng buộc về thời gian đầu vào
         if (request.getStartDateTime() == null || request.getEndDateTime() == null) {
             throw new BookingValidationException("Start time and end time are required");
         }
 
+        // Không cho phép time bắt đầu và kết thúc trùng nhau
         if (request.getStartDateTime().equals(request.getEndDateTime())) {
             throw new BookingValidationException("Start time and end time cannot be the same");
         }
 
+        // Time bắt đầu phải trước tie kết thúc
         if (request.getStartDateTime().isAfter(request.getEndDateTime())) {
             throw new BookingValidationException("Start time must be before end time");
         }
 
+        // Lấy time hiện tại theo múi giờ Việt Nam
         ZonedDateTime nowVietnam = ZonedDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"));
         LocalDateTime now = nowVietnam.toLocalDateTime();
 
+        // Không cho phép đặt booking trong quá khứ
         if (request.getStartDateTime().isBefore(now)) {
             throw new BookingValidationException("Cannot book in the past. Start time must be in the future");
         }
 
+        // Thời lượng tối thiểu: 60 phút
         long durationMinutes = Duration.between(request.getStartDateTime(), request.getEndDateTime()).toMinutes();
         if (durationMinutes < 60) {
             throw new BookingValidationException("Booking duration must be at least 1 hour");
         }
 
+        // Giới hạn thời điểm bắt đầu: không được đặt trước quá 3 tháng
         LocalDateTime maxFutureDate = now.plusMonths(3);
         if (request.getStartDateTime().isAfter(maxFutureDate)) {
             throw new BookingValidationException("Cannot book more than 3 months in advance");
         }
 
-        // Check quota
-        LocalDateTime weekStart = request.getStartDateTime().with(DayOfWeek.MONDAY).with(LocalTime.MIN);
+        // 3. Kiểm tra quota (số giờ tối đa trong tuần dựa trên tỷ lệ sở hữu)
+        // Xác định tuần chứa startDateTime (lấy thứ 2 đầu tuần, time = 00:00)
+        LocalDateTime weekStart = request.getStartDateTime()
+                .with(DayOfWeek.MONDAY)
+                .with(LocalTime.MIN);
+
+        // Tổng số giờ user đã book trong tuần này cho vehicle này
         long bookedHours = usageBookingRepository.getTotalBookedHoursThisWeek(
                 user.getUserId(), request.getVehicleId(), weekStart);
+
+        // Số giờ của booking mới đang yêu cầu
         long newBookingHours = Duration.between(request.getStartDateTime(), request.getEndDateTime()).toHours();
 
+        // Hạn mức quota theo tỷ lệ sở hữu (số giờ tối đa/tuần)
         Long quotaLimit = usageBookingRepository.getQuotaLimitByOwnershipPercentage(
                 user.getUserId(), request.getVehicleId());
 
+        // Nếu null nghĩa là user không thuộc group sở hữu vehicle này
         if (quotaLimit == null) {
             throw new IllegalStateException("User is not a member of the vehicle's ownership group.");
         }
 
+        // Nếu tổng giờ đã dùng + giờ mới > quota -> từ chối
         if (bookedHours + newBookingHours > quotaLimit) {
             long remainingHours = quotaLimit - bookedHours;
             throw new IllegalStateException(String.format(
@@ -553,45 +569,57 @@ public class WeeklyCalendarService {
                     bookedHours, quotaLimit, Math.max(0, remainingHours)));
         }
 
-        // Create booking
+        // 4. Tạo booking mới sau khi qua mọi validation
         UsageBooking booking = new UsageBooking();
         booking.setUser(user);
         booking.setVehicle(vehicle);
         booking.setStartDateTime(request.getStartDateTime());
         booking.setEndDateTime(request.getEndDateTime());
-        booking.setStatus(BookingStatus.CONFIRMED);
+        booking.setStatus(BookingStatus.CONFIRMED); // Booking tạo ra là CONFIRMED luôn
 
         UsageBooking savedBooking = usageBookingRepository.save(booking);
 
-        // CHỈ tạo QR code check-in khi tạo booking
+        // 5. Sinh QR code check-in cho booking (QR checkout sẽ tạo sau khi trả xe)
         String qrCodeCheckin = generateCheckInQrPayload(savedBooking);
 
+        // Gắn payload QR check-in vào booking và lưu lại
         savedBooking.setQrCodeCheckin(qrCodeCheckin);
         usageBookingRepository.save(savedBooking);
 
+        // 6. Kiểm tra booking có qua đêm hay không (start và end khác ngày)
         boolean overnightBooking = !request.getStartDateTime().toLocalDate()
                 .equals(request.getEndDateTime().toLocalDate());
 
+        // 7. Trả về DTO kết quả cho client
         return FlexibleBookingResponseDTO.builder()
                 .bookingId(savedBooking.getId())
                 .status("CONFIRMED")
-                .message(overnightBooking ? "Overnight booking created successfully" : "Booking created successfully")
+                .message(overnightBooking
+                        ? "Overnight booking created successfully"
+                        : "Booking created successfully")
                 .totalHours(newBookingHours)
                 .overnightBooking(overnightBooking)
                 .qrCodeCheckin(qrCodeCheckin)
-                .qrCodeCheckout(null)  // Chưa có QR checkout
+                .qrCodeCheckout(null)  // QR checkout sẽ tạo lúc trả xe
                 .startDateTime(savedBooking.getStartDateTime())
                 .endDateTime(savedBooking.getEndDateTime())
                 .createdAt(savedBooking.getCreatedAt())
                 .build();
-
     }
 
+    // ========= Tạo payload cho qr-checkin =========
+  // Payload là chuỗi JSON, chứa thông tin cơ bản để hệ thống xác định đúng booking khi quét QR
     private String generateCheckInQrPayload(UsageBooking booking) {
-        String startTime = booking.getStartDateTime() != null ? "\"" + booking.getStartDateTime() + "\"" : "null";
-        String endTime = booking.getEndDateTime() != null ? "\"" + booking.getEndDateTime() + "\"" : "null";
+        // Nếu có thời gian thì wrap trong dấu " để thành JSON string, nếu không thì để null
+        String startTime = booking.getStartDateTime() != null
+                ? "\"" + booking.getStartDateTime() + "\""
+                : "null";
+        String endTime = booking.getEndDateTime() != null
+                ? "\"" + booking.getEndDateTime() + "\""
+                : "null";
 
-        // Bỏ timestamp và nonce
+        // Bỏ timestamp và nonce để payload gọn, dễ debug
+        // JSON gồm: bookingId, userId, vehicleId, phase (CHECKIN), startTime, endTime
         return String.format(
                 "{\"bookingId\":%d,\"userId\":%d,\"vehicleId\":%d,\"phase\":\"CHECKIN\",\"startTime\":%s,\"endTime\":%s}",
                 booking.getId(),

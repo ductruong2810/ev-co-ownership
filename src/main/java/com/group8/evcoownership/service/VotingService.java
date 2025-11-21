@@ -48,7 +48,7 @@ public class VotingService {
     // Dùng để convert giữa Object và JSON (Map -> JSON string, JSON string -> Map)
 
 
-    // ========= TẠO VOTING MỚI =========
+    // ========= Tạo voting mới =========
     @Transactional
     public VotingResponseDTO createVoting(Long groupId, CreateVotingRequestDTO request, Long creatorId) {
         // Kiểm tra người tạo có phải là thành viên của group không
@@ -94,7 +94,7 @@ public class VotingService {
     }
 
 
-    // ========= XỬ LÝ BỎ PHIẾU =========
+    // ========= Xử lý bỏ phiếu =========
     @Transactional
     public VotingResponseDTO vote(Long votingId, VoteRequestDTO request, Long userId) {
         // Tìm voting theo id, nếu không có thì ném lỗi not found
@@ -139,7 +139,7 @@ public class VotingService {
     }
 
 
-    // ========= CẬP NHẬT KẾT QUẢ TỔNG HỢP =========
+    // ========= Cập nhật kết quả tổng hợp =========
     private void updateVotingResults(Voting voting) {
         // Lấy toàn bộ các bản ghi vote của voting này
         List<VoteRecord> votes = voteRecordRepository.findByVotingId(voting.getVotingId());
@@ -164,7 +164,7 @@ public class VotingService {
     }
 
 
-    // ========= LẤY DANH SÁCH VOTING TRONG GROUP =========
+    // ========= Lấy danh sách voting trong group =========
     public List<VotingResponseDTO> getGroupVotings(Long groupId, Long userId) {
         // Kiểm tra user có phải member của group không
         if (!ownershipShareRepository.existsByGroup_GroupIdAndUser_UserId(groupId, userId)) {
@@ -181,7 +181,7 @@ public class VotingService {
     }
 
 
-    // ========= LẤY CHI TIẾT MỘT VOTING =========
+    // ========= Lấy detail một voting =========
     public VotingResponseDTO getVotingDetail(Long votingId, Long userId) {
         // Tìm voting theo id, nếu không thấy thì ném lỗi
         Voting voting = votingRepository.findById(votingId)
@@ -197,7 +197,7 @@ public class VotingService {
     }
 
 
-    // ========= MAP ENTITY → RESPONSE DTO =========
+    // ========= Map entity → Reponse DTO=========
     private VotingResponseDTO mapToResponse(Voting voting, Long userId) {
         try {
             // Parse JSON options trong Voting thành Map để trả về cho client
@@ -264,7 +264,7 @@ public class VotingService {
     }
 
 
-    // ========= TÍNH THỜI GIAN CÒN LẠI =========
+    // ========= Tính thời gian còn lại =========
     // Helper method tính thời gian còn lại tới deadline
     private String calculateTimeRemaining(LocalDateTime deadline) {
         LocalDateTime now = LocalDateTime.now();

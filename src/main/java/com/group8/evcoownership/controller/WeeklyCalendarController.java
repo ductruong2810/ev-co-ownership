@@ -58,14 +58,18 @@ public class WeeklyCalendarController {
         return ResponseEntity.ok(suggestions);
     }
 
+    //======= Tạo booking linh hoạt =======
     @PostMapping("/flexible-booking")
-    @Operation(summary = "Tạo booking linh hoạt", description = "Tạo booking với thời gian tùy chỉnh, hỗ trợ qua đêm")
+    @Operation(summary = "Tạo booking linh hoạt", description = "Tạo booking với thời gian tùy chỉnh, có thể qua đêm, dựa trên quota và lịch trống")
     @PreAuthorize("hasAnyRole('STAFF','ADMIN', 'CO_OWNER')")
     public ResponseEntity<FlexibleBookingResponseDTO> createFlexibleBooking(
-            @RequestBody FlexibleBookingRequestDTO request,
-            @AuthenticationPrincipal String email) {
-
+            @RequestBody FlexibleBookingRequestDTO request,   // chứa groupId, thời gian bắt đầu/kết thúc, ghi chú
+            @AuthenticationPrincipal String email             // email user hiện tại lấy từ JWT
+    ) {
+        // Gọi service xử lý logic tạo booking linh hoạt cho user này trong group tương ứng
         FlexibleBookingResponseDTO response = weeklyCalendarService.createFlexibleBooking(request, email);
+
+        // Trả về thông tin booking vừa tạo (thời gian, trạng thái)
         return ResponseEntity.ok(response);
     }
 
