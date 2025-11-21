@@ -372,12 +372,12 @@ public class WeeklyCalendarService {
                 .filter(b -> b.getStatus() == BookingStatus.CONFIRMED)
                 .findFirst().orElse(null);
         if (confirmedBooking != null) {
-            boolean bookedBySelf = confirmedBooking.getUser() != null && confirmedBooking.getUser().getUserId().equals(userId);
+            String slotType = getString(userId, confirmedBooking);
 
             return TimeSlotResponseDTO.builder()
                     .time(timeDisplay)
                     .status(confirmedBooking.getStatus().name())
-                    .type(bookedBySelf ? "BOOKED_SELF" : "BOOKED_OTHER")
+                    .type(slotType)
                     .bookedBy(confirmedBooking.getUser() != null ? confirmedBooking.getUser().getFullName() : "Unknown")
                     .bookable(false)
                     .bookingId(confirmedBooking.getId())
@@ -451,6 +451,20 @@ public class WeeklyCalendarService {
                 .type("AVAILABLE")
                 .bookable(true)
                 .build();
+    }
+
+    private static String getString(Long userId, UsageBooking confirmedBooking) {
+        boolean bookedBySelf = confirmedBooking.getUser() != null && confirmedBooking.getUser().getUserId().equals(userId);
+        boolean isCheckedIn = Boolean.TRUE.equals(confirmedBooking.getCheckinStatus());
+
+        // Nếu đã check-in, trả về type riêng
+        String slotType;
+        if (isCheckedIn) {
+            slotType = bookedBySelf ? "CHECKED_IN_SELF" : "CHECKED_IN_OTHER";
+        } else {
+            slotType = bookedBySelf ? "BOOKED_SELF" : "BOOKED_OTHER";
+        }
+        return slotType;
     }
 
     /**

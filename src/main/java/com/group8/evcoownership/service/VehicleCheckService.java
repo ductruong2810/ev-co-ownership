@@ -508,6 +508,10 @@ public class VehicleCheckService {
         result.put("bookingInfo", bookingInfo);
         result.put("bookingId", booking.getId());
         result.put("bookingStatus", booking.getStatus() != null ? booking.getStatus().name() : null);
+        result.put("checkinStatus", booking.getCheckinStatus());
+        result.put("checkinTime", booking.getCheckinTime());
+        result.put("checkoutStatus", booking.getCheckoutStatus());
+        result.put("checkoutTime", booking.getCheckoutTime());
         result.put("hasPostUseCheck", hasCheck(booking.getId(), "POST_USE"));
         if (qrData != null) {
             result.put("qrUserId", qrData.userId());
