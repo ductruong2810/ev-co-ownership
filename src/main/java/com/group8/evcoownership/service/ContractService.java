@@ -1313,47 +1313,6 @@ public class ContractService {
                 .toList();
     }
 
-    /**
-     * Admin group approve một feedback cụ thể (theo feedbackId)
-     * Delegated to ContractFeedbackService
-     */
-    @Transactional
-    public ApiResponseDTO<FeedbackActionResponseDTO> approveFeedbackByGroupAdmin(
-            Long feedbackId,
-            FeedbackActionRequestDTO request,
-            Long userId) {
-        return contractFeedbackService.approveFeedbackByGroupAdmin(feedbackId, request, userId);
-    }
-
-    /**
-     * Admin group reject một feedback cụ thể (theo feedbackId)
-     * Delegated to ContractFeedbackService
-     */
-    @Transactional
-    public ApiResponseDTO<FeedbackActionResponseDTO> rejectFeedbackByGroupAdmin(
-            Long feedbackId,
-            FeedbackActionRequestDTO request,
-            Long userId) {
-        return contractFeedbackService.rejectFeedbackByGroupAdmin(feedbackId, request, userId);
-    }
-
-    /**
-     * Admin approve một feedback cụ thể (theo feedbackId)
-     * Delegated to ContractFeedbackService
-     */
-    @Transactional
-    public ApiResponseDTO<FeedbackActionResponseDTO> approveFeedback(Long feedbackId, FeedbackActionRequestDTO request) {
-        return contractFeedbackService.approveFeedback(feedbackId, request);
-    }
-
-    /**
-     * Admin reject một feedback cụ thể (theo feedbackId)
-     * Delegated to ContractFeedbackService
-     */
-    @Transactional
-    public ApiResponseDTO<FeedbackActionResponseDTO> rejectFeedback(Long feedbackId, FeedbackActionRequestDTO request) {
-        return contractFeedbackService.rejectFeedback(feedbackId, request);
-    }
 
 
     /**

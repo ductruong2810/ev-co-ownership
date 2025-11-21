@@ -4,6 +4,7 @@ import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.enums.ContractApprovalStatus;
 import com.group8.evcoownership.service.ContractService;
+import com.group8.evcoownership.service.ContractFeedbackService;
 import com.group8.evcoownership.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
@@ -22,6 +23,7 @@ public class AdminContractController { // Khai báo class controller cho phần 
 
     // Inject các service cần thiết
     private final ContractService contractService; // Service chứa logic xử lý hợp đồng
+    private final ContractFeedbackService contractFeedbackService; // Service chứa logic xử lý feedback
     private final UserService userService; // Service chứa logic xử lý người dùng (admin)
 
     /**
@@ -155,12 +157,10 @@ public class AdminContractController { // Khai báo class controller cho phần 
     public ResponseEntity<ApiResponseDTO<FeedbackActionResponseDTO>> approveFeedback(
             @PathVariable Long feedbackId, // ID feedback cần xử lý
             // request body có thể có hoặc không (admin có thể gửi note hoặc để trống)
-            @RequestBody(required = false) FeedbackActionRequestDTO request,
-            @AuthenticationPrincipal String userEmail
+            @RequestBody(required = false) FeedbackActionRequestDTO request
     ) {
-        // Group admin: cần userId để validate
-        Long userId = contractService.getUserIdByEmail(userEmail);
-        ApiResponseDTO<FeedbackActionResponseDTO> result = contractService.approveFeedbackByGroupAdmin(feedbackId, request, userId);
+        // Group admin approve feedback - gọi trực tiếp ContractFeedbackService
+        ApiResponseDTO<FeedbackActionResponseDTO> result = contractFeedbackService.approveFeedbackInternal(feedbackId, request);
         
         // Trả kết quả thành công
         return ResponseEntity.ok(result);
@@ -178,12 +178,10 @@ public class AdminContractController { // Khai báo class controller cho phần 
     )
     public ResponseEntity<ApiResponseDTO<FeedbackActionResponseDTO>> rejectFeedback(
             @PathVariable Long feedbackId, // ID feedback cần reject
-            @RequestBody(required = false) FeedbackActionRequestDTO request, // có thể chứa lý do reject
-            @AuthenticationPrincipal String userEmail
+            @RequestBody(required = false) FeedbackActionRequestDTO request // có thể chứa lý do reject
     ) {
-        // Group admin: cần userId để validate
-        Long userId = contractService.getUserIdByEmail(userEmail);
-        ApiResponseDTO<FeedbackActionResponseDTO> result = contractService.rejectFeedbackByGroupAdmin(feedbackId, request, userId);
+        // Group admin reject feedback - gọi trực tiếp ContractFeedbackService
+        ApiResponseDTO<FeedbackActionResponseDTO> result = contractFeedbackService.rejectFeedbackInternal(feedbackId, request);
         
         // Trả về kết quả
         return ResponseEntity.ok(result);
