@@ -869,7 +869,8 @@ public class ContractService {
                         The use of the car must be booked through the system. Each member agrees to comply with the confirmed schedule and return the car on time. \
                         Car booking regulations: The weekly quota of each co-owner is 168 hours of 1 week x ownership ratio; the car booking time of each slot is 3 hours, \
                         between slots there will be a maintenance time of 1 hour, when the 3 hours of car use are over, \
-                        the car must be returned for maintenance, when the quota is over, the booking is no longer allowed.
+                        the car must be returned for maintenance, when the quota is over, the booking is no longer allowed. \
+                        Bookings can be cancelled before check-in; bookings that have been checked in cannot be cancelled.
                         
                         """
         );
@@ -878,8 +879,11 @@ public class ContractService {
         terms.append("3. MAINTENANCE, REPAIR & INSURANCE\n");
         terms.append(
                 """
-                        When the car breaks down, the slot user must work with the technician to discuss \
-                        a solution and the technician will create a quote and let that member pay
+                        Periodic maintenance costs are covered by the group fund. \
+                        When the car breaks down during a booking slot, the slot user must work with the technician to discuss \
+                        a solution. The technician will create a quote, and the member using the slot at that time may be liable for the repair costs. \
+                        Expense approval requires a majority vote (>50%) based on ownership ratio for costs exceeding 5 million VND. \
+                        Insurance provider: PVI – Comprehensive physical damage coverage.
                         
                         """
         );
@@ -1081,11 +1085,15 @@ public class ContractService {
         // Gửi notification cho tất cả thành viên với lý do reject
         if (notificationOrchestrator != null) {
             Map<String, Object> emailData = notificationOrchestrator.buildContractEmailData(savedContract);
+            String notificationMessage = "The group's contract has been rejected by the administrator. Deposits have been refunded to members who paid.";
+            if (reason != null && !reason.trim().isEmpty()) {
+                notificationMessage += "\n\nRejection Reason: " + reason.trim();
+            }
             notificationOrchestrator.sendGroupNotification(
                     groupId,
                     NotificationType.CONTRACT_REJECTED,
                     "Contract Rejected",
-                    "The group's contract has been rejected by the administrator. Deposits have been refunded to members who paid.",
+                    notificationMessage,
                     emailData
             );
         }
