@@ -34,10 +34,10 @@ public class WeeklyCalendarService {
 
     /**
      * Lấy lịch tuần cho nhóm với thông tin quota của người dùng
-     * @param groupId ID của nhóm sở hữu
-     * @param userId ID của người dùng
-     * @param weekStart Ngày bắt đầu tuần (thứ 2), nếu null thì lấy tuần hiện tại
-     * @return DTO chứa thông tin lịch tuần, quota, và dashboard
+     * param groupId ID của nhóm sở hữu
+     * param userId ID của người dùng
+     * param weekStart Ngày bắt đầu tuần (thứ 2), nếu null thì lấy tuần hiện tại
+     * return DTO chứa thông tin lịch tuần, quota, và dashboard
      */
     public WeeklyCalendarResponseDTO getWeeklyCalendar(Long groupId, Long userId, LocalDate weekStart) {
 
@@ -226,8 +226,8 @@ public class WeeklyCalendarService {
 
     /**
      * Record helper để chứa các ngày bảo dưỡng
-     * @param lastMaintenanceDate Ngày bảo dưỡng cuối cùng
-     * @param nextMaintenanceDate Ngày bảo dưỡng tiếp theo
+     * param lastMaintenanceDate Ngày bảo dưỡng cuối cùng
+     * param nextMaintenanceDate Ngày bảo dưỡng tiếp theo
      */
     private record MaintenanceDates(LocalDate lastMaintenanceDate, LocalDate nextMaintenanceDate) {}
 
@@ -455,9 +455,9 @@ public class WeeklyCalendarService {
 
     /**
      * Xác định loại slot dựa trên người đặt và trạng thái check-in
-     * @param userId ID của người dùng đang xem
-     * @param confirmedBooking Booking đã được xác nhận
-     * @return Loại slot: BOOKED_SELF, BOOKED_OTHER, CHECKED_IN_SELF, hoặc CHECKED_IN_OTHER
+     * param userId ID của người dùng đang xem
+     * param confirmedBooking Booking đã được xác nhận
+     * return Loại slot: BOOKED_SELF, BOOKED_OTHER, CHECKED_IN_SELF, hoặc CHECKED_IN_OTHER
      */
     private static String getString(Long userId, UsageBooking confirmedBooking) {
         boolean bookedBySelf = confirmedBooking.getUser() != null && confirmedBooking.getUser().getUserId().equals(userId);
@@ -539,9 +539,9 @@ public class WeeklyCalendarService {
 
     /**
      * Tạo booking linh hoạt có thể qua đêm
-     * @param request Thông tin booking request
-     * @param userEmail Email của người dùng đặt booking
-     * @return DTO chứa thông tin booking đã tạo
+     * param request Thông tin booking request
+     * param userEmail Email của người dùng đặt booking
+     * return DTO chứa thông tin booking đã tạo
      */
     @Transactional
     public FlexibleBookingResponseDTO createFlexibleBooking(FlexibleBookingRequestDTO request, String userEmail) {
@@ -677,8 +677,8 @@ public class WeeklyCalendarService {
     /**
      * Tạo payload cho QR check-in
      * Payload là chuỗi JSON, chứa thông tin cơ bản để hệ thống xác định đúng booking khi quét QR
-     * @param booking Booking cần tạo QR code
-     * @return Chuỗi JSON payload cho QR code
+     * param booking Booking cần tạo QR code
+     * return Chuỗi JSON payload cho QR code
      */
     private String generateCheckInQrPayload(UsageBooking booking) {
         // Nếu có thời gian thì wrap trong dấu " để thành JSON string, nếu không thì để null
