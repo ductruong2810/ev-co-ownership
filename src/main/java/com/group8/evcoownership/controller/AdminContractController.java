@@ -81,16 +81,6 @@ public class AdminContractController { // Khai báo class controller cho phần 
         return ResponseEntity.ok(contract);
     }
 
-    /**
-     * Kiểm tra trạng thái đóng tiền cọc của hợp đồng (chỉ dành cho admin)
-     */
-    @GetMapping("/{groupId}/deposit-status")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ContractDepositStatusResponseDTO> checkDepositStatus(@PathVariable Long groupId) {
-        ContractDepositStatusResponseDTO status = contractService.checkDepositStatus(groupId);
-        return ResponseEntity.ok(status);
-    }
-
     // Lấy danh sách tất cả hợp đồng (chỉ admin)
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
@@ -101,16 +91,6 @@ public class AdminContractController { // Khai báo class controller cho phần 
         return ResponseEntity.ok(contracts);
     }
 
-    // Lấy thông tin chi tiết 1 hợp đồng theo ID
-    @GetMapping("/{contractId}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ContractDTO> getContractById(@PathVariable Long contractId) {
-        // Gọi service để lấy hợp đồng theo ID
-        ContractDTO contract = contractService.getContractById(contractId);
-        // Trả về kết quả
-        return ResponseEntity.ok(contract);
-    }
-
     // Lấy danh sách hợp đồng đang ở trạng thái PENDING (chờ xử lý)
     @GetMapping("/pending")
     @PreAuthorize("hasRole('ADMIN')") // chỉ admin được gọi
@@ -118,18 +98,6 @@ public class AdminContractController { // Khai báo class controller cho phần 
         // Gọi service để lọc hợp đồng có trạng thái PENDING
         List<ContractDTO> contracts = contractService.getContractsByStatus(ContractApprovalStatus.PENDING);
         // Trả kết quả cho client
-        return ResponseEntity.ok(contracts);
-    }
-
-    /**
-     * Lấy danh sách tất cả hợp đồng thuộc 1 group (Admin only)
-     */
-    @GetMapping("/group/{groupId}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<ContractDTO>> getContractsByGroup(@PathVariable Long groupId) {
-        // Gọi service lấy danh sách hợp đồng của group đó (phiên bản dành cho admin)
-        List<ContractDTO> contracts = contractService.getContractsByGroupForAdmin(groupId);
-        // Trả danh sách đó về
         return ResponseEntity.ok(contracts);
     }
 
