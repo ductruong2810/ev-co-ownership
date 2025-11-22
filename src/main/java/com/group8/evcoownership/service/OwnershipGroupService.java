@@ -526,6 +526,7 @@ public class OwnershipGroupService {
         return toDto(repo.save(e));
     }
 
+    // staff/admin update
     @Transactional
     public OwnershipGroupResponseDTO updateStatus(Long groupId, OwnershipGroupStatusUpdateRequestDTO req) {
         var e = repo.findById(groupId)

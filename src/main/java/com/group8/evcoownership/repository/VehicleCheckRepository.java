@@ -42,7 +42,7 @@ public interface VehicleCheckRepository extends JpaRepository<VehicleCheck, Long
             """)
     boolean existsPostUseCheckWithIssuesByVehicleAndGroup(@Param("vehicleId") Long vehicleId, @Param("groupId") Long groupId);
 
-    List<VehicleCheck> findByStatus(String status);
+    List<VehicleCheck> findByStatusAndCheckType(String status, String checkType);
 
     Optional<VehicleCheck> findByBooking_IdAndCheckType(Long bookingId, String checkType);
 

@@ -103,7 +103,7 @@ public class InvitationService {
             );
 
             // Ghi log cho dễ debug
-            System.out.printf("📨 Resent invitation to %s (group %s)%n",
+            System.out.printf("Resent invitation to %s (group %s)%n",
                     existing.getInviteeEmail(), group.getGroupName());
 
             return toDto(existing);
@@ -158,7 +158,7 @@ public class InvitationService {
         if (isExpired(inv))
             throw new IllegalStateException("Invitation expired");
 
-        // Kiểm tra quyền
+        // Kiểm tra user nay dang nhap co duoc quyen gui resend khong
         validateResendPermission(inv, auth);
 
         // Cập nhật OTP mới và resendCount
@@ -281,7 +281,7 @@ public class InvitationService {
         inv.setAcceptedBy(user);
         Invitation saved = invitationRepo.save(inv);
 
-        System.out.printf("🎉 User %s accepted invitation for group %s%n",
+        System.out.printf(" User %s accepted invitation for group %s%n",
                 user.getEmail(), group.getGroupName());
 
         return toDto(saved);

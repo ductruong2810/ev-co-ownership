@@ -44,20 +44,21 @@ public class MaintenancePaymentService {
             throw new IllegalStateException("Maintenance does not have a liable user");
         }
 
-        // 2) Xác thực: chỉ cho chính liableUser thanh toán (hoặc ADMIN, tuỳ bạn)
+        // 2) Xác thực: chỉ cho chính liableUser thanh toán
+        // check user not found
         String email = auth.getName();
         User payer = userRepository.findByEmail(email)
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + email));
-
+        // check user # liable
         if (!payer.getUserId().equals(m.getLiableUser().getUserId())) {
             throw new DepositPaymentException("You can only pay for your own maintenance liabilities");
         }
-
+        // check cost validation
         if (m.getActualCost() == null || m.getActualCost().compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalStateException("Maintenance cost must be > 0 to create payment");
         }
 
-        // (Optional) nếu đã FUNDED hoặc COMPLETED thì không cho tạo nữa
+        // nếu đã FUNDED hoặc COMPLETED thì không cho tạo nữa
         if ("FUNDED".equalsIgnoreCase(m.getStatus()) || "COMPLETED".equalsIgnoreCase(m.getStatus())) {
             throw new IllegalStateException("Maintenance already funded or completed");
         }
@@ -78,7 +79,7 @@ public class MaintenancePaymentService {
         payment.setPaymentCategory("PERSONAL");
         payment.setChargedUser(m.getLiableUser());
         payment.setPersonalReason("MAINTENANCE");
-        payment.setFund(null); // IMPORTANT: không đụng SharedFund
+        payment.setFund(null); // IMPORTANT: không dung SharedFund
 
         // -> cột MaintenanceId trong bảng Payment sẽ được fill
         payment.setMaintenance(m);
@@ -97,7 +98,7 @@ public class MaintenancePaymentService {
                 groupId
         );
 
-        // 6) Trả về response (tái dùng FundTopupResponseDTO cho đỡ tạo thêm DTO)
+        // 6) Trả về response (tái dùng FundTopupResponseDTO)
         return FundTopupResponseDTO.builder()
                 .paymentId(payment.getId())
                 .userId(payer.getUserId())
