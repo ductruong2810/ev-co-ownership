@@ -13,10 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.*;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -125,7 +122,7 @@ public class WeeklyCalendarService {
         LocalDateTime weekStartDateTime = weekStart.atStartOfDay();
         LocalDateTime weekEndDateTime = weekStart.plusDays(7).atStartOfDay();
 
-        // Đếm tổng số booking trong tuần (chỉ CONFIRMED)
+        // Đếm tổng số booking trong tuần
         int totalBookings = countTotalBookingsInWeek(vehicleId, weekStartDateTime, weekEndDateTime);
 
         // Đếm số booking của người dùng trong tuần
@@ -181,7 +178,9 @@ public class WeeklyCalendarService {
         // Lọc theo người dùng và đếm tất cả các booking duy nhất (không lọc status)
         Set<Long> uniqueBookingIds = new HashSet<>();
         bookings.stream()
-                .filter(b -> b.getUser() != null && b.getUser().getUserId().equals(userId))
+                .filter(b -> b.getUser() != null
+                        && b.getUser().getUserId() != null
+                        && Objects.equals(b.getUser().getUserId(), userId))
                 .forEach(b -> uniqueBookingIds.add(b.getId()));
 
         return uniqueBookingIds.size();

@@ -59,13 +59,14 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
     FROM UsageBooking ub
     JOIN FETCH ub.user u
     WHERE ub.vehicle.Id = :vehicleId
+      AND ub.status IN ('CONFIRMED', 'COMPLETED', 'AWAITING_REVIEW', 'NEEDS_ATTENTION')
       AND (
           (ub.startDateTime BETWEEN :startDateTime AND :endDateTime)
           OR (ub.endDateTime BETWEEN :startDateTime AND :endDateTime)
           OR (ub.startDateTime <= :startDateTime AND ub.endDateTime >= :endDateTime)
       )
     ORDER BY ub.startDateTime
-""")
+    """)
     List<UsageBooking> findAffectedBookings(@Param("vehicleId") Long vehicleId,
                                             @Param("startDateTime") LocalDateTime startDateTime,
                                             @Param("endDateTime") LocalDateTime endDateTime);
