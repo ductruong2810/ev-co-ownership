@@ -18,14 +18,7 @@ public class WebSocketNotificationService {
     private final SimpMessagingTemplate messagingTemplate;
 
     /**
-     * Send notification to a specific user
-     */
-    public void sendToUser(Long userId, NotificationType type, String title, String message) {
-        sendToUser(userId, type, title, message, "MEDIUM", null, null);
-    }
-
-    /**
-     * Send notification to a specific user with additional data
+     * Send a notification to a specific user with additional data
      */
     public void sendToUser(Long userId, NotificationType type, String title, String message,
                            String priority, String actionUrl, Map<String, Object> data) {
@@ -72,54 +65,7 @@ public class WebSocketNotificationService {
     }
 
     /**
-     * Send notification to all online users (system-wide)
-     */
-    public void sendToAll(NotificationType type, String title, String message) {
-        WebSocketNotificationDTO notification = WebSocketNotificationDTO.builder()
-                .id(UUID.randomUUID().toString())
-                .title(title)
-                .message(message)
-                .notificationType(type)
-                .timestamp(LocalDateTime.now())
-                .priority("HIGH")
-                .icon(getIconForType(type))
-                .build();
-
-        messagingTemplate.convertAndSend("/topic/notifications", notification);
-    }
-
-    /**
-     * Send booking-related notification
-     */
-    public void sendBookingNotification(Long userId, NotificationType type, String title, String message, Long bookingId) {
-        Map<String, Object> data = new HashMap<>();
-        data.put("bookingId", bookingId);
-
-        sendToUser(userId, type, title, message, "HIGH", "/bookings/" + bookingId, data);
-    }
-
-    /**
-     * Send contract-related notification
-     */
-    public void sendContractNotification(Long userId, NotificationType type, String title, String message, Long contractId) {
-        Map<String, Object> data = new HashMap<>();
-        data.put("contractId", contractId);
-
-        sendToUser(userId, type, title, message, "HIGH", "/contracts/" + contractId, data);
-    }
-
-    /**
-     * Send payment-related notification
-     */
-    public void sendPaymentNotification(Long userId, NotificationType type, String title, String message, Long paymentId) {
-        Map<String, Object> data = new HashMap<>();
-        data.put("paymentId", paymentId);
-
-        sendToUser(userId, type, title, message, "HIGH", "/payments/" + paymentId, data);
-    }
-
-    /**
-     * Get icon for notification type
+     * Get icon for a notification type
      */
     private String getIconForType(NotificationType type) {
         return switch (type) {

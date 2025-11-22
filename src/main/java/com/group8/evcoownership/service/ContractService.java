@@ -14,7 +14,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -37,7 +36,6 @@ public class ContractService {
     private final ContractDeadlinePolicy deadlinePolicy;
     private final DepositPaymentService depositPaymentService;
     private final ContractFeedbackRepository feedbackRepository;
-    private final ContractFeedbackService contractFeedbackService;
     private final ContractHelperService contractHelperService;
 
     @Value("${contract.deposit.deadline.minutes:5}")
@@ -116,32 +114,6 @@ public class ContractService {
     }
 
     private final VehicleRepository vehicleRepository;
-
-    /**
-     * Lấy contract của group
-     */
-    private Contract getContractByGroup(Long groupId) {
-        return contractRepository.findByGroupGroupId(groupId)
-                .orElseThrow(() -> new EntityNotFoundException("Contract not found for group: " + groupId));
-    }
-
-    /**
-     * Lấy requiredDepositAmount của group
-     * Nếu có contract thì lấy từ contract, nếu không thì tính từ group
-     */
-    public BigDecimal getRequiredDepositAmount(Long groupId) {
-        OwnershipGroup group = getGroupById(groupId);
-
-        // Kiểm tra có contract không
-        Contract contract = contractRepository.findByGroupGroupId(groupId).orElse(null);
-
-        if (contract != null) {
-            return contract.getRequiredDepositAmount();
-        } else {
-            // Tính deposit amount cho group khi chưa có contract
-            return depositCalculationService.calculateRequiredDepositAmount(group);
-        }
-    }
 
     /**
      * ADMIN-ONLY: Cập nhật theo contractId (thay vì groupId)
@@ -253,44 +225,6 @@ public class ContractService {
             throw new IllegalArgumentException("Contract term cannot exceed 5 years");
         }
     }
-
-    /**
-     * Lấy thông tin tính toán deposit amount cho group admin
-     * Bao gồm giá trị tính toán tự động và giải thích công thức
-     */
-    public DepositCalculationInfoDTO getDepositCalculationInfo(Long groupId) {
-        OwnershipGroup group = getGroupById(groupId);
-        Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group).orElse(null);
-
-        BigDecimal calculatedAmount = depositCalculationService.calculateRequiredDepositAmount(group);
-
-        DepositCalculationInfoDTO.DepositCalculationInfoDTOBuilder builder = DepositCalculationInfoDTO.builder()
-                .calculatedDepositAmount(calculatedAmount)
-                .formattedAmount(contractHelperService.formatCurrency(calculatedAmount));
-
-        // Giải thích công thức tính toán
-        StringBuilder explanation = new StringBuilder();
-        if (vehicle != null && vehicle.getVehicleValue() != null && vehicle.getVehicleValue().compareTo(BigDecimal.ZERO) > 0) {
-            explanation.append("Formula: Vehicle value × 10% = ")
-                    .append(contractHelperService.formatCurrency(vehicle.getVehicleValue()))
-                    .append(" × 10% = ")
-                    .append(contractHelperService.formatCurrency(calculatedAmount));
-            builder.calculationMethod("VEHICLE_VALUE_PERCENTAGE")
-                    .vehicleValue(vehicle.getVehicleValue())
-                    .percentage("10%");
-        } else {
-            explanation.append("Formula: Base amount + (Number of members × 10% × Base amount) = ")
-                    .append(contractHelperService.formatCurrency(calculatedAmount));
-            builder.calculationMethod("MEMBER_CAPACITY")
-                    .memberCapacity(group.getMemberCapacity());
-        }
-
-        builder.explanation(explanation.toString())
-                .note("You can override this value when updating the contract. This value is the total deposit for the entire group.");
-
-        return builder.build();
-    }
-
 
     /**
      * Tạo contract mới cho group nếu chưa có
@@ -458,7 +392,6 @@ public class ContractService {
                 .orElse(null);
 
         if (adminShare != null) {
-            // Kiểm tra xem admin đã có feedback APPROVED chưa
             // Lấy feedback mới nhất của admin cho contract này
             Optional<ContractFeedback> existingAdminFeedback = feedbackRepository
                     .findTopByContractIdAndUser_UserIdOrderBySubmittedAtDesc(
@@ -466,8 +399,11 @@ public class ContractService {
                             adminShare.getUser().getUserId()
                     );
 
-            // Kiểm tra admin có feedback APPROVED chưa
+            // Kiểm tra admin có feedback AGREE chưa (AGREE luôn có status APPROVED)
+            // Lưu ý: DISAGREE cũng có thể có status APPROVED (khi admin cancel contract),
+            // nên cần check theo reactionType thay vì chỉ check status
             boolean adminHasApprovedFeedback = existingAdminFeedback.isPresent()
+                    && existingAdminFeedback.get().getReactionType() == ReactionType.AGREE
                     && existingAdminFeedback.get().getStatus() == MemberFeedbackStatus.APPROVED;
 
             // Nếu admin chưa có feedback APPROVED, tạo feedback APPROVED cho admin
@@ -603,33 +539,6 @@ public class ContractService {
                 .build();
     }
 
-    /**
-     * Tự động kiểm tra và ký contract nếu đủ điều kiện
-     * Method này có thể được gọi từ scheduler hoặc event listener
-     */
-    @Transactional
-    public AutoSignOutcomeResponseDTO checkAndAutoSignContract(Long groupId) {
-        AutoSignConditionsResponseDTO conditions = checkAutoSignConditions(groupId);
-
-        if (Boolean.TRUE.equals(conditions.getCanAutoSign())) {
-            AutoSignContractResponseDTO autoSignResult = autoSignContract(groupId);
-            return AutoSignOutcomeResponseDTO.builder()
-                    .success(autoSignResult.getSuccess())
-                    .message(autoSignResult.getMessage())
-                    .contractId(autoSignResult.getContractId())
-                    .contractNumber(autoSignResult.getContractNumber())
-                    .status(autoSignResult.getStatus())
-                    .signedAt(autoSignResult.getSignedAt())
-                    .build();
-        } else {
-            return AutoSignOutcomeResponseDTO.builder()
-                    .success(false)
-                    .message("Contract cannot be auto-signed yet")
-                    .conditions(conditions)
-                    .build();
-        }
-    }
-
     // Removed manual approval methods - contracts are now auto-approved after signing
 
     // ========== CONTRACT GENERATION METHODS ==========
@@ -702,8 +611,17 @@ public class ContractService {
 
                     if (isPending) {
                         // Khi contract ở PENDING, chỉ admin group có thể submit feedback
-                        // Nếu đã có feedback và bị REJECTED, admin có thể submit lại
-                        canSubmitFeedback = isAdmin && userFeedback.getStatus() == MemberFeedbackStatus.REJECTED;
+                        // Admin có thể submit lại nếu:
+                        // 1. Feedback bị REJECTED
+                        // 2. Có feedback DISAGREE (dù status = APPROVED, từ cancelContract) - để có thể submit AGREE mới
+                        // 3. Contract đã được update (version khác)
+                        if (isAdmin) {
+                            boolean isSameContractVersion = isIsSameContractVersion(contract, userFeedback);
+                            boolean isRejected = userFeedback.getStatus() == MemberFeedbackStatus.REJECTED;
+                            boolean isDisagree = userFeedback.getReactionType() == ReactionType.DISAGREE;
+                            
+                            canSubmitFeedback = isRejected || isDisagree || !isSameContractVersion;
+                        }
                     } else if (isPendingMemberApproval) {
                         // Khi contract ở PENDING_MEMBER_APPROVAL, chỉ members (không phải admin) có thể submit
                         if (!isAdmin) {
@@ -895,7 +813,7 @@ public class ContractService {
         } else {
             terms.append("- Vehicle value: To be updated later\n");
         }
-        terms.append("- Deposit amount: ").append(contractHelperService.formatCurrency(depositAmount)).append("\n");
+        terms.append("- Total security deposit: ").append(contractHelperService.formatCurrency(depositAmount)).append("\n");
         if (!"N/A".equalsIgnoreCase(termLabel)) {
             terms.append("Term: ").append(termLabel).append(termSuffix).append("\n");
         } else {
@@ -910,6 +828,36 @@ public class ContractService {
                         Security deposit will be used during operation in case of any problems.
                         """
         );
+        
+        // Thêm cách tính security deposit
+        terms.append("\nSecurity Deposit Calculation:\n");
+        if (vehicle != null && vehicle.getVehicleValue() != null && vehicle.getVehicleValue().compareTo(BigDecimal.ZERO) > 0) {
+            // Có vehicleValue: Tổng deposit = 10% giá trị xe
+            BigDecimal totalDeposit = vehicle.getVehicleValue().multiply(new BigDecimal("0.1"));
+            terms.append("- Total security deposit for the group: ")
+                    .append(contractHelperService.formatCurrency(totalDeposit))
+                    .append(" (10% of vehicle value)\n");
+            terms.append("- Each member's deposit: Total deposit × ownership percentage\n");
+        } else {
+            // Không có vehicleValue: Tính theo memberCapacity
+            Integer memberCapacity = group.getMemberCapacity();
+            BigDecimal baseDeposit = new BigDecimal("2000000"); // 2 triệu VND
+            BigDecimal capacityMultiplier = new BigDecimal("0.1"); // 10% per member
+            BigDecimal totalDeposit = baseDeposit.add(
+                    BigDecimal.valueOf(memberCapacity != null ? memberCapacity : 0)
+                            .multiply(capacityMultiplier)
+                            .multiply(baseDeposit)
+            );
+            terms.append("- Total security deposit for the group: ")
+                    .append(contractHelperService.formatCurrency(totalDeposit))
+                    .append(" (Base amount: ")
+                    .append(contractHelperService.formatCurrency(baseDeposit))
+                    .append(" + ")
+                    .append(memberCapacity != null ? memberCapacity : 0)
+                    .append(" members × 10% × base amount)\n");
+            terms.append("- Each member's deposit: Total deposit × ownership percentage\n");
+        }
+        
         terms.append(
                 "\nNote: The full deposit must be paid before the contract becomes active and legally effective.\n\n"
         );
@@ -921,7 +869,8 @@ public class ContractService {
                         The use of the car must be booked through the system. Each member agrees to comply with the confirmed schedule and return the car on time. \
                         Car booking regulations: The weekly quota of each co-owner is 168 hours of 1 week x ownership ratio; the car booking time of each slot is 3 hours, \
                         between slots there will be a maintenance time of 1 hour, when the 3 hours of car use are over, \
-                        the car must be returned for maintenance, when the quota is over, the booking is no longer allowed.
+                        the car must be returned for maintenance, when the quota is over, the booking is no longer allowed. \
+                        Bookings can be cancelled before check-in; bookings that have been checked in cannot be cancelled.
                         
                         """
         );
@@ -930,8 +879,11 @@ public class ContractService {
         terms.append("3. MAINTENANCE, REPAIR & INSURANCE\n");
         terms.append(
                 """
-                        When the car breaks down, the slot user must work with the technician to discuss \
-                        a solution and the technician will create a quote and let that member pay
+                        Periodic maintenance costs are covered by the group fund. \
+                        When the car breaks down during a booking slot, the slot user must work with the technician to discuss \
+                        a solution. The technician will create a quote, and the member using the slot at that time may be liable for the repair costs. \
+                        Expense approval requires a majority vote (>50%) based on ownership ratio for costs exceeding 5 million VND. \
+                        Insurance provider: PVI – Comprehensive physical damage coverage.
                         
                         """
         );
@@ -1133,11 +1085,15 @@ public class ContractService {
         // Gửi notification cho tất cả thành viên với lý do reject
         if (notificationOrchestrator != null) {
             Map<String, Object> emailData = notificationOrchestrator.buildContractEmailData(savedContract);
+            String notificationMessage = "The group's contract has been rejected by the administrator. Deposits have been refunded to members who paid.";
+            if (reason != null && !reason.trim().isEmpty()) {
+                notificationMessage += "\n\nRejection Reason: " + reason.trim();
+            }
             notificationOrchestrator.sendGroupNotification(
                     groupId,
                     NotificationType.CONTRACT_REJECTED,
                     "Contract Rejected",
-                    "The group's contract has been rejected by the administrator. Deposits have been refunded to members who paid.",
+                    notificationMessage,
                     emailData
             );
         }
@@ -1205,87 +1161,12 @@ public class ContractService {
         return dto;
     }
 
-    /**
-     * Kiểm tra hợp đồng đã đóng đủ tiền cọc chưa (Admin only)
-     */
-    public ContractDepositStatusResponseDTO checkDepositStatus(Long groupId) {
-        // 1. Lấy hợp đồng
-        Contract contract = getContractByGroup(groupId);
-        BigDecimal requiredAmount = contract.getRequiredDepositAmount();
-
-        // 2. Lấy danh sách thành viên
-        List<OwnershipShare> shares = getSharesByGroupId(groupId);
-
-        // 3. Tính tổng tiền đã đóng (COMPLETED deposits)
-        BigDecimal totalPaid = BigDecimal.ZERO;
-        int paidMembers = 0;
-
-        List<ContractDepositStatusResponseDTO.MemberDepositStatus> memberDetails = new ArrayList<>();
-
-        for (OwnershipShare share : shares) {
-            // Tính tiền cọc cần đóng của từng thành viên
-            BigDecimal memberRequired = requiredAmount
-                    .multiply(share.getOwnershipPercentage())
-                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
-
-            // Kiểm tra trạng thái đóng cọc
-            boolean isPaid = share.getDepositStatus() == DepositStatus.PAID;
-
-            if (isPaid) {
-                totalPaid = totalPaid.add(memberRequired);
-                paidMembers++;
-            }
-
-            memberDetails.add(ContractDepositStatusResponseDTO.MemberDepositStatus.builder()
-                    .userId(share.getUser().getUserId())
-                    .fullName(share.getUser().getFullName())
-                    .ownershipPercentage(share.getOwnershipPercentage())
-                    .requiredDeposit(memberRequired)
-                    .depositStatus(share.getDepositStatus())
-                    .isPaid(isPaid)
-                    .build());
-        }
-
-        // 4. Tính toán
-        boolean isFullyPaid = totalPaid.compareTo(requiredAmount) >= 0;
-        BigDecimal remaining = isFullyPaid ? BigDecimal.ZERO : requiredAmount.subtract(totalPaid);
-        int totalMembers = shares.size();
-        boolean allMembersPaid = paidMembers == totalMembers;
-
-        String paymentProgress = requiredAmount.compareTo(BigDecimal.ZERO) > 0
-                ? String.format("%.1f%%",
-                totalPaid.multiply(BigDecimal.valueOf(100)).divide(requiredAmount, 1, RoundingMode.HALF_UP).doubleValue())
-                : "0.0%";
-
-        return ContractDepositStatusResponseDTO.builder()
-                .groupId(groupId)
-                .contractId(contract.getId())
-                .approvalStatus(contract.getApprovalStatus())
-                .requiredDepositAmount(requiredAmount)
-                .totalPaid(totalPaid)
-                .remaining(remaining)
-                .isFullyPaid(isFullyPaid)
-                .totalMembers(totalMembers)
-                .paidMembers(paidMembers)
-                .allMembersPaid(allMembersPaid)
-                .paymentProgress(paymentProgress)
-                .memberDetails(memberDetails)
-                .build();
-    }
-
-
     public List<ContractDTO> getAllContracts() {
         return contractRepository.findAllSortedByStatus().stream()
                 .map(this::convertToDTO)
                 .toList();
     }
 
-
-    public ContractDTO getContractById(Long contractId) {
-        Contract contract = contractRepository.findById(contractId)
-                .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
-        return convertToDTO(contract);
-    }
 
     public List<ContractDTO> getContractsByStatus(ContractApprovalStatus status) {
         return contractRepository.findByApprovalStatus(status).stream()
@@ -1298,17 +1179,6 @@ public class ContractService {
                 .map(this::convertToDTO)
                 .toList();
     }
-
-    /**
-     * ADMIN: Lấy tất cả contracts của một group
-     */
-    public List<ContractDTO> getContractsByGroupForAdmin(Long groupId) {
-        return contractRepository.findAllByGroup_GroupId(groupId).stream()
-                .map(this::convertToDTO)
-                .toList();
-    }
-
-
 
     /**
      * Kiểm tra và validate contract có thể chỉnh sửa được không
@@ -1341,30 +1211,6 @@ public class ContractService {
         throw new IllegalStateException(String.format("Cannot update contract: Contract is in %s status. Only PENDING contracts, PENDING_MEMBER_APPROVAL contracts with rejections, or SIGNED contracts can be updated.", contract.getApprovalStatus()));
     }
 
-    /**
-     * Member approve hoặc reject contract
-     * Delegated to ContractFeedbackService
-     */
-    @Transactional
-    public ApiResponseDTO<SubmitMemberFeedbackResponseDTO> submitMemberFeedback(
-            Long contractId, Long userId, ContractMemberFeedbackRequestDTO request) {
-        return contractFeedbackService.submitMemberFeedback(contractId, userId, request);
-    }
-
-
-    /**
-     * Lấy tất cả feedback của members cho contract
-     */
-    public ContractFeedbacksResponseDTO getContractFeedbacks(Long contractId, MemberFeedbackStatus filterStatus) {
-        return contractFeedbackService.getContractFeedbacks(contractId, filterStatus);
-    }
-
-    /**
-     * Overload method để backward compatibility - trả về tất cả DISAGREE feedbacks
-     */
-    public ContractFeedbacksResponseDTO getContractFeedbacksByGroup(Long groupId) {
-        return contractFeedbackService.getContractFeedbacksByGroup(groupId);
-    }
 
     public boolean contractExists(Long contractId) {
         return contractRepository.existsById(contractId);

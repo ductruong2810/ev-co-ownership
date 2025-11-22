@@ -2,6 +2,7 @@ package com.group8.evcoownership.controller;
 
 import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.enums.MemberFeedbackStatus;
+import com.group8.evcoownership.service.ContractFeedbackService;
 import com.group8.evcoownership.service.ContractService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 public class ContractController {
 
     private final ContractService contractService;
+    private final ContractFeedbackService contractFeedbackService;
 
     /**
      * API: Xem chi tiết hợp đồng của một nhóm
@@ -71,20 +73,6 @@ public class ContractController {
     }
 
     /**
-     * API: Lấy thông tin tính toán deposit amount (cho group admin hiểu công thức)
-     */
-    @GetMapping("/{groupId}/deposit-calculation")
-    @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
-    @Operation(
-            summary = "Lấy thông tin tính toán deposit",
-            description = "Lấy giá trị deposit được tính toán tự động và giải thích công thức tính toán"
-    )
-    public ResponseEntity<DepositCalculationInfoDTO> getDepositCalculation(@PathVariable Long groupId) {
-        DepositCalculationInfoDTO calculation = contractService.getDepositCalculationInfo(groupId);
-        return ResponseEntity.ok(calculation);
-    }
-
-    /**
      * Từ chối contract và tạo feedback DISAGREE với status APPROVED (chỉ admin group)
      */
     @PostMapping("/{groupId}/cancel")
@@ -110,28 +98,6 @@ public class ContractController {
         return ResponseEntity.ok(result);
     }
 
-    /**
-     * API: Kiểm tra điều kiện ký tự động contract
-     */
-    @GetMapping("/{groupId}/auto-sign-conditions")
-    @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
-    @Operation(summary = "Kiểm tra điều kiện ký tự động", description = "Kiểm tra các điều kiện cần thiết để ký tự động contract")
-    public ResponseEntity<AutoSignConditionsResponseDTO> checkAutoSignConditions(@PathVariable Long groupId) {
-        AutoSignConditionsResponseDTO conditions = contractService.checkAutoSignConditions(groupId);
-        return ResponseEntity.ok(conditions);
-    }
-
-    /**
-     * API: Tự động kiểm tra và ký contract nếu đủ điều kiện
-     */
-    @PostMapping("/{groupId}/check-and-auto-sign")
-    @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId)")
-    @Operation(summary = "Kiểm tra và ký tự động", description = "Tự động kiểm tra điều kiện và ký contract nếu đủ điều kiện")
-    public ResponseEntity<AutoSignOutcomeResponseDTO> checkAndAutoSignContract(@PathVariable Long groupId) {
-        AutoSignOutcomeResponseDTO result = contractService.checkAndAutoSignContract(groupId);
-        return ResponseEntity.ok(result);
-    }
-
     @PostMapping("/{contractId}/member-feedback")
     @PreAuthorize("hasAnyRole('CO_OWNER')")
     @Operation(
@@ -144,7 +110,7 @@ public class ContractController {
             @AuthenticationPrincipal String userEmail) {
 
         Long userId = contractService.getUserIdByEmail(userEmail);
-        ApiResponseDTO<SubmitMemberFeedbackResponseDTO> result = contractService.submitMemberFeedback(contractId, userId, request);
+        ApiResponseDTO<SubmitMemberFeedbackResponseDTO> result = contractFeedbackService.submitMemberFeedback(contractId, userId, request);
         return ResponseEntity.ok(result);
     }
 
@@ -173,23 +139,8 @@ public class ContractController {
                 ? MemberFeedbackStatus.APPROVED
                 : null; // null = trả về tất cả status
 
-        ContractFeedbacksResponseDTO feedbacks = contractService.getContractFeedbacks(contractId, filterStatus);
+        ContractFeedbacksResponseDTO feedbacks = contractFeedbackService.getContractFeedbacks(contractId, filterStatus);
         return ResponseEntity.ok(feedbacks);
     }
 
-    /**
-     * API: Lấy tất cả feedback DISAGREE của members theo groupId (cho admin group)
-     */
-    @GetMapping("/group/{groupId}/member-feedbacks")
-    @PreAuthorize("@ownershipGroupService.isGroupAdmin(authentication.name, #groupId) or hasAnyRole('ADMIN','STAFF')")
-    @Operation(
-            summary = "Get member feedbacks by groupId (DISAGREE only)",
-            description = "Lấy tất cả feedback DISAGREE của members theo groupId. Áp dụng cho nhóm có 1 hợp đồng hiện tại."
-    )
-    public ResponseEntity<ContractFeedbacksResponseDTO> getGroupMemberFeedbacks(
-            @PathVariable Long groupId) {
-
-        ContractFeedbacksResponseDTO feedbacks = contractService.getContractFeedbacksByGroup(groupId);
-        return ResponseEntity.ok(feedbacks);
-    }
 }

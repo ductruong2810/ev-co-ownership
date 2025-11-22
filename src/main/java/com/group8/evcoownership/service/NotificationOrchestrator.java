@@ -40,27 +40,7 @@ public class NotificationOrchestrator {
 
         // 3. Email notification (for important events)
         if (shouldSendEmail(type)) {
-            sendEmailNotification(user, type, title, message, additionalData);
-        }
-    }
-
-    /**
-     * Send booking notification
-     */
-    public void sendBookingNotification(Long userId, NotificationType type, String title, String message, Long bookingId) {
-        Map<String, Object> data = Map.of("bookingId", bookingId);
-
-        // In-app
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
-        notificationService.sendNotification(user, title, message, type.getCode());
-
-        // WebSocket
-        webSocketService.sendBookingNotification(userId, type, title, message, bookingId);
-
-        // Email for important booking events
-        if (shouldSendEmail(type)) {
-            sendEmailNotification(user, type, title, message, data);
+            sendEmailNotification(user, type, additionalData);
         }
     }
 
@@ -75,38 +55,6 @@ public class NotificationOrchestrator {
         data.put("status", contract.getApprovalStatus());
         data.put("rejectionReason", contract.getRejectionReason());
         return data;
-    }
-
-    /**
-     * Send contract notification
-     */
-    public void sendContractNotification(Long userId, NotificationType type, String title, String message, Long contractId) {
-        Map<String, Object> data = Map.of("contractId", contractId);
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
-        notificationService.sendNotification(user, title, message, type.getCode());
-        webSocketService.sendContractNotification(userId, type, title, message, contractId);
-
-        if (shouldSendEmail(type)) {
-            sendEmailNotification(user, type, title, message, data);
-        }
-    }
-
-    /**
-     * Send payment notification
-     */
-    public void sendPaymentNotification(Long userId, NotificationType type, String title, String message, Long paymentId) {
-        Map<String, Object> data = Map.of("paymentId", paymentId);
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
-        notificationService.sendNotification(user, title, message, type.getCode());
-        webSocketService.sendPaymentNotification(userId, type, title, message, paymentId);
-
-        if (shouldSendEmail(type)) {
-            sendEmailNotification(user, type, title, message, data);
-        }
     }
 
     /**
@@ -143,85 +91,13 @@ public class NotificationOrchestrator {
             );
 
             if (shouldSendEmail(type)) {
-                sendEmailNotification(member, type, title, message, data);
+                sendEmailNotification(member, type, data);
             }
         }
 
         webSocketService.sendToGroup(groupId, type, title, message);
     }
 
-
-    /**
-     * Send maintenance notification
-     */
-    public void sendMaintenanceNotification(Long userId, NotificationType type, String title, String message, Long maintenanceId) {
-        Map<String, Object> data = Map.of("maintenanceId", maintenanceId);
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
-        notificationService.sendNotification(user, title, message, type.getCode());
-        webSocketService.sendToUser(userId, type, title, message, "HIGH",
-                "/maintenance/" + maintenanceId, data);
-
-        if (shouldSendEmail(type)) {
-            sendEmailNotification(user, type, title, message, data);
-        }
-    }
-
-    /**
-     * Send system-wide notification
-     */
-    public void sendSystemNotification(NotificationType type, String title, String message) {
-        List<User> allUsers = userRepository.findAll();
-
-        for (User user : allUsers) {
-            notificationService.sendNotification(user, title, message, type.getCode());
-        }
-
-        webSocketService.sendToAll(type, title, message);
-
-        // Email for system notifications
-        if (shouldSendEmail(type)) {
-            for (User user : allUsers) {
-                sendEmailNotification(user, type, title, message, Map.of());
-            }
-        }
-    }
-
-    /**
-     * Send group invitation notification
-     */
-    public void sendGroupInvitation(Long userId, String groupName, Long groupId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
-        String title = "Group Invitation";
-        String message = String.format("You have been invited to join co-ownership group: %s", groupName);
-
-        Map<String, Object> data = Map.of(
-                "groupId", groupId,
-                "groupName", groupName
-        );
-
-        notificationService.sendNotification(user, title, message, NotificationType.GROUP_INVITATION.getCode());
-        webSocketService.sendToUser(userId, NotificationType.GROUP_INVITATION, title, message, "HIGH",
-                "/groups/" + groupId + "/join", data);
-        emailService.sendGroupInvitation(user.getEmail(), user.getFullName(), data);
-    }
-
-    /**
-     * Send a monthly report to all users
-     */
-    public void sendMonthlyReport(Long userId, Map<String, Object> reportData) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
-        String title = "Monthly Report";
-        String message = "Your monthly usage and payment report is ready";
-
-        notificationService.sendNotification(user, title, message, NotificationType.SYSTEM_MAINTENANCE.getCode());
-        webSocketService.sendToUser(userId, NotificationType.SYSTEM_MAINTENANCE, title, message, "LOW",
-                "/reports/monthly", reportData);
-        emailService.sendMonthlyReport(user.getEmail(), user.getFullName(), reportData);
-    }
 
     /**
      * Determine if email should be sent for this notification type
@@ -256,7 +132,7 @@ public class NotificationOrchestrator {
     /**
      * Send email notification
      */
-    private void sendEmailNotification(User user, NotificationType type, String title, String message, Map<String, Object> data) {
+    private void sendEmailNotification(User user, NotificationType type, Map<String, Object> data) {
         try {
             switch (type) {
                 case CONTRACT_CREATED, CONTRACT_APPROVAL_PENDING, CONTRACT_APPROVED, CONTRACT_REJECTED,

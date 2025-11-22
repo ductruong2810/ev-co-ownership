@@ -53,7 +53,7 @@ public class ContractDeadlineScheduler {
                 Long groupId = contract.getGroup().getGroupId();
                 LocalDateTime deadline = deadlinePolicy.computeDepositDeadline(contract);
 
-                if (deadline == null || deadline.isBefore(now) || deadline.isAfter(now.plusMinutes(2))) {
+                if (deadline == null || deadline.isBefore(now) || deadline.isAfter(now.plusMinutes(3))) {
                     continue; // đã qua hạn hoặc chưa đến 2 phút trước hạn
                 }
 

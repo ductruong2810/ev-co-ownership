@@ -345,26 +345,6 @@ public class ContractFeedbackService {
     }
 
     /**
-     * Lấy tất cả feedback của members cho contract theo groupId
-     * Mỗi group hiện chỉ có 1 contract, nên hàm này ánh xạ groupId -> contractId rồi tái sử dụng logic cũ
-     * 
-     * @param groupId ID của group
-     * @param filterStatus Nếu null: trả về tất cả DISAGREE. Nếu có: chỉ trả về DISAGREE với status này
-     */
-    public ContractFeedbacksResponseDTO getContractFeedbacksByGroup(Long groupId, MemberFeedbackStatus filterStatus) {
-        Contract contract = contractRepository.findByGroupGroupId(groupId)
-                .orElseThrow(() -> new ResourceNotFoundException("Contract not found for group: " + groupId));
-        return getContractFeedbacks(contract.getId(), filterStatus);
-    }
-
-    /**
-     * Overload method để backward compatibility - trả về tất cả DISAGREE feedbacks
-     */
-    public ContractFeedbacksResponseDTO getContractFeedbacksByGroup(Long groupId) {
-        return getContractFeedbacksByGroup(groupId, null);
-    }
-
-    /**
      * Build FeedbackActionResponseDTO từ ContractFeedback
      */
     private FeedbackActionResponseDTO buildFeedbackActionResponseDTO(ContractFeedback feedback) {
