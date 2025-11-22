@@ -44,7 +44,7 @@ public class MaintenanceAfterCheckOutService {
         List<UserWithRejectedCheckDTO> result = new ArrayList<>();
 
         for (String status : problemStatuses) {
-            List<VehicleCheck> checks = vehicleCheckRepository.findByStatus(status);
+            List<VehicleCheck> checks = vehicleCheckRepository.findByStatusAndCheckType(status, "TECH_REVIEW");
 
             for (VehicleCheck vc : checks) {
                 UsageBooking booking = vc.getBooking();
@@ -77,7 +77,6 @@ public class MaintenanceAfterCheckOutService {
      * Get my request list
      */
 
-    // =============== CREATE PERSONAL MAINTENANCE SAU CHECKOUT ===============
     // =============== CREATE PERSONAL MAINTENANCE SAU CHECKOUT ===============
     public MaintenanceResponseDTO createAfterCheckOut(
             MaintenanceAfterCheckOutCreateRequestDTO req,
@@ -308,11 +307,6 @@ public class MaintenanceAfterCheckOutService {
         m.setMaintenanceCompletedAt(now);
         m.setUpdatedAt(now);
         maintenanceRepository.save(m);
-
-        // Case after checkout là sự cố, không phải bảo trì định kỳ
-        // nên thường không set nextDueDate (để null là đúng)
-
-
 
 
         // ======= dùng vehicleId + userId để tìm Booking + VehicleCheck =======

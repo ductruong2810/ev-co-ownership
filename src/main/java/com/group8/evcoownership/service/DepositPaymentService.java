@@ -393,13 +393,10 @@ public class DepositPaymentService {
         throw new DepositPaymentException("Unable to generate a unique transaction reference. Please try again later.");
     }
 
-    // ========== DEPOSIT REFUND METHODS A.Truong==========
+    // ========== DEPOSIT REFUND METHODS ==========
 
     /**
      * Hoàn tiền cọc cho tất cả members đã đóng khi contract bị reject
-     *
-     * @param shares  Danh sách OwnershipShare của group
-     * @param groupId ID của ownership group
      */
     @Transactional
     public void refundDepositsForGroup(List<OwnershipShare> shares, Long groupId) {
@@ -443,7 +440,6 @@ public class DepositPaymentService {
     /**
      * Hoàn tiền cho một payment đơn lẻ qua VNPay API
      *
-     * @param payment Payment cần hoàn tiền
      */
     private void refundSinglePayment(Payment payment) throws IOException {
         // Parse vnp_TransactionNo từ providerResponse
@@ -454,6 +450,7 @@ public class DepositPaymentService {
         }
 
         // Format vnp_TransactionDate từ payment.paymentDate
+        // tu localDatetime(Payment) ->  Date
         SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
         formatter.setTimeZone(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
         String vnpTransactionDate = formatter.format(
