@@ -42,10 +42,10 @@ public class OwnershipShareService {
         );
     }
 
-    // ================== BUSINESS/APIs ==================
+    // ================== BUSINESS/API ==================
 
     /**
-     * Thêm thành viên + % sở hữu (FE kiểm quyền). Người đầu tiên = ADMIN, còn lại = MEMBER.
+     * Thêm thành viên + % sở hữu
      */
     @Transactional
     public OwnershipShareResponseDTO addGroupShare(OwnershipShareCreateRequestDTO req) {
