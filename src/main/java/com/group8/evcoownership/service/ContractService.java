@@ -893,8 +893,9 @@ public class ContractService {
         terms.append(
                 """
                         
-                        All expenses for maintenance, charging, and cleaning are paid from the Group Fund; \
-                        any personal expenses (if applicable) are settled individually via offset transactions.
+                        All Expenses for upgrade the car are paid from the group fund; \
+                        any personal expenses (if applicable) are settled individually via offset transactions. \
+                        Security deposit will be used during operation in case of any problems.
                         """
         );
         terms.append(
@@ -905,15 +906,10 @@ public class ContractService {
         terms.append("2. USAGE RIGHTS & BOOKING SCHEDULE\n");
         terms.append(
                 """
-                        Vehicle usage must be booked through the system. \
-                        Each member agrees to follow the confirmed schedule and return the vehicle on time.
-                        Booking rules: Each co-owner's weekly quota is 164 hours × ownership ratio; \
-                        minimum booking duration is 1 hour and maximum is 3 days (72 hours); \
-                        maximum 3 bookings per week per member; \
-                        rest time between bookings: +2h if previous trip > 4h, +1h if ≤ 4h; \
-                        no overlapping bookings (First Come, First Served); \
-                        up to 2 weeks advance booking allowed; \
-                        the system reserves 4 hours every Sunday for maintenance.
+                        The use of the car must be booked through the system. Each member agrees to comply with the confirmed schedule and return the car on time. \
+                        Car booking regulations: The weekly quota of each co-owner is 168 hours of 1 week x ownership ratio; the car booking time of each slot is 3 hours, \
+                        between slots there will be a maintenance time of 1 hour, when the 3 hours of car use are over, \
+                        the car must be returned for maintenance, when the quota is over, the booking is no longer allowed.
                         
                         """
         );
@@ -922,35 +918,22 @@ public class ContractService {
         terms.append("3. MAINTENANCE, REPAIR & INSURANCE\n");
         terms.append(
                 """
-                        The vehicle shall be maintained periodically according to the manufacturer's recommendations. \
-                        Expense approval requires a majority vote (>50%) based on ownership ratio for costs exceeding 5 million VND. \
-                        Insurance provider: PVI – Comprehensive physical damage coverage.
+                        When the car breaks down, the slot user must work with the technician to discuss \
+                        a solution and the technician will create a quote and let that member pay
                         
                         """
         );
 
-// 4. DISPUTE RESOLUTION
-        terms.append("4. DISPUTE RESOLUTION\n");
-        terms.append(
-                """
-                        All disputes shall be recorded in the system and prioritized for internal mediation within the group. \
-                        Voting mechanism: Majority decision based on ownership ratio; \
-                        in case of a 50/50 tie, priority is given to contribution history. \
-                        Final authority follows applicable Vietnamese law.
-                        
-                        """
-        );
-
-// 5. GENERAL TERMS
-        terms.append("5. GENERAL TERMS\n");
+// 4. GENERAL TERMS
+        terms.append("4. GENERAL TERMS\n");
         terms.append("- The contract takes effect once all co-owners have agreed and signed.\n");
         terms.append("- Activation: The contract becomes active only after all members have paid the full deposit as required.\n");
         terms.append("- System verification: The system will revalidate and officially activate the contract after confirming all deposits.\n");
         terms.append("- Appendices (if any) are integral parts of this contract.\n");
         terms.append("- The system records version history, signing timestamp, and digital identities of signatories.\n\n");
 
-// 6. SIGNATURES
-        terms.append("6. SIGNATURES\n");
+// 5. SIGNATURES
+        terms.append("5. SIGNATURES\n");
         terms.append("Group Representative: Admin Group\n");
         terms.append("Date of Signing: ").append(contractHelperService.formatDate(LocalDate.now())).append("\n");
         terms.append(
