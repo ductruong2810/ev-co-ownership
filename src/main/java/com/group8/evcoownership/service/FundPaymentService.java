@@ -69,13 +69,8 @@ public class FundPaymentService {
 
         String authenticatedEmail = auth.getName();
         if (!user.getEmail().equals(authenticatedEmail)) {
-            throw new DepositPaymentException("You can only create deposit payment for your own account");
+            throw new DepositPaymentException("You can only create fund top-up for your own account");
         }
-
-
-        // Kiểm tra contract tồn tại
-        contractRepository.findByGroupGroupId(groupId)
-                .orElseThrow(() -> new EntityNotFoundException("Contract not found for this group"));
 
         // Kiểm tra contract tồn tại
         contractRepository.findByGroupGroupId(groupId)
@@ -93,7 +88,7 @@ public class FundPaymentService {
         if (request.amount() == null || request.amount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Amount must be > 0");
         }
-        // (tuỳ chọn) kiểm tra req.groupId() khớp group của fund
+
 
         // 2) Sinh txnRef duy nhất
         String txnRef = depositPaymentService.generateUniqueTxnRef();
@@ -109,15 +104,8 @@ public class FundPaymentService {
         payment.setPaymentMethod("VNPAY");                     // nếu cột này NOT NULL
         payment.setPayer(user);
         payment.setPaymentCategory("GROUP");
-//        payment.setPaymentCategory("PERSONAL");
-//        payment.setPersonalReason("CONTRIBUTION"); // KHI DE PERSONAL --> FIELD NAY NOT NULL
-//        payment.setChargedUser(user);// KHI DE PERSONAL --> FIELD NAY NOT NULL
 
         payment = paymentRepository.save(payment);
-
-        // nếu Payment có payer (User) thì set vào, nếu không thì thôi:
-        // payment.setPayer(userRepository.getReferenceById(actorId));
-        paymentRepository.save(payment);
 
         // 4) Lấy URL VNPay
         //String ip = httpReq.getRemoteAddr();
@@ -170,9 +158,6 @@ public class FundPaymentService {
         // 2) Cộng số dư quỹ
         Long groupId = payment.getFund().getGroup().getGroupId();
         fundService.topUpOperating(groupId, payment.getAmount()); // cộng vào OPERATING
-
-
-        // 3) (Tuỳ chọn) Ghi sổ Ledger IN cho quỹ
 
         return map(payment, "Fund top-up completed");
     }

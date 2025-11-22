@@ -82,11 +82,11 @@ public class VnPay_PaymentService {
 //
 //        return vnp_PayUrl + "?" + queryUrl;
 
-        String hashData = buildHashData(vnpParamsMap);          // ⬅️ dùng helper mới
+        String hashData = buildHashData(vnpParamsMap);
         String signature = hmacSHA512(secretKey, hashData);
         vnpParamsMap.put("vnp_SecureHash", signature);
 
-        String queryUrl = buildQueryString(vnpParamsMap);       // ⬅️ encode giống hash
+        String queryUrl = buildQueryString(vnpParamsMap);
         return vnp_PayUrl + "?" + queryUrl;
     }
 
@@ -328,7 +328,7 @@ public class VnPay_PaymentService {
     }
 
     /**
-     * Parse vnp_TransactionNo từ providerResponse JSON
+     * lấy vnp_TransactionNo ra khoi chuoi JSON được lưu trong providerResponse
      */
     public static String extractTransactionNo(String providerResponseJson) {
         if (providerResponseJson == null || providerResponseJson.isEmpty()) {
@@ -336,6 +336,7 @@ public class VnPay_PaymentService {
         }
         try {
             // Format: {"vnp_TransactionNo":"123","vnp_TxnRef":"456"}
+            // tim xem vnp_TranctionNo o dau
             int start = providerResponseJson.indexOf("\"vnp_TransactionNo\":\"");
             if (start == -1) return null;
             start += "\"vnp_TransactionNo\":\"".length();

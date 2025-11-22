@@ -165,7 +165,7 @@ public class FundService {
 
     /**
      * initTwoFundIfMIssing
-     * Kiem tra neu chua co group co type Operating va Deposit_Reserve thi tao
+     * Kiem tra neu group co fund Operating va Deposit_Reserve thi tao
      * Được gọi ở OwnerShipGroupService
      */
     @Transactional
@@ -191,8 +191,9 @@ public class FundService {
     }
 
     /**
-     * 4 hàm nghiệp vụ
-     * addDepositToReserve được sử dụng trong confirmDepositPayment
+     * 2 hàm nghiệp vụ
+     * addDepositToReserve : dong coc
+     * topUpOperating: dong quy
      */
     // nap tien coc
     @Transactional
@@ -274,7 +275,7 @@ public class FundService {
      *
      */
 
-    // -------Create--------
+    // No Usage-------Create--------
     @Transactional
     // Tạo SharedFund mới cho một group cụ thể.
     public SharedFund createOrGroup(Long groupId) {
