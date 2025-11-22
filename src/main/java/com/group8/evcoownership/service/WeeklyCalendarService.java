@@ -42,8 +42,9 @@ public class WeeklyCalendarService {
     public WeeklyCalendarResponseDTO getWeeklyCalendar(Long groupId, Long userId, LocalDate weekStart) {
 
         // Nếu weekStart là null, sử dụng tuần hiện tại
+        //
         if (weekStart == null) {
-            weekStart = LocalDate.now().with(DayOfWeek.MONDAY);
+            weekStart = LocalDate.now();
         }
 
         // Kiểm tra nhóm có tồn tại không
