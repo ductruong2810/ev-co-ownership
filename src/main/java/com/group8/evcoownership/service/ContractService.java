@@ -813,7 +813,7 @@ public class ContractService {
         } else {
             terms.append("- Vehicle value: To be updated later\n");
         }
-        terms.append("- Deposit amount: ").append(contractHelperService.formatCurrency(depositAmount)).append("\n");
+        terms.append("- Total security deposit: ").append(contractHelperService.formatCurrency(depositAmount)).append("\n");
         if (!"N/A".equalsIgnoreCase(termLabel)) {
             terms.append("Term: ").append(termLabel).append(termSuffix).append("\n");
         } else {
@@ -828,6 +828,36 @@ public class ContractService {
                         Security deposit will be used during operation in case of any problems.
                         """
         );
+        
+        // Thêm cách tính security deposit
+        terms.append("\nSecurity Deposit Calculation:\n");
+        if (vehicle != null && vehicle.getVehicleValue() != null && vehicle.getVehicleValue().compareTo(BigDecimal.ZERO) > 0) {
+            // Có vehicleValue: Tổng deposit = 10% giá trị xe
+            BigDecimal totalDeposit = vehicle.getVehicleValue().multiply(new BigDecimal("0.1"));
+            terms.append("- Total security deposit for the group: ")
+                    .append(contractHelperService.formatCurrency(totalDeposit))
+                    .append(" (10% of vehicle value)\n");
+            terms.append("- Each member's deposit: Total deposit × ownership percentage\n");
+        } else {
+            // Không có vehicleValue: Tính theo memberCapacity
+            Integer memberCapacity = group.getMemberCapacity();
+            BigDecimal baseDeposit = new BigDecimal("2000000"); // 2 triệu VND
+            BigDecimal capacityMultiplier = new BigDecimal("0.1"); // 10% per member
+            BigDecimal totalDeposit = baseDeposit.add(
+                    BigDecimal.valueOf(memberCapacity != null ? memberCapacity : 0)
+                            .multiply(capacityMultiplier)
+                            .multiply(baseDeposit)
+            );
+            terms.append("- Total security deposit for the group: ")
+                    .append(contractHelperService.formatCurrency(totalDeposit))
+                    .append(" (Base amount: ")
+                    .append(contractHelperService.formatCurrency(baseDeposit))
+                    .append(" + ")
+                    .append(memberCapacity != null ? memberCapacity : 0)
+                    .append(" members × 10% × base amount)\n");
+            terms.append("- Each member's deposit: Total deposit × ownership percentage\n");
+        }
+        
         terms.append(
                 "\nNote: The full deposit must be paid before the contract becomes active and legally effective.\n\n"
         );
