@@ -55,18 +55,17 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
 
     // Tìm các booking bị ảnh hưởng bởi maintenance period
     @Query("""
-                SELECT ub
-                FROM UsageBooking ub
-                JOIN FETCH ub.user u
-                WHERE ub.vehicle.Id = :vehicleId
-                  AND ub.status = 'CONFIRMED'
-                  AND (
-                      (ub.startDateTime BETWEEN :startDateTime AND :endDateTime)
-                      OR (ub.endDateTime BETWEEN :startDateTime AND :endDateTime)
-                      OR (ub.startDateTime <= :startDateTime AND ub.endDateTime >= :endDateTime)
-                  )
-                ORDER BY ub.startDateTime
-            """)
+    SELECT ub
+    FROM UsageBooking ub
+    JOIN FETCH ub.user u
+    WHERE ub.vehicle.Id = :vehicleId
+      AND (
+          (ub.startDateTime BETWEEN :startDateTime AND :endDateTime)
+          OR (ub.endDateTime BETWEEN :startDateTime AND :endDateTime)
+          OR (ub.startDateTime <= :startDateTime AND ub.endDateTime >= :endDateTime)
+      )
+    ORDER BY ub.startDateTime
+""")
     List<UsageBooking> findAffectedBookings(@Param("vehicleId") Long vehicleId,
                                             @Param("startDateTime") LocalDateTime startDateTime,
                                             @Param("endDateTime") LocalDateTime endDateTime);

@@ -160,7 +160,7 @@ public class WeeklyCalendarService {
     }
 
     /**
-     * Đếm tổng số booking của xe trong tuần (chỉ CONFIRMED)
+     * Đếm tổng số booking của xe trong tuần (tất cả status)
      * Đếm các booking duy nhất có thời gian trùng với khoảng thời gian của tuần
      */
     private int countTotalBookingsInWeek(Long vehicleId, LocalDateTime weekStart, LocalDateTime weekEnd) {
