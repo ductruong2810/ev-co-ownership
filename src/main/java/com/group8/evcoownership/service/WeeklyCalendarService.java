@@ -164,33 +164,24 @@ public class WeeklyCalendarService {
      * Đếm các booking duy nhất có thời gian trùng với khoảng thời gian của tuần
      */
     private int countTotalBookingsInWeek(Long vehicleId, LocalDateTime weekStart, LocalDateTime weekEnd) {
-        // Sử dụng findAffectedBookings để lấy tất cả booking trùng với tuần
         List<UsageBooking> bookings = usageBookingRepository.findAffectedBookings(
                 vehicleId, weekStart, weekEnd);
 
-        // Đếm các booking duy nhất (chỉ CONFIRMED, loại trừ BUFFER)
+        // Đếm tất cả các booking duy nhất (không lọc status)
         Set<Long> uniqueBookingIds = new HashSet<>();
-        bookings.stream()
-                .filter(b -> b.getStatus() == BookingStatus.CONFIRMED)
-                .forEach(b -> uniqueBookingIds.add(b.getId()));
+        bookings.forEach(b -> uniqueBookingIds.add(b.getId()));
 
         return uniqueBookingIds.size();
     }
 
-    /**
-     * Đếm số booking của người dùng cho xe trong tuần
-     * Đếm các booking duy nhất có thời gian trùng với khoảng thời gian của tuần
-     */
     private int countUserBookingsInWeek(Long vehicleId, Long userId, LocalDateTime weekStart, LocalDateTime weekEnd) {
-        // Sử dụng findAffectedBookings để lấy tất cả booking của xe trùng với tuần
         List<UsageBooking> bookings = usageBookingRepository.findAffectedBookings(
                 vehicleId, weekStart, weekEnd);
 
-        // Lọc theo người dùng và đếm các booking duy nhất (chỉ CONFIRMED)
+        // Lọc theo người dùng và đếm tất cả các booking duy nhất (không lọc status)
         Set<Long> uniqueBookingIds = new HashSet<>();
         bookings.stream()
                 .filter(b -> b.getUser() != null && b.getUser().getUserId().equals(userId))
-                .filter(b -> b.getStatus() == BookingStatus.CONFIRMED)
                 .forEach(b -> uniqueBookingIds.add(b.getId()));
 
         return uniqueBookingIds.size();
