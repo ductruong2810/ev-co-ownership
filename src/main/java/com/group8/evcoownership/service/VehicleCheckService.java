@@ -79,7 +79,7 @@ public class VehicleCheckService {
     public VehicleCheck updateCheckStatus(Long checkId, String status, String notes, String issues) {
         VehicleCheck check = vehicleCheckRepository.findById(checkId)
                 .orElseThrow(() -> new EntityNotFoundException("Vehicle check not found"));
-
+        // lay status technician chuan bi doi
         String normalizedStatus = status != null ? status.trim().toUpperCase() : null;
 
         if (notes != null && !notes.isBlank()) {
@@ -98,14 +98,16 @@ public class VehicleCheckService {
             check.setIssues(issues);
         }
 
+        // da doi status moi(reject,...)
         VehicleCheck savedCheck = vehicleCheckRepository.save(check);
 
+        // xu ly cac case tu status moi ma technician da doi
         UsageBooking booking = check.getBooking();
         if (booking != null && normalizedStatus != null) {
             switch (normalizedStatus) {
                 case "APPROVED", "PASSED", "COMPLETED" -> finalizeBookingAfterApproval(booking);
                 case "REJECTED", "FAILED", "NEEDS_ATTENTION" ->
-                        handleTechnicianRejection(booking, notes, issues, check, normalizedStatus);
+                        handleTechnicianRejection(booking);
                 default -> {
                     // no-op for other statuses
                 }
@@ -546,23 +548,10 @@ public class VehicleCheckService {
     }
 
 
-    private void handleTechnicianRejection(UsageBooking booking, String notes, String issuesOverride,
-                                           VehicleCheck sourceCheck, String normalizedStatus) {
+    private void handleTechnicianRejection(UsageBooking booking) {
         booking.setStatus(BookingStatus.NEEDS_ATTENTION);
         usageBookingRepository.save(booking);
 
-        VehicleCheck technicianReview = VehicleCheck.builder()
-                .booking(booking)
-                .checkType("TECH_REVIEW")// type nay the hien check bi tu choi
-                .odometer(sourceCheck.getOdometer())
-                .batteryLevel(sourceCheck.getBatteryLevel())
-                .cleanliness(sourceCheck.getCleanliness())
-                .issues(issuesOverride != null && !issuesOverride.isBlank() ? issuesOverride : sourceCheck.getIssues())
-                .notes(notes)
-                .status(normalizedStatus)
-                .build();
-
-        vehicleCheckRepository.save(technicianReview);
     }
 
 

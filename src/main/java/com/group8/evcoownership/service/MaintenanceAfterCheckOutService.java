@@ -44,7 +44,7 @@ public class MaintenanceAfterCheckOutService {
         List<UserWithRejectedCheckDTO> result = new ArrayList<>();
 
         for (String status : problemStatuses) {
-            List<VehicleCheck> checks = vehicleCheckRepository.findByStatusAndCheckType(status, "TECH_REVIEW");
+            List<VehicleCheck> checks = vehicleCheckRepository.findByStatus(status);
 
             for (VehicleCheck vc : checks) {
                 UsageBooking booking = vc.getBooking();
