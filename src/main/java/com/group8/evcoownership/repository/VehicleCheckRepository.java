@@ -30,7 +30,7 @@ public interface VehicleCheckRepository extends JpaRepository<VehicleCheck, Long
             """)
     List<VehicleCheck> findLatestPostUseCheckByVehicleAndGroup(@Param("vehicleId") Long vehicleId, @Param("groupId") Long groupId, Pageable pageable);
 
-    // Check if there are POST_USE checks REJECTED status for vehicle and group
+    // Check if there are POST_USE checks with issues or REJECTED status for vehicle and group
     @Query("""
                 SELECT COUNT(vc) > 0 FROM VehicleCheck vc
                 JOIN vc.booking b
@@ -38,11 +38,13 @@ public interface VehicleCheckRepository extends JpaRepository<VehicleCheck, Long
                 WHERE v.Id = :vehicleId
                   AND v.ownershipGroup.groupId = :groupId
                   AND vc.checkType = 'POST_USE'
-                  AND (vc.status = 'REJECTED')
+                  AND (vc.status = 'REJECTED' OR (vc.issues IS NOT NULL AND vc.issues != ''))
             """)
     boolean existsPostUseCheckWithIssuesByVehicleAndGroup(@Param("vehicleId") Long vehicleId, @Param("groupId") Long groupId);
 
+    List<VehicleCheck> findByStatus(String status);
     List<VehicleCheck> findByStatusAndCheckType(String status, String checkType);
+
 
     Optional<VehicleCheck> findByBooking_IdAndCheckType(Long bookingId, String checkType);
 
