@@ -825,7 +825,7 @@ public class ContractService {
                         
                         All Expenses for upgrade the car are paid from the group fund; \
                         any personal expenses (if applicable) are settled individually via offset transactions. \
-                        Security deposit will be used during operation in case of any problems.
+                        Security deposit is a separate reserve fund and will not be used for regular operations or shared expenses.
                         """
         );
         
@@ -875,15 +875,13 @@ public class ContractService {
                         """
         );
 
-// 3. MAINTENANCE, REPAIR & INSURANCE
-        terms.append("3. MAINTENANCE, REPAIR & INSURANCE\n");
+// 3. MAINTENANCE & REPAIR
+        terms.append("3. MAINTENANCE & REPAIR\n");
         terms.append(
                 """
-                        Periodic maintenance costs are covered by the group fund. \
+                        Maintenance costs are paid individually by each member. \
                         When the car breaks down during a booking slot, the slot user must work with the technician to discuss \
-                        a solution. The technician will create a quote, and the member using the slot at that time may be liable for the repair costs. \
-                        Expense approval requires a majority vote (>50%) based on ownership ratio for costs exceeding 5 million VND. \
-                        Insurance provider: PVI – Comprehensive physical damage coverage.
+                        a solution. The technician will create a quote, and the member using the slot at that time is responsible for paying the repair costs.
                         
                         """
         );
