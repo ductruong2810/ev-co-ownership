@@ -370,48 +370,24 @@ public class WeeklyCalendarService {
                     .build();
         }
 
-        // Booking COMPLETED
-        UsageBooking completedBooking = overlapping.stream()
-                .filter(b -> b.getStatus() == BookingStatus.COMPLETED)
+        // Booking COMPLETED, AWAITING_REVIEW, NEEDS_ATTENTION
+        // Các booking này cũng cần phân biệt SELF vs OTHER để tính quota đúng
+        UsageBooking otherStatusBooking = overlapping.stream()
+                .filter(b -> b.getStatus() == BookingStatus.COMPLETED 
+                        || b.getStatus() == BookingStatus.AWAITING_REVIEW
+                        || b.getStatus() == BookingStatus.NEEDS_ATTENTION)
                 .findFirst().orElse(null);
-        if (completedBooking != null) {
+        if (otherStatusBooking != null) {
+            // Sử dụng cùng logic như CONFIRMED để phân biệt SELF vs OTHER
+            String slotType = getString(userId, otherStatusBooking);
+            
             return TimeSlotResponseDTO.builder()
                     .time(timeDisplay)
-                    .status(completedBooking.getStatus().name())
-                    .type("COMPLETED")
-                    .bookedBy(completedBooking.getUser() != null ? completedBooking.getUser().getFullName() : "Unknown")
+                    .status(otherStatusBooking.getStatus().name())
+                    .type(slotType) // BOOKED_SELF, BOOKED_OTHER, CHECKED_IN_SELF, hoặc CHECKED_IN_OTHER
+                    .bookedBy(otherStatusBooking.getUser() != null ? otherStatusBooking.getUser().getFullName() : "Unknown")
                     .bookable(false)
-                    .bookingId(completedBooking.getId())
-                    .build();
-        }
-
-        // Booking AWAITING_REVIEW
-        UsageBooking awaitingReviewBooking = overlapping.stream()
-                .filter(b -> b.getStatus() == BookingStatus.AWAITING_REVIEW)
-                .findFirst().orElse(null);
-        if (awaitingReviewBooking != null) {
-            return TimeSlotResponseDTO.builder()
-                    .time(timeDisplay)
-                    .status(awaitingReviewBooking.getStatus().name())
-                    .type("AWAITING_REVIEW")
-                    .bookedBy(awaitingReviewBooking.getUser() != null ? awaitingReviewBooking.getUser().getFullName() : "Unknown")
-                    .bookable(false)
-                    .bookingId(awaitingReviewBooking.getId())
-                    .build();
-        }
-
-        // Booking NEEDS_ATTENTION
-        UsageBooking needsAttentionBooking = overlapping.stream()
-                .filter(b -> b.getStatus() == BookingStatus.NEEDS_ATTENTION)
-                .findFirst().orElse(null);
-        if (needsAttentionBooking != null) {
-            return TimeSlotResponseDTO.builder()
-                    .time(timeDisplay)
-                    .status(needsAttentionBooking.getStatus().name())
-                    .type("NEEDS_ATTENTION")
-                    .bookedBy(needsAttentionBooking.getUser() != null ? needsAttentionBooking.getUser().getFullName() : "Unknown")
-                    .bookable(false)
-                    .bookingId(needsAttentionBooking.getId())
+                    .bookingId(otherStatusBooking.getId())
                     .build();
         }
 
@@ -467,6 +443,7 @@ public class WeeklyCalendarService {
     /**
      * Tính số slot quota đã sử dụng cho các booking của người dùng trong tuần này
      * Đếm các slot có loại: BOOKED_SELF, CHECKED_IN_SELF
+     * Chỉ đếm slot của user (SELF), không đếm slot của người khác (OTHER)
      */
     private int calculateUsedQuotaSlots(List<DailySlotResponseDTO> dailySlots) {
         Set<String> quotaTypes = Set.of("BOOKED_SELF", "CHECKED_IN_SELF");
