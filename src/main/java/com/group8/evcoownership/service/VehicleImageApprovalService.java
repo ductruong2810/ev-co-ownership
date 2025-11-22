@@ -26,6 +26,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -164,6 +165,9 @@ public class VehicleImageApprovalService {
                 ownershipGroupRepository.save(group);
                 logGroupStatusUpdate(groupId, GroupStatus.INACTIVE, request.rejectionReason());
                 
+                // Xóa vehicle và vehicle images để có thể tạo nhóm lại với thông tin mới
+                deleteVehicleAndImagesForGroup(groupId);
+                
                 // Gửi thông báo cho tất cả thành viên trong group
                 if (notificationOrchestrator != null) {
                     String title = "Group Registration Rejected";
@@ -274,6 +278,9 @@ public class VehicleImageApprovalService {
 
             ownershipGroupRepository.save(group);
             
+            // Xóa vehicle và vehicle images để có thể tạo nhóm lại với thông tin mới
+            deleteVehicleAndImagesForGroup(groupId);
+            
             // Gửi thông báo cho tất cả thành viên trong group
             if (notificationOrchestrator != null) {
                 String title = "Group Registration Rejected";
@@ -296,6 +303,36 @@ public class VehicleImageApprovalService {
                         notificationData
                 );
             }
+        }
+    }
+
+    /**
+     * Xóa vehicle và tất cả vehicle images của group khi group bị reject
+     * Để có thể tạo nhóm lại với thông tin xe mới
+     */
+    @Transactional
+    public void deleteVehicleAndImagesForGroup(Long groupId) {
+        try {
+            // Tìm vehicle của group
+            Optional<Vehicle> vehicleOpt = vehicleRepository.findByOwnershipGroup_GroupId(groupId);
+            if (vehicleOpt.isPresent()) {
+                Vehicle vehicle = vehicleOpt.get();
+                Long vehicleId = vehicle.getId();
+                
+                // Xóa tất cả vehicle images trước
+                List<VehicleImage> images = vehicleImageRepository.findByVehicleId(vehicleId);
+                if (!images.isEmpty()) {
+                    vehicleImageRepository.deleteAll(images);
+                    log.info("Deleted {} vehicle images for group {}", images.size(), groupId);
+                }
+                
+                // Sau đó xóa vehicle
+                vehicleRepository.delete(vehicle);
+                log.info("Deleted vehicle {} for group {}", vehicleId, groupId);
+            }
+        } catch (Exception e) {
+            log.error("Error deleting vehicle and images for group {}: {}", groupId, e.getMessage(), e);
+            // Không throw exception để không ảnh hưởng đến flow chính
         }
     }
 

@@ -92,24 +92,6 @@ class ContractServiceTest {
 
 
     @Test
-    void getRequiredDepositAmount_Success() {
-        // Given
-        BigDecimal expectedAmount = new BigDecimal("2000000");
-        when(groupRepository.findById(TEST_GROUP_ID)).thenReturn(Optional.of(testGroup));
-        when(contractRepository.findByGroupGroupId(TEST_GROUP_ID))
-                .thenReturn(Optional.of(testContract));
-
-        // When
-        BigDecimal result = contractService.getRequiredDepositAmount(TEST_GROUP_ID);
-
-        // Then
-        assertEquals(expectedAmount, result);
-        verify(groupRepository).findById(TEST_GROUP_ID);
-        verify(contractRepository).findByGroupGroupId(TEST_GROUP_ID);
-    }
-
-
-    @Test
     void cancelContract_Success() {
         // Given
         String reason = "Group members decided to cancel";

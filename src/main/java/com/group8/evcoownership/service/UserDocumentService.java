@@ -27,6 +27,9 @@ import java.util.regex.Pattern;
 @Service
 @Slf4j
 @Transactional
+// Service xử lý upload, OCR, xác thực giấy tờ cá nhân (CCCD, GPLX,)
+// Hỗ trợ upload batch 2 mặt (front/back) cho 1 document (ví dụ CCCD hai mặt)
+// Bao gồm validate, trùng lặp, gọi OCR, bóc tách fields, kiểm tra số giấy tờ, upload cloud và lưu DB
 public class UserDocumentService {
 
     private final UserDocumentRepository userDocumentRepository;
@@ -35,6 +38,7 @@ public class UserDocumentService {
     private final OcrService ocrService;
     private final TransactionTemplate transactionTemplate;
 
+    // ===== Constructor: khởi tạo các bean repo/service/phụ trợ dùng trong nghiệp vụ upload =====
     public UserDocumentService(UserDocumentRepository userDocumentRepository,
                                UserRepository userRepository,
                                AzureBlobStorageService azureBlobStorageService,
@@ -47,6 +51,7 @@ public class UserDocumentService {
         this.transactionTemplate = transactionTemplate;
     }
 
+    // ========= upload batch giấy tờ 2 mặt cùng lúc =========
     public CompletableFuture<Map<String, Object>> uploadBatchDocuments(
             String email,
             String documentType,
@@ -54,12 +59,14 @@ public class UserDocumentService {
             MultipartFile backFile) {
 
         try {
+            // 1. Validate loại tài liệu và từng file ảnh hợp lệ/chưa trùng tên
             validateDocumentType(documentType);
             validateImage(frontFile);
             if (backFile != null && !backFile.isEmpty()) {
                 validateImage(backFile);
             }
 
+            // 2. Hash từng ảnh để chống upload trùng hai mặt (front == back)
             String frontHash = calculateFileHash(frontFile);
             String backHash = backFile != null ? calculateFileHash(backFile) : null;
 
@@ -67,14 +74,16 @@ public class UserDocumentService {
                 throw new InvalidDocumentException("Front and back images must be different. Please choose two different images.");
             }
 
+            // 3. Lấy user theo email
             User user = userRepository.findByEmail(email)
                     .orElseThrow(() -> new InvalidDocumentException("User not found"));
-
             Long userId = user.getUserId();
             long startTime = System.currentTimeMillis();
 
+            // 4. Gọi OCR để extract text mặt trước — bất đồng bộ để tránh block luồng xử lý
             return ocrService.extractTextFromImage(frontFile)
                     .thenApply(extractedText ->
+                            // Dùng TransactionTemplate run processUpload trong transaction
                             transactionTemplate.execute(status -> {
                                 try {
                                     return processUpload(
@@ -97,14 +106,17 @@ public class UserDocumentService {
                     });
 
         } catch (InvalidDocumentException e) {
+            // Nếu lỗi validation đầu vào
             log.warn("Validation failed: {}", e.getMessage());
             return CompletableFuture.failedFuture(e);
         } catch (IOException e) {
+            // Lỗi đọc file
             log.error("File processing error: {}", e.getMessage());
             return CompletableFuture.failedFuture(
                     new FileProcessingException("Unable to process file. Please try again.")
             );
         } catch (Exception e) {
+            // Lỗi không lường trước
             log.error("Unexpected error: {}", e.getMessage(), e);
             return CompletableFuture.failedFuture(
                     new FileProcessingException("Upload failed: " + e.getMessage())
@@ -112,6 +124,12 @@ public class UserDocumentService {
         }
     }
 
+    // ========= Xử lý batch upload cho 1 giấy tờ (cả 2 mặt) =========
+    // 1. Dùng text OCR để xác định loại giấy tờ và bóc tách số giấy tờ, metadata
+    // 2. Check loại giấy tờ ở FE và loại detect từ OCR có khớp nhau không
+    // 3. Kiểm tra số giấy tờ đã tồn tại/chồng lặp chưa (đảm bảo không có trường hợp trùng lặp giữa các user)
+    // 4. Gọi upload file lên cloud cho từng mặt FRONT/BACK
+    // 5. Trả về thông tin/tài liệu đã lưu thành công hoặc lỗi phát sinh
     private Map<String, Object> processUpload(
             Long userId,
             String documentType,
@@ -124,6 +142,7 @@ public class UserDocumentService {
             throw new InvalidDocumentException("Unable to extract text from image");
         }
 
+        // Xác định loại giấy tờ từ text OCR
         String detectedType = detectDocumentType(extractedText);
 
         if ("UNKNOWN".equals(detectedType)) {
@@ -132,6 +151,7 @@ public class UserDocumentService {
             );
         }
 
+        // Nếu loại giấy tờ FE gửi lên khác loại nhận dạng từ OCR ⇒ báo lỗi để người dùng upload đúng
         if (!detectedType.equals(documentType)) {
             String expectedTypeName = "CITIZEN_ID".equals(documentType)
                     ? "Citizen ID (CCCD)"
@@ -148,12 +168,15 @@ public class UserDocumentService {
             );
         }
 
+        // Bóc tách dữ liệu từ text ảnh: số giấy tờ, tên, ngày sinh, v.v.
         UserDocumentInfoDTO documentInfo = documentType.equals("CITIZEN_ID")
                 ? extractCitizenIdInfo(extractedText)
                 : extractDriverLicenseInfo(extractedText);
 
+        // Lấy số giấy tờ vừa bóc được
         String documentNumber = documentInfo.idNumber();
 
+        // Kiểm tra số giấy tờ đã tồn tại ở user khác chưa
         if (documentNumber != null && !documentNumber.isEmpty()) {
             userDocumentRepository.findByDocumentNumber(documentNumber)
                     .ifPresent(existing -> {
@@ -163,10 +186,12 @@ public class UserDocumentService {
                                             documentNumber)
                             );
                         }
+                        // Trùng số nhưng là cùng user upload lại ⇒ update
                         log.info("User re-uploading their own document: {}", documentNumber);
                     });
         }
 
+        // Upload file lên cloud (FRONT + BACK)
         Map<String, UserDocument> uploadedDocs = new HashMap<>();
         uploadedDocs.put("FRONT", uploadSingleSideWithDocNumber(
                 userId, documentType, "FRONT", frontFile, documentNumber, documentInfo));
@@ -179,6 +204,7 @@ public class UserDocumentService {
         log.info("Document uploaded: userId={}, type={}, number={}",
                 userId, documentType, documentNumber);
 
+        // Gói trả về thông tin batch
         return Map.of(
                 "success", true,
                 "uploadedDocuments", uploadedDocs,
@@ -188,6 +214,10 @@ public class UserDocumentService {
         );
     }
 
+    // ========= Helper nội bộ cho batch upload =========
+    // Được gọi trong uploadBatchDocuments/processUpload để xử lý riêng từng mặt (FRONT, BACK) của giấy tờ
+    // Không expose ra ngoài như API độc lập – chỉ dùng khi batch upload cùng lúc nhiều ảnh giấy tờ (2 mặt CCCD/GPLX)
+    // Giúp gom logic lưu trữ, kiểm tra, xóa ảnh cũ, upload cloud, cập nhật DB cho từng mặt khi batch uploa
     private UserDocument uploadSingleSideWithDocNumber(
             Long userId,
             String documentType,
@@ -199,6 +229,7 @@ public class UserDocumentService {
         log.info("Uploading: userId={}, type={}, side={}, docNumber={}",
                 userId, documentType, side, documentNumber);
 
+        // Check số giấy tờ trùng ở user khác (bảo đảm tính duy nhất)
         if (documentNumber != null && !documentNumber.isEmpty()) {
             Optional<UserDocument> otherUserDoc = userDocumentRepository
                     .findByDocumentNumber(documentNumber)
@@ -212,6 +243,7 @@ public class UserDocumentService {
             }
         }
 
+        // Nếu user này đã upload mặt này rồi ⇒ xoá ảnh cũ khỏi Azure, update mới luôn
         userDocumentRepository
                 .findByUserIdAndDocumentTypeAndSide(userId, documentType, side)
                 .ifPresent(oldDoc -> {
@@ -229,12 +261,15 @@ public class UserDocumentService {
 
         userDocumentRepository.flush();
 
+        // Upload ảnh lên cloud, nhận url
         String fileUrl = azureBlobStorageService.uploadFile(file);
 
+        // Nếu là mặt FRONT mới lưu số giấy tờ
         String savedDocNumber = "FRONT".equals(side)
                 ? (documentNumber != null ? documentNumber : "")
                 : "";
 
+        // Lưu record document vào db
         UserDocument document = UserDocument.builder()
                 .userId(userId)
                 .documentType(documentType)
@@ -259,6 +294,8 @@ public class UserDocumentService {
         return userDocumentRepository.save(document);
     }
 
+    // ========= Nhận dạng loại giấy tờ từ text OCR =========
+    // Trả về: CITIZEN_ID | DRIVER_LICENSE | UNKNOWN
     private String detectDocumentType(String extractedText) {
         if (extractedText == null || extractedText.trim().isEmpty()) {
             return "UNKNOWN";
@@ -279,6 +316,7 @@ public class UserDocumentService {
         return "UNKNOWN";
     }
 
+    // ========= Bóc thông tin CCCD từ text ảnh =========
     private UserDocumentInfoDTO extractCitizenIdInfo(String extractedText) {
         String idNumber = extractIdNumber(extractedText);
         String fullName = extractFullName(extractedText);
@@ -292,6 +330,7 @@ public class UserDocumentService {
         return new UserDocumentInfoDTO(idNumber, fullName, dateOfBirth, issueDate, expiryDate, address);
     }
 
+    // ========= Bóc thông tin GPLX từ text ảnh =========
     private UserDocumentInfoDTO extractDriverLicenseInfo(String extractedText) {
         String idNumber = extractLicenseNumber(extractedText);
         String fullName = extractFullName(extractedText);
@@ -305,48 +344,50 @@ public class UserDocumentService {
         return new UserDocumentInfoDTO(idNumber, fullName, dateOfBirth, issueDate, expiryDate, address);
     }
 
+    // ========= Bóc số CCCD từ chuỗi OCR =========
     private String extractIdNumber(String text) {
         Pattern pattern = Pattern.compile("\\b(\\d{12}|\\d{9})\\b");
         Matcher matcher = pattern.matcher(text);
         return matcher.find() ? matcher.group(1) : null;
     }
-
+    // ========= Bóc số GPLX từ chuỗi OCR =========
     private String extractLicenseNumber(String text) {
         Pattern pattern = Pattern.compile("(\\d{8,12})");
         Matcher matcher = pattern.matcher(text);
         return matcher.find() ? matcher.group(1) : null;
     }
-
+    // ========= Bóc đủ tên chứa chữ in hoa/or Unicode dấu =====
     private String extractFullName(String text) {
         Pattern pattern = Pattern.compile("(?:họ và tên|ho va ten|full name|name)[:：]?\\s*([A-ZẮẰẲẴẶĂẤẦẨẪẬÂÁÀÃẢẠĐẾỀỂỄỆÊÉÈẺẼẸÍÌỈĨỊỐỒỔỖỘÔỚỜỞỠỢƠÓÒÕỎỌỨỪỬỮỰƯÚÙỦŨỤÝỲỶỸỴ\\s]+)", Pattern.CASE_INSENSITIVE);
         Matcher matcher = pattern.matcher(text);
         return matcher.find() ? matcher.group(1).trim() : null;
     }
-
+    // ========= Bóc ngày sinh ====
     private String extractDateOfBirth(String text) {
         Pattern pattern = Pattern.compile("(?:ngày sinh|date of birth|dob|sinh)[:：]?\\s*(\\d{1,2}[/-]\\d{1,2}[/-]\\d{4})", Pattern.CASE_INSENSITIVE);
         Matcher matcher = pattern.matcher(text);
         return matcher.find() ? matcher.group(1) : null;
     }
-
+    // ========= Bóc ngày cấp ====
     private String extractIssueDate(String text) {
         Pattern pattern = Pattern.compile("(?:ngày cấp|issue date|date of issue)[:：]?\\s*(\\d{1,2}[/-]\\d{1,2}[/-]\\d{4})", Pattern.CASE_INSENSITIVE);
         Matcher matcher = pattern.matcher(text);
         return matcher.find() ? matcher.group(1) : null;
     }
-
+    // ========= Bóc ngày hết hạn ====
     private String extractExpiryDate(String text) {
         Pattern pattern = Pattern.compile("(?:có giá trị đến|valid until|expiry date)[:：]?\\s*(\\d{1,2}[/-]\\d{1,2}[/-]\\d{4})", Pattern.CASE_INSENSITIVE);
         Matcher matcher = pattern.matcher(text);
         return matcher.find() ? matcher.group(1) : null;
     }
-
+    // ========= Bóc địa chỉ (câu dài > 10 ký tự) ====
     private String extractAddress(String text) {
         Pattern pattern = Pattern.compile("(?:địa chỉ|address|dia chi)[:：]?\\s*([^\\n]{10,})", Pattern.CASE_INSENSITIVE);
         Matcher matcher = pattern.matcher(text);
         return matcher.find() ? matcher.group(1).trim() : null;
     }
 
+    // ========= Tính hash file để anti-up trùng ảnh, detect nhanh checksum ảnh đã gặp =========
     private String calculateFileHash(MultipartFile file) throws IOException {
         try {
             byte[] fileBytes = file.getBytes();
@@ -359,6 +400,7 @@ public class UserDocumentService {
         }
     }
 
+    // ========= Lấy toàn bộ tài liệu của user =========
     public List<UserDocument> getMyDocuments(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new InvalidDocumentException("User not found"));
@@ -366,6 +408,7 @@ public class UserDocumentService {
         return userDocumentRepository.findByUserId(user.getUserId());
     }
 
+    // ========= Lấy giấy tờ theo loại (CCCD/GPLX) =========
     public List<UserDocument> getDocumentsByType(String email, String documentType) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new InvalidDocumentException("User không tồn tại"));
@@ -373,12 +416,14 @@ public class UserDocumentService {
         return userDocumentRepository.findByUserIdAndDocumentType(user.getUserId(), documentType);
     }
 
+    // ========= Validate loại document (chỉ cho phép CITIZEN_ID, DRIVER_LICENSE) =========
     private void validateDocumentType(String documentType) {
         if (!documentType.equals("CITIZEN_ID") && !documentType.equals("DRIVER_LICENSE")) {
             throw new InvalidDocumentException("DocumentType must be CITIZEN_ID or DRIVER_LICENSE");
         }
     }
 
+    // ========= Kiểm tra file ảnh hợp lệ (còn dung lượng, đúng định dạng image) =========
     private void validateImage(MultipartFile file) {
         if (file.isEmpty()) {
             throw new InvalidDocumentException("File must not be empty");

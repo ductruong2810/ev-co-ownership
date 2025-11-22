@@ -151,54 +151,11 @@ public class ContractFeedbackService {
                 .build();
     }
 
-    /**
-     * Admin group approve một feedback cụ thể (theo feedbackId)
-     * CHỈ ADMIN GROUP của contract mới có quyền approve feedback
-     * Chỉ có thể approve feedbacks có status = PENDING
-     */
-    @Transactional
-    public ApiResponseDTO<FeedbackActionResponseDTO> approveFeedbackByGroupAdmin(
-            Long feedbackId,
-            FeedbackActionRequestDTO request,
-            Long userId) {
-        return approveFeedbackInternal(feedbackId, request, userId, true);
-    }
 
-    /**
-     * Admin group reject một feedback cụ thể (theo feedbackId)
-     * CHỈ ADMIN GROUP của contract mới có quyền reject feedback
-     * Chỉ có thể reject feedbacks có status = PENDING và isProcessed = false
-     */
     @Transactional
-    public ApiResponseDTO<FeedbackActionResponseDTO> rejectFeedbackByGroupAdmin(
+    public ApiResponseDTO<FeedbackActionResponseDTO> approveFeedbackInternal(
             Long feedbackId,
-            FeedbackActionRequestDTO request,
-            Long userId) {
-        return rejectFeedbackInternal(feedbackId, request, userId, true);
-    }
-
-    /**
-     * Admin approve một feedback cụ thể (theo feedbackId)
-     * Chỉ có thể approve feedbacks có status = PENDING
-     */
-    @Transactional
-    public ApiResponseDTO<FeedbackActionResponseDTO> approveFeedback(Long feedbackId, FeedbackActionRequestDTO request) {
-        return approveFeedbackInternal(feedbackId, request, null, false);
-    }
-
-    /**
-     * Internal method để approve feedback - dùng chung cho admin group và system admin
-     * @param feedbackId ID của feedback
-     * @param request Request chứa adminNote
-     * @param userId User ID (null nếu là system admin)
-     * @param isGroupAdmin true nếu là admin group, false nếu là system admin
-     */
-    @Transactional
-    protected ApiResponseDTO<FeedbackActionResponseDTO> approveFeedbackInternal(
-            Long feedbackId,
-            FeedbackActionRequestDTO request,
-            Long userId,
-            boolean isGroupAdmin) {
+            FeedbackActionRequestDTO request) {
 
         String adminNote = request != null ? request.adminNote() : null;
         adminNote = (adminNote != null && !adminNote.trim().isEmpty()) ? adminNote.trim() : null;
@@ -214,11 +171,6 @@ public class ContractFeedbackService {
 
         Contract contract = feedback.getContract();
 
-        // Kiểm tra user có phải là admin group không (chỉ khi là group admin)
-        if (isGroupAdmin) {
-            validateGroupAdmin(userId, contract.getId());
-        }
-
         // Approve feedback: Chuyển status thành APPROVED
         feedback.setStatus(MemberFeedbackStatus.APPROVED);
         feedback.setLastAdminAction(FeedbackAdminAction.APPROVE);
@@ -232,9 +184,7 @@ public class ContractFeedbackService {
 
         FeedbackActionResponseDTO feedbackData = buildFeedbackActionResponseDTO(feedback);
 
-        String message = isGroupAdmin
-                ? "Feedback approved by group admin. Feedback status changed to APPROVED."
-                : "Feedback approved. Feedback status changed to APPROVED.";
+        String message = "Feedback approved by group admin. Feedback status changed to APPROVED.";
 
         return ApiResponseDTO.<FeedbackActionResponseDTO>builder()
                 .success(true)
@@ -243,30 +193,10 @@ public class ContractFeedbackService {
                 .build();
     }
 
-    /**
-     * Admin reject một feedback cụ thể (theo feedbackId)
-     * Chỉ có thể reject feedbacks có status = PENDING và isProcessed = false
-     * Chuyển về PENDING để member làm lại và lưu adminNote vào reason
-     * Gửi notification và email cho member kèm adminNote
-     */
     @Transactional
-    public ApiResponseDTO<FeedbackActionResponseDTO> rejectFeedback(Long feedbackId, FeedbackActionRequestDTO request) {
-        return rejectFeedbackInternal(feedbackId, request, null, false);
-    }
-
-    /**
-     * Internal method để reject feedback - dùng chung cho admin group và system admin
-     * @param feedbackId ID của feedback
-     * @param request Request chứa adminNote
-     * @param userId User ID (null nếu là system admin)
-     * @param isGroupAdmin true nếu là admin group, false nếu là system admin
-     */
-    @Transactional
-    protected ApiResponseDTO<FeedbackActionResponseDTO> rejectFeedbackInternal(
+    public ApiResponseDTO<FeedbackActionResponseDTO> rejectFeedbackInternal(
             Long feedbackId,
-            FeedbackActionRequestDTO request,
-            Long userId,
-            boolean isGroupAdmin) {
+            FeedbackActionRequestDTO request) {
 
         String adminNote = request != null ? request.adminNote() : null;
         adminNote = (adminNote != null && !adminNote.trim().isEmpty()) ? adminNote.trim() : null;
@@ -289,11 +219,6 @@ public class ContractFeedbackService {
 
         Contract contract = feedback.getContract();
 
-        // Kiểm tra user có phải là admin group không (chỉ khi là group admin)
-        if (isGroupAdmin) {
-            validateGroupAdmin(userId, contract.getId());
-        }
-
         // Reject feedback: Chuyển status thành REJECTED
         feedback.setStatus(MemberFeedbackStatus.REJECTED);
         feedback.setAdminNote(adminNote);
@@ -307,9 +232,7 @@ public class ContractFeedbackService {
             Long memberUserId = feedback.getUser().getUserId();
 
             String title = "Feedback Rejected";
-            String message = isGroupAdmin
-                    ? "Your feedback has been rejected by group admin."
-                    : "Your feedback has been rejected by admin.";
+            String message = "Your feedback has been rejected by group admin.";
             if (adminNote != null) {
                 message += "\n\nAdmin note: " + adminNote;
             }
@@ -318,9 +241,6 @@ public class ContractFeedbackService {
             notificationData.put("feedbackId", feedback.getId());
             notificationData.put("contractId", contract.getId());
             notificationData.put("contractNumber", contractHelperService.generateContractNumber(contract.getId()));
-            if (!isGroupAdmin) {
-                notificationData.put("contractStatus", contract.getApprovalStatus());
-            }
             notificationData.put("reactionType", feedback.getReactionType());
             notificationData.put("adminNote", adminNote != null ? adminNote : "");
 
@@ -335,9 +255,7 @@ public class ContractFeedbackService {
 
         FeedbackActionResponseDTO feedbackData = buildFeedbackActionResponseDTO(feedback);
 
-        String responseMessage = isGroupAdmin
-                ? "Feedback rejected by group admin. Admin note has been sent to the member."
-                : "Feedback rejected. Admin note has been sent to the member.";
+        String responseMessage = "Feedback rejected by group admin. Admin note has been sent to the member.";
 
         return ApiResponseDTO.<FeedbackActionResponseDTO>builder()
                 .success(true)
@@ -345,7 +263,6 @@ public class ContractFeedbackService {
                 .data(feedbackData)
                 .build();
     }
-
 
     public ContractFeedbacksResponseDTO getContractFeedbacks(Long contractId, MemberFeedbackStatus filterStatus) {
         Contract contract = contractRepository.findById(contractId)
@@ -427,27 +344,6 @@ public class ContractFeedbackService {
                 .build();
     }
 
-
-    public ContractFeedbacksResponseDTO getContractFeedbacksByGroup(Long groupId, MemberFeedbackStatus filterStatus) {
-        Contract contract = contractRepository.findByGroupGroupId(groupId)
-                .orElseThrow(() -> new ResourceNotFoundException("Contract not found for group: " + groupId));
-        return getContractFeedbacks(contract.getId(), filterStatus);
-    }
-    
-    /**
-     * Overload method để backward compatibility - trả về tất cả DISAGREE feedbacks
-     */
-    public ContractFeedbacksResponseDTO getContractFeedbacks(Long contractId) {
-        return getContractFeedbacks(contractId, null);
-    }
-    
-    /**
-     * Overload method để backward compatibility - trả về tất cả DISAGREE feedbacks
-     */
-    public ContractFeedbacksResponseDTO getContractFeedbacksByGroup(Long groupId) {
-        return getContractFeedbacksByGroup(groupId, null);
-    }
-
     /**
      * Build FeedbackActionResponseDTO từ ContractFeedback
      */
@@ -470,22 +366,6 @@ public class ContractFeedbackService {
         return feedback != null && feedback.getLastAdminAction() != null;
     }
 
-    /**
-     * Kiểm tra user có phải là admin group của contract không
-     */
-    private void validateGroupAdmin(Long userId, Long contractId) {
-        Contract contract = contractRepository.findById(contractId)
-                .orElseThrow(() -> new ResourceNotFoundException("Contract not found"));
-
-        Long groupId = contract.getGroup().getGroupId();
-        OwnershipShare share = shareRepository.findById(
-                new OwnershipShareId(userId, groupId)
-        ).orElseThrow(() -> new IllegalStateException("User is not a member of this group"));
-
-        if (share.getGroupRole() != GroupRole.ADMIN) {
-            throw new IllegalStateException("Only group admin can perform this action. You are not the admin of this group.");
-        }
-    }
 
     /**
      * Kiểm tra và tự động chuyển sang SIGNED nếu tất cả thành viên (bao gồm cả admin) đã approve

@@ -4,6 +4,7 @@ import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.enums.ContractApprovalStatus;
 import com.group8.evcoownership.service.ContractService;
+import com.group8.evcoownership.service.ContractFeedbackService;
 import com.group8.evcoownership.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
@@ -22,6 +23,7 @@ public class AdminContractController { // Khai báo class controller cho phần 
 
     // Inject các service cần thiết
     private final ContractService contractService; // Service chứa logic xử lý hợp đồng
+    private final ContractFeedbackService contractFeedbackService; // Service chứa logic xử lý feedback
     private final UserService userService; // Service chứa logic xử lý người dùng (admin)
 
     /**
@@ -79,16 +81,6 @@ public class AdminContractController { // Khai báo class controller cho phần 
         return ResponseEntity.ok(contract);
     }
 
-    /**
-     * Kiểm tra trạng thái đóng tiền cọc của hợp đồng (chỉ dành cho admin)
-     */
-    @GetMapping("/{groupId}/deposit-status")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ContractDepositStatusResponseDTO> checkDepositStatus(@PathVariable Long groupId) {
-        ContractDepositStatusResponseDTO status = contractService.checkDepositStatus(groupId);
-        return ResponseEntity.ok(status);
-    }
-
     // Lấy danh sách tất cả hợp đồng (chỉ admin)
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
@@ -97,16 +89,6 @@ public class AdminContractController { // Khai báo class controller cho phần 
         List<ContractDTO> contracts = contractService.getAllContracts();
         // Trả về danh sách đó cho client
         return ResponseEntity.ok(contracts);
-    }
-
-    // Lấy thông tin chi tiết 1 hợp đồng theo ID
-    @GetMapping("/{contractId}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ContractDTO> getContractById(@PathVariable Long contractId) {
-        // Gọi service để lấy hợp đồng theo ID
-        ContractDTO contract = contractService.getContractById(contractId);
-        // Trả về kết quả
-        return ResponseEntity.ok(contract);
     }
 
     // Lấy danh sách hợp đồng đang ở trạng thái PENDING (chờ xử lý)
@@ -119,25 +101,13 @@ public class AdminContractController { // Khai báo class controller cho phần 
         return ResponseEntity.ok(contracts);
     }
 
-    /**
-     * Lấy danh sách tất cả hợp đồng thuộc 1 group (Admin only)
-     */
-    @GetMapping("/group/{groupId}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<ContractDTO>> getContractsByGroup(@PathVariable Long groupId) {
-        // Gọi service lấy danh sách hợp đồng của group đó (phiên bản dành cho admin)
-        List<ContractDTO> contracts = contractService.getContractsByGroupForAdmin(groupId);
-        // Trả danh sách đó về
-        return ResponseEntity.ok(contracts);
-    }
-
     // Lấy danh sách hợp đồng đang chờ thành viên phê duyệt
     @GetMapping("/pending-member-approval")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<ContractDTO>> getPendingMemberApprovalContracts() {
         // Gọi service lọc theo trạng thái PENDING_MEMBER_APPROVAL
         List<ContractDTO> contracts = contractService.getContractsByStatuses(
-                List.of(ContractApprovalStatus.PENDING, ContractApprovalStatus.PENDING_MEMBER_APPROVAL)
+                List.of(ContractApprovalStatus.PENDING, ContractApprovalStatus.SIGNED)
         );        // Trả danh sách về client
         return ResponseEntity.ok(contracts);
     }
@@ -155,12 +125,10 @@ public class AdminContractController { // Khai báo class controller cho phần 
     public ResponseEntity<ApiResponseDTO<FeedbackActionResponseDTO>> approveFeedback(
             @PathVariable Long feedbackId, // ID feedback cần xử lý
             // request body có thể có hoặc không (admin có thể gửi note hoặc để trống)
-            @RequestBody(required = false) FeedbackActionRequestDTO request,
-            @AuthenticationPrincipal String userEmail
+            @RequestBody(required = false) FeedbackActionRequestDTO request
     ) {
-        // Group admin: cần userId để validate
-        Long userId = contractService.getUserIdByEmail(userEmail);
-        ApiResponseDTO<FeedbackActionResponseDTO> result = contractService.approveFeedbackByGroupAdmin(feedbackId, request, userId);
+        // Group admin approve feedback - gọi trực tiếp ContractFeedbackService
+        ApiResponseDTO<FeedbackActionResponseDTO> result = contractFeedbackService.approveFeedbackInternal(feedbackId, request);
         
         // Trả kết quả thành công
         return ResponseEntity.ok(result);
@@ -178,12 +146,10 @@ public class AdminContractController { // Khai báo class controller cho phần 
     )
     public ResponseEntity<ApiResponseDTO<FeedbackActionResponseDTO>> rejectFeedback(
             @PathVariable Long feedbackId, // ID feedback cần reject
-            @RequestBody(required = false) FeedbackActionRequestDTO request, // có thể chứa lý do reject
-            @AuthenticationPrincipal String userEmail
+            @RequestBody(required = false) FeedbackActionRequestDTO request // có thể chứa lý do reject
     ) {
-        // Group admin: cần userId để validate
-        Long userId = contractService.getUserIdByEmail(userEmail);
-        ApiResponseDTO<FeedbackActionResponseDTO> result = contractService.rejectFeedbackByGroupAdmin(feedbackId, request, userId);
+        // Group admin reject feedback - gọi trực tiếp ContractFeedbackService
+        ApiResponseDTO<FeedbackActionResponseDTO> result = contractFeedbackService.rejectFeedbackInternal(feedbackId, request);
         
         // Trả về kết quả
         return ResponseEntity.ok(result);
