@@ -1,5 +1,8 @@
 package com.group8.evcoownership.service;
 
+import com.group8.evcoownership.dto.DocumentPreviewResponseDTO;
+import com.group8.evcoownership.dto.DocumentUploadResponseDTO;
+import com.group8.evcoownership.dto.UploadedDocumentDTO;
 import com.group8.evcoownership.dto.UserDocumentInfoDTO;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.entity.UserDocument;
@@ -34,29 +37,35 @@ public class UserDocumentService {
 
     private final UserDocumentRepository userDocumentRepository;
     private final UserRepository userRepository;
-    private final AzureBlobStorageService azureBlobStorageService;
+    private final CloudflareR2StorageService r2StorageService;
     private final OcrService ocrService;
     private final TransactionTemplate transactionTemplate;
 
     // ===== Constructor: khởi tạo các bean repo/service/phụ trợ dùng trong nghiệp vụ upload =====
     public UserDocumentService(UserDocumentRepository userDocumentRepository,
                                UserRepository userRepository,
-                               AzureBlobStorageService azureBlobStorageService,
+                               CloudflareR2StorageService r2StorageService,
                                OcrService ocrService,
                                TransactionTemplate transactionTemplate) {
         this.userDocumentRepository = userDocumentRepository;
         this.userRepository = userRepository;
-        this.azureBlobStorageService = azureBlobStorageService;
+        this.r2StorageService = r2StorageService;
         this.ocrService = ocrService;
         this.transactionTemplate = transactionTemplate;
     }
 
     // ========= upload batch giấy tờ 2 mặt cùng lúc =========
-    public CompletableFuture<Map<String, Object>> uploadBatchDocuments(
+    public CompletableFuture<DocumentUploadResponseDTO> uploadBatchDocuments(
             String email,
             String documentType,
             MultipartFile frontFile,
-            MultipartFile backFile) {
+            MultipartFile backFile,
+            UserDocumentInfoDTO editedInfo) {
+        
+        // Handle null editedInfo
+        if (editedInfo == null) {
+            // editedInfo will be extracted from OCR in processUpload
+        }
 
         try {
             // 1. Validate loại tài liệu và từng file ảnh hợp lệ/chưa trùng tên
@@ -92,7 +101,8 @@ public class UserDocumentService {
                                             frontFile,
                                             backFile,
                                             extractedText,
-                                            startTime
+                                            startTime,
+                                            editedInfo
                                     );
                                 } catch (Exception e) {
                                     log.error("Upload failed: {}", e.getMessage(), e);
@@ -130,13 +140,14 @@ public class UserDocumentService {
     // 3. Kiểm tra số giấy tờ đã tồn tại/chồng lặp chưa (đảm bảo không có trường hợp trùng lặp giữa các user)
     // 4. Gọi upload file lên cloud cho từng mặt FRONT/BACK
     // 5. Trả về thông tin/tài liệu đã lưu thành công hoặc lỗi phát sinh
-    private Map<String, Object> processUpload(
+    private DocumentUploadResponseDTO processUpload(
             Long userId,
             String documentType,
             MultipartFile frontFile,
             MultipartFile backFile,
             String extractedText,
-            long startTime) {
+            long startTime,
+            UserDocumentInfoDTO editedInfo) {
 
         if (extractedText == null || extractedText.trim().isEmpty()) {
             throw new InvalidDocumentException("Unable to extract text from image");
@@ -169,11 +180,13 @@ public class UserDocumentService {
         }
 
         // Bóc tách dữ liệu từ text ảnh: số giấy tờ, tên, ngày sinh, v.v.
-        UserDocumentInfoDTO documentInfo = documentType.equals("CITIZEN_ID")
-                ? extractCitizenIdInfo(extractedText)
-                : extractDriverLicenseInfo(extractedText);
+        // Nếu có editedInfo từ FE thì dùng, nếu không thì extract từ OCR
+        UserDocumentInfoDTO documentInfo = editedInfo != null ? editedInfo :
+                (documentType.equals("CITIZEN_ID")
+                        ? extractCitizenIdInfo(extractedText)
+                        : extractDriverLicenseInfo(extractedText));
 
-        // Lấy số giấy tờ vừa bóc được
+        // Lấy số giấy tờ vừa bóc được (hoặc từ editedInfo)
         String documentNumber = documentInfo.idNumber();
 
         // Kiểm tra số giấy tờ đã tồn tại ở user khác chưa
@@ -204,14 +217,39 @@ public class UserDocumentService {
         log.info("Document uploaded: userId={}, type={}, number={}",
                 userId, documentType, documentNumber);
 
-        // Gói trả về thông tin batch
-        return Map.of(
-                "success", true,
-                "uploadedDocuments", uploadedDocs,
-                "documentInfo", documentInfo,
-                "detectedType", detectedType,
-                "processingTime", (System.currentTimeMillis() - startTime) + "ms"
-        );
+        // Map UserDocument entities to UploadedDocumentDTO
+        Map<String, UploadedDocumentDTO> uploadedDocumentsMap = new HashMap<>();
+        
+        UserDocument frontDoc = uploadedDocs.get("FRONT");
+        if (frontDoc != null) {
+            uploadedDocumentsMap.put("FRONT", UploadedDocumentDTO.builder()
+                    .documentId(frontDoc.getDocumentId())
+                    .imageUrl(frontDoc.getImageUrl())
+                    .status(frontDoc.getStatus())
+                    .documentNumber(frontDoc.getDocumentNumber())
+                    .build());
+        }
+        
+        UserDocument backDoc = uploadedDocs.get("BACK");
+        if (backDoc != null) {
+            uploadedDocumentsMap.put("BACK", UploadedDocumentDTO.builder()
+                    .documentId(backDoc.getDocumentId())
+                    .imageUrl(backDoc.getImageUrl())
+                    .status(backDoc.getStatus())
+                    .documentNumber(backDoc.getDocumentNumber())
+                    .build());
+        }
+
+        // Build response DTO
+        long processingTime = System.currentTimeMillis() - startTime;
+        return DocumentUploadResponseDTO.builder()
+                .success(true)
+                .uploadedDocuments(uploadedDocumentsMap)
+                .documentInfo(documentInfo)
+                .detectedType(detectedType)
+                .ocrEnabled(true) // Google Vision enabled
+                .processingTime(processingTime + "ms")
+                .build();
     }
 
     // ========= Helper nội bộ cho batch upload =========
@@ -243,7 +281,7 @@ public class UserDocumentService {
             }
         }
 
-        // Nếu user này đã upload mặt này rồi ⇒ xoá ảnh cũ khỏi Azure, update mới luôn
+        // Nếu user này đã upload mặt này rồi ⇒ xoá ảnh cũ khỏi R2, update mới luôn
         userDocumentRepository
                 .findByUserIdAndDocumentTypeAndSide(userId, documentType, side)
                 .ifPresent(oldDoc -> {
@@ -251,9 +289,9 @@ public class UserDocumentService {
                             oldDoc.getDocumentId(), oldDoc.getSide());
 
                     try {
-                        azureBlobStorageService.deleteFile(oldDoc.getImageUrl());
+                        r2StorageService.deleteFile(oldDoc.getImageUrl());
                     } catch (Exception e) {
-                        log.warn("Failed to delete Azure file: {}", e.getMessage());
+                        log.warn("Failed to delete R2 file: {}", e.getMessage());
                     }
 
                     userDocumentRepository.delete(oldDoc);
@@ -261,8 +299,8 @@ public class UserDocumentService {
 
         userDocumentRepository.flush();
 
-        // Upload ảnh lên cloud, nhận url
-        String fileUrl = azureBlobStorageService.uploadFile(file);
+        // Upload ảnh lên R2, nhận url
+        String fileUrl = r2StorageService.uploadFile(file);
 
         // Nếu là mặt FRONT mới lưu số giấy tờ
         String savedDocNumber = "FRONT".equals(side)
@@ -436,6 +474,67 @@ public class UserDocumentService {
         String contentType = file.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
             throw new InvalidDocumentException("File must be an image (jpg, png, ...)");
+        }
+    }
+
+    // ========= Preview OCR extraction (không lưu vào DB) =========
+    public CompletableFuture<DocumentPreviewResponseDTO> previewOcrExtraction(
+            String documentType,
+            MultipartFile frontFile,
+            MultipartFile backFile) {
+
+        long startTime = System.currentTimeMillis();
+
+        try {
+            // Validate
+            validateDocumentType(documentType);
+            validateImage(frontFile);
+            if (backFile != null && !backFile.isEmpty()) {
+                validateImage(backFile);
+            }
+
+            // Extract text từ front file (chủ yếu thông tin ở mặt trước)
+            return ocrService.extractTextFromImage(frontFile)
+                    .thenApply(extractedText -> {
+                        if (extractedText == null || extractedText.trim().isEmpty()) {
+                            throw new InvalidDocumentException("Unable to extract text from image");
+                        }
+
+                        // Detect document type
+                        String detectedType = detectDocumentType(extractedText);
+                        boolean ocrEnabled = true; // Google Vision enabled
+
+                        // Extract document info
+                        UserDocumentInfoDTO documentInfo = documentType.equals("CITIZEN_ID")
+                                ? extractCitizenIdInfo(extractedText)
+                                : extractDriverLicenseInfo(extractedText);
+
+                        // Build response
+                        long finalProcessingTime = System.currentTimeMillis() - startTime;
+                        return DocumentPreviewResponseDTO.builder()
+                                .success(true)
+                                .processingTime(finalProcessingTime + "ms")
+                                .textLength(extractedText.length())
+                                .extractedText(extractedText)
+                                .isRegistrationDocument(ocrService.isVehicleRegistrationDocument(extractedText))
+                                .ocrEnabled(ocrEnabled)
+                                .detectedType(detectedType)
+                                .documentInfo(documentInfo)
+                                .build();
+                    })
+                    .exceptionally(ex -> {
+                        log.error("OCR preview failed: {}", ex.getMessage(), ex);
+                        throw new RuntimeException("OCR preview failed: " + ex.getMessage());
+                    });
+
+        } catch (InvalidDocumentException e) {
+            log.warn("Validation failed: {}", e.getMessage());
+            return CompletableFuture.failedFuture(e);
+        } catch (Exception e) {
+            log.error("Unexpected error in preview OCR: {}", e.getMessage(), e);
+            return CompletableFuture.failedFuture(
+                    new FileProcessingException("Preview OCR failed: " + e.getMessage())
+            );
         }
     }
 }

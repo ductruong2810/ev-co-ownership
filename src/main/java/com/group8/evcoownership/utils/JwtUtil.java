@@ -25,13 +25,13 @@ public class JwtUtil {
     private long expiration;
     // Thời gian sống của access token (tính bằng millisecon)
 
-//    @Value("${jwt.refresh-expiration}")
-//    private long refreshExpiration;
-//    // Thời gian sống của refresh token bình thường (ví dụ 7 ngày)
+    @Value("${jwt.refresh-expiration}")
+    private long refreshExpiration;
+    // Thời gian sống của refresh token bình thường (ví dụ 7 ngày)
 
-//    @Value("${jwt.remember-me-expiration}")
-//    private long rememberMeExpiration;
-//    // Thời gian sống của refresh token khi user chọn Remember Me (ví dụ 30 ngày)
+    @Value("${jwt.remember-me-expiration}")
+    private long rememberMeExpiration;
+    // Thời gian sống của refresh token khi user chọn Remember Me (ví dụ 30 ngày)
 
 
     // ========= Lấy userId Từ TOKEN =========
@@ -76,31 +76,31 @@ public class JwtUtil {
 
 
     // ========= TẠO REFRESH TOKEN =========
-//    /**
-//     * Generate Refresh Token (default - 7 ngày)
-//     */
-//    public String generateRefreshToken(User user) {
-//        // Mặc định không remember me -> dùng thời gian refreshExpiration
-//        return generateRefreshToken(user, false);
-//    }
-//
-//    /**
-//     * Generate Refresh Token với Remember Me option
-//     *
-//     * @param user       User object
-//     * @param rememberMe true = 30 ngày, false = 7 ngày
-//     */
-//    public String generateRefreshToken(User user, boolean rememberMe) {
-//        // Nếu rememberMe = true thì dùng thời gian sống dài hơn
-//        long expiry = rememberMe ? rememberMeExpiration : refreshExpiration;
-//
-//        return Jwts.builder()
-//                .setSubject(user.getEmail())                            // chỉ cần subject = email
-//                .setIssuedAt(new Date())
-//                .setExpiration(new Date(System.currentTimeMillis() + expiry))
-//                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
-//                .compact();
-//    }
+    /**
+     * Generate Refresh Token (default - 7 ngày)
+     */
+    public String generateRefreshToken(User user) {
+        // Mặc định không remember me -> dùng thời gian refreshExpiration
+        return generateRefreshToken(user, false);
+    }
+
+    /**
+     * Generate Refresh Token với Remember Me option
+     *
+     * @param user       User object
+     * @param rememberMe true = 30 ngày, false = 7 ngày
+     */
+    public String generateRefreshToken(User user, boolean rememberMe) {
+        // Nếu rememberMe = true thì dùng thời gian sống dài hơn
+        long expiry = rememberMe ? rememberMeExpiration : refreshExpiration;
+
+        return Jwts.builder()
+                .setSubject(user.getEmail())                            // chỉ cần subject = email
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + expiry))
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
 
 
     // ========= HÀM LẤY THÔNG TIN TỪ TOKEN ========= //

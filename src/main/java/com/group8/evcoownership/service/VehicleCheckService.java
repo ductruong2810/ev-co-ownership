@@ -295,6 +295,10 @@ public class VehicleCheckService {
             booking.setStatus(BookingStatus.AWAITING_REVIEW);
             booking.setCheckoutStatus(true);
             booking.setCheckoutTime(LocalDateTime.now());
+            // Save checkout signature if provided
+            if (request.signature() != null && !request.signature().isBlank()) {
+                booking.setCheckoutSignature(request.signature());
+            }
             booking.setQrCodeCheckout(generatePendingReviewQrPayload(booking));
             usageBookingRepository.save(booking);
 
@@ -368,6 +372,7 @@ public class VehicleCheckService {
 
         booking.setCheckinStatus(true);
         booking.setCheckinTime(LocalDateTime.now());
+        // Note: Signature will be saved separately via check-in confirmation endpoint
 
         String checkoutQr = generateCheckOutQrPayload(booking);
         booking.setQrCodeCheckout(checkoutQr);
@@ -515,6 +520,9 @@ public class VehicleCheckService {
         result.put("checkoutStatus", booking.getCheckoutStatus());
         result.put("checkoutTime", booking.getCheckoutTime());
         result.put("hasPostUseCheck", hasCheck(booking.getId(), "POST_USE"));
+        // Add signature information (only if exists, for privacy)
+        result.put("hasCheckinSignature", booking.getCheckinSignature() != null && !booking.getCheckinSignature().isBlank());
+        result.put("hasCheckoutSignature", booking.getCheckoutSignature() != null && !booking.getCheckoutSignature().isBlank());
         if (qrData != null) {
             result.put("qrUserId", qrData.userId());
         }
@@ -746,6 +754,80 @@ public class VehicleCheckService {
                                  LocalDateTime endTime) {
     }
 
+
+    /**
+     * Confirm check-in with digital signature
+     * This method is called after QR scan to save the signature
+     */
+    public Map<String, Object> confirmCheckInWithSignature(String qrCode, String signature, Long userId) {
+        Map<String, Object> result = new HashMap<>();
+
+        try {
+            BookingQrData qrData = parseBookingQr(qrCode);
+            if (qrData == null) {
+                result.put("success", false);
+                result.put("message", "Invalid QR code format");
+                return result;
+            }
+
+            UsageBooking booking = usageBookingRepository.findById(qrData.bookingId())
+                    .orElseThrow(() -> new EntityNotFoundException("Booking not found"));
+
+            // Validate user
+            if (!booking.getUser().getUserId().equals(userId)) {
+                result.put("success", false);
+                result.put("message", "You can only confirm your own bookings");
+                return result;
+            }
+
+            // Validate QR code
+            boolean isValidQr = Objects.equals(booking.getQrCodeCheckin(), qrCode);
+            if (!isValidQr) {
+                result.put("success", false);
+                result.put("message", "Invalid QR code for this booking");
+                return result;
+            }
+
+            // Check if already checked in
+            if (Boolean.TRUE.equals(booking.getCheckinStatus())) {
+                result.put("success", false);
+                result.put("message", "Booking already checked in");
+                return result;
+            }
+
+            // Save signature if provided
+            if (signature != null && !signature.isBlank()) {
+                booking.setCheckinSignature(signature);
+            }
+
+            // Complete check-in
+            booking.setCheckinStatus(true);
+            booking.setCheckinTime(LocalDateTime.now());
+            String checkoutQr = generateCheckOutQrPayload(booking);
+            booking.setQrCodeCheckout(checkoutQr);
+            usageBookingRepository.save(booking);
+
+            result.put("success", true);
+            result.put("message", "Check-in confirmed successfully");
+            result.put("bookingId", booking.getId());
+            result.put("checkinTime", booking.getCheckinTime());
+            result.put("checkoutQrCode", checkoutQr);
+
+            // Add metadata
+            attachBookingMetadata(booking, qrData, result);
+
+        } catch (EntityNotFoundException | IllegalArgumentException | IllegalStateException | SecurityException e) {
+            log.warn("Check-in confirmation failed: {}", e.getMessage());
+            result.put("success", false);
+            result.put("message", e.getMessage() != null ? e.getMessage() : "Unable to confirm check-in");
+        } catch (Exception e) {
+            log.error("Unexpected error confirming check-in", e);
+            result.put("success", false);
+            result.put("message", "Unable to confirm check-in");
+        }
+
+        return result;
+    }
 
     private record BookingContext(UsageBooking booking, BookingQrData qrData) {
     }

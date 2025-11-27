@@ -204,8 +204,11 @@ public class StaffService {
             document.setReviewNote("Document verified and approved");
         } else if ("REJECT".equals(action)) {
             document.setStatus("REJECTED");
-            // Ở đây đang để note cứng
-            document.setReviewNote("Document rejected");
+            // Sử dụng reason từ request nếu có, nếu không thì dùng message mặc định
+            String reviewNote = (request.getReason() != null && !request.getReason().trim().isEmpty())
+                    ? request.getReason().trim()
+                    : "Document rejected";
+            document.setReviewNote(reviewNote);
         } else {
             throw new IllegalArgumentException("Invalid action. Use APPROVE or REJECT");
         }

@@ -10,7 +10,6 @@ import com.group8.evcoownership.enums.MaintenanceCoverageType;
 import com.group8.evcoownership.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -290,9 +289,6 @@ public class MaintenanceAfterCheckOutService {
     public MaintenanceResponseDTO completeAfterCheckOut(Long id, String staffEmail) {
         Maintenance m = maintenanceRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Maintenance not found"));
-
-        User staff = userRepository.findByEmail(staffEmail)
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
         if (m.getCoverageType() != MaintenanceCoverageType.PERSONAL) {
             throw new IllegalStateException("This complete method is only for PERSONAL maintenance.");

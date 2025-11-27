@@ -4,6 +4,8 @@ import com.group8.evcoownership.dto.GroupBookingDTO;
 import com.group8.evcoownership.dto.ReviewDocumentRequestDTO;
 import com.group8.evcoownership.dto.UserGroupBookingsResponseDTO;
 import com.group8.evcoownership.dto.UserProfileResponseDTO;
+import com.group8.evcoownership.enums.FundType;
+import com.group8.evcoownership.service.FundService;
 import com.group8.evcoownership.service.StaffService;
 import com.group8.evcoownership.utils.AuthUtils;
 import io.swagger.v3.oas.annotations.Operation;
@@ -12,11 +14,15 @@ import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -30,6 +36,9 @@ public class StaffController {
     @Autowired
     private StaffService staffService;
     // Service chứa toàn bộ buisiness logic cho staff va admin
+
+    @Autowired
+    private FundService fundService;
 
     //========= Lấy danh sách user =========
     @GetMapping("/users")
@@ -155,6 +164,31 @@ public class StaffController {
         // Gọi service lấy danh sách user + group + booking + QRCode, trả dưới dạng Page
         Page<UserGroupBookingsResponseDTO> response = staffService.getAllUsersQRCode(page, size);
         return ResponseEntity.ok(response);
+    }
+
+    // ========= Xuất báo cáo tài chính tổng hợp cho tất cả groups =========
+    @GetMapping("/financial-reports/export-all")
+    @PreAuthorize("hasRole('STAFF') or hasRole('ADMIN')")
+    @Operation(summary = "Xuất báo cáo tài chính tổng hợp", description = "Xuất báo cáo tài chính CSV cho tất cả các nhóm trong hệ thống")
+    public ResponseEntity<String> exportAllGroupsFinancialReport(
+            @RequestParam(required = false) FundType fundType,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
+
+        log.info("Staff exporting financial reports for all groups - fundType: {}, from: {}, to: {}", fundType, from, to);
+
+        String csvContent = fundService.generateAllGroupsFinancialReportCSV(fundType, from, to);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.TEXT_PLAIN);
+        String filename = "financial_reports_all_groups_" + LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".csv";
+        headers.setContentDispositionFormData("attachment", filename);
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(csvContent);
     }
 
 }

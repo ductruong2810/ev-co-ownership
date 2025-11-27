@@ -208,12 +208,14 @@ CREATE TABLE UsageBooking
     Priority       INT,
     QrCodeCheckin  VARCHAR(255),
     QrCodeCheckout VARCHAR(255),
-    CheckinStatus  BIT           DEFAULT 0,
-    CheckoutStatus BIT           DEFAULT 0,
-    CheckinTime    DATETIME2(7),
-    CheckoutTime   DATETIME2(7),
-    CreatedAt      DATETIME2(7) DEFAULT SYSUTCDATETIME(),
-    UpdatedAt      DATETIME2(7) DEFAULT SYSUTCDATETIME(),
+    CheckinStatus     BIT           DEFAULT 0,
+    CheckoutStatus    BIT           DEFAULT 0,
+    CheckinTime       DATETIME2(7),
+    CheckoutTime      DATETIME2(7),
+    CheckinSignature  NVARCHAR(MAX) NULL,
+    CheckoutSignature NVARCHAR(MAX) NULL,
+    CreatedAt         DATETIME2(7) DEFAULT SYSUTCDATETIME(),
+    UpdatedAt         DATETIME2(7) DEFAULT SYSUTCDATETIME(),
     FOREIGN KEY (UserId) REFERENCES Users (UserId),
     FOREIGN KEY (VehicleId) REFERENCES Vehicle (VehicleId)
 );
@@ -275,7 +277,30 @@ CREATE TABLE Incident
 GO
 
 -- =============================================
--- 13) EXPENSE
+-- 13) DISPUTE
+-- =============================================
+CREATE TABLE Dispute
+(
+    DisputeId        BIGINT IDENTITY (1,1) PRIMARY KEY,
+    GroupId          BIGINT       NOT NULL,
+    CreatedBy        BIGINT       NOT NULL,
+    DisputeType      NVARCHAR(20) NOT NULL,
+    Status           NVARCHAR(20) NOT NULL DEFAULT 'OPEN',
+    Title            NVARCHAR(255) NOT NULL,
+    Description      NVARCHAR(MAX),
+    ResolvedBy       BIGINT       NULL,
+    ResolutionNote   NVARCHAR(MAX),
+    ResolvedAt       DATETIME2(7) NULL,
+    CreatedAt        DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
+    UpdatedAt        DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
+    FOREIGN KEY (GroupId) REFERENCES OwnershipGroup (GroupId),
+    FOREIGN KEY (CreatedBy) REFERENCES Users (UserId),
+    FOREIGN KEY (ResolvedBy) REFERENCES Users (UserId)
+);
+GO
+
+-- =============================================
+-- 14) EXPENSE
 -- =============================================
 CREATE TABLE Expense
 (
@@ -539,6 +564,14 @@ CREATE INDEX IX_Incident_BookingId ON Incident (BookingId);
 CREATE INDEX IX_Incident_UserId ON Incident (UserId);
 CREATE INDEX IX_Incident_ApprovedBy ON Incident (ApprovedBy);
 CREATE INDEX IX_Incident_Status ON Incident (Status);
+
+-- Dispute
+CREATE INDEX IX_Dispute_GroupId ON Dispute (GroupId);
+CREATE INDEX IX_Dispute_CreatedBy ON Dispute (CreatedBy);
+CREATE INDEX IX_Dispute_ResolvedBy ON Dispute (ResolvedBy);
+CREATE INDEX IX_Dispute_Status ON Dispute (Status);
+CREATE INDEX IX_Dispute_DisputeType ON Dispute (DisputeType);
+CREATE INDEX IX_Dispute_CreatedAt ON Dispute (CreatedAt);
 
 -- Expense
 CREATE INDEX IX_Expense_FundId ON Expense (FundId);

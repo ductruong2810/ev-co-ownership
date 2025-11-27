@@ -58,7 +58,7 @@ public class SecurityConfig {
                                 "/api/funds/payments/**", // các payment liên quan fund
                                 "/api/payments/**", // payment chung (public)
                                 "/api/auth/vnpay/**", // callback or public vnpay endpoints
-                                "/api/disputes/**", // tranh chấp (public theo thiết kế)
+                                // "/api/disputes/**", // tranh chấp - đã có authentication trong controller
                                 "/api/expenses/**",       // chi phí (public theo thiết kế)
                                 "/api/user/profile/**",    // profile công khai
                                 "/api/shares/**",          // shares (cổ phần)

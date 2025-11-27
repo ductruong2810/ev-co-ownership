@@ -1,5 +1,6 @@
 package com.group8.evcoownership.controller;
 
+import com.group8.evcoownership.dto.QrCheckInRequestDTO;
 import com.group8.evcoownership.dto.QrCheckOutRequestDTO;
 import com.group8.evcoownership.dto.QrScanRequestDTO;
 import com.group8.evcoownership.dto.UpdateCheckStatusRequestDTO;
@@ -204,6 +205,27 @@ public class VehicleCheckController {
             }
         }
 
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Confirm check-in with signature
+     * Example:
+     * POST /api/vehicle-checks/checkin/confirm
+     */
+    @PostMapping("/checkin/confirm")
+    @PreAuthorize("hasRole('CO_OWNER')")
+    @Operation(summary = "Xác nhận check-in với chữ ký", description = "Xác nhận check-in và lưu chữ ký số")
+    public ResponseEntity<Map<String, Object>> confirmCheckIn(@Valid @RequestBody QrCheckInRequestDTO request) {
+        String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        User currentUser = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found for email: " + userEmail));
+
+        Map<String, Object> result = vehicleCheckService.confirmCheckInWithSignature(
+                request.qrCode(), 
+                request.signature(), 
+                currentUser.getUserId()
+        );
         return ResponseEntity.ok(result);
     }
 

@@ -33,11 +33,6 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-thymeleaf</artifactId>
         </dependency>
-        <dependency>
-            <groupId>com.azure</groupId>
-            <artifactId>azure-storage-blob</artifactId>
-            <version>12.25.0</version>
-        </dependency>
         <!-- Explicitly add secure versions -->
         <!-- https://mvnrepository.com/artifact/com.twilio.sdk/twilio -->
         <dependency>
@@ -59,10 +54,23 @@
         <!--            <artifactId>twilio</artifactId>-->
         <!--            <version>10.9.2</version>-->
         <!--        </dependency>-->
+        <!-- AWS SDK for S3 (used for Cloudflare R2) -->
         <dependency>
-            <groupId>com.azure</groupId>
-            <artifactId>azure-identity</artifactId>
-            <version>1.12.2</version>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <version>2.25.62</version>
+        </dependency>
+        <!-- AWS SDK URL HTTP Client (required for S3) -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>url-connection-client</artifactId>
+            <version>2.25.62</version>
+        </dependency>
+        <!-- Google Cloud Vision API for OCR -->
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-vision</artifactId>
+            <version>3.44.0</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -116,6 +124,17 @@
             <artifactId>commons-lang3</artifactId>
             <version>3.18.0</version>
         </dependency>
+        <!-- Image processing for OCR optimization -->
+        <dependency>
+            <groupId>net.coobird</groupId>
+            <artifactId>thumbnailator</artifactId>
+            <version>0.4.20</version>
+        </dependency>
+        <!-- Apache HttpClient 5 for RestTemplate connection pooling -->
+        <dependency>
+            <groupId>org.apache.httpcomponents.client5</groupId>
+            <artifactId>httpclient5</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
@@ -133,13 +152,7 @@
             <version>0.11.5</version>
             <scope>runtime</scope>
         </dependency>
-        <!-- Azure Computer Vision -->
-        <dependency>
-            <groupId>com.azure</groupId>
-            <artifactId>azure-ai-vision-imageanalysis</artifactId>
-            <version>1.0.5</version>
-        </dependency>
-        <!-- Explicitly add Logback to fix NoClassDefFoundError on Azure -->
+        <!-- Explicitly add Logback -->
         <!-- Using version 1.5.19 to fix CVE-2025-11226 vulnerability -->
         <dependency>
             <groupId>ch.qos.logback</groupId>

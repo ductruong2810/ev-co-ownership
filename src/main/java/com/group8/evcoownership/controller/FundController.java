@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -64,16 +66,29 @@ public class FundController {
      *
      */
     @GetMapping("/groups/{groupId}/ledger/summary")
-    @Operation(summary = "Tổng hợp sổ quỹ", description = "Trả về tổng thu/chi + số dư Operating/Reserve và danh sách dòng sổ quỹ")
+    @Operation(summary = "Tổng hợp sổ quỹ", description = "Trả về tổng thu/chi + số dư Operating/Reserve và danh sách dòng sổ quỹ. Thêm ?export=true để xuất CSV")
     @PreAuthorize("hasAnyRole('ADMIN','STAFF','CO_OWNER')")
-    public ResponseEntity<LedgerSummaryDTO> getLedgerSummary(
+    public ResponseEntity<?> getLedgerSummary(
             @PathVariable Long groupId,
             @RequestParam(required = false) FundType fundType,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
+            @RequestParam(required = false, defaultValue = "false") Boolean export) {
 
+        if (Boolean.TRUE.equals(export)) {
+            // Export CSV
+            String csvContent = fundService.generateGroupLedgerCSV(groupId, fundType, from, to);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.TEXT_PLAIN);
+            headers.setContentDispositionFormData("attachment", "ledger_group_" + groupId + ".csv");
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(csvContent);
+        }
+
+        // Return JSON
         return ResponseEntity.ok(fundService.getLedgerSummary(groupId, fundType, from, to));
     }
 
