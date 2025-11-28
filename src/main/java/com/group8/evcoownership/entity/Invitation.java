@@ -4,7 +4,6 @@ package com.group8.evcoownership.entity;
 import com.group8.evcoownership.enums.InvitationStatus;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.Nationalized;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -38,7 +37,6 @@ public class Invitation {
     @JoinColumn(name = "InviterUserId", nullable = false)
     private User inviter;
 
-    @Nationalized
     @Column(name = "InviteeEmail", length = 100, nullable = false)
     private String inviteeEmail;
 

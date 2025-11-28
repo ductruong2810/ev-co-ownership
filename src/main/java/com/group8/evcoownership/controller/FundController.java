@@ -1,7 +1,6 @@
 package com.group8.evcoownership.controller;
 
 import com.group8.evcoownership.dto.FundsSummaryDTO;
-import com.group8.evcoownership.dto.LedgerSummaryDTO;
 import com.group8.evcoownership.dto.SharedFundDTO;
 import com.group8.evcoownership.enums.FundType;
 import com.group8.evcoownership.service.FundService;

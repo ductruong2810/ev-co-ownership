@@ -29,7 +29,7 @@ public class UserDocumentController {
 
     @Autowired
     private UserDocumentService userDocumentService; // Chứa toàn bộ logic xử lý tài liệu
-                                                     // + OCR + kiểm tra trùng lặp
+    // + OCR + kiểm tra trùng lặp
 
     // ========= Preview OCR (extract but don't save) =========
     @PostMapping("/preview-ocr")
@@ -80,7 +80,7 @@ public class UserDocumentController {
         // Build editedInfo từ request params nếu có
         UserDocumentInfoDTO editedInfo = null;
         if (editedIdNumber != null || editedFullName != null || editedDateOfBirth != null ||
-            editedIssueDate != null || editedExpiryDate != null || editedAddress != null) {
+                editedIssueDate != null || editedExpiryDate != null || editedAddress != null) {
             editedInfo = new UserDocumentInfoDTO(
                     editedIdNumber,
                     editedFullName,

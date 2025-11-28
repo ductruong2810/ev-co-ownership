@@ -6,4 +6,5 @@ public record UserWithRejectedCheckDTO(
         Long vehicleId,
         String vehicleModel,
         String licensePlate
-) {}
+) {
+}

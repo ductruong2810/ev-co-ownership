@@ -8,7 +8,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.Nationalized;
 
 import java.time.LocalDateTime;
 
@@ -49,14 +48,11 @@ public class Dispute {
     private DisputeStatus status = DisputeStatus.OPEN;
 
     // Tiêu đề tranh chấp
-    @Nationalized
     @Column(name = "Title", length = 255, nullable = false)
     private String title;
 
     // Mô tả chi tiết tranh chấp
-    @Nationalized
-    @Lob
-    @Column(name = "Description")
+    @Column(name = "Description", columnDefinition = "TEXT")
     private String description;
 
     // FK → Users (staff/admin giải quyết)
@@ -65,9 +61,7 @@ public class Dispute {
     private User resolvedBy;
 
     // Ghi chú giải quyết
-    @Nationalized
-    @Lob
-    @Column(name = "ResolutionNote")
+    @Column(name = "ResolutionNote", columnDefinition = "TEXT")
     private String resolutionNote;
 
     // Thời điểm giải quyết
@@ -98,4 +92,5 @@ public class Dispute {
         this.updatedAt = LocalDateTime.now();
     }
 }
+
 

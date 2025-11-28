@@ -9,7 +9,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.Nationalized;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -51,13 +50,10 @@ public class Payment {
     private PaymentStatus status;
 
     @Size(max = 100)
-    @Nationalized
     @Column(name = "TransactionCode", length = 100)
     private String transactionCode;
 
-    @Nationalized
-    @Lob
-    @Column(name = "ProviderResponse")
+    @Column(name = "ProviderResponse", columnDefinition = "TEXT")
     private String providerResponse;
 
     @Enumerated(EnumType.STRING)
@@ -75,9 +71,7 @@ public class Payment {
 //    @JoinColumn(name = "SourceDisputeId")
 //    private Dispute sourceDispute; // if originated from a dispute
 
-    @Lob
-    @Nationalized
-    @Column(name = "PersonalReason")
+    @Column(name = "PersonalReason", columnDefinition = "TEXT")
     private String personalReason;
 
     // Payment.java

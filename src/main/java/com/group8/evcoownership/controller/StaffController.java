@@ -96,7 +96,7 @@ public class StaffController {
     public ResponseEntity<Map<String, String>> reviewDocument(
             @PathVariable Long documentId, //id của tài liệu cần duyêt
             @Valid @RequestBody ReviewDocumentRequestDTO request, // request gồm trạng thái mới và reason (nếu reject)
-            Authentication authentication)  { // chứa thông tin staff hiện tại (JWT)
+            Authentication authentication) { // chứa thông tin staff hiện tại (JWT)
 
         // Lấy email của staff từ Authentication được set bởi thằng JwtAuthenticationFilter
         String staffEmail = AuthUtils.getCurrentUserEmail(authentication);

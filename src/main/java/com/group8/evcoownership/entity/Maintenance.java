@@ -7,7 +7,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.Nationalized;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -48,9 +47,7 @@ public class Maintenance {
     @JoinColumn(name = "LiableUserId")
     private User liableUser;
 
-    @Nationalized
-    @Lob
-    @Column(name = "Description")
+    @Column(name = "Description", columnDefinition = "TEXT")
     private String description;
 
     // Giá sửa chính thức (technician nhập, không đổi nữa)

@@ -30,9 +30,9 @@ public class R2Config {
 
     @Bean
     public S3Client r2S3Client() {
-        if (!enabled || endpoint == null || endpoint.isEmpty() || 
-            accessKeyId == null || accessKeyId.isEmpty() ||
-            secretAccessKey == null || secretAccessKey.isEmpty()) {
+        if (!enabled || endpoint == null || endpoint.isEmpty() ||
+                accessKeyId == null || accessKeyId.isEmpty() ||
+                secretAccessKey == null || secretAccessKey.isEmpty()) {
             log.warn("R2 is not enabled or credentials are missing. R2 S3Client will not be created.");
             return null;
         }

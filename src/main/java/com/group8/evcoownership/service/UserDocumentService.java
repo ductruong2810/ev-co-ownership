@@ -61,7 +61,7 @@ public class UserDocumentService {
             MultipartFile frontFile,
             MultipartFile backFile,
             UserDocumentInfoDTO editedInfo) {
-        
+
         // Handle null editedInfo
         if (editedInfo == null) {
             // editedInfo will be extracted from OCR in processUpload
@@ -219,7 +219,7 @@ public class UserDocumentService {
 
         // Map UserDocument entities to UploadedDocumentDTO
         Map<String, UploadedDocumentDTO> uploadedDocumentsMap = new HashMap<>();
-        
+
         UserDocument frontDoc = uploadedDocs.get("FRONT");
         if (frontDoc != null) {
             uploadedDocumentsMap.put("FRONT", UploadedDocumentDTO.builder()
@@ -229,7 +229,7 @@ public class UserDocumentService {
                     .documentNumber(frontDoc.getDocumentNumber())
                     .build());
         }
-        
+
         UserDocument backDoc = uploadedDocs.get("BACK");
         if (backDoc != null) {
             uploadedDocumentsMap.put("BACK", UploadedDocumentDTO.builder()
@@ -388,36 +388,42 @@ public class UserDocumentService {
         Matcher matcher = pattern.matcher(text);
         return matcher.find() ? matcher.group(1) : null;
     }
+
     // ========= Bóc số GPLX từ chuỗi OCR =========
     private String extractLicenseNumber(String text) {
         Pattern pattern = Pattern.compile("(\\d{8,12})");
         Matcher matcher = pattern.matcher(text);
         return matcher.find() ? matcher.group(1) : null;
     }
+
     // ========= Bóc đủ tên chứa chữ in hoa/or Unicode dấu =====
     private String extractFullName(String text) {
         Pattern pattern = Pattern.compile("(?:họ và tên|ho va ten|full name|name)[:：]?\\s*([A-ZẮẰẲẴẶĂẤẦẨẪẬÂÁÀÃẢẠĐẾỀỂỄỆÊÉÈẺẼẸÍÌỈĨỊỐỒỔỖỘÔỚỜỞỠỢƠÓÒÕỎỌỨỪỬỮỰƯÚÙỦŨỤÝỲỶỸỴ\\s]+)", Pattern.CASE_INSENSITIVE);
         Matcher matcher = pattern.matcher(text);
         return matcher.find() ? matcher.group(1).trim() : null;
     }
+
     // ========= Bóc ngày sinh ====
     private String extractDateOfBirth(String text) {
         Pattern pattern = Pattern.compile("(?:ngày sinh|date of birth|dob|sinh)[:：]?\\s*(\\d{1,2}[/-]\\d{1,2}[/-]\\d{4})", Pattern.CASE_INSENSITIVE);
         Matcher matcher = pattern.matcher(text);
         return matcher.find() ? matcher.group(1) : null;
     }
+
     // ========= Bóc ngày cấp ====
     private String extractIssueDate(String text) {
         Pattern pattern = Pattern.compile("(?:ngày cấp|issue date|date of issue)[:：]?\\s*(\\d{1,2}[/-]\\d{1,2}[/-]\\d{4})", Pattern.CASE_INSENSITIVE);
         Matcher matcher = pattern.matcher(text);
         return matcher.find() ? matcher.group(1) : null;
     }
+
     // ========= Bóc ngày hết hạn ====
     private String extractExpiryDate(String text) {
         Pattern pattern = Pattern.compile("(?:có giá trị đến|valid until|expiry date)[:：]?\\s*(\\d{1,2}[/-]\\d{1,2}[/-]\\d{4})", Pattern.CASE_INSENSITIVE);
         Matcher matcher = pattern.matcher(text);
         return matcher.find() ? matcher.group(1) : null;
     }
+
     // ========= Bóc địa chỉ (câu dài > 10 ký tự) ====
     private String extractAddress(String text) {
         Pattern pattern = Pattern.compile("(?:địa chỉ|address|dia chi)[:：]?\\s*([^\\n]{10,})", Pattern.CASE_INSENSITIVE);

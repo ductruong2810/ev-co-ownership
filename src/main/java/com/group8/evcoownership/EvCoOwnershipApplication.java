@@ -22,7 +22,7 @@ public class EvCoOwnershipApplication {
     public static void main(String[] args) {
         // Load .env file trước khi Spring Boot khởi động
         loadEnvFile();
-        
+
         SpringApplication app = new SpringApplication(EvCoOwnershipApplication.class);
         // Disable shutdown hook for better control
         app.setRegisterShutdownHook(false);

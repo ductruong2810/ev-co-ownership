@@ -39,11 +39,11 @@ public class MaintenanceAfterCheckOutController {
     @Operation(
             summary = "[Technician] Danh sách user có VehicleCheck bị reject",
             description = """
-                Dựa trên bảng VehicleCheck:
-                - Lọc các check có status REJECTED / FAILED / NEEDS_ATTENTION
-                - Lấy booking.user
-                - Trả về danh sách user (id, name, email) không trùng.
-                """
+                    Dựa trên bảng VehicleCheck:
+                    - Lọc các check có status REJECTED / FAILED / NEEDS_ATTENTION
+                    - Lấy booking.user
+                    - Trả về danh sách user (id, name, email) không trùng.
+                    """
     )
     public ResponseEntity<List<UserWithRejectedCheckDTO>> getUsersWithRejectedChecks() {
         return ResponseEntity.ok(
@@ -56,13 +56,13 @@ public class MaintenanceAfterCheckOutController {
     @Operation(
             summary = "[Technician] Tạo yêu cầu bảo trì sau khi đi xe về (PERSONAL)",
             description = """
-                Technician mở yêu cầu bảo trì khi phát hiện co-owner làm hư xe sau khi trả xe.
-                - coverageType = PERSONAL.
-                - Path: vehicleId (xe đang kiểm tra).
-                - Body: userId (co-owner phải trả), description, cost, estimatedDurationDays.
-                - Backend kiểm tra userId có thuộc group của vehicle hay không.
-                - Trạng thái ban đầu: PENDING.
-                """
+                    Technician mở yêu cầu bảo trì khi phát hiện co-owner làm hư xe sau khi trả xe.
+                    - coverageType = PERSONAL.
+                    - Path: vehicleId (xe đang kiểm tra).
+                    - Body: userId (co-owner phải trả), description, cost, estimatedDurationDays.
+                    - Backend kiểm tra userId có thuộc group của vehicle hay không.
+                    - Trạng thái ban đầu: PENDING.
+                    """
     )
     public ResponseEntity<MaintenanceResponseDTO> createAfterCheckOut(
             @Valid @RequestBody MaintenanceAfterCheckOutCreateRequestDTO req,

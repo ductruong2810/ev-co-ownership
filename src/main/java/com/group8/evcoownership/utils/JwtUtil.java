@@ -76,6 +76,7 @@ public class JwtUtil {
 
 
     // ========= TẠO REFRESH TOKEN =========
+
     /**
      * Generate Refresh Token (default - 7 ngày)
      */
@@ -104,7 +105,6 @@ public class JwtUtil {
 
 
     // ========= HÀM LẤY THÔNG TIN TỪ TOKEN ========= //
-
 
 
     // Extract email từ token (subject)

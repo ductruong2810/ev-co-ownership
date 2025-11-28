@@ -28,17 +28,18 @@ public class AdminDashboardController {
     @GetMapping("/statistics")
     @Operation(
             summary = "[ADMIN] Thống kê tổng hợp",
-            description = "Lấy tất cả thống kê tổng hợp cho Admin Dashboard. Có thể lọc theo khoảng thời gian với query params from và to."
+            description = "Lấy tất cả thống kê tổng hợp cho Admin Dashboard. Có thể lọc theo khoảng thời gian với query params from và to, và periodType (DAY/WEEK/MONTH) để tính revenue theo period."
     )
     public ResponseEntity<DashboardStatisticsDTO> getDashboardStatistics(
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
+            @RequestParam(required = false, defaultValue = "DAY") String periodType
     ) {
         DashboardStatisticsDTO statistics;
         if (from != null || to != null) {
-            statistics = dashboardService.getDashboardStatistics(from, to);
+            statistics = dashboardService.getDashboardStatistics(from, to, periodType);
         } else {
             statistics = dashboardService.getDashboardStatistics();
         }

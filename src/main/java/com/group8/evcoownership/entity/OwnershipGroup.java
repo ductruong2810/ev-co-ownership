@@ -8,7 +8,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.Nationalized;
 
 import java.time.LocalDateTime;
 
@@ -33,7 +32,6 @@ public class OwnershipGroup {
 
     @Size(max = 100)
     @NotNull
-    @Nationalized
     @Column(name = "GroupName", nullable = false, length = 100)
     private String groupName;
 
@@ -41,17 +39,13 @@ public class OwnershipGroup {
     @Column(name = "Status", nullable = false, length = 20)
     private GroupStatus status; // default set in @PrePersist
 
-    @Nationalized
-    @Lob
-    @Column(name = "Description")
+    @Column(name = "Description", columnDefinition = "TEXT")
     private String description;
 
     @Column(name = "MemberCapacity")
     private Integer memberCapacity;
 
-    @Nationalized
-    @Lob
-    @Column(name = "RejectionReason")
+    @Column(name = "RejectionReason", columnDefinition = "TEXT")
     private String rejectionReason;
 
     //thêm quan hệ tới quỹ

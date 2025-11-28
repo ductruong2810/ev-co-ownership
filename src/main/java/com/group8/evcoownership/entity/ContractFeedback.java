@@ -8,7 +8,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.Nationalized;
 
 import java.time.LocalDateTime;
 
@@ -40,11 +39,9 @@ public class ContractFeedback {
     @Column(name = "ReactionType")
     private ReactionType reactionType; // AGREE → APPROVED, DISAGREE → PENDING
 
-    @Nationalized
     @Column(name = "Reason", length = 1000)
     private String reason; // Lý do (bắt buộc nếu reactionType = DISAGREE)
 
-    @Nationalized
     @Column(name = "AdminNote", length = 1000)
     private String adminNote; // Ghi chú từ admin khi xử lý feedback
 

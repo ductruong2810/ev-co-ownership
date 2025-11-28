@@ -4,7 +4,10 @@ package com.group8.evcoownership.service;
 import com.group8.evcoownership.dto.MaintenanceAfterCheckOutCreateRequestDTO;
 import com.group8.evcoownership.dto.MaintenanceResponseDTO;
 import com.group8.evcoownership.dto.UserWithRejectedCheckDTO;
-import com.group8.evcoownership.entity.*;
+import com.group8.evcoownership.entity.Maintenance;
+import com.group8.evcoownership.entity.UsageBooking;
+import com.group8.evcoownership.entity.User;
+import com.group8.evcoownership.entity.VehicleCheck;
 import com.group8.evcoownership.enums.BookingStatus;
 import com.group8.evcoownership.enums.MaintenanceCoverageType;
 import com.group8.evcoownership.repository.*;
@@ -30,7 +33,6 @@ public class MaintenanceAfterCheckOutService {
     private final OwnershipShareRepository ownershipShareRepository;
     private final UsageBookingRepository usageBookingRepository;
     private final VehicleCheckRepository vehicleCheckRepository;
-
 
 
     /**
@@ -66,7 +68,6 @@ public class MaintenanceAfterCheckOutService {
 
         return result;
     }
-
 
 
     /**
@@ -137,8 +138,6 @@ public class MaintenanceAfterCheckOutService {
         m = maintenanceRepository.save(m);
         return mapToDTO(m);
     }
-
-
 
 
     // =============== Technician: xem các yêu cầu PERSONAL do mình tạo ===============
@@ -333,7 +332,6 @@ public class MaintenanceAfterCheckOutService {
                                 });
                     });
         }
-
 
 
         return mapToDTO(m);

@@ -133,7 +133,7 @@ public class ContractController {
         boolean isSystemAdmin = authentication != null && authentication.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .anyMatch(a -> a.equals("ROLE_ADMIN") || a.equals("ROLE_STAFF"));
-        
+
         // Admin group: xem tất cả status (null = không filter), System admin: chỉ xem APPROVED
         MemberFeedbackStatus filterStatus = isSystemAdmin
                 ? MemberFeedbackStatus.APPROVED

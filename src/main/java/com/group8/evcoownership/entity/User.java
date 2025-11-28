@@ -9,7 +9,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.Nationalized;
 
 import java.time.LocalDateTime;
 
@@ -29,29 +28,24 @@ public class User {
 
     @Size(max = 100)
     @NotNull
-    @Nationalized
     @Column(name = "FullName", nullable = false, length = 100)
     private String fullName;
 
     @Size(max = 100)
     @NotNull
-    @Nationalized
     @Column(name = "Email", nullable = false, length = 100)
     private String email;
 
     @Size(max = 255)
     @NotNull
-    @Nationalized
-    @Column(name = "PasswordHash", nullable = false)
+    @Column(name = "PasswordHash", nullable = false, length = 255)
     private String passwordHash;
 
     @Size(max = 20)
-    @Nationalized
     @Column(name = "PhoneNumber", length = 20)
     private String phoneNumber;
 
     @Size(max = 500)
-    @Nationalized
     @Column(name = "AvatarUrl", length = 500)
     private String avatarUrl;
 

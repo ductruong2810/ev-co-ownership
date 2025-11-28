@@ -7,7 +7,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.ColumnDefault;
-import org.hibernate.annotations.Nationalized;
 
 import java.time.LocalDateTime;
 
@@ -28,13 +27,10 @@ public class Notification {
     private User user;
 
     @Size(max = 255)
-    @Nationalized
-    @Column(name = "Title")
+    @Column(name = "Title", length = 255)
     private String title;
 
-    @Nationalized
-    @Lob
-    @Column(name = "Message")
+    @Column(name = "Message", columnDefinition = "TEXT")
     private String message;
 
     @Column(name = "NotificationType", length = 50)

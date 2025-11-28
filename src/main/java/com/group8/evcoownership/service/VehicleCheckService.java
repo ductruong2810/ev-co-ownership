@@ -106,8 +106,7 @@ public class VehicleCheckService {
         if (booking != null && normalizedStatus != null) {
             switch (normalizedStatus) {
                 case "APPROVED", "PASSED", "COMPLETED" -> finalizeBookingAfterApproval(booking);
-                case "REJECTED", "FAILED", "NEEDS_ATTENTION" ->
-                        handleTechnicianRejection(booking);
+                case "REJECTED", "FAILED", "NEEDS_ATTENTION" -> handleTechnicianRejection(booking);
                 default -> {
                     // no-op for other statuses
                 }
@@ -141,6 +140,7 @@ public class VehicleCheckService {
         return vehicleCheckRepository.findAll(pageable)
                 .map(this::toDto);
     }
+
     // ham helper cho getAllChecks
     private VehicleCheckResponseDTO toDto(VehicleCheck vc) {
         return VehicleCheckResponseDTO.builder()

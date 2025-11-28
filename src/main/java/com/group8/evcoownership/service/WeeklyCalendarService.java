@@ -220,7 +220,8 @@ public class WeeklyCalendarService {
      * param lastMaintenanceDate Ngày bảo dưỡng cuối cùng
      * param nextMaintenanceDate Ngày bảo dưỡng tiếp theo
      */
-    private record MaintenanceDates(LocalDate lastMaintenanceDate, LocalDate nextMaintenanceDate) {}
+    private record MaintenanceDates(LocalDate lastMaintenanceDate, LocalDate nextMaintenanceDate) {
+    }
 
     /**
      * Lấy các ngày bảo dưỡng (ngày bảo dưỡng cuối và ngày bảo dưỡng tiếp theo)
@@ -352,7 +353,7 @@ public class WeeklyCalendarService {
         String timeDisplay = formatTimeSlot(start, end);
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime lockThreshold = start.plusMinutes(20);
-        
+
         // Booking CONFIRMED
         UsageBooking confirmedBooking = overlapping.stream()
                 .filter(b -> b.getStatus() == BookingStatus.CONFIRMED)
@@ -373,14 +374,14 @@ public class WeeklyCalendarService {
         // Booking COMPLETED, AWAITING_REVIEW, NEEDS_ATTENTION
         // Các booking này cũng cần phân biệt SELF vs OTHER để tính quota đúng
         UsageBooking otherStatusBooking = overlapping.stream()
-                .filter(b -> b.getStatus() == BookingStatus.COMPLETED 
+                .filter(b -> b.getStatus() == BookingStatus.COMPLETED
                         || b.getStatus() == BookingStatus.AWAITING_REVIEW
                         || b.getStatus() == BookingStatus.NEEDS_ATTENTION)
                 .findFirst().orElse(null);
         if (otherStatusBooking != null) {
             // Sử dụng cùng logic như CONFIRMED để phân biệt SELF vs OTHER
             String slotType = getString(userId, otherStatusBooking);
-            
+
             return TimeSlotResponseDTO.builder()
                     .time(timeDisplay)
                     .status(otherStatusBooking.getStatus().name())
@@ -592,13 +593,13 @@ public class WeeklyCalendarService {
                 request.getStartDateTime(),
                 request.getEndDateTime()
         );
-        
+
         // Lọc chỉ các booking CONFIRMED (loại trừ COMPLETED, CANCELLED, etc.)
         boolean hasOverlap = overlappingBookings.stream()
-                .anyMatch(b -> b.getStatus() == BookingStatus.CONFIRMED 
+                .anyMatch(b -> b.getStatus() == BookingStatus.CONFIRMED
                         || b.getStatus() == BookingStatus.AWAITING_REVIEW
                         || b.getStatus() == BookingStatus.NEEDS_ATTENTION);
-        
+
         if (hasOverlap) {
             throw new BookingValidationException(
                     "This time slot is already booked by another member. Please select a different time slot.");

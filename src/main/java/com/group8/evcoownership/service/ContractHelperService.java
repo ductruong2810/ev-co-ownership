@@ -116,14 +116,14 @@ public class ContractHelperService {
         // hoặc đến khi gặp 2 dòng trống liên tiếp (đánh dấu phần mới)
         Pattern pattern = Pattern.compile(
                 "\\s*\\[AUTO-SIGNED].*?\\[LEGAL INFORMATION].*?(?=\\n\\s*\\n|$)",
-            Pattern.DOTALL | Pattern.CASE_INSENSITIVE
+                Pattern.DOTALL | Pattern.CASE_INSENSITIVE
         );
 
         String cleaned = pattern.matcher(terms).replaceAll("").trim();
 
         // Loại bỏ các dòng trống thừa (3 dòng trống trở lên thành 2 dòng trống)
         cleaned = cleaned.replaceAll("\\n{3,}", "\n\n");
-        
+
         return cleaned.trim();
     }
 }

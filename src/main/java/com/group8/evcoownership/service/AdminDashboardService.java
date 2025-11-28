@@ -3,7 +3,9 @@ package com.group8.evcoownership.service;
 import com.group8.evcoownership.dto.DashboardChartDataDTO;
 import com.group8.evcoownership.dto.DashboardStatisticsDTO;
 import com.group8.evcoownership.entity.*;
-import com.group8.evcoownership.enums.*;
+import com.group8.evcoownership.enums.GroupStatus;
+import com.group8.evcoownership.enums.PaymentStatus;
+import com.group8.evcoownership.enums.UserStatus;
 import com.group8.evcoownership.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,8 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
+import java.time.temporal.WeekFields;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -134,10 +136,15 @@ public class AdminDashboardService {
         );
 
         // 9. Pending documents
-        long pendingDocs = documentRepository.findAll().stream()
-                .filter(doc -> "PENDING".equals(doc.getStatus()))
-                .count();
-        builder.pendingDocuments(pendingDocs);
+        try {
+            long pendingDocs = documentRepository.findAll().stream()
+                    .filter(doc -> "PENDING".equals(doc.getStatus()))
+                    .count();
+            builder.pendingDocuments(pendingDocs);
+        } catch (Exception e) {
+            log.warn("Failed to fetch pending documents: {}", e.getMessage());
+            builder.pendingDocuments(0L);
+        }
 
         // 10. Expenses statistics
         List<Expense> allExpenses = expenseRepository.findAll();
@@ -149,12 +156,32 @@ public class AdminDashboardService {
 
         // 11. Payments statistics
         List<Payment> allPayments = paymentRepository.findAll();
-        builder.totalPayments((long) allPayments.size());
-        BigDecimal totalPaymentAmount = allPayments.stream()
-                .filter(p -> p.getStatus() == PaymentStatus.COMPLETED)
-                .map(p -> p.getAmount() != null ? p.getAmount() : BigDecimal.ZERO)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        builder.totalPaymentAmount(totalPaymentAmount);
+        long totalPayments = allPayments.size();
+
+        // Build PaymentStatistics DTO
+        Map<String, Long> paymentsByStatusMap = allPayments.stream()
+                .collect(Collectors.groupingBy(
+                        p -> p.getStatus() != null ? p.getStatus().name() : "UNKNOWN",
+                        Collectors.counting()
+                ));
+
+        DashboardStatisticsDTO.PaymentStatistics paymentStats = DashboardStatisticsDTO.PaymentStatistics.builder()
+                .total(totalPayments)
+                .pending(paymentsByStatusMap.getOrDefault("PENDING", 0L))
+                .completed(paymentsByStatusMap.getOrDefault("COMPLETED", 0L))
+                .failed(paymentsByStatusMap.getOrDefault("FAILED", 0L))
+                .refunded(paymentsByStatusMap.getOrDefault("REFUNDED", 0L))
+                .totalAmount(allPayments.stream()
+                        .filter(p -> p.getStatus() == PaymentStatus.COMPLETED)
+                        .map(p -> p.getAmount() != null ? p.getAmount() : BigDecimal.ZERO)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add))
+                .build();
+
+        builder.payments(paymentStats);
+        // Keep Map for backward compatibility
+        builder.paymentsByStatus(paymentsByStatusMap);
+        builder.totalPayments(totalPayments);
+        builder.totalPaymentAmount(paymentStats.getTotalAmount());
 
         // 12. Funds statistics
         List<SharedFund> allFunds = fundRepository.findAll();
@@ -164,7 +191,61 @@ public class AdminDashboardService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         builder.totalFundBalance(totalFundBalance);
 
+        // 13. Revenue by period (default: last 30 days by day)
+        Map<String, BigDecimal> revenueByPeriod = calculateRevenueByPeriod("DAY", 30, null, null);
+        builder.revenueByPeriod(revenueByPeriod);
+
         return builder.build();
+    }
+
+    /**
+     * Lấy thống kê tổng hợp với date range filter và period type
+     */
+    public DashboardStatisticsDTO getDashboardStatistics(LocalDateTime from, LocalDateTime to, String periodType) {
+        DashboardStatisticsDTO stats = getDashboardStatistics(from, to);
+
+        // Calculate revenue by period based on periodType
+        if (periodType != null && !periodType.isEmpty()) {
+            int periods = 30; // Default
+            if ("WEEK".equals(periodType)) {
+                periods = 12; // 12 weeks
+            } else if ("MONTH".equals(periodType)) {
+                periods = 12; // 12 months
+            }
+
+            Map<String, BigDecimal> revenueByPeriod = calculateRevenueByPeriod(periodType, periods, from, to);
+            // Create new builder from existing stats and update revenueByPeriod
+            return DashboardStatisticsDTO.builder()
+                    .totalGroups(stats.getTotalGroups())
+                    .groupsByStatus(stats.getGroupsByStatus())
+                    .totalUsers(stats.getTotalUsers())
+                    .usersByStatus(stats.getUsersByStatus())
+                    .usersByRole(stats.getUsersByRole())
+                    .totalBookings(stats.getTotalBookings())
+                    .bookingsByStatus(stats.getBookingsByStatus())
+                    .totalVehicles(stats.getTotalVehicles())
+                    .totalDisputes(stats.getTotalDisputes())
+                    .disputesByStatus(stats.getDisputesByStatus())
+                    .totalIncidents(stats.getTotalIncidents())
+                    .incidentsByStatus(stats.getIncidentsByStatus())
+                    .totalMaintenances(stats.getTotalMaintenances())
+                    .maintenancesByStatus(stats.getMaintenancesByStatus())
+                    .totalContracts(stats.getTotalContracts())
+                    .contractsByStatus(stats.getContractsByStatus())
+                    .pendingDocuments(stats.getPendingDocuments())
+                    .totalExpenses(stats.getTotalExpenses())
+                    .totalExpenseAmount(stats.getTotalExpenseAmount())
+                    .payments(stats.getPayments())
+                    .totalPayments(stats.getTotalPayments())
+                    .totalPaymentAmount(stats.getTotalPaymentAmount())
+                    .paymentsByStatus(stats.getPaymentsByStatus())
+                    .totalFunds(stats.getTotalFunds())
+                    .totalFundBalance(stats.getTotalFundBalance())
+                    .revenueByPeriod(revenueByPeriod)
+                    .build();
+        }
+
+        return stats;
     }
 
     /**
@@ -182,10 +263,9 @@ public class AdminDashboardService {
                     .filter(g -> {
                         if (g.getCreatedAt() == null) return false;
                         if (from != null && g.getCreatedAt().isBefore(from)) return false;
-                        if (to != null && g.getCreatedAt().isAfter(to)) return false;
-                        return true;
+                        return to == null || !g.getCreatedAt().isAfter(to);
                     })
-                    .collect(Collectors.toList());
+                    .toList();
         }
         builder.totalGroups((long) allGroups.size());
         builder.groupsByStatus(
@@ -203,10 +283,9 @@ public class AdminDashboardService {
                     .filter(u -> {
                         if (u.getCreatedAt() == null) return false;
                         if (from != null && u.getCreatedAt().isBefore(from)) return false;
-                        if (to != null && u.getCreatedAt().isAfter(to)) return false;
-                        return true;
+                        return to == null || !u.getCreatedAt().isAfter(to);
                     })
-                    .collect(Collectors.toList());
+                    .toList();
         }
         builder.totalUsers((long) allUsers.size());
         builder.usersByStatus(
@@ -232,10 +311,9 @@ public class AdminDashboardService {
                     .filter(b -> {
                         if (b.getStartDateTime() == null) return false;
                         if (from != null && b.getStartDateTime().isBefore(from)) return false;
-                        if (to != null && b.getStartDateTime().isAfter(to)) return false;
-                        return true;
+                        return to == null || !b.getStartDateTime().isAfter(to);
                     })
-                    .collect(Collectors.toList());
+                    .toList();
         }
         builder.totalBookings((long) allBookings.size());
         builder.bookingsByStatus(
@@ -257,10 +335,9 @@ public class AdminDashboardService {
                     .filter(d -> {
                         if (d.getCreatedAt() == null) return false;
                         if (from != null && d.getCreatedAt().isBefore(from)) return false;
-                        if (to != null && d.getCreatedAt().isAfter(to)) return false;
-                        return true;
+                        return to == null || !d.getCreatedAt().isAfter(to);
                     })
-                    .collect(Collectors.toList());
+                    .toList();
         }
         builder.totalDisputes((long) allDisputes.size());
         builder.disputesByStatus(
@@ -278,10 +355,9 @@ public class AdminDashboardService {
                     .filter(i -> {
                         if (i.getCreatedAt() == null) return false;
                         if (from != null && i.getCreatedAt().isBefore(from)) return false;
-                        if (to != null && i.getCreatedAt().isAfter(to)) return false;
-                        return true;
+                        return to == null || !i.getCreatedAt().isAfter(to);
                     })
-                    .collect(Collectors.toList());
+                    .toList();
         }
         builder.totalIncidents((long) allIncidents.size());
         builder.incidentsByStatus(
@@ -299,10 +375,9 @@ public class AdminDashboardService {
                     .filter(m -> {
                         if (m.getRequestDate() == null) return false;
                         if (from != null && m.getRequestDate().isBefore(from)) return false;
-                        if (to != null && m.getRequestDate().isAfter(to)) return false;
-                        return true;
+                        return to == null || !m.getRequestDate().isAfter(to);
                     })
-                    .collect(Collectors.toList());
+                    .toList();
         }
         builder.totalMaintenances((long) allMaintenances.size());
         builder.maintenancesByStatus(
@@ -320,10 +395,9 @@ public class AdminDashboardService {
                     .filter(c -> {
                         if (c.getCreatedAt() == null) return false;
                         if (from != null && c.getCreatedAt().isBefore(from)) return false;
-                        if (to != null && c.getCreatedAt().isAfter(to)) return false;
-                        return true;
+                        return to == null || !c.getCreatedAt().isAfter(to);
                     })
-                    .collect(Collectors.toList());
+                    .toList();
         }
         builder.totalContracts((long) allContracts.size());
         builder.contractsByStatus(
@@ -347,10 +421,9 @@ public class AdminDashboardService {
                     .filter(e -> {
                         if (e.getCreatedAt() == null) return false;
                         if (from != null && e.getCreatedAt().isBefore(from)) return false;
-                        if (to != null && e.getCreatedAt().isAfter(to)) return false;
-                        return true;
+                        return to == null || !e.getCreatedAt().isAfter(to);
                     })
-                    .collect(Collectors.toList());
+                    .toList();
         }
         builder.totalExpenses((long) allExpenses.size());
         BigDecimal totalExpenseAmount = allExpenses.stream()
@@ -365,10 +438,9 @@ public class AdminDashboardService {
                     .filter(p -> {
                         if (p.getPaymentDate() == null) return false;
                         if (from != null && p.getPaymentDate().isBefore(from)) return false;
-                        if (to != null && p.getPaymentDate().isAfter(to)) return false;
-                        return true;
+                        return to == null || !p.getPaymentDate().isAfter(to);
                     })
-                    .collect(Collectors.toList());
+                    .toList();
         }
         builder.totalPayments((long) allPayments.size());
         BigDecimal totalPaymentAmount = allPayments.stream()
@@ -385,16 +457,93 @@ public class AdminDashboardService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         builder.totalFundBalance(totalFundBalance);
 
+        // 13. Revenue by period (default: last 30 days by day)
+        Map<String, BigDecimal> revenueByPeriod = calculateRevenueByPeriod("DAY", 30, from, to);
+        builder.revenueByPeriod(revenueByPeriod);
+
         return builder.build();
     }
 
     /**
+     * Tính revenue theo period (DAY/WEEK/MONTH)
+     *
+     * @param periodType DAY, WEEK, hoặc MONTH
+     * @param periods    Số periods cần tính (ví dụ: 30 days, 12 weeks, 12 months)
+     * @param from       Start date (optional, nếu null thì tính từ hiện tại trở về trước)
+     * @param to         End date (optional)
+     * @return Map với key là period string và value là revenue
+     */
+    private Map<String, BigDecimal> calculateRevenueByPeriod(String periodType, int periods, LocalDateTime from, LocalDateTime to) {
+        Map<String, BigDecimal> revenueMap = new LinkedHashMap<>();
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime startDate = from != null ? from : now.minusDays(periods);
+        LocalDateTime endDate = to != null ? to : now;
+
+        // Get all completed payments in the date range
+        List<Payment> allPayments = paymentRepository.findAll().stream()
+                .filter(p -> p.getPaymentDate() != null
+                        && p.getStatus() == PaymentStatus.COMPLETED
+                        && !p.getPaymentDate().isBefore(startDate)
+                        && !p.getPaymentDate().isAfter(endDate))
+                .toList();
+
+        DateTimeFormatter formatter;
+        if ("DAY".equals(periodType)) {
+            formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+            // Group by day
+            revenueMap = allPayments.stream()
+                    .collect(Collectors.groupingBy(
+                            p -> p.getPaymentDate().format(formatter),
+                            LinkedHashMap::new,
+                            Collectors.reducing(
+                                    BigDecimal.ZERO,
+                                    p -> p.getAmount() != null ? p.getAmount() : BigDecimal.ZERO,
+                                    BigDecimal::add
+                            )
+                    ));
+        } else if ("WEEK".equals(periodType)) {
+            WeekFields weekFields = WeekFields.of(Locale.getDefault());
+            // Group by year-week
+            revenueMap = allPayments.stream()
+                    .collect(Collectors.groupingBy(
+                            p -> {
+                                int year = p.getPaymentDate().getYear();
+                                int week = p.getPaymentDate().get(weekFields.weekOfWeekBasedYear());
+                                return String.format("%d-W%02d", year, week);
+                            },
+                            LinkedHashMap::new,
+                            Collectors.reducing(
+                                    BigDecimal.ZERO,
+                                    p -> p.getAmount() != null ? p.getAmount() : BigDecimal.ZERO,
+                                    BigDecimal::add
+                            )
+                    ));
+        } else { // MONTH
+            formatter = DateTimeFormatter.ofPattern("yyyy-MM");
+            // Group by month
+            revenueMap = allPayments.stream()
+                    .collect(Collectors.groupingBy(
+                            p -> p.getPaymentDate().format(formatter),
+                            LinkedHashMap::new,
+                            Collectors.reducing(
+                                    BigDecimal.ZERO,
+                                    p -> p.getAmount() != null ? p.getAmount() : BigDecimal.ZERO,
+                                    BigDecimal::add
+                            )
+                    ));
+        }
+
+        return revenueMap;
+    }
+
+    /**
      * Lấy dữ liệu cho biểu đồ (theo tháng)
+     *
      * @param months Số tháng cần lấy (mặc định 12 tháng gần nhất)
      */
     public DashboardChartDataDTO getChartData(Integer months) {
         log.info("Fetching chart data for admin dashboard - months: {}", months);
-        
+
         if (months == null || months <= 0) {
             months = 12; // Default 12 months
         }
@@ -420,7 +569,7 @@ public class AdminDashboardService {
                             && p.getPaymentDate().isAfter(monthStart.minusSeconds(1))
                             && p.getPaymentDate().isBefore(monthEnd.plusSeconds(1))
                             && p.getStatus() == PaymentStatus.COMPLETED)
-                    .collect(Collectors.toList());
+                    .toList();
             BigDecimal revenue = monthPayments.stream()
                     .map(p -> p.getAmount() != null ? p.getAmount() : BigDecimal.ZERO)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -429,7 +578,7 @@ public class AdminDashboardService {
                     .filter(e -> e.getCreatedAt() != null
                             && e.getCreatedAt().isAfter(monthStart.minusSeconds(1))
                             && e.getCreatedAt().isBefore(monthEnd.plusSeconds(1)))
-                    .collect(Collectors.toList());
+                    .toList();
             BigDecimal expense = monthExpenses.stream()
                     .map(e -> e.getAmount() != null ? e.getAmount() : BigDecimal.ZERO)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);

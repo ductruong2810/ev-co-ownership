@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 
-
 @Service
 @Slf4j
 public class StaffService {
@@ -50,7 +49,6 @@ public class StaffService {
     public List<UserProfileResponseDTO> getAllUsers(String status, String documentStatus) {
         // Lấy tất cả user có role CO_OWNER
         List<User> users = userRepository.findByRoleRoleName(RoleName.CO_OWNER);
-
 
 
         // Nếu có truyền status (ACTIVE, BANNED, PENDING), filter thêm theo trạng thái use

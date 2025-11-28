@@ -1,10 +1,6 @@
 package com.group8.evcoownership.controller;
 
-import com.group8.evcoownership.dto.QrCheckInRequestDTO;
-import com.group8.evcoownership.dto.QrCheckOutRequestDTO;
-import com.group8.evcoownership.dto.QrScanRequestDTO;
-import com.group8.evcoownership.dto.UpdateCheckStatusRequestDTO;
-import com.group8.evcoownership.dto.VehicleCheckResponseDTO;
+import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.entity.VehicleCheck;
 import com.group8.evcoownership.exception.ResourceNotFoundException;
@@ -140,7 +136,6 @@ public class VehicleCheckController {
     }
 
 
-
     /**
      * Kiểm tra user đã làm check chưa
      * Example:
@@ -222,8 +217,8 @@ public class VehicleCheckController {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found for email: " + userEmail));
 
         Map<String, Object> result = vehicleCheckService.confirmCheckInWithSignature(
-                request.qrCode(), 
-                request.signature(), 
+                request.qrCode(),
+                request.signature(),
                 currentUser.getUserId()
         );
         return ResponseEntity.ok(result);

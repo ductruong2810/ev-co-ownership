@@ -202,6 +202,7 @@ public class FundService {
         SharedFund r = fundRepo.findByGroup_GroupIdAndFundType(groupId, FundType.DEPOSIT_RESERVE).orElseThrow();
         increaseBalance(r.getFundId(), amt);
     }
+
     // nap tien quy
     @Transactional
     public void topUpOperating(Long groupId, BigDecimal amt) {
@@ -390,9 +391,9 @@ public class FundService {
      */
     @Transactional(readOnly = true)
     public String generateGroupLedgerCSV(Long groupId,
-                                          @Nullable FundType fundType,
-                                          @Nullable LocalDateTime from,
-                                          @Nullable LocalDateTime to) {
+                                         @Nullable FundType fundType,
+                                         @Nullable LocalDateTime from,
+                                         @Nullable LocalDateTime to) {
         OwnershipGroup group = groupRepo.findById(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
 
@@ -439,8 +440,8 @@ public class FundService {
      */
     @Transactional(readOnly = true)
     public String generateAllGroupsFinancialReportCSV(@Nullable FundType fundType,
-                                                        @Nullable LocalDateTime from,
-                                                        @Nullable LocalDateTime to) {
+                                                      @Nullable LocalDateTime from,
+                                                      @Nullable LocalDateTime to) {
         List<OwnershipGroup> allGroups = groupRepo.findAll();
 
         StringBuilder csv = new StringBuilder();
@@ -458,7 +459,7 @@ public class FundService {
         // Summary by group
         csv.append("Summary by Group\n");
         csv.append("Group ID,Group Name,Status,Total Income,Total Expense,Operating Balance,Deposit Balance,Net Balance\n");
-        
+
         BigDecimal grandTotalIncome = BigDecimal.ZERO;
         BigDecimal grandTotalExpense = BigDecimal.ZERO;
         BigDecimal grandOperatingBalance = BigDecimal.ZERO;

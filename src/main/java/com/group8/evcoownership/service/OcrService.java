@@ -1,12 +1,6 @@
 package com.group8.evcoownership.service;
 
-import com.google.cloud.vision.v1.AnnotateImageRequest;
-import com.google.cloud.vision.v1.AnnotateImageResponse;
-import com.google.cloud.vision.v1.BatchAnnotateImagesResponse;
-import com.google.cloud.vision.v1.EntityAnnotation;
-import com.google.cloud.vision.v1.Feature;
-import com.google.cloud.vision.v1.Image;
-import com.google.cloud.vision.v1.ImageAnnotatorClient;
+import com.google.cloud.vision.v1.*;
 import com.google.protobuf.ByteString;
 import com.group8.evcoownership.dto.GroupWithVehicleResponseDTO;
 import com.group8.evcoownership.dto.VehicleInfoDTO;
@@ -92,7 +86,7 @@ public class OcrService {
                 }
                 long processing = System.currentTimeMillis() - startTime;
                 log.info("Google Vision OCR call took {} ms", processing);
-                
+
                 String resultText = sb.toString().trim();
                 if (resultText.isEmpty()) {
                     log.warn("No text extracted from image");
@@ -150,8 +144,8 @@ public class OcrService {
      * Kiểm tra trạng thái Google Vision OCR
      */
     public boolean isGoogleVisionEnabled() {
-        return "google".equalsIgnoreCase(ocrProvider) && 
-               googleVisionApiKey != null && !googleVisionApiKey.isEmpty();
+        return "google".equalsIgnoreCase(ocrProvider) &&
+                googleVisionApiKey != null && !googleVisionApiKey.isEmpty();
     }
 
     /**

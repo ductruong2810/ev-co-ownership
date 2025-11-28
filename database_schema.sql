@@ -1,619 +1,581 @@
 -- =============================================
--- EV Co-ownership Database Schema (SQL Server)
--- Updated based on JPA Entities
+-- EV Co-ownership Database Schema (PostgreSQL)
+-- Generated from current JPA entities
 -- =============================================
 
--- Recreate Database (run from master)
-USE master;
-GO
-IF DB_ID(N'evshare') IS NOT NULL
-    BEGIN
-        ALTER DATABASE evshare SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-        DROP DATABASE evshare;
-    END
-GO
-CREATE DATABASE evshare;
-GO
-USE evshare;
-GO
+BEGIN;
+
+-- Clean existing objects (optional for local/dev refresh)
+DROP TABLE IF EXISTS "VoteRecord" CASCADE;
+DROP TABLE IF EXISTS "Voting" CASCADE;
+DROP TABLE IF EXISTS "UserDocument" CASCADE;
+DROP TABLE IF EXISTS "VehicleCheck" CASCADE;
+DROP TABLE IF EXISTS "Notification" CASCADE;
+DROP TABLE IF EXISTS "Payment" CASCADE;
+DROP TABLE IF EXISTS "Expense" CASCADE;
+DROP TABLE IF EXISTS "Dispute" CASCADE;
+DROP TABLE IF EXISTS "Incident" CASCADE;
+DROP TABLE IF EXISTS "Maintenance" CASCADE;
+DROP TABLE IF EXISTS "UsageBooking" CASCADE;
+DROP TABLE IF EXISTS "ContractFeedback" CASCADE;
+DROP TABLE IF EXISTS "Contract" CASCADE;
+DROP TABLE IF EXISTS "VehicleImages" CASCADE;
+DROP TABLE IF EXISTS "Vehicle" CASCADE;
+DROP TABLE IF EXISTS "SharedFund" CASCADE;
+DROP TABLE IF EXISTS "Invitation" CASCADE;
+DROP TABLE IF EXISTS "OtpToken" CASCADE;
+DROP TABLE IF EXISTS "FinancialReport" CASCADE;
+DROP TABLE IF EXISTS "OwnershipShare" CASCADE;
+DROP TABLE IF EXISTS "OwnershipGroup" CASCADE;
+DROP TABLE IF EXISTS "Users" CASCADE;
+DROP TABLE IF EXISTS "Roles" CASCADE;
 
 -- =============================================
 -- 1) ROLES
 -- =============================================
-CREATE TABLE Roles
+CREATE TABLE "Roles"
 (
-    RoleId   BIGINT IDENTITY (1,1) PRIMARY KEY,
-    RoleName NVARCHAR(30) NOT NULL UNIQUE
+    "RoleId"   BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "RoleName" VARCHAR(30) NOT NULL UNIQUE
 );
-GO
 
 -- =============================================
 -- 2) USERS
 -- =============================================
-CREATE TABLE Users
+CREATE TABLE "Users"
 (
-    UserId       BIGINT IDENTITY (1,1) PRIMARY KEY,
-    FullName     NVARCHAR(100) NOT NULL,
-    Email        NVARCHAR(100) NOT NULL UNIQUE,
-    PasswordHash NVARCHAR(255) NOT NULL,
-    PhoneNumber  NVARCHAR(20),
-    AvatarUrl    NVARCHAR(500),
-    RoleId       BIGINT,
-    Status       NVARCHAR(20),
-    CreatedAt    DATETIME2(7),
-    UpdatedAt    DATETIME2(7),
-    FOREIGN KEY (RoleId) REFERENCES Roles (RoleId)
+    "UserId"       BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "FullName"     VARCHAR(100) NOT NULL,
+    "Email"        VARCHAR(100) NOT NULL UNIQUE,
+    "PasswordHash" VARCHAR(255) NOT NULL,
+    "PhoneNumber"  VARCHAR(20),
+    "AvatarUrl"    VARCHAR(500),
+    "RoleId"       BIGINT,
+    "Status"       VARCHAR(20),
+    "CreatedAt"    TIMESTAMPTZ,
+    "UpdatedAt"    TIMESTAMPTZ,
+    CONSTRAINT fk_users_roles FOREIGN KEY ("RoleId") REFERENCES "Roles" ("RoleId")
 );
-GO
 
 -- =============================================
--- 3) OWNERSHIP GROUP (GroupName must be unique)
+-- 3) OWNERSHIP GROUP
 -- =============================================
-CREATE TABLE OwnershipGroup
+CREATE TABLE "OwnershipGroup"
 (
-    GroupId        BIGINT IDENTITY (1,1) PRIMARY KEY,
-    GroupName      NVARCHAR(100) NOT NULL,
-    Status         NVARCHAR(20)  NOT NULL DEFAULT 'PENDING',
-    Description    NVARCHAR(MAX),
-    MemberCapacity INT           NULL,
-    RejectionReason NVARCHAR(MAX),
-    FundId         BIGINT        NULL,
-    CreatedAt      DATETIME2(7)   NOT NULL DEFAULT SYSUTCDATETIME(),
-    UpdatedAt      DATETIME2(7)   NOT NULL DEFAULT SYSUTCDATETIME(),
-    CONSTRAINT UQ_OwnershipGroup_GroupName UNIQUE (GroupName)
+    "GroupId"         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "GroupName"       VARCHAR(100) NOT NULL,
+    "Status"          VARCHAR(20)  NOT NULL DEFAULT 'PENDING',
+    "Description"     TEXT,
+    "MemberCapacity"  INT,
+    "RejectionReason" TEXT,
+    "FundId"          BIGINT,
+    "CreatedAt"       TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "UpdatedAt"       TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_ownershipgroup_name UNIQUE ("GroupName")
 );
-GO
 
 -- =============================================
 -- 4) OWNERSHIP SHARE
 -- =============================================
-CREATE TABLE OwnershipShare
+CREATE TABLE "OwnershipShare"
 (
-    UserId              BIGINT        NOT NULL,
-    GroupId             BIGINT        NOT NULL,
-    GroupRole           NVARCHAR(50)  NOT NULL DEFAULT 'MEMBER',
-    OwnershipPercentage DECIMAL(5, 2) NOT NULL
-        CHECK (OwnershipPercentage >= 0 AND OwnershipPercentage <= 100),
-    JoinDate            DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
-    DepositStatus       NVARCHAR(20)  NOT NULL DEFAULT 'PENDING',
-    UpdatedAt           DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
-    CONSTRAINT PK_OwnershipShare PRIMARY KEY (UserId, GroupId),
-    FOREIGN KEY (UserId) REFERENCES Users (UserId),
-    FOREIGN KEY (GroupId) REFERENCES OwnershipGroup (GroupId)
+    "UserId"              BIGINT        NOT NULL,
+    "GroupId"             BIGINT        NOT NULL,
+    "GroupRole"           VARCHAR(50)   NOT NULL DEFAULT 'MEMBER',
+    "OwnershipPercentage" NUMERIC(5, 2) NOT NULL CHECK ("OwnershipPercentage" >= 0 AND "OwnershipPercentage" <= 100),
+    "JoinDate"            TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "DepositStatus"       VARCHAR(20)   NOT NULL DEFAULT 'PENDING',
+    "UpdatedAt"           TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_ownershipshare PRIMARY KEY ("UserId", "GroupId"),
+    CONSTRAINT fk_ownershipshare_user FOREIGN KEY ("UserId") REFERENCES "Users" ("UserId"),
+    CONSTRAINT fk_ownershipshare_group FOREIGN KEY ("GroupId") REFERENCES "OwnershipGroup" ("GroupId")
 );
-GO
 
 -- =============================================
 -- 5) SHARED FUND
 -- =============================================
-CREATE TABLE SharedFund
+CREATE TABLE "SharedFund"
 (
-    FundId       BIGINT IDENTITY (1,1) PRIMARY KEY,
-    GroupId      BIGINT         NOT NULL,
-    Balance      DECIMAL(15, 2) DEFAULT 0,
-    TargetAmount DECIMAL(15, 2) DEFAULT 0,
-    FundType     NVARCHAR(20)   NOT NULL DEFAULT 'OPERATING',
-    IsSpendable  BIT            NOT NULL DEFAULT 1,
-    CreatedAt    DATETIME2(7)   DEFAULT SYSUTCDATETIME(),
-    UpdatedAt    DATETIME2(7)   DEFAULT SYSUTCDATETIME(),
-    Version      BIGINT         NOT NULL DEFAULT 0,
-    CONSTRAINT UQ_SharedFund_Group UNIQUE (GroupId, FundType),
-    FOREIGN KEY (GroupId) REFERENCES OwnershipGroup (GroupId)
+    "FundId"       BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "GroupId"      BIGINT         NOT NULL,
+    "Balance"      NUMERIC(15, 2) NOT NULL DEFAULT 0,
+    "TargetAmount" NUMERIC(15, 2) NOT NULL DEFAULT 0,
+    "FundType"     VARCHAR(20)    NOT NULL DEFAULT 'OPERATING',
+    "IsSpendable"  BOOLEAN        NOT NULL DEFAULT TRUE,
+    "CreatedAt"    TIMESTAMPTZ    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "UpdatedAt"    TIMESTAMPTZ    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "Version"      BIGINT         NOT NULL DEFAULT 0,
+    CONSTRAINT uq_sharedfund_group_type UNIQUE ("GroupId", "FundType"),
+    CONSTRAINT fk_sharedfund_group FOREIGN KEY ("GroupId") REFERENCES "OwnershipGroup" ("GroupId")
 );
-GO
 
--- Add FK from OwnershipGroup to SharedFund (after SharedFund is created)
-ALTER TABLE OwnershipGroup
-    ADD CONSTRAINT FK_OwnershipGroup_FundId
-        FOREIGN KEY (FundId) REFERENCES SharedFund (FundId);
-GO
+ALTER TABLE "OwnershipGroup"
+    ADD CONSTRAINT fk_ownershipgroup_fund
+        FOREIGN KEY ("FundId") REFERENCES "SharedFund" ("FundId");
 
 -- =============================================
 -- 6) VEHICLE
 -- =============================================
-CREATE TABLE Vehicle
+CREATE TABLE "Vehicle"
 (
-    VehicleId     BIGINT IDENTITY (1,1) PRIMARY KEY,
-    Brand         NVARCHAR(100),
-    Model         NVARCHAR(100),
-    LicensePlate  NVARCHAR(20),
-    ChassisNumber NVARCHAR(30),
-    VehicleValue  DECIMAL(15, 2) NULL,
-    GroupId       BIGINT,
-    CreatedAt     DATETIME2(7)   NOT NULL DEFAULT SYSUTCDATETIME(),
-    UpdatedAt     DATETIME2(7)   NOT NULL DEFAULT SYSUTCDATETIME(),
-    FOREIGN KEY (GroupId) REFERENCES OwnershipGroup (GroupId)
+    "VehicleId"     BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "Brand"         VARCHAR(100),
+    "Model"         VARCHAR(100),
+    "LicensePlate"  VARCHAR(20),
+    "ChassisNumber" VARCHAR(30),
+    "VehicleValue"  NUMERIC(15, 2),
+    "GroupId"       BIGINT,
+    "CreatedAt"     TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "UpdatedAt"     TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_vehicle_group FOREIGN KEY ("GroupId") REFERENCES "OwnershipGroup" ("GroupId")
 );
-GO
 
--- Mỗi group chỉ có 1 vehicle (áp dụng khi GroupId NOT NULL)
-CREATE UNIQUE INDEX UQ_Vehicle_GroupId ON Vehicle (GroupId) WHERE GroupId IS NOT NULL;
-GO
+CREATE UNIQUE INDEX IF NOT EXISTS ux_vehicle_group_not_null
+    ON "Vehicle" ("GroupId") WHERE "GroupId" IS NOT NULL;
 
 -- =============================================
 -- 7) VEHICLE IMAGES
 -- =============================================
-CREATE TABLE VehicleImages
+CREATE TABLE "VehicleImages"
 (
-    ImageId         BIGINT IDENTITY (1,1) PRIMARY KEY,
-    VehicleId       BIGINT        NULL,
-    ImageUrl        NVARCHAR(500),
-    ImageType       NVARCHAR(20),
-    ApprovalStatus  NVARCHAR(20)  DEFAULT 'PENDING',
-    ApprovedBy      BIGINT        NULL,
-    ApprovedAt      DATETIME2(7)  NULL,
-    RejectionReason NVARCHAR(500) NULL,
-    UploadedAt      DATETIME2(7)  DEFAULT SYSUTCDATETIME(),
-    FOREIGN KEY (VehicleId) REFERENCES Vehicle (VehicleId),
-    FOREIGN KEY (ApprovedBy) REFERENCES Users (UserId)
+    "ImageId"         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "VehicleId"       BIGINT,
+    "ImageUrl"        VARCHAR(500),
+    "ImageType"       VARCHAR(20),
+    "ApprovalStatus"  VARCHAR(20) DEFAULT 'PENDING',
+    "ApprovedBy"      BIGINT,
+    "ApprovedAt"      TIMESTAMPTZ,
+    "RejectionReason" VARCHAR(500),
+    "UploadedAt"      TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_vehicleimages_vehicle FOREIGN KEY ("VehicleId") REFERENCES "Vehicle" ("VehicleId"),
+    CONSTRAINT fk_vehicleimages_user FOREIGN KEY ("ApprovedBy") REFERENCES "Users" ("UserId")
 );
-GO
 
 -- =============================================
--- 8) CONTRACT (TemplateId removed - handled in frontend)
+-- 8) CONTRACT
 -- =============================================
-CREATE TABLE Contract
+CREATE TABLE "Contract"
 (
-    ContractId            BIGINT IDENTITY (1,1) PRIMARY KEY,
-    GroupId               BIGINT        NOT NULL,
-    StartDate             DATE,
-    EndDate               DATE,
-    Terms                 NVARCHAR(MAX),
-    RequiredDepositAmount DECIMAL(15, 2),
-    IsActive              BIT           DEFAULT 1,
-    CreatedAt             DATETIME2(7)  DEFAULT SYSUTCDATETIME(),
-    UpdatedAt             DATETIME2(7)  DEFAULT SYSUTCDATETIME(),
-    ApprovalStatus        NVARCHAR(30)  NOT NULL DEFAULT 'PENDING',
-    ApprovedBy            BIGINT        NULL,
-    ApprovedAt            DATETIME2(7)  NULL,
-    RejectionReason       NVARCHAR(500) NULL,
-    FOREIGN KEY (GroupId) REFERENCES OwnershipGroup (GroupId),
-    FOREIGN KEY (ApprovedBy) REFERENCES Users (UserId)
+    "ContractId"            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "GroupId"               BIGINT      NOT NULL,
+    "StartDate"             DATE,
+    "EndDate"               DATE,
+    "Terms"                 TEXT,
+    "RequiredDepositAmount" NUMERIC(15, 2),
+    "IsActive"              BOOLEAN              DEFAULT TRUE,
+    "CreatedAt"             TIMESTAMPTZ          DEFAULT CURRENT_TIMESTAMP,
+    "UpdatedAt"             TIMESTAMPTZ          DEFAULT CURRENT_TIMESTAMP,
+    "ApprovalStatus"        VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+    "ApprovedBy"            BIGINT,
+    "ApprovedAt"            TIMESTAMPTZ,
+    "RejectionReason"       VARCHAR(500),
+    CONSTRAINT fk_contract_group FOREIGN KEY ("GroupId") REFERENCES "OwnershipGroup" ("GroupId"),
+    CONSTRAINT fk_contract_user FOREIGN KEY ("ApprovedBy") REFERENCES "Users" ("UserId")
 );
-GO
 
 -- =============================================
 -- 9) CONTRACT FEEDBACK
 -- =============================================
-CREATE TABLE ContractFeedback
+CREATE TABLE "ContractFeedback"
 (
-    FeedbackId        BIGINT IDENTITY (1,1) PRIMARY KEY,
-    ContractId        BIGINT        NOT NULL,
-    UserId            BIGINT        NOT NULL,
-    Status            NVARCHAR(20)  NOT NULL,
-    ReactionType      NVARCHAR(20),
-    Reason            NVARCHAR(1000),
-    AdminNote         NVARCHAR(1000),
-    LastAdminAction   NVARCHAR(50),
-    LastAdminActionAt DATETIME2(7),
-    SubmittedAt       DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
-    UpdatedAt         DATETIME2(7),
-    FOREIGN KEY (ContractId) REFERENCES Contract (ContractId),
-    FOREIGN KEY (UserId) REFERENCES Users (UserId)
+    "FeedbackId"        BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "ContractId"        BIGINT      NOT NULL,
+    "UserId"            BIGINT      NOT NULL,
+    "Status"            VARCHAR(20) NOT NULL,
+    "ReactionType"      VARCHAR(20),
+    "Reason"            VARCHAR(1000),
+    "AdminNote"         VARCHAR(1000),
+    "LastAdminAction"   VARCHAR(50),
+    "LastAdminActionAt" TIMESTAMPTZ,
+    "SubmittedAt"       TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "UpdatedAt"         TIMESTAMPTZ,
+    CONSTRAINT fk_contractfeedback_contract FOREIGN KEY ("ContractId") REFERENCES "Contract" ("ContractId"),
+    CONSTRAINT fk_contractfeedback_user FOREIGN KEY ("UserId") REFERENCES "Users" ("UserId")
 );
-GO
 
 -- =============================================
 -- 10) USAGE BOOKING
 -- =============================================
-CREATE TABLE UsageBooking
+CREATE TABLE "UsageBooking"
 (
-    BookingId      BIGINT IDENTITY (1,1) PRIMARY KEY,
-    UserId         BIGINT       NOT NULL,
-    VehicleId      BIGINT       NOT NULL,
-    StartDateTime  DATETIME2(7),
-    EndDateTime    DATETIME2(7),
-    Status         NVARCHAR(20),
-    TotalDuration  INT,
-    Priority       INT,
-    QrCodeCheckin  VARCHAR(255),
-    QrCodeCheckout VARCHAR(255),
-    CheckinStatus     BIT           DEFAULT 0,
-    CheckoutStatus    BIT           DEFAULT 0,
-    CheckinTime       DATETIME2(7),
-    CheckoutTime      DATETIME2(7),
-    CheckinSignature  NVARCHAR(MAX) NULL,
-    CheckoutSignature NVARCHAR(MAX) NULL,
-    CreatedAt         DATETIME2(7) DEFAULT SYSUTCDATETIME(),
-    UpdatedAt         DATETIME2(7) DEFAULT SYSUTCDATETIME(),
-    FOREIGN KEY (UserId) REFERENCES Users (UserId),
-    FOREIGN KEY (VehicleId) REFERENCES Vehicle (VehicleId)
+    "BookingId"         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "UserId"            BIGINT NOT NULL,
+    "VehicleId"         BIGINT NOT NULL,
+    "StartDateTime"     TIMESTAMPTZ,
+    "EndDateTime"       TIMESTAMPTZ,
+    "Status"            VARCHAR(20),
+    "TotalDuration"     INT,
+    "Priority"          INT,
+    "QrCodeCheckin"     VARCHAR(255),
+    "QrCodeCheckout"    VARCHAR(255),
+    "CheckinStatus"     BOOLEAN     DEFAULT FALSE,
+    "CheckoutStatus"    BOOLEAN     DEFAULT FALSE,
+    "CheckinTime"       TIMESTAMPTZ,
+    "CheckoutTime"      TIMESTAMPTZ,
+    "CheckinSignature"  TEXT,
+    "CheckoutSignature" TEXT,
+    "CreatedAt"         TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    "UpdatedAt"         TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_usagebooking_user FOREIGN KEY ("UserId") REFERENCES "Users" ("UserId"),
+    CONSTRAINT fk_usagebooking_vehicle FOREIGN KEY ("VehicleId") REFERENCES "Vehicle" ("VehicleId")
 );
-GO
 
 -- =============================================
 -- 11) MAINTENANCE
 -- =============================================
-CREATE TABLE Maintenance
+CREATE TABLE "Maintenance"
 (
-    MaintenanceId         BIGINT IDENTITY (1,1) PRIMARY KEY,
-    VehicleId             BIGINT       NOT NULL,
-    RequestedBy           BIGINT       NOT NULL,
-    ApprovedBy            BIGINT       NULL,
-    LiableUserId          BIGINT       NULL,
-    Description           NVARCHAR(MAX),
-    ActualCost            DECIMAL(12, 2) NOT NULL,
-    Status                NVARCHAR(20) NOT NULL DEFAULT 'PENDING',
-    CoverageType          NVARCHAR(20) NOT NULL DEFAULT 'GROUP',
-    RequestDate           DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
-    ApprovalDate          DATETIME2(7),
-    NextDueDate           DATE,
-    MaintenanceDate       DATE,
-    EstimatedDurationDays INT,
-    MaintenanceStartAt    DATETIME2(7),
-    ExpectedFinishAt      DATETIME2(7),
-    MaintenanceCompletedAt DATETIME2(7),
-    FundedAt              DATETIME2(7),
-    CreatedAt             DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
-    UpdatedAt             DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
-    FOREIGN KEY (VehicleId) REFERENCES Vehicle (VehicleId),
-    FOREIGN KEY (RequestedBy) REFERENCES Users (UserId),
-    FOREIGN KEY (ApprovedBy) REFERENCES Users (UserId),
-    FOREIGN KEY (LiableUserId) REFERENCES Users (UserId)
+    "MaintenanceId"          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "VehicleId"              BIGINT         NOT NULL,
+    "RequestedBy"            BIGINT         NOT NULL,
+    "ApprovedBy"             BIGINT,
+    "LiableUserId"           BIGINT,
+    "Description"            TEXT,
+    "ActualCost"             NUMERIC(12, 2) NOT NULL,
+    "Status"                 VARCHAR(20)    NOT NULL DEFAULT 'PENDING',
+    "CoverageType"           VARCHAR(20)    NOT NULL DEFAULT 'GROUP',
+    "RequestDate"            TIMESTAMPTZ    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "ApprovalDate"           TIMESTAMPTZ,
+    "NextDueDate"            DATE,
+    "MaintenanceDate"        DATE,
+    "EstimatedDurationDays"  INT,
+    "MaintenanceStartAt"     TIMESTAMPTZ,
+    "ExpectedFinishAt"       TIMESTAMPTZ,
+    "MaintenanceCompletedAt" TIMESTAMPTZ,
+    "FundedAt"               TIMESTAMPTZ,
+    "CreatedAt"              TIMESTAMPTZ    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "UpdatedAt"              TIMESTAMPTZ    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_maintenance_vehicle FOREIGN KEY ("VehicleId") REFERENCES "Vehicle" ("VehicleId"),
+    CONSTRAINT fk_maintenance_requested FOREIGN KEY ("RequestedBy") REFERENCES "Users" ("UserId"),
+    CONSTRAINT fk_maintenance_approved FOREIGN KEY ("ApprovedBy") REFERENCES "Users" ("UserId"),
+    CONSTRAINT fk_maintenance_liable FOREIGN KEY ("LiableUserId") REFERENCES "Users" ("UserId")
 );
-GO
 
 -- =============================================
 -- 12) INCIDENT
 -- =============================================
-CREATE TABLE Incident
+CREATE TABLE "Incident"
 (
-    IncidentId        BIGINT IDENTITY (1,1) PRIMARY KEY,
-    BookingId         BIGINT       NOT NULL,
-    UserId            BIGINT       NOT NULL,
-    Description       NVARCHAR(MAX),
-    ActualCost        DECIMAL(12, 2),
-    ImageUrls         NVARCHAR(MAX),
-    Status            NVARCHAR(20) NOT NULL DEFAULT 'PENDING',
-    ApprovedBy        BIGINT       NULL,
-    RejectionCategory NVARCHAR(50),
-    RejectionReason   NVARCHAR(MAX),
-    CreatedAt         DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
-    UpdatedAt         DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
-    FOREIGN KEY (BookingId) REFERENCES UsageBooking (BookingId),
-    FOREIGN KEY (UserId) REFERENCES Users (UserId),
-    FOREIGN KEY (ApprovedBy) REFERENCES Users (UserId)
+    "IncidentId"        BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "BookingId"         BIGINT      NOT NULL,
+    "UserId"            BIGINT      NOT NULL,
+    "Description"       TEXT,
+    "ActualCost"        NUMERIC(12, 2),
+    "ImageUrls"         TEXT,
+    "Status"            VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    "ApprovedBy"        BIGINT,
+    "RejectionCategory" VARCHAR(50),
+    "RejectionReason"   TEXT,
+    "CreatedAt"         TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "UpdatedAt"         TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_incident_booking FOREIGN KEY ("BookingId") REFERENCES "UsageBooking" ("BookingId"),
+    CONSTRAINT fk_incident_user FOREIGN KEY ("UserId") REFERENCES "Users" ("UserId"),
+    CONSTRAINT fk_incident_approver FOREIGN KEY ("ApprovedBy") REFERENCES "Users" ("UserId")
 );
-GO
 
 -- =============================================
 -- 13) DISPUTE
 -- =============================================
-CREATE TABLE Dispute
+CREATE TABLE "Dispute"
 (
-    DisputeId        BIGINT IDENTITY (1,1) PRIMARY KEY,
-    GroupId          BIGINT       NOT NULL,
-    CreatedBy        BIGINT       NOT NULL,
-    DisputeType      NVARCHAR(20) NOT NULL,
-    Status           NVARCHAR(20) NOT NULL DEFAULT 'OPEN',
-    Title            NVARCHAR(255) NOT NULL,
-    Description      NVARCHAR(MAX),
-    ResolvedBy       BIGINT       NULL,
-    ResolutionNote   NVARCHAR(MAX),
-    ResolvedAt       DATETIME2(7) NULL,
-    CreatedAt        DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
-    UpdatedAt        DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
-    FOREIGN KEY (GroupId) REFERENCES OwnershipGroup (GroupId),
-    FOREIGN KEY (CreatedBy) REFERENCES Users (UserId),
-    FOREIGN KEY (ResolvedBy) REFERENCES Users (UserId)
+    "DisputeId"      BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "GroupId"        BIGINT       NOT NULL,
+    "CreatedBy"      BIGINT       NOT NULL,
+    "DisputeType"    VARCHAR(20)  NOT NULL,
+    "Status"         VARCHAR(20)  NOT NULL DEFAULT 'OPEN',
+    "Title"          VARCHAR(255) NOT NULL,
+    "Description"    TEXT,
+    "ResolvedBy"     BIGINT,
+    "ResolutionNote" TEXT,
+    "ResolvedAt"     TIMESTAMPTZ,
+    "CreatedAt"      TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "UpdatedAt"      TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_dispute_group FOREIGN KEY ("GroupId") REFERENCES "OwnershipGroup" ("GroupId"),
+    CONSTRAINT fk_dispute_creator FOREIGN KEY ("CreatedBy") REFERENCES "Users" ("UserId"),
+    CONSTRAINT fk_dispute_resolver FOREIGN KEY ("ResolvedBy") REFERENCES "Users" ("UserId")
 );
-GO
 
 -- =============================================
 -- 14) EXPENSE
 -- =============================================
-CREATE TABLE Expense
+CREATE TABLE "Expense"
 (
-    ExpenseId       BIGINT IDENTITY (1,1) PRIMARY KEY,
-    FundId          BIGINT         NOT NULL,
-    SourceType      NVARCHAR(30)   NOT NULL CHECK (SourceType IN ('INCIDENT', 'MAINTENANCE')),
-    SourceId        BIGINT         NOT NULL,
-    RecipientUserId BIGINT         NULL,
-    Description     NVARCHAR(MAX),
-    Amount          DECIMAL(12, 2) NOT NULL,
-    Status          NVARCHAR(20)   NOT NULL DEFAULT 'PENDING',
-    ExpenseDate     DATETIME2(7)   DEFAULT SYSUTCDATETIME(),
-    FundBalanceAfter DECIMAL(15, 2),
-    CreatedAt       DATETIME2(7)   NOT NULL DEFAULT SYSUTCDATETIME(),
-    UpdatedAt       DATETIME2(7)   NOT NULL DEFAULT SYSUTCDATETIME(),
-    ApprovedBy      BIGINT         NULL,
-    FOREIGN KEY (FundId) REFERENCES SharedFund (FundId),
-    FOREIGN KEY (RecipientUserId) REFERENCES Users (UserId),
-    FOREIGN KEY (ApprovedBy) REFERENCES Users (UserId)
+    "ExpenseId"        BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "FundId"           BIGINT         NOT NULL,
+    "SourceType"       VARCHAR(30)    NOT NULL CHECK ("SourceType" IN ('INCIDENT', 'MAINTENANCE')),
+    "SourceId"         BIGINT         NOT NULL,
+    "RecipientUserId"  BIGINT,
+    "Description"      TEXT,
+    "Amount"           NUMERIC(12, 2) NOT NULL,
+    "Status"           VARCHAR(20)    NOT NULL DEFAULT 'PENDING',
+    "ExpenseDate"      TIMESTAMPTZ             DEFAULT CURRENT_TIMESTAMP,
+    "FundBalanceAfter" NUMERIC(15, 2),
+    "CreatedAt"        TIMESTAMPTZ    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "UpdatedAt"        TIMESTAMPTZ    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "ApprovedBy"       BIGINT,
+    CONSTRAINT fk_expense_fund FOREIGN KEY ("FundId") REFERENCES "SharedFund" ("FundId"),
+    CONSTRAINT fk_expense_recipient FOREIGN KEY ("RecipientUserId") REFERENCES "Users" ("UserId"),
+    CONSTRAINT fk_expense_approver FOREIGN KEY ("ApprovedBy") REFERENCES "Users" ("UserId")
 );
-GO
 
 -- =============================================
--- 14) PAYMENT
+-- 15) PAYMENT
 -- =============================================
-CREATE TABLE Payment
+CREATE TABLE "Payment"
 (
-    PaymentId        BIGINT IDENTITY (1,1) PRIMARY KEY,
-    PayerUserId      BIGINT         NOT NULL,
-    FundId           BIGINT         NULL,
-    Amount           DECIMAL(18, 2) NOT NULL,
-    PaymentDate      DATETIME2(7)   DEFAULT SYSUTCDATETIME(),
-    PaymentMethod    NVARCHAR(50),
-    Status           NVARCHAR(20),
-    TransactionCode  NVARCHAR(100),
-    ProviderResponse NVARCHAR(MAX),
-    PaymentType      NVARCHAR(20)  NOT NULL,
-    PaymentCategory  NVARCHAR(20),
-    ChargedUserId    BIGINT,
-    PersonalReason   NVARCHAR(MAX),
-    MaintenanceId    BIGINT         NULL,
-    PaidAt           DATETIME2(7),
-    Version          BIGINT         NOT NULL DEFAULT 0,
-    FOREIGN KEY (PayerUserId) REFERENCES Users (UserId),
-    FOREIGN KEY (ChargedUserId) REFERENCES Users (UserId),
-    FOREIGN KEY (FundId) REFERENCES SharedFund (FundId),
-    FOREIGN KEY (MaintenanceId) REFERENCES Maintenance (MaintenanceId),
-    CONSTRAINT CK_Payment_Personal
-        CHECK (PaymentCategory <> 'PERSONAL' OR ChargedUserId IS NOT NULL)
+    "PaymentId"        BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "PayerUserId"      BIGINT         NOT NULL,
+    "FundId"           BIGINT,
+    "Amount"           NUMERIC(18, 2) NOT NULL,
+    "PaymentDate"      TIMESTAMPTZ             DEFAULT CURRENT_TIMESTAMP,
+    "PaymentMethod"    VARCHAR(50),
+    "Status"           VARCHAR(20),
+    "TransactionCode"  VARCHAR(100),
+    "ProviderResponse" TEXT,
+    "PaymentType"      VARCHAR(20)    NOT NULL,
+    "PaymentCategory"  VARCHAR(20),
+    "ChargedUserId"    BIGINT,
+    "PersonalReason"   TEXT,
+    "MaintenanceId"    BIGINT,
+    "PaidAt"           TIMESTAMPTZ,
+    "Version"          BIGINT         NOT NULL DEFAULT 0,
+    CONSTRAINT fk_payment_payer FOREIGN KEY ("PayerUserId") REFERENCES "Users" ("UserId"),
+    CONSTRAINT fk_payment_charged FOREIGN KEY ("ChargedUserId") REFERENCES "Users" ("UserId"),
+    CONSTRAINT fk_payment_fund FOREIGN KEY ("FundId") REFERENCES "SharedFund" ("FundId"),
+    CONSTRAINT fk_payment_maintenance FOREIGN KEY ("MaintenanceId") REFERENCES "Maintenance" ("MaintenanceId"),
+    CONSTRAINT ck_payment_personal CHECK ("PaymentCategory" IS DISTINCT FROM 'PERSONAL' OR "ChargedUserId" IS NOT NULL)
 );
-GO
 
 -- =============================================
--- 15) NOTIFICATION
+-- 16) NOTIFICATION
 -- =============================================
-CREATE TABLE Notification
+CREATE TABLE "Notification"
 (
-    NotificationId   BIGINT IDENTITY (1,1) PRIMARY KEY,
-    UserId           BIGINT,
-    Title            NVARCHAR(255),
-    [Message]        NVARCHAR(MAX),
-    NotificationType NVARCHAR(50),
-    IsRead           BIT          DEFAULT 0,
-    IsDelivered      BIT          DEFAULT 0,
-    CreatedAt        DATETIME2(7) DEFAULT SYSUTCDATETIME(),
-    FOREIGN KEY (UserId) REFERENCES Users (UserId)
+    "NotificationId"   BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "UserId"           BIGINT,
+    "Title"            VARCHAR(255),
+    "Message"          TEXT,
+    "NotificationType" VARCHAR(50),
+    "IsRead"           BOOLEAN     DEFAULT FALSE,
+    "IsDelivered"      BOOLEAN     DEFAULT FALSE,
+    "CreatedAt"        TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_notification_user FOREIGN KEY ("UserId") REFERENCES "Users" ("UserId")
 );
-GO
 
 -- =============================================
--- 16) VEHICLE CHECK
+-- 17) VEHICLE CHECK
 -- =============================================
-CREATE TABLE VehicleCheck
+CREATE TABLE "VehicleCheck"
 (
-    Id           BIGINT IDENTITY (1,1) PRIMARY KEY,
-    BookingId    BIGINT,
-    CheckType    NVARCHAR(20),
-    Odometer     INT,
-    BatteryLevel DECIMAL(5, 2),
-    Cleanliness  NVARCHAR(20),
-    Notes        NVARCHAR(MAX),
-    Issues       NVARCHAR(MAX),
-    Status       NVARCHAR(20),
-    CreatedAt    DATETIME2(7) DEFAULT SYSUTCDATETIME(),
-    FOREIGN KEY (BookingId) REFERENCES UsageBooking (BookingId)
+    "Id"           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "BookingId"    BIGINT,
+    "CheckType"    VARCHAR(20),
+    "Odometer"     INT,
+    "BatteryLevel" NUMERIC(5, 2),
+    "Cleanliness"  VARCHAR(20),
+    "Notes"        TEXT,
+    "Issues"       TEXT,
+    "Status"       VARCHAR(20),
+    "CreatedAt"    TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_vehiclecheck_booking FOREIGN KEY ("BookingId") REFERENCES "UsageBooking" ("BookingId")
 );
-GO
 
 -- =============================================
--- 17) USER DOCUMENT
+-- 18) USER DOCUMENT
 -- =============================================
-CREATE TABLE UserDocument
+CREATE TABLE "UserDocument"
 (
-    DocumentId    BIGINT IDENTITY (1,1) PRIMARY KEY,
-    UserId         BIGINT        NOT NULL,
-    DocumentNumber NVARCHAR(255) DEFAULT '',
-    DateOfBirth    NVARCHAR(20) DEFAULT '',
-    IssueDate      NVARCHAR(20) DEFAULT '',
-    ExpiryDate     NVARCHAR(20) DEFAULT '',
-    Address        NVARCHAR(MAX) DEFAULT '',
-    DocumentType   NVARCHAR(20) DEFAULT '',
-    Side           NVARCHAR(10) DEFAULT '',
-    ImageUrl       NVARCHAR(500) NOT NULL DEFAULT '',
-    FileHash       NVARCHAR(64) DEFAULT '',
-    Status         NVARCHAR(20) DEFAULT '',
-    ReviewNote     NVARCHAR(MAX) DEFAULT '',
-    ReviewedBy     BIGINT,
-    CreatedAt      DATETIME2(7) DEFAULT SYSUTCDATETIME(),
-    UpdatedAt      DATETIME2(7) DEFAULT SYSUTCDATETIME(),
-    FOREIGN KEY (UserId) REFERENCES Users (UserId),
-    FOREIGN KEY (ReviewedBy) REFERENCES Users (UserId)
+    "DocumentId"     BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "UserId"         BIGINT       NOT NULL,
+    "DocumentNumber" VARCHAR(255)          DEFAULT '',
+    "DateOfBirth"    VARCHAR(20)           DEFAULT '',
+    "IssueDate"      VARCHAR(20)           DEFAULT '',
+    "ExpiryDate"     VARCHAR(20)           DEFAULT '',
+    "Address"        TEXT                  DEFAULT '',
+    "DocumentType"   VARCHAR(20)           DEFAULT '',
+    "Side"           VARCHAR(10)           DEFAULT '',
+    "ImageUrl"       VARCHAR(500) NOT NULL DEFAULT '',
+    "FileHash"       VARCHAR(64)           DEFAULT '',
+    "Status"         VARCHAR(20)           DEFAULT '',
+    "ReviewNote"     TEXT                  DEFAULT '',
+    "ReviewedBy"     BIGINT,
+    "CreatedAt"      TIMESTAMPTZ           DEFAULT CURRENT_TIMESTAMP,
+    "UpdatedAt"      TIMESTAMPTZ           DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_userdocument_user FOREIGN KEY ("UserId") REFERENCES "Users" ("UserId"),
+    CONSTRAINT fk_userdocument_reviewer FOREIGN KEY ("ReviewedBy") REFERENCES "Users" ("UserId")
 );
-GO
 
 -- =============================================
--- 18) VOTING
+-- 19) VOTING
 -- =============================================
-CREATE TABLE Voting
+CREATE TABLE "Voting"
 (
-    VotingId         BIGINT IDENTITY (1,1) PRIMARY KEY,
-    GroupId          BIGINT,
-    Title            NVARCHAR(255),
-    Description      NVARCHAR(MAX),
-    VotingType       NVARCHAR(50),
-    Options          NVARCHAR(MAX),
-    Results          NVARCHAR(MAX),
-    Deadline         DATETIME2(7),
-    Status           NVARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
-    CreatedBy        BIGINT,
-    CreatedAt        DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
-    RelatedExpenseId BIGINT,
-    EstimatedAmount  DECIMAL(12, 2),
-    FOREIGN KEY (GroupId) REFERENCES OwnershipGroup (GroupId),
-    FOREIGN KEY (CreatedBy) REFERENCES Users (UserId),
-    FOREIGN KEY (RelatedExpenseId) REFERENCES Expense (ExpenseId)
+    "VotingId"         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "GroupId"          BIGINT,
+    "Title"            VARCHAR(255),
+    "Description"      TEXT,
+    "VotingType"       VARCHAR(50),
+    "Options"          TEXT,
+    "Results"          TEXT,
+    "Deadline"         TIMESTAMPTZ,
+    "Status"           VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    "CreatedBy"        BIGINT,
+    "CreatedAt"        TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "RelatedExpenseId" BIGINT,
+    "EstimatedAmount"  NUMERIC(12, 2),
+    CONSTRAINT fk_voting_group FOREIGN KEY ("GroupId") REFERENCES "OwnershipGroup" ("GroupId"),
+    CONSTRAINT fk_voting_creator FOREIGN KEY ("CreatedBy") REFERENCES "Users" ("UserId"),
+    CONSTRAINT fk_voting_expense FOREIGN KEY ("RelatedExpenseId") REFERENCES "Expense" ("ExpenseId")
 );
-GO
 
 -- =============================================
--- 19) VOTE RECORD
+-- 20) VOTE RECORD
 -- =============================================
-CREATE TABLE VoteRecord
+CREATE TABLE "VoteRecord"
 (
-    VoteRecordId   BIGINT IDENTITY (1,1) PRIMARY KEY,
-    VotingId       BIGINT       NOT NULL,
-    UserId         BIGINT       NOT NULL,
-    SelectedOption NVARCHAR(50) NOT NULL,
-    VotedAt        DATETIME2(7) NOT NULL DEFAULT SYSUTCDATETIME(),
-    FOREIGN KEY (VotingId) REFERENCES Voting (VotingId),
-    FOREIGN KEY (UserId) REFERENCES Users (UserId),
-    CONSTRAINT UQ_VoteRecord UNIQUE (VotingId, UserId)
+    "VoteRecordId"   BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "VotingId"       BIGINT      NOT NULL,
+    "UserId"         BIGINT      NOT NULL,
+    "SelectedOption" VARCHAR(50) NOT NULL,
+    "VotedAt"        TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_voterecord_voting FOREIGN KEY ("VotingId") REFERENCES "Voting" ("VotingId"),
+    CONSTRAINT fk_voterecord_user FOREIGN KEY ("UserId") REFERENCES "Users" ("UserId"),
+    CONSTRAINT uq_voterecord UNIQUE ("VotingId", "UserId")
 );
-GO
 
 -- =============================================
--- 20) INVITATION
+-- 21) INVITATION
 -- =============================================
-CREATE TABLE Invitation
+CREATE TABLE "Invitation"
 (
-    InvitationId        BIGINT IDENTITY (1,1) PRIMARY KEY,
-    GroupId             BIGINT        NOT NULL,
-    InviterUserId       BIGINT        NOT NULL,
-    InviteeEmail        NVARCHAR(100) NOT NULL,
-    EmailNormalized     AS LOWER(InviteeEmail) PERSISTED,
-    Token               VARCHAR(128)  NOT NULL,
-    OtpCode             VARCHAR(6)    NOT NULL,
-    Status              NVARCHAR(20)  NOT NULL,
-    SuggestedPercentage DECIMAL(5, 2) NULL,
-    ExpiresAt           DATETIME2(7)  NOT NULL,
-    ResendCount         INT           NOT NULL DEFAULT 0,
-    LastSentAt          DATETIME2(7)  NULL,
-    CreatedAt           DATETIME2(7)  NOT NULL DEFAULT SYSUTCDATETIME(),
-    AcceptedAt          DATETIME2(7)  NULL,
-    AcceptedBy          BIGINT        NULL,
-    FOREIGN KEY (GroupId) REFERENCES OwnershipGroup (GroupId) ON DELETE CASCADE,
-    FOREIGN KEY (InviterUserId) REFERENCES Users (UserId),
-    FOREIGN KEY (AcceptedBy) REFERENCES Users (UserId) ON DELETE SET NULL,
-    CONSTRAINT CK_Invitation_Status
-        CHECK (Status IN (N'PENDING', N'ACCEPTED', N'EXPIRED')),
-    CONSTRAINT CK_Invitation_Otp
-        CHECK (OtpCode NOT LIKE '%[^0-9]%' AND LEN(OtpCode) = 6),
-    CONSTRAINT CK_Invitation_SuggestedPct
-        CHECK (SuggestedPercentage IS NULL OR (SuggestedPercentage >= 0.00 AND SuggestedPercentage <= 100.00))
+    "InvitationId"        BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "GroupId"             BIGINT       NOT NULL,
+    "InviterUserId"       BIGINT       NOT NULL,
+    "InviteeEmail"        VARCHAR(100) NOT NULL,
+    "EmailNormalized"     VARCHAR(100) GENERATED ALWAYS AS (LOWER("InviteeEmail")) STORED,
+    "Token"               VARCHAR(128) NOT NULL,
+    "OtpCode"             VARCHAR(6)   NOT NULL,
+    "Status"              VARCHAR(20)  NOT NULL,
+    "SuggestedPercentage" NUMERIC(5, 2),
+    "ExpiresAt"           TIMESTAMPTZ  NOT NULL,
+    "ResendCount"         INT          NOT NULL DEFAULT 0,
+    "LastSentAt"          TIMESTAMPTZ,
+    "CreatedAt"           TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "AcceptedAt"          TIMESTAMPTZ,
+    "AcceptedBy"          BIGINT,
+    CONSTRAINT fk_invitation_group FOREIGN KEY ("GroupId") REFERENCES "OwnershipGroup" ("GroupId") ON DELETE CASCADE,
+    CONSTRAINT fk_invitation_inviter FOREIGN KEY ("InviterUserId") REFERENCES "Users" ("UserId"),
+    CONSTRAINT fk_invitation_acceptor FOREIGN KEY ("AcceptedBy") REFERENCES "Users" ("UserId") ON DELETE SET NULL,
+    CONSTRAINT ck_invitation_status CHECK ("Status" IN ('PENDING', 'ACCEPTED', 'EXPIRED')),
+    CONSTRAINT ck_invitation_otp CHECK ("OtpCode" ~ '^[0-9]{6}$'),
+    CONSTRAINT ck_invitation_pct CHECK ("SuggestedPercentage" IS NULL OR ("SuggestedPercentage" BETWEEN 0 AND 100))
 );
-GO
 
 -- =============================================
--- 21) OTP TOKEN
+-- 22) OTP TOKEN
 -- =============================================
-CREATE TABLE OtpToken
+CREATE TABLE "OtpToken"
 (
-    TokenId   BIGINT IDENTITY (1,1) PRIMARY KEY,
-    Email     NVARCHAR(100) NOT NULL,
-    OtpCode   VARCHAR(6)    NOT NULL,
-    ExpiresAt DATETIME2(7)  NOT NULL,
-    IsUsed    BIT           DEFAULT 0,
-    CreatedAt DATETIME2(7)  DEFAULT SYSUTCDATETIME()
+    "TokenId"   BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "Email"     VARCHAR(100) NOT NULL,
+    "OtpCode"   VARCHAR(6)   NOT NULL CHECK ("OtpCode" ~ '^[0-9]{6}$'),
+    "ExpiresAt" TIMESTAMPTZ  NOT NULL,
+    "IsUsed"    BOOLEAN     DEFAULT FALSE,
+    "CreatedAt" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
-GO
 
 -- =============================================
--- 22) FINANCIAL REPORT
+-- 23) FINANCIAL REPORT
 -- =============================================
-CREATE TABLE FinancialReport
+CREATE TABLE "FinancialReport"
 (
-    ReportId     BIGINT IDENTITY (1,1) PRIMARY KEY,
-    FundId       BIGINT       NOT NULL,
-    ReportMonth  INT,
-    ReportYear   INT,
-    TotalIncome  DECIMAL(15, 2),
-    TotalExpense DECIMAL(15, 2),
-    GeneratedBy  BIGINT       NOT NULL,
-    CreatedAt    DATETIME2(7) DEFAULT SYSUTCDATETIME(),
-    UpdatedAt    DATETIME2(7) DEFAULT SYSUTCDATETIME(),
-    FOREIGN KEY (FundId) REFERENCES SharedFund (FundId),
-    FOREIGN KEY (GeneratedBy) REFERENCES Users (UserId)
+    "ReportId"     BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "FundId"       BIGINT NOT NULL,
+    "ReportMonth"  INT,
+    "ReportYear"   INT,
+    "TotalIncome"  NUMERIC(15, 2),
+    "TotalExpense" NUMERIC(15, 2),
+    "GeneratedBy"  BIGINT NOT NULL,
+    "CreatedAt"    TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    "UpdatedAt"    TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_finreport_fund FOREIGN KEY ("FundId") REFERENCES "SharedFund" ("FundId"),
+    CONSTRAINT fk_finreport_user FOREIGN KEY ("GeneratedBy") REFERENCES "Users" ("UserId")
 );
-GO
 
 -- =============================================
 -- INDEXES
 -- =============================================
+CREATE INDEX IF NOT EXISTS ix_users_email ON "Users" ("Email");
+CREATE INDEX IF NOT EXISTS ix_users_role ON "Users" ("RoleId");
 
--- Users
-CREATE INDEX IX_Users_Email ON Users (Email);
-CREATE INDEX IX_Users_RoleId ON Users (RoleId);
+CREATE INDEX IF NOT EXISTS ix_ownershipshare_group ON "OwnershipShare" ("GroupId");
 
--- OwnershipShare
-CREATE INDEX IX_OwnershipShare_GroupId ON OwnershipShare (GroupId);
+CREATE INDEX IF NOT EXISTS ix_vehicle_group ON "Vehicle" ("GroupId");
+CREATE INDEX IF NOT EXISTS ix_vehicle_license ON "Vehicle" ("LicensePlate");
 
--- Vehicle
-CREATE INDEX IX_Vehicle_GroupId ON Vehicle (GroupId);
-CREATE INDEX IX_Vehicle_LicensePlate ON Vehicle (LicensePlate);
+CREATE INDEX IF NOT EXISTS ix_vehicleimages_vehicle ON "VehicleImages" ("VehicleId");
+CREATE INDEX IF NOT EXISTS ix_vehicleimages_type ON "VehicleImages" ("ImageType");
 
--- VehicleImages
-CREATE INDEX IX_VehicleImages_VehicleId ON VehicleImages (VehicleId);
-CREATE INDEX IX_VehicleImages_ImageType ON VehicleImages (ImageType);
+CREATE INDEX IF NOT EXISTS ix_contract_status ON "Contract" ("ApprovalStatus");
+CREATE INDEX IF NOT EXISTS ix_contract_approver ON "Contract" ("ApprovedBy");
+CREATE INDEX IF NOT EXISTS ix_contract_group ON "Contract" ("GroupId");
 
--- Contract
-CREATE INDEX IX_Contract_ApprovalStatus ON Contract (ApprovalStatus);
-CREATE INDEX IX_Contract_ApprovedBy ON Contract (ApprovedBy);
-CREATE INDEX IX_Contract_GroupId ON Contract (GroupId);
+CREATE INDEX IF NOT EXISTS ix_contractfeedback_contract ON "ContractFeedback" ("ContractId");
+CREATE INDEX IF NOT EXISTS ix_contractfeedback_user ON "ContractFeedback" ("UserId");
 
--- ContractFeedback
-CREATE INDEX IX_ContractFeedback_ContractId ON ContractFeedback (ContractId);
-CREATE INDEX IX_ContractFeedback_UserId ON ContractFeedback (UserId);
+CREATE INDEX IF NOT EXISTS ix_usagebooking_user ON "UsageBooking" ("UserId");
+CREATE INDEX IF NOT EXISTS ix_usagebooking_vehicle ON "UsageBooking" ("VehicleId");
+CREATE INDEX IF NOT EXISTS ix_usagebooking_start ON "UsageBooking" ("StartDateTime");
+CREATE INDEX IF NOT EXISTS ix_usagebooking_status ON "UsageBooking" ("Status");
 
--- UsageBooking
-CREATE INDEX IX_UsageBooking_UserId ON UsageBooking (UserId);
-CREATE INDEX IX_UsageBooking_VehicleId ON UsageBooking (VehicleId);
-CREATE INDEX IX_UsageBooking_StartDateTime ON UsageBooking (StartDateTime);
-CREATE INDEX IX_UsageBooking_Status ON UsageBooking (Status);
+CREATE INDEX IF NOT EXISTS ix_maintenance_vehicle ON "Maintenance" ("VehicleId");
+CREATE INDEX IF NOT EXISTS ix_maintenance_requested ON "Maintenance" ("RequestedBy");
+CREATE INDEX IF NOT EXISTS ix_maintenance_status ON "Maintenance" ("Status");
 
--- Maintenance
-CREATE INDEX IX_Maintenance_VehicleId ON Maintenance (VehicleId);
-CREATE INDEX IX_Maintenance_RequestedBy ON Maintenance (RequestedBy);
-CREATE INDEX IX_Maintenance_Status ON Maintenance (Status);
+CREATE INDEX IF NOT EXISTS ix_incident_booking ON "Incident" ("BookingId");
+CREATE INDEX IF NOT EXISTS ix_incident_user ON "Incident" ("UserId");
+CREATE INDEX IF NOT EXISTS ix_incident_approved ON "Incident" ("ApprovedBy");
+CREATE INDEX IF NOT EXISTS ix_incident_status ON "Incident" ("Status");
 
--- Incident
-CREATE INDEX IX_Incident_BookingId ON Incident (BookingId);
-CREATE INDEX IX_Incident_UserId ON Incident (UserId);
-CREATE INDEX IX_Incident_ApprovedBy ON Incident (ApprovedBy);
-CREATE INDEX IX_Incident_Status ON Incident (Status);
+CREATE INDEX IF NOT EXISTS ix_dispute_group ON "Dispute" ("GroupId");
+CREATE INDEX IF NOT EXISTS ix_dispute_created ON "Dispute" ("CreatedBy");
+CREATE INDEX IF NOT EXISTS ix_dispute_resolved ON "Dispute" ("ResolvedBy");
+CREATE INDEX IF NOT EXISTS ix_dispute_status ON "Dispute" ("Status");
+CREATE INDEX IF NOT EXISTS ix_dispute_type ON "Dispute" ("DisputeType");
+CREATE INDEX IF NOT EXISTS ix_dispute_created_at ON "Dispute" ("CreatedAt");
 
--- Dispute
-CREATE INDEX IX_Dispute_GroupId ON Dispute (GroupId);
-CREATE INDEX IX_Dispute_CreatedBy ON Dispute (CreatedBy);
-CREATE INDEX IX_Dispute_ResolvedBy ON Dispute (ResolvedBy);
-CREATE INDEX IX_Dispute_Status ON Dispute (Status);
-CREATE INDEX IX_Dispute_DisputeType ON Dispute (DisputeType);
-CREATE INDEX IX_Dispute_CreatedAt ON Dispute (CreatedAt);
+CREATE INDEX IF NOT EXISTS ix_expense_fund ON "Expense" ("FundId");
+CREATE INDEX IF NOT EXISTS ix_expense_source ON "Expense" ("SourceType", "SourceId");
 
--- Expense
-CREATE INDEX IX_Expense_FundId ON Expense (FundId);
-CREATE INDEX IX_Expense_SourceType_SourceId ON Expense (SourceType, SourceId);
+CREATE INDEX IF NOT EXISTS ix_payment_payer ON "Payment" ("PayerUserId");
+CREATE INDEX IF NOT EXISTS ix_payment_fund ON "Payment" ("FundId");
+CREATE INDEX IF NOT EXISTS ix_payment_status ON "Payment" ("Status");
+CREATE INDEX IF NOT EXISTS ix_payment_maintenance ON "Payment" ("MaintenanceId");
 
--- Payment
-CREATE INDEX IX_Payment_PayerUserId ON Payment (PayerUserId);
-CREATE INDEX IX_Payment_FundId ON Payment (FundId);
-CREATE INDEX IX_Payment_Status ON Payment (Status);
-CREATE INDEX IX_Payment_MaintenanceId ON Payment (MaintenanceId);
+CREATE INDEX IF NOT EXISTS ix_notification_user ON "Notification" ("UserId");
+CREATE INDEX IF NOT EXISTS ix_notification_read ON "Notification" ("IsRead");
 
--- Notification
-CREATE INDEX IX_Notification_UserId ON Notification (UserId);
-CREATE INDEX IX_Notification_IsRead ON Notification (IsRead);
+CREATE INDEX IF NOT EXISTS ix_vehiclecheck_booking ON "VehicleCheck" ("BookingId");
+CREATE INDEX IF NOT EXISTS ix_vehiclecheck_status ON "VehicleCheck" ("Status");
 
--- VehicleCheck
-CREATE INDEX IX_VehicleCheck_BookingId ON VehicleCheck (BookingId);
-CREATE INDEX IX_VehicleCheck_Status ON VehicleCheck (Status);
+CREATE INDEX IF NOT EXISTS ix_userdocument_user ON "UserDocument" ("UserId");
+CREATE INDEX IF NOT EXISTS ix_userdocument_status ON "UserDocument" ("Status");
 
--- UserDocument
-CREATE INDEX IX_UserDocument_UserId ON UserDocument (UserId);
-CREATE INDEX IX_UserDocument_Status ON UserDocument (Status);
+CREATE INDEX IF NOT EXISTS ix_voting_group ON "Voting" ("GroupId");
+CREATE INDEX IF NOT EXISTS ix_voting_status ON "Voting" ("Status");
 
--- Voting
-CREATE INDEX IX_Voting_GroupId ON Voting (GroupId);
-CREATE INDEX IX_Voting_Status ON Voting (Status);
+CREATE INDEX IF NOT EXISTS ix_voterecord_voting ON "VoteRecord" ("VotingId");
+CREATE INDEX IF NOT EXISTS ix_voterecord_user ON "VoteRecord" ("UserId");
 
--- VoteRecord
-CREATE INDEX IX_VoteRecord_VotingId ON VoteRecord (VotingId);
-CREATE INDEX IX_VoteRecord_UserId ON VoteRecord (UserId);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_invitation_token ON "Invitation" ("Token");
+CREATE UNIQUE INDEX IF NOT EXISTS uq_invitation_group_email_pending
+    ON "Invitation" ("GroupId", "EmailNormalized")
+    WHERE "Status" = 'PENDING';
+CREATE INDEX IF NOT EXISTS ix_invitation_expires ON "Invitation" ("ExpiresAt");
+CREATE INDEX IF NOT EXISTS ix_invitation_group_expires ON "Invitation" ("GroupId", "ExpiresAt");
 
--- Invitation
-CREATE UNIQUE INDEX UQ_Invitation_Token ON Invitation (Token);
-CREATE UNIQUE INDEX UQ_Invitation_Group_Email_Pending
-    ON Invitation (GroupId, EmailNormalized)
-    WHERE Status = N'PENDING';
-CREATE INDEX IX_Invitation_ExpiresAt ON Invitation (ExpiresAt);
-CREATE INDEX IX_Invitation_Group_ExpiresAt ON Invitation (GroupId, ExpiresAt);
+CREATE INDEX IF NOT EXISTS ix_financialreport_fund ON "FinancialReport" ("FundId");
+CREATE INDEX IF NOT EXISTS ix_financialreport_generated ON "FinancialReport" ("GeneratedBy");
+CREATE INDEX IF NOT EXISTS ix_financialreport_period ON "FinancialReport" ("ReportYear", "ReportMonth");
 
--- FinancialReport
-CREATE INDEX IX_FinancialReport_FundId ON FinancialReport (FundId);
-CREATE INDEX IX_FinancialReport_GeneratedBy ON FinancialReport (GeneratedBy);
-CREATE INDEX IX_FinancialReport_ReportYearMonth ON FinancialReport (ReportYear, ReportMonth);
-
-GO
+COMMIT;

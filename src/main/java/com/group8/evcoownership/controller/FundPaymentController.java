@@ -7,7 +7,6 @@ import com.group8.evcoownership.enums.PaymentType;
 import com.group8.evcoownership.repository.PaymentRepository;
 import com.group8.evcoownership.service.FundPaymentService;
 import com.group8.evcoownership.service.MaintenancePaymentService;
-import com.group8.evcoownership.service.MaintenanceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -98,13 +97,13 @@ public class FundPaymentController {
     @Operation(
             summary = "Callback trả về từ VNPay (public)",
             description = """
-            VNPay redirect người dùng về đây sau khi thanh toán.
-            - Dựa vào txnRef để tìm Payment và phân biệt loại:
-              + CONTRIBUTION  -> nạp quỹ (fund topup)
-              + MAINTENANCE_FEE -> thanh toán maintenance PERSONAL
-            - Nếu vnp_ResponseCode = '00': xác nhận & cập nhật tương ứng.
-            - Ngược lại: fail.
-            """
+                    VNPay redirect người dùng về đây sau khi thanh toán.
+                    - Dựa vào txnRef để tìm Payment và phân biệt loại:
+                      + CONTRIBUTION  -> nạp quỹ (fund topup)
+                      + MAINTENANCE_FEE -> thanh toán maintenance PERSONAL
+                    - Nếu vnp_ResponseCode = '00': xác nhận & cập nhật tương ứng.
+                    - Ngược lại: fail.
+                    """
     )
     public void handleFundCallback(
             HttpServletResponse response,

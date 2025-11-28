@@ -7,7 +7,6 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
 
 @Data
 @NoArgsConstructor
@@ -16,13 +15,13 @@ import java.util.Map;
 public class DashboardChartDataDTO {
     // Revenue/Expense theo tháng (cho biểu đồ)
     private List<MonthlyFinancialData> monthlyFinancials;
-    
+
     // Bookings theo tháng
     private List<MonthlyBookingData> monthlyBookings;
-    
+
     // Groups theo tháng (số nhóm mới tạo)
     private List<MonthlyGroupData> monthlyGroups;
-    
+
     // Users theo tháng (số user mới đăng ký)
     private List<MonthlyUserData> monthlyUsers;
 
@@ -68,4 +67,5 @@ public class DashboardChartDataDTO {
         private Long activeUsers;
     }
 }
+
 

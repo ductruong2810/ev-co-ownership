@@ -15,22 +15,22 @@ import java.util.List;
 
 @Repository
 public interface DisputeRepository extends JpaRepository<Dispute, Long> {
-    
+
     // Tìm tranh chấp theo người tạo
     List<Dispute> findByCreatedBy_UserId(Long userId);
-    
+
     // Tìm tranh chấp theo nhóm
     List<Dispute> findByGroup_GroupId(Long groupId);
-    
+
     // Tìm tranh chấp theo trạng thái
     List<Dispute> findByStatus(DisputeStatus status);
-    
+
     // Tìm tranh chấp chờ xử lý (OPEN)
     List<Dispute> findByStatusOrderByCreatedAtDesc(DisputeStatus status);
-    
+
     // Tìm tranh chấp theo nhóm và trạng thái
     List<Dispute> findByGroup_GroupIdAndStatus(Long groupId, DisputeStatus status);
-    
+
     // Lọc tranh chấp với nhiều điều kiện (cho Staff/Admin)
     @Query("""
             SELECT d FROM Dispute d
@@ -57,4 +57,5 @@ public interface DisputeRepository extends JpaRepository<Dispute, Long> {
             Pageable pageable
     );
 }
+
 
