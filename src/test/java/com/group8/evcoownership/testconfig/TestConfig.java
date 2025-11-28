@@ -1,10 +1,10 @@
 package com.group8.evcoownership.testconfig;
 
-import com.azure.storage.blob.BlobContainerClient;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
+import software.amazon.awssdk.services.s3.S3Client;
 
 import static org.mockito.Mockito.mock;
 
@@ -14,7 +14,7 @@ public class TestConfig {
 
     @Bean
     @Primary
-    public BlobContainerClient mockBlobContainerClient() {
-        return mock(BlobContainerClient.class);
+    public S3Client mockR2S3Client() {
+        return mock(S3Client.class);
     }
 }

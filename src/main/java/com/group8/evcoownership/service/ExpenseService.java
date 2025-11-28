@@ -40,9 +40,6 @@ public class ExpenseService {
         SharedFund fund = sharedFundRepository.findById(req.getFundId())
                 .orElseThrow(() -> new EntityNotFoundException("Fund not found"));
 
-        User approver = userRepository.findByEmail(username)
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
-
         User recipient = null;
 
         // Nếu sourceType = INCIDENT → lấy user từ Incident

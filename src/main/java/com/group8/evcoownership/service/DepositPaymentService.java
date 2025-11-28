@@ -249,7 +249,6 @@ public class DepositPaymentService {
     }
 
 
-
     /**
      * Lấy thông tin deposit của user trong group
      */

@@ -29,7 +29,7 @@ public class VehicleService {
     private final VehicleRepository vehicleRepo;
     private final OwnershipGroupRepository groupRepo;
     private final VehicleImageRepository vehicleImageRepository;
-    private final AzureBlobStorageService azureBlobStorageService;
+    private final CloudflareR2StorageService r2StorageService;
 
     private VehicleResponseDTO toDto(Vehicle v) {
         return new VehicleResponseDTO(
@@ -155,7 +155,7 @@ public class VehicleService {
             Map<String, List<String>> typeImages = new HashMap<>();
 
             for (int i = 0; i < images.length; i++) {
-                String imageUrl = azureBlobStorageService.uploadFile(images[i]);
+                String imageUrl = r2StorageService.uploadFile(images[i]);
                 String imageType = imageTypes[i];
 
                 VehicleImage vehicleImg = VehicleImage.builder()
@@ -189,10 +189,10 @@ public class VehicleService {
             uploadedImages.values().forEach(url -> {
                 try {
                     if (url instanceof String) {
-                        azureBlobStorageService.deleteFile((String) url);
+                        r2StorageService.deleteFile((String) url);
                     } else if (url instanceof String[]) {
                         for (String singleUrl : (String[]) url) {
-                            azureBlobStorageService.deleteFile(singleUrl);
+                            r2StorageService.deleteFile(singleUrl);
                         }
                     }
                 } catch (Exception cleanupError) {

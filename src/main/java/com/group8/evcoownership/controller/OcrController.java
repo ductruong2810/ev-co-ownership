@@ -116,7 +116,7 @@ public class OcrController {
     public Map<String, Object> healthCheck() {
         Map<String, Object> result = new HashMap<>();
         result.put("status", "OK");
-        result.put("azureEnabled", ocrService.isAzureEnabled());
+        result.put("googleVisionEnabled", ocrService.isGoogleVisionEnabled());
         result.put("ocrEngineInfo", ocrService.getOcrEngineInfo());
         result.put("timestamp", System.currentTimeMillis());
         return result;

@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @Builder
 public class LoginResponseDTO {
     private String accessToken;
-//    private String refreshToken;
+    private String refreshToken;
     private String role;
     //bo sung de nhan biet staff, coowner, admin, technician
 }

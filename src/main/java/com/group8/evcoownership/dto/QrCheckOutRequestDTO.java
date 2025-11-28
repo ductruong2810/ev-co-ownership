@@ -10,7 +10,8 @@ public record QrCheckOutRequestDTO(
         BigDecimal batteryLevel,
         String cleanliness,
         String notes,
-        String issues
+        String issues,
+        String signature // Base64 encoded signature image (optional but recommended)
 ) {
 }
 

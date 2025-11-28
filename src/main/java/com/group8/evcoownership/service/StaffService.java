@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 
-
 @Service
 @Slf4j
 public class StaffService {
@@ -50,7 +49,6 @@ public class StaffService {
     public List<UserProfileResponseDTO> getAllUsers(String status, String documentStatus) {
         // Lấy tất cả user có role CO_OWNER
         List<User> users = userRepository.findByRoleRoleName(RoleName.CO_OWNER);
-
 
 
         // Nếu có truyền status (ACTIVE, BANNED, PENDING), filter thêm theo trạng thái use
@@ -204,8 +202,11 @@ public class StaffService {
             document.setReviewNote("Document verified and approved");
         } else if ("REJECT".equals(action)) {
             document.setStatus("REJECTED");
-            // Ở đây đang để note cứng
-            document.setReviewNote("Document rejected");
+            // Sử dụng reason từ request nếu có, nếu không thì dùng message mặc định
+            String reviewNote = (request.getReason() != null && !request.getReason().trim().isEmpty())
+                    ? request.getReason().trim()
+                    : "Document rejected";
+            document.setReviewNote(reviewNote);
         } else {
             throw new IllegalArgumentException("Invalid action. Use APPROVE or REJECT");
         }

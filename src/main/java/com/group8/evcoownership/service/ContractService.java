@@ -17,7 +17,9 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -231,7 +233,7 @@ public class ContractService {
      */
     private Contract createNewContractIfNotExists(Long groupId) {
         OwnershipGroup group = getGroupById(groupId);
-        
+
         Optional<Contract> contractOpt = contractRepository.findByGroupGroupId(groupId);
         if (contractOpt.isPresent()) {
             return contractOpt.get();
@@ -266,7 +268,7 @@ public class ContractService {
         if (reason == null || reason.trim().isEmpty()) {
             throw new IllegalArgumentException("Reason is required");
         }
-        
+
         String trimmedReason = reason.trim();
         if (trimmedReason.length() < 10) {
             throw new IllegalArgumentException("Reason must be at least 10 characters");
@@ -619,7 +621,7 @@ public class ContractService {
                             boolean isSameContractVersion = isIsSameContractVersion(contract, userFeedback);
                             boolean isRejected = userFeedback.getStatus() == MemberFeedbackStatus.REJECTED;
                             boolean isDisagree = userFeedback.getReactionType() == ReactionType.DISAGREE;
-                            
+
                             canSubmitFeedback = isRejected || isDisagree || !isSameContractVersion;
                         }
                     } else if (isPendingMemberApproval) {
@@ -828,7 +830,7 @@ public class ContractService {
                         Security deposit is a separate reserve fund and will not be used for regular operations or shared expenses.
                         """
         );
-        
+
         // Thêm cách tính security deposit
         terms.append("\nSecurity Deposit Calculation:\n");
         if (vehicle != null && vehicle.getVehicleValue() != null && vehicle.getVehicleValue().compareTo(BigDecimal.ZERO) > 0) {
@@ -857,7 +859,7 @@ public class ContractService {
                     .append(" members × 10% × base amount)\n");
             terms.append("- Each member's deposit: Total deposit × ownership percentage\n");
         }
-        
+
         terms.append(
                 "\nNote: The full deposit must be paid before the contract becomes active and legally effective.\n\n"
         );

@@ -8,7 +8,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.ColumnDefault;
-import org.hibernate.annotations.Nationalized;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -42,9 +41,7 @@ public class Contract {
     @Column(name = "EndDate")
     private LocalDate endDate;
 
-    @Nationalized
-    @Lob
-    @Column(name = "Terms")
+    @Column(name = "Terms", columnDefinition = "TEXT")
     private String terms;
 
     @Column(name = "RequiredDepositAmount", precision = 15, scale = 2)
@@ -73,7 +70,6 @@ public class Contract {
     @Column(name = "ApprovedAt")
     private LocalDateTime approvedAt;
 
-    @Nationalized
     @Column(name = "RejectionReason", length = 500)
     private String rejectionReason;
 

@@ -7,6 +7,7 @@ import com.group8.evcoownership.enums.OtpType;
 import com.group8.evcoownership.enums.RoleName;
 import com.group8.evcoownership.enums.UserStatus;
 import com.group8.evcoownership.exception.InvalidCredentialsException;
+import com.group8.evcoownership.exception.ResourceNotFoundException;
 import com.group8.evcoownership.repository.RoleRepository;
 import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.utils.JwtUtil;
@@ -85,55 +86,58 @@ public class AuthService {
             throw new IllegalStateException("Account is not activated. Please verify your email");
         }
 
-        //BỎ
-//        // Ghi nhận lựa chọn rememberMe để quyết định TTL của refresh token
-//        boolean rememberMe = request.isRememberMe();
+        // Tạo access token và refresh token
+        String accessToken = jwtUtil.generateToken(user);
+        String refreshToken = jwtUtil.generateRefreshToken(user);
 
-        // Tạo access token trả role hiện tại của user
+        log.info("Login successful for user: {}", user.getEmail());
+
         return LoginResponseDTO.builder()
-                .accessToken(jwtUtil.generateToken(user))
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
                 .role(user.getRole().getRoleName().name())
                 .build();
     }
 
-//    // ================= REFRESH TOKEN =================
-//    public LoginResponseDTO refreshToken(String refreshToken) {
-//        log.info("Processing token refresh");
-//
-//        // Kiểm tra token rỗng/null: dùng trim() để loại khoảng trắng vô tình -> đảm bảo không nhận chuỗi trống trá hình
-//        if (refreshToken == null || refreshToken.trim().isEmpty()) {
-//            throw new IllegalArgumentException("Refresh token cannot be empty");
-//        }
-//
-//        // Xác thực refresh token: chữ ký, thời hạn, issuer, v.v.; nếu fail => ném lỗi
-//        if (!jwtUtil.validateToken(refreshToken)) {
-//            throw new IllegalArgumentException("Refresh token is invalid or has expired");
-//        }
-//
-//        // Trích email từ refresh token đã validate
-//        String email = jwtUtil.extractEmail(refreshToken);
-//
-//        // Lấy user theo email; nếu không có => dữ liệu không nhất quán hoặc token không hợp lệ
-//        User user = userRepository.findByEmail(email)
-//                .orElseThrow(() -> new ResourceNotFoundException("User not found for email: " + email));
-//
-//        // Chỉ cấp token mới nếu tài khoản ACTIVE
-//        if (user.getStatus() != UserStatus.ACTIVE) {
-//            throw new IllegalStateException("Account is not activated");
-//        }
-//
-//        // Phát hành cặp token mới (access + refresh)
-//        String newAccessToken = jwtUtil.generateToken(user);
-//      String newRefreshToken = jwtUtil.generateRefreshToken(user);
-//
-//        log.info("Tokens refreshed successfully for user: {}", email);
-//
-//        // Trả về response chứa token mới và role
-//        return LoginResponseDTO.builder()
-//                .accessToken(newAccessToken)
-//                .role(user.getRole().getRoleName().name())
-//                .build();
-//    }
+    // ================= REFRESH TOKEN =================
+    public LoginResponseDTO refreshToken(String refreshToken) {
+        log.info("Processing token refresh");
+
+        // Kiểm tra token rỗng/null: dùng trim() để loại khoảng trắng vô tình -> đảm bảo không nhận chuỗi trống trá hình
+        if (refreshToken == null || refreshToken.trim().isEmpty()) {
+            throw new IllegalArgumentException("Refresh token cannot be empty");
+        }
+
+        // Xác thực refresh token: chữ ký, thời hạn, issuer, v.v.; nếu fail => ném lỗi
+        if (!jwtUtil.validateToken(refreshToken)) {
+            throw new IllegalArgumentException("Refresh token is invalid or has expired");
+        }
+
+        // Trích email từ refresh token đã validate
+        String email = jwtUtil.extractEmail(refreshToken);
+
+        // Lấy user theo email; nếu không có => dữ liệu không nhất quán hoặc token không hợp lệ
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found for email: " + email));
+
+        // Chỉ cấp token mới nếu tài khoản ACTIVE
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new IllegalStateException("Account is not activated");
+        }
+
+        // Phát hành cặp token mới (access + refresh)
+        String newAccessToken = jwtUtil.generateToken(user);
+        String newRefreshToken = jwtUtil.generateRefreshToken(user);
+
+        log.info("Tokens refreshed successfully for user: {}", email);
+
+        // Trả về response chứa token mới và role
+        return LoginResponseDTO.builder()
+                .accessToken(newAccessToken)
+                .refreshToken(newRefreshToken)
+                .role(user.getRole().getRoleName().name())
+                .build();
+    }
 
     // ================= Request otp (registration) =================
     public OtpResponseDTO requestOtp(RegisterRequestDTO request) {

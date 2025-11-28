@@ -20,7 +20,7 @@ public class TestController {
     @GetMapping("/ocr-config")
     public Map<String, Object> testOcrConfig() {
         Map<String, Object> result = new HashMap<>();
-        result.put("azureEnabled", ocrService.isAzureEnabled());
+        result.put("googleVisionEnabled", ocrService.isGoogleVisionEnabled());
         result.put("ocrEngineInfo", ocrService.getOcrEngineInfo());
         result.put("timestamp", System.currentTimeMillis());
         return result;

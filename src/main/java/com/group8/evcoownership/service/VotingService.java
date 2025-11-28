@@ -203,12 +203,14 @@ public class VotingService {
             // Parse JSON options trong Voting thành Map để trả về cho client
             Map<String, Object> options = objectMapper.readValue(
                     voting.getOptions(),
-                    new TypeReference<>() {}
+                    new TypeReference<>() {
+                    }
             );
 
             // Nếu có kết quả thì parse JSON results thành Map, nếu chưa có thì dùng HashMap rỗng
             Map<String, Object> results = voting.getResults() != null
-                    ? objectMapper.readValue(voting.getResults(), new TypeReference<>() {})
+                    ? objectMapper.readValue(voting.getResults(), new TypeReference<>() {
+            })
                     : new HashMap<>();
 
             // Tìm bản ghi vote của user trong voting này (nếu đã vote)

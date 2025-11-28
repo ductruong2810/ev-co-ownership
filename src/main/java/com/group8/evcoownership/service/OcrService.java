@@ -1,11 +1,7 @@
 package com.group8.evcoownership.service;
 
-import com.azure.ai.vision.imageanalysis.ImageAnalysisClient;
-import com.azure.ai.vision.imageanalysis.ImageAnalysisClientBuilder;
-import com.azure.ai.vision.imageanalysis.models.ImageAnalysisResult;
-import com.azure.ai.vision.imageanalysis.models.VisualFeatures;
-import com.azure.core.credential.AzureKeyCredential;
-import com.azure.core.util.BinaryData;
+import com.google.cloud.vision.v1.*;
+import com.google.protobuf.ByteString;
 import com.group8.evcoownership.dto.GroupWithVehicleResponseDTO;
 import com.group8.evcoownership.dto.VehicleInfoDTO;
 import lombok.extern.slf4j.Slf4j;
@@ -13,7 +9,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -21,40 +18,19 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class OcrService {
 
-    @Value("${azure.computer-vision.endpoint:}")
-    private String azureEndpoint;   // Endpoint dịch vụ Azure Computer Vision
+    @Value("${ocr.provider:google}")
+    private String ocrProvider;   // OCR provider: google
 
-    @Value("${azure.computer-vision.key:}")
-    private String azureKey;        // API key dùng để gọi Azure Computer Vision
+    @Value("${google.vision.api-key:}")
+    private String googleVisionApiKey;   // Google Vision API key
 
-    @Value("${azure.computer-vision.enabled:true}")
-    private boolean azureEnabled;   // Cờ bật/tắt OCR Azure theo cấu hình
+    @Value("${google.vision.endpoint:https://vision.googleapis.com/v1/images:annotate}")
+    private String googleVisionEndpoint;   // Google Vision endpoint
 
-    private ImageAnalysisClient azureClient; // Client gọi Azure OCR (được lazy-init)
     private final VehicleInfoExtractionService vehicleInfoExtractionService;
 
     public OcrService(VehicleInfoExtractionService vehicleInfoExtractionService) {
         this.vehicleInfoExtractionService = vehicleInfoExtractionService;
-    }
-
-    // ========= Khởi tạo client azure computer vision =========
-    // Dùng endpoint + key cấu hình để tạo client gọi API OCR Azure
-    // Chỉ khởi tạo 1 lần, dùng lại cho các lần gọi sau
-    private void initializeAzureClient() {
-        // Kiểm tra nếu client chưa tạo, OCR được bật, endpoint và key có cấu hình hợp lệ
-        if (azureClient == null && azureEnabled && !azureEndpoint.isEmpty() && !azureKey.isEmpty()) {
-            try {
-                // Dùng builder để tạo client với endpoint và key
-                azureClient = new ImageAnalysisClientBuilder()
-                        .endpoint(azureEndpoint)
-                        .credential(new AzureKeyCredential(azureKey))
-                        .buildClient();
-                log.info("successfully");
-            } catch (Exception e) {
-                // Nếu lỗi trong quá trình tạo client, log cảnh báo nhưng không crash app
-                log.warn("Failed to initialize ACV client: {}", e.getMessage());
-            }
-        }
     }
 
     // ========= OCR ảnh -> text (dùng cho CCCD / GPLX và cà vẹt xe) =========
@@ -62,94 +38,66 @@ public class OcrService {
     public CompletableFuture<String> extractTextFromImage(MultipartFile imageFile) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                // Chỉ gọi OCR nếu chức năng đang bật và đủ cấu hình key, endpoint
-                if (azureEnabled && !azureEndpoint.isEmpty() && !azureKey.isEmpty()) {
-                    // Gọi hàm dùng Azure OCR để trích xuất text
-                    String azureResult = extractTextWithAzure(imageFile);
-
-                    // Nếu có kết quả text hợp lệ thì trả về
-                    if (azureResult != null && !azureResult.trim().isEmpty()) {
-                        return azureResult;
+                // Sử dụng Google Vision OCR
+                if ("google".equalsIgnoreCase(ocrProvider)) {
+                    String googleResult = extractTextWithGoogleVision(imageFile);
+                    if (googleResult != null && !googleResult.trim().isEmpty()) {
+                        return googleResult;
                     }
                 } else {
-                    // Nếu bị tắt hoặc không đủ cấu hình, log cảnh báo
-                    log.warn("ACV is disabled or not configured");
+                    log.warn("OCR provider '{}' is not supported. Only 'google' is supported.", ocrProvider);
                 }
                 // Trả về chuỗi rỗng nếu ocr ko thành công
                 return "";
             } catch (Exception e) {
                 // Bắt lỗi phát sinh, log lỗi và trả chuỗi rỗng để tránh chết luồng
-                log.error("Error extracting text from image: {}", e.getMessage());
+                log.error("Error extracting text from image: {}", e.getMessage(), e);
                 return "";
             }
         }).orTimeout(60, TimeUnit.SECONDS); // Mình giới hạn timeout 60s cho thằng ocr
     }
 
-    // ========= Hàm gọi azure computer vision =========
-    // Chỉ được gọi từ extractTextFromImage, không dùng trực tiếp ngoài service
-    // 1. Khởi tạo client nếu chưa có
-    // 2. Convert MultipartFile -> BinaryData (bytes hoặc stream)
-    // 3. Gọi azureClient.analyze(...) với VisualFeatures.READ
-    // 4. Duyệt qua blocks/lines trong kết quả, ghép lại thành text
-    private String extractTextWithAzure(MultipartFile imageFile) {
+    // ========= Hàm gọi Google Vision OCR =========
+    private String extractTextWithGoogleVision(MultipartFile imageFile) {
         try {
-            // Khoi tạo client nếu chưa có
-            initializeAzureClient();
-            if (azureClient == null) {
-                // Nếu không khởi tạo được client (thiếu config)
-                // trả null để báo lỗi
-                return null;
-            }
+            ByteString imgBytes = ByteString.copyFrom(imageFile.getBytes());
 
-            BinaryData imageData;
-            try {
-                // Chuyển MultipartFile sang BinaryData ( vì thằng Azure yêu cầu)
-                // Nếu ảnh có bytes dùng luôn, không thì lấy InputStream
-                if (imageFile.getBytes().length > 0) {
-                    imageData = BinaryData.fromBytes(imageFile.getBytes());
-                } else {
-                    imageData = BinaryData.fromStream(imageFile.getInputStream());
-                }
-            } catch (Exception e) {
-                // Log lỗi chuyển đổi file và trả về null
-                log.error("Failed to convert image to BinaryData: {}", e.getMessage());
-                return null;
-            }
+            List<AnnotateImageRequest> requests = new ArrayList<>();
+            Image img = Image.newBuilder().setContent(imgBytes).build();
+            Feature feat = Feature.newBuilder().setType(Feature.Type.DOCUMENT_TEXT_DETECTION).build();
+            AnnotateImageRequest request =
+                    AnnotateImageRequest.newBuilder().addFeatures(feat).setImage(img).build();
+            requests.add(request);
 
-            // Gọi API ACV để phân tích ảnh
-            // chỉ lấy VisualFeatures.READ (OCR)
             long startTime = System.currentTimeMillis();
-            ImageAnalysisResult result = azureClient.analyze(
-                    imageData,
-                    Collections.singletonList(VisualFeatures.READ),
-                    null
-            );
-            long processing = System.currentTimeMillis() - startTime;
-            log.info("Azure OCR call took {} ms", processing);
+            try (ImageAnnotatorClient client = ImageAnnotatorClient.create()) {
+                BatchAnnotateImagesResponse response = client.batchAnnotateImages(requests);
+                List<AnnotateImageResponse> responses = response.getResponsesList();
 
-            // Ghép các dòng text từ kết quả OCR thành 1 chuỗi hoàn chỉnh
-            StringBuilder extractedText = new StringBuilder();
-            if (result.getRead() != null && result.getRead().getBlocks() != null) {
-                result.getRead().getBlocks().forEach(block -> {
-                    if (block.getLines() != null) {
-                        block.getLines().forEach(line -> extractedText.append(line.getText()).append("\n"));
+                StringBuilder sb = new StringBuilder();
+                for (AnnotateImageResponse res : responses) {
+                    if (res.hasError()) {
+                        log.error("Google Vision OCR error: {}", res.getError().getMessage());
+                        throw new RuntimeException("Google Vision OCR failed: " + res.getError().getMessage());
                     }
-                });
-            }
+                    for (EntityAnnotation annotation : res.getTextAnnotationsList()) {
+                        sb.append(annotation.getDescription()).append("\n");
+                    }
+                }
+                long processing = System.currentTimeMillis() - startTime;
+                log.info("Google Vision OCR call took {} ms", processing);
 
-            // Lấy chuỗi text cuối cùng, loại bỏ khoảng trắng thừa
-            String resultText = extractedText.toString().trim();
-            if (resultText.isEmpty()) {
-                log.warn("No text extracted from image");
-                return null;
+                String resultText = sb.toString().trim();
+                if (resultText.isEmpty()) {
+                    log.warn("No text extracted from image");
+                    return null;
+                }
+                return resultText;
             }
-            return resultText;
-
         } catch (Exception e) {
-            // Bất kỳ lỗi nào xảy ra khi gọi Azure OCR, log và trả null
-            log.warn("ACV OCR failed: {}", e.getMessage());
+            log.error("Google Vision OCR failed: {}", e.getMessage(), e);
+            return null;
         }
-        return null;
     }
 
     /**
@@ -186,17 +134,18 @@ public class OcrService {
      * Lấy thông tin về OCR engine đang sử dụng
      */
     public String getOcrEngineInfo() {
-        if (azureEnabled && !azureEndpoint.isEmpty() && !azureKey.isEmpty()) {
-            return "Azure Computer Vision OCR";
+        if ("google".equalsIgnoreCase(ocrProvider)) {
+            return "Google Vision OCR";
         }
         return "OCR Service Disabled";
     }
 
     /**
-     * Kiểm tra trạng thái Azure Computer Vision
+     * Kiểm tra trạng thái Google Vision OCR
      */
-    public boolean isAzureEnabled() {
-        return azureEnabled && !azureEndpoint.isEmpty() && !azureKey.isEmpty();
+    public boolean isGoogleVisionEnabled() {
+        return "google".equalsIgnoreCase(ocrProvider) &&
+                googleVisionApiKey != null && !googleVisionApiKey.isEmpty();
     }
 
     /**

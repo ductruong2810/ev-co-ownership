@@ -7,7 +7,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.Nationalized;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -39,9 +38,7 @@ public class Incident {
 
 
     // Mô tả chi tiết sự cố
-    @Nationalized
-    @Lob
-    @Column(name = "Description")
+    @Column(name = "Description", columnDefinition = "TEXT")
     private String description;
 
     // Chi phí thực tế (nếu có)
@@ -49,9 +46,7 @@ public class Incident {
     private BigDecimal actualCost;
 
     // Danh sách URL ảnh minh họa, có thể phân cách bằng dấu ";"
-    @Nationalized
-    @Lob
-    @Column(name = "ImageUrls")
+    @Column(name = "ImageUrls", columnDefinition = "TEXT")
     private String imageUrls;
 
     // Trạng thái xử lý
@@ -69,9 +64,7 @@ public class Incident {
     private RejectionCategory rejectionCategory;
 
     // Ghi chú chi tiết (staff nhập tay)
-    @Nationalized
-    @Lob
-    @Column(name = "RejectionReason")
+    @Column(name = "RejectionReason", columnDefinition = "TEXT")
     private String rejectionReason;
 
     // Thời điểm tạo

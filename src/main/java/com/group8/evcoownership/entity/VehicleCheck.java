@@ -1,13 +1,11 @@
 package com.group8.evcoownership.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.Nationalized;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -46,14 +44,10 @@ public class VehicleCheck {
     @Column(name = "Cleanliness", length = 20)
     private String cleanliness; // CLEAN, DIRTY, VERY_DIRTY
 
-    @Nationalized
-    @Lob
-    @Column(name = "Notes")
+    @Column(name = "Notes", columnDefinition = "TEXT")
     private String notes;
 
-    @Nationalized
-    @Lob
-    @Column(name = "Issues")
+    @Column(name = "Issues", columnDefinition = "TEXT")
     private String issues; // JSON array of issues
 
     @Column(name = "Status", length = 20)
