@@ -20,24 +20,24 @@ public interface OwnershipGroupRepository extends JpaRepository<OwnershipGroup, 
      */
     @Query(
             value = """
-                    SELECT * FROM dbo.OwnershipGroup g
-                    WHERE (:keyword IS NULL OR LOWER(g.GroupName) LIKE LOWER(CONCAT('%', :keyword, '%')))
-                      AND (:status IS NULL OR g.Status = :status)
-                      AND (g.CreatedAt BETWEEN :start AND :end)
+                    SELECT * FROM "OwnershipGroup" g
+                    WHERE (:keyword IS NULL OR LOWER(g."GroupName") LIKE LOWER(CONCAT('%', :keyword, '%')))
+                      AND (:status IS NULL OR g."Status" = :status)
+                      AND (g."CreatedAt" BETWEEN :start AND :end)
                     ORDER BY
                       CASE
-                        WHEN g.Status = 'PENDING' THEN 0
-                        WHEN g.Status = 'ACTIVE' THEN 1
-                        WHEN g.Status = 'CLOSED' THEN 2
+                        WHEN g."Status" = 'PENDING' THEN 0
+                        WHEN g."Status" = 'ACTIVE' THEN 1
+                        WHEN g."Status" = 'CLOSED' THEN 2
                         ELSE 3
                       END ,
-                      g.CreatedAt DESC
+                      g."CreatedAt" DESC
                     """,
             countQuery = """
-                    SELECT COUNT(*) FROM dbo.OwnershipGroup g
-                    WHERE (:keyword IS NULL OR LOWER(g.GroupName) LIKE LOWER(CONCAT('%', :keyword, '%')))
-                      AND (:status IS NULL OR g.Status = :status)
-                      AND (g.CreatedAt BETWEEN :start AND :end)
+                    SELECT COUNT(*) FROM "OwnershipGroup" g
+                    WHERE (:keyword IS NULL OR LOWER(g."GroupName") LIKE LOWER(CONCAT('%', :keyword, '%')))
+                      AND (:status IS NULL OR g."Status" = :status)
+                      AND (g."CreatedAt" BETWEEN :start AND :end)
                     """,
             nativeQuery = true
     )

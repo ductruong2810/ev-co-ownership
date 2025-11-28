@@ -41,7 +41,7 @@ public class VotingController {
         Long userId = jwtUtils.getUserIdFromToken(token.substring(7));
         // Bỏ đi "Bearer " (7 ký tự đầu) để lấy phần JWT thật sự, sau đó gọi JwtUtil để lấy userId từ token
         CreateVotingRequestDTO votingRequest = new CreateVotingRequestDTO();  // Tạo DTO chuyên dùng cho thông
-                                                                              // tin nội dung của voting (không bao gồm groupId)
+        // tin nội dung của voting (không bao gồm groupId)
         votingRequest.setTitle(request.getTitle());
         votingRequest.setDescription(request.getDescription());
         votingRequest.setVotingType(request.getVotingType());

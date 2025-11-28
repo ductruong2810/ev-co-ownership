@@ -9,6 +9,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
+
 import java.io.IOException;
 
 // JwtAuthenticationEntryPoint là fil xử lý trả về lỗi khi request chưa xác thực hoặc token không hợp lệ
@@ -17,7 +18,7 @@ import java.io.IOException;
 public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
     private final ObjectMapper objectMapper; // Dùng để chuyển Java object sang JSON,
-                                             // đảm bảo trả lỗi chuẩn REST API.
+    // đảm bảo trả lỗi chuẩn REST API.
 
     // Constructor: Khởi tạo ObjectMapper và cấu hình hỗ trợ kiểu ngày/giờ (javaTimeModule)
     public JwtAuthenticationEntryPoint() {
@@ -58,7 +59,7 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
         response.setContentType(MediaType.APPLICATION_JSON_VALUE); // Định dạng trả về là JSON
         response.setCharacterEncoding("UTF-8"); // Đảm bảo không lỗi ký tự tiếng Việt
         response.getWriter().write(objectMapper.writeValueAsString(errorResponse)); // Serialize DTO thành JSON,
-                                                                                    // ghi ra body cho client nhận
+        // ghi ra body cho client nhận
     }
 }
 

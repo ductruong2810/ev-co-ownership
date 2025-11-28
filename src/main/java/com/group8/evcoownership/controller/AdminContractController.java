@@ -3,8 +3,8 @@ package com.group8.evcoownership.controller;
 import com.group8.evcoownership.dto.*;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.enums.ContractApprovalStatus;
-import com.group8.evcoownership.service.ContractService;
 import com.group8.evcoownership.service.ContractFeedbackService;
+import com.group8.evcoownership.service.ContractService;
 import com.group8.evcoownership.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
@@ -129,7 +129,7 @@ public class AdminContractController { // Khai báo class controller cho phần 
     ) {
         // Group admin approve feedback - gọi trực tiếp ContractFeedbackService
         ApiResponseDTO<FeedbackActionResponseDTO> result = contractFeedbackService.approveFeedbackInternal(feedbackId, request);
-        
+
         // Trả kết quả thành công
         return ResponseEntity.ok(result);
     }
@@ -150,7 +150,7 @@ public class AdminContractController { // Khai báo class controller cho phần 
     ) {
         // Group admin reject feedback - gọi trực tiếp ContractFeedbackService
         ApiResponseDTO<FeedbackActionResponseDTO> result = contractFeedbackService.rejectFeedbackInternal(feedbackId, request);
-        
+
         // Trả về kết quả
         return ResponseEntity.ok(result);
     }

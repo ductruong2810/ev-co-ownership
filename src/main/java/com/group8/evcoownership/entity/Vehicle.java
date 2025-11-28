@@ -2,7 +2,6 @@ package com.group8.evcoownership.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.Nationalized;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -21,11 +20,9 @@ public class Vehicle {
     @Column(name = "VehicleId", nullable = false)
     private Long Id;
 
-    @Nationalized
     @Column(name = "Brand", length = 100)
     private String brand;
 
-    @Nationalized
     @Column(name = "Model", length = 100)
     private String model;
 

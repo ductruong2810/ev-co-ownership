@@ -2,18 +2,10 @@ package com.group8.evcoownership.service;
 
 import com.group8.evcoownership.dto.AutoSignConditionsResponseDTO;
 import com.group8.evcoownership.dto.ContractInfoResponseDTO;
-import com.group8.evcoownership.entity.Contract;
-import com.group8.evcoownership.entity.ContractFeedback;
-import com.group8.evcoownership.entity.OwnershipGroup;
-import com.group8.evcoownership.entity.OwnershipShare;
-import com.group8.evcoownership.entity.User;
+import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.enums.ContractApprovalStatus;
 import com.group8.evcoownership.enums.GroupRole;
-import com.group8.evcoownership.repository.ContractFeedbackRepository;
-import com.group8.evcoownership.repository.ContractRepository;
-import com.group8.evcoownership.repository.OwnershipGroupRepository;
-import com.group8.evcoownership.repository.OwnershipShareRepository;
-import com.group8.evcoownership.repository.VehicleRepository;
+import com.group8.evcoownership.repository.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -95,32 +87,32 @@ class ContractServiceTest {
     void cancelContract_Success() {
         // Given
         String reason = "Group members decided to cancel";
-        
+
         // Mock group repository
         when(groupRepository.findById(TEST_GROUP_ID))
                 .thenReturn(Optional.of(testGroup));
-        
+
         // Mock contract repository - contract đã tồn tại
         when(contractRepository.findByGroupGroupId(TEST_GROUP_ID))
                 .thenReturn(Optional.of(testContract));
-        
+
         // Mock admin share
         User adminUser = User.builder()
                 .userId(1L)
                 .email("admin@test.com")
                 .fullName("Admin User")
                 .build();
-        
+
         OwnershipShare adminShare = OwnershipShare.builder()
                 .group(testGroup)
                 .user(adminUser)
                 .groupRole(GroupRole.ADMIN)
                 .ownershipPercentage(new BigDecimal("20.00"))
                 .build();
-        
+
         when(ownershipShareRepository.findByGroup_GroupId(TEST_GROUP_ID))
                 .thenReturn(List.of(adminShare));
-        
+
         // Mock feedback repository
         when(feedbackRepository.save(any(ContractFeedback.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));

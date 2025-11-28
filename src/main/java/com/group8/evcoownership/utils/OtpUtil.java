@@ -35,10 +35,12 @@ public class OtpUtil {
     // khi tạo mới nó cần thiết voi cac map lưu tren memory
     // , cache tạm thời tránh bug khi nhiều client truy cập
     // Record lưu thông tin OTP: giá trị OTP + thời điểm hết hạn
-    private record OtpEntry(String otp, LocalDateTime expireAt) {}
+    private record OtpEntry(String otp, LocalDateTime expireAt) {
+    }
 
     // Record lưu số lần nhập sai + thời điểm bị khóa tới
-    private record FailedAttempt(int count, LocalDateTime lockoutUntil) {}
+    private record FailedAttempt(int count, LocalDateTime lockoutUntil) {
+    }
 
     // ========= Generate Otp =========
     public String generateOtp(String email) {

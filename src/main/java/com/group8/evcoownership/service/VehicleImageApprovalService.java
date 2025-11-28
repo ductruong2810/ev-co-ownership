@@ -164,10 +164,10 @@ public class VehicleImageApprovalService {
                 group.setRejectionReason(request.rejectionReason()); // Lưu lý do từ chối hình ảnh làm lý do INACTIVE của group
                 ownershipGroupRepository.save(group);
                 logGroupStatusUpdate(groupId, GroupStatus.INACTIVE, request.rejectionReason());
-                
+
                 // Xóa vehicle và vehicle images để có thể tạo nhóm lại với thông tin mới
                 deleteVehicleAndImagesForGroup(groupId);
-                
+
                 // Gửi thông báo cho tất cả thành viên trong group
                 if (notificationOrchestrator != null) {
                     String title = "Group Registration Rejected";
@@ -175,13 +175,13 @@ public class VehicleImageApprovalService {
                     if (request.rejectionReason() != null && !request.rejectionReason().trim().isEmpty()) {
                         message += "\n\nReason: " + request.rejectionReason();
                     }
-                    
+
                     Map<String, Object> notificationData = new HashMap<>();
                     notificationData.put("groupId", groupId);
                     notificationData.put("groupName", group.getGroupName());
                     notificationData.put("rejectionReason", request.rejectionReason() != null ? request.rejectionReason() : "");
                     notificationData.put("status", GroupStatus.INACTIVE.name());
-                    
+
                     notificationOrchestrator.sendGroupNotification(
                             groupId,
                             NotificationType.GROUP_STATUS_CHANGED,
@@ -277,10 +277,10 @@ public class VehicleImageApprovalService {
             logGroupStatusUpdate(groupId, GroupStatus.INACTIVE, rejectionReason);
 
             ownershipGroupRepository.save(group);
-            
+
             // Xóa vehicle và vehicle images để có thể tạo nhóm lại với thông tin mới
             deleteVehicleAndImagesForGroup(groupId);
-            
+
             // Gửi thông báo cho tất cả thành viên trong group
             if (notificationOrchestrator != null) {
                 String title = "Group Registration Rejected";
@@ -288,13 +288,13 @@ public class VehicleImageApprovalService {
                 if (rejectionReason != null && !rejectionReason.trim().isEmpty()) {
                     message += "\n\nReason: " + rejectionReason;
                 }
-                
+
                 Map<String, Object> notificationData = new HashMap<>();
                 notificationData.put("groupId", groupId);
                 notificationData.put("groupName", group.getGroupName());
                 notificationData.put("rejectionReason", rejectionReason != null ? rejectionReason : "");
                 notificationData.put("status", GroupStatus.INACTIVE.name());
-                
+
                 notificationOrchestrator.sendGroupNotification(
                         groupId,
                         NotificationType.GROUP_STATUS_CHANGED,
@@ -318,14 +318,14 @@ public class VehicleImageApprovalService {
             if (vehicleOpt.isPresent()) {
                 Vehicle vehicle = vehicleOpt.get();
                 Long vehicleId = vehicle.getId();
-                
+
                 // Xóa tất cả vehicle images trước
                 List<VehicleImage> images = vehicleImageRepository.findByVehicleId(vehicleId);
                 if (!images.isEmpty()) {
                     vehicleImageRepository.deleteAll(images);
                     log.info("Deleted {} vehicle images for group {}", images.size(), groupId);
                 }
-                
+
                 // Sau đó xóa vehicle
                 vehicleRepository.delete(vehicle);
                 log.info("Deleted vehicle {} for group {}", vehicleId, groupId);

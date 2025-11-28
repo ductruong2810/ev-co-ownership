@@ -62,9 +62,11 @@ public class UsageBooking {
     private String qrCodeCheckout;
 
     @Column(name = "CheckinStatus")
+    @Builder.Default
     private Boolean checkinStatus = false;
 
     @Column(name = "CheckoutStatus")
+    @Builder.Default
     private Boolean checkoutStatus = false;
 
     @Column(name = "CheckinTime")
@@ -72,6 +74,13 @@ public class UsageBooking {
 
     @Column(name = "CheckoutTime")
     private LocalDateTime checkoutTime;
+
+    // Digital signatures for check-in and check-out
+    @Column(name = "CheckinSignature", columnDefinition = "TEXT")
+    private String checkinSignature; // Base64 encoded signature image
+
+    @Column(name = "CheckoutSignature", columnDefinition = "TEXT")
+    private String checkoutSignature; // Base64 encoded signature image
 
     // Relationships với các entity mới
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)

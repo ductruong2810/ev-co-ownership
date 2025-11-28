@@ -1,12 +1,12 @@
 package com.group8.evcoownership.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.group8.evcoownership.enums.RoleName;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import net.minidev.json.annotate.JsonIgnore;
 
 import java.util.List;
 

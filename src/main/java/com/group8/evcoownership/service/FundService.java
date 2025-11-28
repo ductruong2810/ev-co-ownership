@@ -21,6 +21,7 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.locks.LockSupport;
@@ -201,6 +202,7 @@ public class FundService {
         SharedFund r = fundRepo.findByGroup_GroupIdAndFundType(groupId, FundType.DEPOSIT_RESERVE).orElseThrow();
         increaseBalance(r.getFundId(), amt);
     }
+
     // nap tien quy
     @Transactional
     public void topUpOperating(Long groupId, BigDecimal amt) {
@@ -380,6 +382,137 @@ public class FundService {
                 }
             }
         }
+    }
+
+    // ================== CSV EXPORT FUNCTIONS ==================
+
+    /**
+     * Generate CSV content for a single group's ledger
+     */
+    @Transactional(readOnly = true)
+    public String generateGroupLedgerCSV(Long groupId,
+                                         @Nullable FundType fundType,
+                                         @Nullable LocalDateTime from,
+                                         @Nullable LocalDateTime to) {
+        OwnershipGroup group = groupRepo.findById(groupId)
+                .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
+
+        LedgerSummaryDTO summary = getLedgerSummary(groupId, fundType, from, to);
+
+        StringBuilder csv = new StringBuilder();
+        csv.append("Financial Report - Group: ").append(group.getGroupName()).append(" (ID: ").append(groupId).append(")\n");
+        csv.append("Generated: ").append(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))).append("\n");
+        if (from != null || to != null) {
+            csv.append("Period: ");
+            if (from != null) csv.append(from.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+            csv.append(" to ");
+            if (to != null) csv.append(to.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+            csv.append("\n");
+        }
+        csv.append("\n");
+
+        // Summary section
+        csv.append("Summary\n");
+        csv.append("Total Income,").append(summary.totalIn()).append("\n");
+        csv.append("Total Expense,").append(summary.totalOut()).append("\n");
+        csv.append("Operating Balance,").append(summary.operatingBalance()).append("\n");
+        csv.append("Deposit Balance,").append(summary.depositBalance()).append("\n");
+        csv.append("\n");
+
+        // Transaction details
+        csv.append("Transaction Details\n");
+        csv.append("Direction,Fund Type,Title,Subtitle,User ID,Amount,Date\n");
+        for (LedgerRowDTO row : summary.rows()) {
+            csv.append(escapeCSV(row.direction())).append(",");
+            csv.append(escapeCSV(row.fundType() != null ? row.fundType().toString() : "")).append(",");
+            csv.append(escapeCSV(row.title())).append(",");
+            csv.append(escapeCSV(row.subtitle())).append(",");
+            csv.append(row.userId() != null ? row.userId() : "").append(",");
+            csv.append(row.amount()).append(",");
+            csv.append(row.occurredAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))).append("\n");
+        }
+
+        return csv.toString();
+    }
+
+    /**
+     * Generate CSV content for all groups' financial reports
+     */
+    @Transactional(readOnly = true)
+    public String generateAllGroupsFinancialReportCSV(@Nullable FundType fundType,
+                                                      @Nullable LocalDateTime from,
+                                                      @Nullable LocalDateTime to) {
+        List<OwnershipGroup> allGroups = groupRepo.findAll();
+
+        StringBuilder csv = new StringBuilder();
+        csv.append("Financial Reports - All Groups\n");
+        csv.append("Generated: ").append(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))).append("\n");
+        if (from != null || to != null) {
+            csv.append("Period: ");
+            if (from != null) csv.append(from.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+            csv.append(" to ");
+            if (to != null) csv.append(to.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+            csv.append("\n");
+        }
+        csv.append("\n");
+
+        // Summary by group
+        csv.append("Summary by Group\n");
+        csv.append("Group ID,Group Name,Status,Total Income,Total Expense,Operating Balance,Deposit Balance,Net Balance\n");
+
+        BigDecimal grandTotalIncome = BigDecimal.ZERO;
+        BigDecimal grandTotalExpense = BigDecimal.ZERO;
+        BigDecimal grandOperatingBalance = BigDecimal.ZERO;
+        BigDecimal grandDepositBalance = BigDecimal.ZERO;
+
+        for (OwnershipGroup group : allGroups) {
+            try {
+                LedgerSummaryDTO summary = getLedgerSummary(group.getGroupId(), fundType, from, to);
+                BigDecimal netBalance = summary.totalIn().subtract(summary.totalOut());
+
+                csv.append(group.getGroupId()).append(",");
+                csv.append(escapeCSV(group.getGroupName())).append(",");
+                csv.append(escapeCSV(group.getStatus() != null ? group.getStatus().toString() : "")).append(",");
+                csv.append(summary.totalIn()).append(",");
+                csv.append(summary.totalOut()).append(",");
+                csv.append(summary.operatingBalance()).append(",");
+                csv.append(summary.depositBalance()).append(",");
+                csv.append(netBalance).append("\n");
+
+                grandTotalIncome = grandTotalIncome.add(summary.totalIn());
+                grandTotalExpense = grandTotalExpense.add(summary.totalOut());
+                grandOperatingBalance = grandOperatingBalance.add(summary.operatingBalance());
+                grandDepositBalance = grandDepositBalance.add(summary.depositBalance());
+            } catch (Exception e) {
+                // Skip groups with errors, log and continue
+                csv.append(group.getGroupId()).append(",");
+                csv.append(escapeCSV(group.getGroupName())).append(",");
+                csv.append("ERROR,");
+                csv.append("0,0,0,0,0\n");
+            }
+        }
+
+        csv.append("\n");
+        csv.append("Grand Total,,");
+        csv.append(grandTotalIncome).append(",");
+        csv.append(grandTotalExpense).append(",");
+        csv.append(grandOperatingBalance).append(",");
+        csv.append(grandDepositBalance).append(",");
+        csv.append(grandTotalIncome.subtract(grandTotalExpense)).append("\n");
+
+        return csv.toString();
+    }
+
+    /**
+     * Escape CSV special characters
+     */
+    private String escapeCSV(String value) {
+        if (value == null) return "";
+        // If contains comma, quote, or newline, wrap in quotes and escape quotes
+        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
     }
 
 
