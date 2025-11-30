@@ -3,7 +3,8 @@ services:
     name: ev-co-ownership
     runtime: java
     plan: free
-    buildCommand: ./mvnw clean package -DskipTests
+    # Optimized build: parallel build with 2 threads, skip tests for faster deployment
+    buildCommand: ./mvnw clean package -DskipTests -T 2C
     startCommand: java -jar target/ev-co-ownership-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
     envVars:
       - key: SPRING_PROFILES_ACTIVE
@@ -12,5 +13,7 @@ services:
         value: -Xmx512m -XX:+UseG1GC
       - key: PORT
         value: 8080
+      - key: MAVEN_OPTS
+        value: -Xmx1024m -XX:MaxPermSize=512m
     healthCheckPath: /actuator/health
 
