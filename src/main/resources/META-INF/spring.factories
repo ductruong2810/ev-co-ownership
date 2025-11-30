@@ -1,0 +1,2 @@
+org.springframework.boot.env.EnvironmentPostProcessor=com.group8.evcoownership.config.DatabaseUrlPostProcessor
+
