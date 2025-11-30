@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: ev-co-ownership
+    runtime: java
+    plan: free
+    buildCommand: ./mvnw clean package -DskipTests
+    startCommand: java -jar target/ev-co-ownership-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: JAVA_OPTS
+        value: -Xmx512m -XX:+UseG1GC
+      - key: PORT
+        value: 8080
+    healthCheckPath: /actuator/health
+
