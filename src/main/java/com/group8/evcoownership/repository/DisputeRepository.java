@@ -37,8 +37,8 @@ public interface DisputeRepository extends JpaRepository<Dispute, Long> {
                     WHERE (:status IS NULL OR d."Status" = :status)
                       AND (:disputeType IS NULL OR d."DisputeType" = :disputeType)
                       AND (:groupId IS NULL OR d."GroupId" = :groupId)
-                      AND (CASE WHEN :from IS NULL THEN TRUE ELSE d."CreatedAt" >= CAST(:from AS timestamp) END)
-                      AND (CASE WHEN :to IS NULL THEN TRUE ELSE d."CreatedAt" <= CAST(:to AS timestamp) END)
+                      AND d."CreatedAt" >= COALESCE(CAST(:from AS timestamp), '1970-01-01'::timestamp)
+                      AND d."CreatedAt" <= COALESCE(CAST(:to AS timestamp), '9999-12-31'::timestamp)
                     ORDER BY
                       CASE
                         WHEN d."Status" = 'OPEN' THEN 1
@@ -53,8 +53,8 @@ public interface DisputeRepository extends JpaRepository<Dispute, Long> {
                     WHERE (:status IS NULL OR d."Status" = :status)
                       AND (:disputeType IS NULL OR d."DisputeType" = :disputeType)
                       AND (:groupId IS NULL OR d."GroupId" = :groupId)
-                      AND (CASE WHEN :from IS NULL THEN TRUE ELSE d."CreatedAt" >= CAST(:from AS timestamp) END)
-                      AND (CASE WHEN :to IS NULL THEN TRUE ELSE d."CreatedAt" <= CAST(:to AS timestamp) END)
+                      AND d."CreatedAt" >= COALESCE(CAST(:from AS timestamp), '1970-01-01'::timestamp)
+                      AND d."CreatedAt" <= COALESCE(CAST(:to AS timestamp), '9999-12-31'::timestamp)
                     """,
             nativeQuery = true
     )
