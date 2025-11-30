@@ -51,42 +51,18 @@ jobs:
           name: evcoownership-jar
           path: target/ev-co-ownership-*.jar
 
-  deploy:
+  deploy-render:
     needs: build-test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     permissions:
-      id-token: write
       contents: read
 
     steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v4
-        with:
-          name: evcoownership-jar
-
-      - name: Prepare deployment package
+      - name: Trigger Render Deploy
         run: |
-          set -e
-          ls -R
-          JAR_PATH=$(find . -maxdepth 1 -type f -name "*.jar" | head -n 1)
-          if [ -z "$JAR_PATH" ]; then
-            echo "No JAR found in downloaded artifact"
-            exit 1
+          if [ -n "${{ secrets.RENDER_DEPLOY_HOOK }}" ]; then
+            curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK }}
+          else
+            echo "RENDER_DEPLOY_HOOK not set, skipping Render deployment"
           fi
-          echo "Using JAR: $JAR_PATH"
-          cp "$JAR_PATH" app.jar
-
-      - name: Login to Azure
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID }}
-
-      - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: 'evshare-app'
-          slot-name: 'Production'
-          package: app.jar
