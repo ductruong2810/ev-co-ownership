@@ -23,7 +23,7 @@ public interface OwnershipGroupRepository extends JpaRepository<OwnershipGroup, 
                     SELECT * FROM "OwnershipGroup" g
                     WHERE (:keyword IS NULL OR LOWER(g."GroupName") LIKE LOWER(CONCAT('%', :keyword, '%')))
                       AND (:status IS NULL OR g."Status" = :status)
-                      AND (g."CreatedAt" BETWEEN :start AND :end)
+                      AND (g."CreatedAt" >= CAST(:start AS timestamp) AND g."CreatedAt" <= CAST(:end AS timestamp))
                     ORDER BY
                       CASE
                         WHEN g."Status" = 'PENDING' THEN 0
@@ -37,7 +37,7 @@ public interface OwnershipGroupRepository extends JpaRepository<OwnershipGroup, 
                     SELECT COUNT(*) FROM "OwnershipGroup" g
                     WHERE (:keyword IS NULL OR LOWER(g."GroupName") LIKE LOWER(CONCAT('%', :keyword, '%')))
                       AND (:status IS NULL OR g."Status" = :status)
-                      AND (g."CreatedAt" BETWEEN :start AND :end)
+                      AND (g."CreatedAt" >= CAST(:start AS timestamp) AND g."CreatedAt" <= CAST(:end AS timestamp))
                     """,
             nativeQuery = true
     )
