@@ -79,7 +79,7 @@ public class DatabaseUrlPostProcessor implements EnvironmentPostProcessor {
                 log.info("DatabaseUrlPostProcessor: Converted host from db.{}.supabase.co to {}", projectRef, poolerHost);
             } else {
                 // Fallback: try to replace the whole pattern
-                updatedUrl = updatedUrl.replaceAll("db\\.[^.]+\.supabase\\.co", "aws-0-ap-southeast-1.pooler.supabase.com");
+                updatedUrl = updatedUrl.replaceAll("db\\.[^.]+\\.supabase\\.co", "aws-0-ap-southeast-1.pooler.supabase.com");
                 urlChanged = true;
                 log.warn("DatabaseUrlPostProcessor: Converted direct connection host to pooler (fallback method)");
             }
