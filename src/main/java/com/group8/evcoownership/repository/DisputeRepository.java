@@ -1,8 +1,6 @@
 package com.group8.evcoownership.repository;
 
 import com.group8.evcoownership.entity.Dispute;
-import com.group8.evcoownership.enums.DisputeStatus;
-import com.group8.evcoownership.enums.DisputeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
