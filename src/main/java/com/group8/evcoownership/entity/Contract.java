@@ -41,7 +41,7 @@ public class Contract {
     @Column(name = "EndDate")
     private LocalDate endDate;
 
-    @Column(name = "Terms", columnDefinition = "TEXT")
+    @Column(name = "Terms", length = 10000)
     private String terms;
 
     @Column(name = "RequiredDepositAmount", precision = 15, scale = 2)

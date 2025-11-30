@@ -30,7 +30,7 @@ public class Notification {
     @Column(name = "Title", length = 255)
     private String title;
 
-    @Column(name = "Message", columnDefinition = "TEXT")
+    @Column(name = "Message")
     private String message;
 
     @Column(name = "NotificationType", length = 50)

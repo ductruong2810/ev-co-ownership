@@ -42,7 +42,7 @@ public class Expense {
     @JoinColumn(name = "RecipientUserId")
     private User recipientUser;
 
-    @Column(name = "Description", columnDefinition = "TEXT")
+    @Column(name = "Description")
     private String description;
 
     @NotNull

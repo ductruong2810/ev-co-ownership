@@ -47,7 +47,7 @@ public class Maintenance {
     @JoinColumn(name = "LiableUserId")
     private User liableUser;
 
-    @Column(name = "Description", columnDefinition = "TEXT")
+    @Column(name = "Description")
     private String description;
 
     // Giá sửa chính thức (technician nhập, không đổi nữa)

@@ -106,4 +106,11 @@ public class DashboardStatisticsDTO {
 
     // Revenue by period (DAY/WEEK/MONTH) - key format: "YYYY-MM-DD", "YYYY-WW", or "YYYY-MM"
     private Map<String, BigDecimal> revenueByPeriod;
+
+    // Previous-period counters so FE can display trend (% vs last period)
+    private BigDecimal previousTotalRevenue;
+    private Long previousTotalBookings;
+    private Long previousTotalGroups;
+    private Long previousTotalMaintenances;
+    private Long previousTotalDisputes;
 }

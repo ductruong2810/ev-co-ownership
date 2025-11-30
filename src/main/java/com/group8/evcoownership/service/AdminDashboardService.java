@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.WeekFields;
@@ -204,6 +205,24 @@ public class AdminDashboardService {
     public DashboardStatisticsDTO getDashboardStatistics(LocalDateTime from, LocalDateTime to, String periodType) {
         DashboardStatisticsDTO stats = getDashboardStatistics(from, to);
 
+        DashboardStatisticsDTO previousStats = null;
+        if (from != null && to != null) {
+            Duration duration = Duration.between(from, to);
+            if (!duration.isNegative() && !duration.isZero()) {
+                LocalDateTime previousTo = from.minusSeconds(1);
+                LocalDateTime previousFrom = previousTo.minus(duration);
+                previousStats = getDashboardStatistics(previousFrom, previousTo);
+            }
+        }
+
+        if (previousStats != null) {
+            stats.setPreviousTotalRevenue(previousStats.getTotalPaymentAmount());
+            stats.setPreviousTotalBookings(previousStats.getTotalBookings());
+            stats.setPreviousTotalGroups(previousStats.getTotalGroups());
+            stats.setPreviousTotalMaintenances(previousStats.getTotalMaintenances());
+            stats.setPreviousTotalDisputes(previousStats.getTotalDisputes());
+        }
+
         // Calculate revenue by period based on periodType
         if (periodType != null && !periodType.isEmpty()) {
             int periods = 30; // Default
@@ -214,39 +233,12 @@ public class AdminDashboardService {
             }
 
             Map<String, BigDecimal> revenueByPeriod = calculateRevenueByPeriod(periodType, periods, from, to);
-            // Create new builder from existing stats and update revenueByPeriod
-            return DashboardStatisticsDTO.builder()
-                    .totalGroups(stats.getTotalGroups())
-                    .groupsByStatus(stats.getGroupsByStatus())
-                    .totalUsers(stats.getTotalUsers())
-                    .usersByStatus(stats.getUsersByStatus())
-                    .usersByRole(stats.getUsersByRole())
-                    .totalBookings(stats.getTotalBookings())
-                    .bookingsByStatus(stats.getBookingsByStatus())
-                    .totalVehicles(stats.getTotalVehicles())
-                    .totalDisputes(stats.getTotalDisputes())
-                    .disputesByStatus(stats.getDisputesByStatus())
-                    .totalIncidents(stats.getTotalIncidents())
-                    .incidentsByStatus(stats.getIncidentsByStatus())
-                    .totalMaintenances(stats.getTotalMaintenances())
-                    .maintenancesByStatus(stats.getMaintenancesByStatus())
-                    .totalContracts(stats.getTotalContracts())
-                    .contractsByStatus(stats.getContractsByStatus())
-                    .pendingDocuments(stats.getPendingDocuments())
-                    .totalExpenses(stats.getTotalExpenses())
-                    .totalExpenseAmount(stats.getTotalExpenseAmount())
-                    .payments(stats.getPayments())
-                    .totalPayments(stats.getTotalPayments())
-                    .totalPaymentAmount(stats.getTotalPaymentAmount())
-                    .paymentsByStatus(stats.getPaymentsByStatus())
-                    .totalFunds(stats.getTotalFunds())
-                    .totalFundBalance(stats.getTotalFundBalance())
-                    .revenueByPeriod(revenueByPeriod)
-                    .build();
+            stats.setRevenueByPeriod(revenueByPeriod);
         }
 
         return stats;
     }
+
 
     /**
      * Lấy thống kê tổng hợp với date range filter

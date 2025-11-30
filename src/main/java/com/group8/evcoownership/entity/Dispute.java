@@ -52,7 +52,7 @@ public class Dispute {
     private String title;
 
     // Mô tả chi tiết tranh chấp
-    @Column(name = "Description", columnDefinition = "TEXT")
+    @Column(name = "Description")
     private String description;
 
     // FK → Users (staff/admin giải quyết)
@@ -61,7 +61,7 @@ public class Dispute {
     private User resolvedBy;
 
     // Ghi chú giải quyết
-    @Column(name = "ResolutionNote", columnDefinition = "TEXT")
+    @Column(name = "ResolutionNote")
     private String resolutionNote;
 
     // Thời điểm giải quyết
