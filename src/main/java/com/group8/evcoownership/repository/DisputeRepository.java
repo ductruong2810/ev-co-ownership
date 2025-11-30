@@ -37,8 +37,8 @@ public interface DisputeRepository extends JpaRepository<Dispute, Long> {
             WHERE (:status IS NULL OR d.status = :status)
               AND (:disputeType IS NULL OR d.disputeType = :disputeType)
               AND (:groupId IS NULL OR d.group.groupId = :groupId)
-              AND (:from IS NULL OR d.createdAt >= CAST(:from AS timestamp))
-              AND (:to IS NULL OR d.createdAt <= CAST(:to AS timestamp))
+              AND (:from IS NULL OR d.createdAt >= :from)
+              AND (:to IS NULL OR d.createdAt <= :to)
             ORDER BY
               CASE
                 WHEN d.status = 'OPEN' THEN 1
