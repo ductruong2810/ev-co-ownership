@@ -32,25 +32,36 @@ public interface DisputeRepository extends JpaRepository<Dispute, Long> {
     List<Dispute> findByGroup_GroupIdAndStatus(Long groupId, DisputeStatus status);
 
     // Lọc tranh chấp với nhiều điều kiện (cho Staff/Admin)
-    @Query("""
-            SELECT d FROM Dispute d
-            WHERE (:status IS NULL OR d.status = :status)
-              AND (:disputeType IS NULL OR d.disputeType = :disputeType)
-              AND (:groupId IS NULL OR d.group.groupId = :groupId)
-              AND (:from IS NULL OR d.createdAt >= :from)
-              AND (:to IS NULL OR d.createdAt <= :to)
-            ORDER BY
-              CASE
-                WHEN d.status = 'OPEN' THEN 1
-                WHEN d.status = 'RESOLVED' THEN 2
-                WHEN d.status = 'REJECTED' THEN 3
-                ELSE 4
-              END,
-              d.createdAt DESC
-            """)
+    @Query(
+            value = """
+                    SELECT * FROM "Dispute" d
+                    WHERE (:status IS NULL OR d."Status" = :status)
+                      AND (:disputeType IS NULL OR d."DisputeType" = :disputeType)
+                      AND (:groupId IS NULL OR d."GroupId" = :groupId)
+                      AND (:from IS NULL OR d."CreatedAt" >= CAST(:from AS timestamp))
+                      AND (:to IS NULL OR d."CreatedAt" <= CAST(:to AS timestamp))
+                    ORDER BY
+                      CASE
+                        WHEN d."Status" = 'OPEN' THEN 1
+                        WHEN d."Status" = 'RESOLVED' THEN 2
+                        WHEN d."Status" = 'REJECTED' THEN 3
+                        ELSE 4
+                      END,
+                      d."CreatedAt" DESC
+                    """,
+            countQuery = """
+                    SELECT COUNT(*) FROM "Dispute" d
+                    WHERE (:status IS NULL OR d."Status" = :status)
+                      AND (:disputeType IS NULL OR d."DisputeType" = :disputeType)
+                      AND (:groupId IS NULL OR d."GroupId" = :groupId)
+                      AND (:from IS NULL OR d."CreatedAt" >= CAST(:from AS timestamp))
+                      AND (:to IS NULL OR d."CreatedAt" <= CAST(:to AS timestamp))
+                    """,
+            nativeQuery = true
+    )
     Page<Dispute> findByFiltersOrdered(
-            @Param("status") DisputeStatus status,
-            @Param("disputeType") DisputeType disputeType,
+            @Param("status") String status,
+            @Param("disputeType") String disputeType,
             @Param("groupId") Long groupId,
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to,

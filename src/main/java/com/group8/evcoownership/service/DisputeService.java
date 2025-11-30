@@ -81,7 +81,9 @@ public class DisputeService {
         Pageable pageable = PageRequest.of(page, size);
 
         Page<Dispute> disputes = disputeRepository.findByFiltersOrdered(
-                status, disputeType, groupId, from, to, pageable
+                status != null ? status.name() : null,
+                disputeType != null ? disputeType.name() : null,
+                groupId, from, to, pageable
         );
 
         return disputes.map(this::mapToDTO);
