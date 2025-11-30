@@ -9,14 +9,14 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Repository
 public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
     
     Page<AuditLog> findAll(Pageable pageable);
     
-    Page<AuditLog> findByUserId(Long userId, Pageable pageable);
+    @Query("SELECT a FROM AuditLog a WHERE a.user.userId = :userId")
+    Page<AuditLog> findByUserId(@Param("userId") Long userId, Pageable pageable);
     
     Page<AuditLog> findByActionType(String actionType, Pageable pageable);
     

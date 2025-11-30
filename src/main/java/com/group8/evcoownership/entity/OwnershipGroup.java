@@ -39,13 +39,13 @@ public class OwnershipGroup {
     @Column(name = "Status", nullable = false, length = 20)
     private GroupStatus status; // default set in @PrePersist
 
-    @Column(name = "Description", columnDefinition = "TEXT")
+    @Column(name = "Description")
     private String description;
 
     @Column(name = "MemberCapacity")
     private Integer memberCapacity;
 
-    @Column(name = "RejectionReason", columnDefinition = "TEXT")
+    @Column(name = "RejectionReason")
     private String rejectionReason;
 
     //thêm quan hệ tới quỹ

@@ -44,10 +44,10 @@ public class VehicleCheck {
     @Column(name = "Cleanliness", length = 20)
     private String cleanliness; // CLEAN, DIRTY, VERY_DIRTY
 
-    @Column(name = "Notes", columnDefinition = "TEXT")
+    @Column(name = "Notes")
     private String notes;
 
-    @Column(name = "Issues", columnDefinition = "TEXT")
+    @Column(name = "Issues")
     private String issues; // JSON array of issues
 
     @Column(name = "Status", length = 20)

@@ -36,11 +36,11 @@ public class AuditLog {
     @Column(name = "EntityId", length = 100)
     private String entityId;
 
-    @Column(name = "Message", columnDefinition = "TEXT", nullable = false)
+    @Column(name = "Message", nullable = false)
     private String message;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "Metadata", columnDefinition = "json")
+    @Column(name = "Metadata")
     private Map<String, Object> metadata;
 
     @Column(name = "CreatedAt", nullable = false)

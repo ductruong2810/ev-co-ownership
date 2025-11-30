@@ -14,7 +14,7 @@ public class TestConfig {
 
     @Bean
     @Primary
-    public S3Client mockR2S3Client() {
+    public S3Client r2S3Client() {
         return mock(S3Client.class);
     }
 }
