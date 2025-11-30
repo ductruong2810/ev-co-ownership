@@ -27,16 +27,16 @@ public class Voting {
     @Column(name = "Title")
     private String title;
 
-    @Column(name = "Description", columnDefinition = "TEXT")
+    @Column(name = "Description")
     private String description;
 
     @Column(name = "VotingType", length = 50)
     private String votingType;
 
-    @Column(name = "Options", columnDefinition = "TEXT")
+    @Column(name = "Options")
     private String options;
 
-    @Column(name = "Results", columnDefinition = "TEXT")
+    @Column(name = "Results")
     private String results;
 
     @Column(name = "Deadline")

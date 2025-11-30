@@ -38,7 +38,7 @@ public class Incident {
 
 
     // Mô tả chi tiết sự cố
-    @Column(name = "Description", columnDefinition = "TEXT")
+    @Column(name = "Description")
     private String description;
 
     // Chi phí thực tế (nếu có)
@@ -46,7 +46,7 @@ public class Incident {
     private BigDecimal actualCost;
 
     // Danh sách URL ảnh minh họa, có thể phân cách bằng dấu ";"
-    @Column(name = "ImageUrls", columnDefinition = "TEXT")
+    @Column(name = "ImageUrls")
     private String imageUrls;
 
     // Trạng thái xử lý
@@ -64,7 +64,7 @@ public class Incident {
     private RejectionCategory rejectionCategory;
 
     // Ghi chú chi tiết (staff nhập tay)
-    @Column(name = "RejectionReason", columnDefinition = "TEXT")
+    @Column(name = "RejectionReason")
     private String rejectionReason;
 
     // Thời điểm tạo

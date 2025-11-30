@@ -38,7 +38,7 @@ public class UserDocument {
     private String expiryDate = "";
 
     @Builder.Default
-    @Column(name = "Address", columnDefinition = "TEXT")
+    @Column(name = "Address")
     private String address = "";
 
     @Column(name = "UserId", nullable = false)

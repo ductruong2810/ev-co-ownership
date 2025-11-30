@@ -53,7 +53,7 @@ public class Payment {
     @Column(name = "TransactionCode", length = 100)
     private String transactionCode;
 
-    @Column(name = "ProviderResponse", columnDefinition = "TEXT")
+    @Column(name = "ProviderResponse")
     private String providerResponse;
 
     @Enumerated(EnumType.STRING)
@@ -71,7 +71,7 @@ public class Payment {
 //    @JoinColumn(name = "SourceDisputeId")
 //    private Dispute sourceDispute; // if originated from a dispute
 
-    @Column(name = "PersonalReason", columnDefinition = "TEXT")
+    @Column(name = "PersonalReason")
     private String personalReason;
 
     // Payment.java

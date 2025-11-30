@@ -76,10 +76,10 @@ public class UsageBooking {
     private LocalDateTime checkoutTime;
 
     // Digital signatures for check-in and check-out
-    @Column(name = "CheckinSignature", columnDefinition = "TEXT")
+    @Column(name = "CheckinSignature")
     private String checkinSignature; // Base64 encoded signature image
 
-    @Column(name = "CheckoutSignature", columnDefinition = "TEXT")
+    @Column(name = "CheckoutSignature")
     private String checkoutSignature; // Base64 encoded signature image
 
     // Relationships với các entity mới
