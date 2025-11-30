@@ -14,19 +14,38 @@ public class DatabaseUrlPostProcessor implements EnvironmentPostProcessor {
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
+        log.info("DatabaseUrlPostProcessor: Starting environment post-processing");
+        
+        // Check all possible ways to get active profile
         String activeProfile = environment.getProperty("spring.profiles.active", "");
+        if (activeProfile.isEmpty()) {
+            activeProfile = System.getProperty("spring.profiles.active", "");
+        }
+        if (activeProfile.isEmpty()) {
+            activeProfile = System.getenv("SPRING_PROFILES_ACTIVE");
+        }
+        
+        log.info("DatabaseUrlPostProcessor: Active profile = '{}'", activeProfile);
         
         // Only process for production profile
         if (!"prod".equals(activeProfile)) {
+            log.info("DatabaseUrlPostProcessor: Skipping - not production profile");
             return;
         }
 
         String datasourceUrl = environment.getProperty("spring.datasource.url");
+        if (datasourceUrl == null || datasourceUrl.isEmpty()) {
+            datasourceUrl = System.getenv("SPRING_DATASOURCE_URL");
+        }
         
         if (datasourceUrl == null || datasourceUrl.isEmpty()) {
-            log.warn("SPRING_DATASOURCE_URL is not set");
+            log.error("DatabaseUrlPostProcessor: SPRING_DATASOURCE_URL is not set!");
             return;
         }
+
+        log.info("DatabaseUrlPostProcessor: Original URL = {}", 
+            datasourceUrl.replaceAll("password=[^&;?]*", "password=***")
+                        .replaceAll(":[^@]*@", ":***@"));
 
         // Check if URL already contains sslmode parameter
         if (!datasourceUrl.contains("sslmode=")) {
@@ -34,9 +53,10 @@ public class DatabaseUrlPostProcessor implements EnvironmentPostProcessor {
             String separator = datasourceUrl.contains("?") ? "&" : "?";
             String updatedUrl = datasourceUrl + separator + "sslmode=require";
             
-            log.info("Added sslmode=require to database URL for Supabase connection");
-            log.debug("Original URL: {}", datasourceUrl.replaceAll("password=[^&;]*", "password=***"));
-            log.debug("Updated URL: {}", updatedUrl.replaceAll("password=[^&;]*", "password=***"));
+            log.info("DatabaseUrlPostProcessor: Added sslmode=require to database URL");
+            log.info("DatabaseUrlPostProcessor: Updated URL = {}", 
+                updatedUrl.replaceAll("password=[^&;?]*", "password=***")
+                        .replaceAll(":[^@]*@", ":***@"));
             
             // Update the property
             Map<String, Object> properties = new HashMap<>();
@@ -44,8 +64,10 @@ public class DatabaseUrlPostProcessor implements EnvironmentPostProcessor {
             environment.getPropertySources().addFirst(
                 new MapPropertySource("database-url-override", properties)
             );
+            
+            log.info("DatabaseUrlPostProcessor: Successfully updated database URL");
         } else {
-            log.info("Database URL already contains sslmode parameter");
+            log.info("DatabaseUrlPostProcessor: Database URL already contains sslmode parameter");
         }
     }
 }
