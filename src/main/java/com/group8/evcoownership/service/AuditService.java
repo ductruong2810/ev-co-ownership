@@ -91,27 +91,70 @@ public class AuditService {
         // Normalize filter values
         String normalizedActionType = (actionType != null && !actionType.isEmpty() && !actionType.equals("ALL")) 
                 ? actionType : null;
-        String normalizedEntityType = (entityType != null && !entityType.isEmpty() && !entityType.equals("ALL")) 
+        String normalizedEntityType = (entityType != null && !entityType.isEmpty() && !entityType.equals("ALL"))
                 ? entityType : null;
         String normalizedSearch = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
 
-        Page<AuditLog> auditLogPage = auditLogRepository.findWithFilters(
+        // Nếu không có search → để DB phân trang như cũ
+        if (normalizedSearch == null) {
+            Page<AuditLog> auditLogPage = auditLogRepository.findWithFilters(
+                    userId,
+                    normalizedActionType,
+                    normalizedEntityType,
+                    from,
+                    to,
+                    null,
+                    pageable
+            );
+
+            List<AuditLogResponse> logs = auditLogPage.getContent().stream()
+                    .map(this::mapToResponse)
+                    .collect(Collectors.toList());
+
+            return AuditLogListResponse.builder()
+                    .logs(logs)
+                    .total(auditLogPage.getTotalElements())
+                    .page(page)
+                    .pageSize(size)
+                    .build();
+        }
+
+        // Nếu có search → bỏ paging ở DB, lọc & phân trang ở Java để tránh lỗi type (varchar ~~ bytea)
+        Page<AuditLog> allLogsPage = auditLogRepository.findWithFilters(
                 userId,
                 normalizedActionType,
                 normalizedEntityType,
                 from,
                 to,
                 normalizedSearch,
-                pageable
+                Pageable.unpaged()
         );
 
-        List<AuditLogResponse> logs = auditLogPage.getContent().stream()
-                .map(this::mapToResponse)
+        String keyword = normalizedSearch.toLowerCase();
+
+        List<AuditLog> filtered = allLogsPage.getContent().stream()
+                .filter(a -> {
+                    String message = a.getMessage() != null ? a.getMessage().toLowerCase() : "";
+                    String userName = (a.getUser() != null && a.getUser().getFullName() != null)
+                            ? a.getUser().getFullName().toLowerCase()
+                            : "";
+                    String action = a.getActionType() != null ? a.getActionType().toLowerCase() : "";
+                    return message.contains(keyword) || userName.contains(keyword) || action.contains(keyword);
+                })
                 .collect(Collectors.toList());
 
+        int fromIndex = page * size;
+        int toIndex = Math.min(fromIndex + size, filtered.size());
+
+        List<AuditLogResponse> pageLogs = (fromIndex >= filtered.size())
+                ? List.of()
+                : filtered.subList(fromIndex, toIndex).stream()
+                    .map(this::mapToResponse)
+                    .collect(Collectors.toList());
+
         return AuditLogListResponse.builder()
-                .logs(logs)
-                .total(auditLogPage.getTotalElements())
+                .logs(pageLogs)
+                .total((long) filtered.size())
                 .page(page)
                 .pageSize(size)
                 .build();
