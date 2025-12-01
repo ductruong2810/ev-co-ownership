@@ -101,28 +101,6 @@ public class PaymentService {
     }
 
 
-    /**
-     * Helper for Payment History\
-     * Mapper nhỏ: Payment -> PaymentHistoryItemDTO
-     */
-    // ====== Mapper nhỏ: Payment -> PaymentHistoryItemDTO ======
-    private PaymentHistoryItemDTO toHistoryItem(Payment p) {
-        Long fundId = (p.getFund() != null) ? p.getFund().getFundId() : null;
-
-        return PaymentHistoryItemDTO.builder()
-                .paymentId(p.getId())
-                .fundId(fundId)
-                .amount(p.getAmount())
-                .paymentMethod(p.getPaymentMethod())
-                .status(p.getStatus() != null ? p.getStatus().name() : null)
-                .paymentType(p.getPaymentType() != null ? p.getPaymentType().name() : null)
-                .transactionCode(p.getTransactionCode())
-                .paymentDate(p.getPaymentDate())
-                .build();
-    }
-    // ====================================================================================
-
-
     // Map Entity -> DTO
     private PaymentResponseDTO toDto(Payment p) {
         Long uId = null;

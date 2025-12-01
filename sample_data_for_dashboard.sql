@@ -100,13 +100,13 @@ $$
         -- Lấy user ID
         SELECT "UserId" INTO v_user_id FROM "Users" LIMIT 1;
 
-        -- Tạo expenses với dates khác nhau
+        -- Create expenses with different dates
         FOR i IN 1..30
             LOOP
                 v_expense_date := NOW() - (i || ' days')::INTERVAL + (RANDOM() * 24 || ' hours')::INTERVAL;
 
-                -- Kiểm tra xem expense với description tương tự đã tồn tại chưa
-                IF NOT EXISTS (SELECT 1 FROM "Expense" WHERE "Description" = 'Chi phí Dashboard mẫu ' || i) THEN
+                -- Check if an expense with a similar description already exists
+                IF NOT EXISTS (SELECT 1 FROM "Expense" WHERE "Description" = 'Sample dashboard expense ' || i) THEN
                     INSERT INTO "Expense" ("FundId",
                                            "SourceType",
                                            "SourceId",
@@ -123,8 +123,8 @@ $$
                             CASE WHEN RANDOM() > 0.5 THEN 'MAINTENANCE' ELSE 'INCIDENT' END,
                             9999 + i, -- Source ID (dùng số lớn để tránh conflict)
                             CASE WHEN RANDOM() > 0.3 THEN v_user_id END,
-                            'Chi phí Dashboard mẫu ' || i || ' - ' ||
-                            CASE WHEN RANDOM() > 0.5 THEN 'Bảo dưỡng xe' ELSE 'Sửa chữa sự cố' END,
+                            'Sample dashboard expense ' || i || ' - ' ||
+                            CASE WHEN RANDOM() > 0.5 THEN 'Vehicle maintenance' ELSE 'Incident repair' END,
                             (200000 + RANDOM() * 3000000)::NUMERIC(12, 2), -- 200K - 3.2M
                             CASE WHEN RANDOM() > 0.4 THEN 'COMPLETED' ELSE 'PENDING' END,
                             v_expense_date,
@@ -222,13 +222,13 @@ $$
             RETURN;
         END IF;
 
-        -- Tạo contracts với các status khác nhau
+        -- Create contracts with different statuses
         FOR i IN 1..25
             LOOP
                 v_contract_date := NOW() - (i || ' days')::INTERVAL;
 
-                -- Kiểm tra xem contract với terms tương tự đã tồn tại chưa
-                IF NOT EXISTS (SELECT 1 FROM "Contract" WHERE "Terms" LIKE '%Dashboard mẫu ' || i || '%') THEN
+                -- Check if a contract with similar terms already exists
+                IF NOT EXISTS (SELECT 1 FROM "Contract" WHERE "Terms" LIKE '%Dashboard sample ' || i || '%') THEN
                     INSERT INTO "Contract" ("GroupId",
                                             "StartDate",
                                             "EndDate",
@@ -243,8 +243,8 @@ $$
                     VALUES (v_group_id,
                             (v_contract_date)::DATE,
                             (v_contract_date + INTERVAL '365 days')::DATE,
-                            'Điều khoản hợp đồng Dashboard mẫu số ' || i ||
-                            '. Nội dung chi tiết về quyền và nghĩa vụ của các bên.',
+                            'Dashboard sample contract terms number ' || i ||
+                            '. Detailed content about the rights and obligations of the parties.',
                             (3000000 + RANDOM() * 5000000)::NUMERIC(15, 2), -- 3M - 8M
                             CASE WHEN RANDOM() > 0.3 THEN TRUE ELSE FALSE END,
                             CASE
@@ -280,13 +280,13 @@ $$
             RETURN;
         END IF;
 
-        -- Tạo disputes với các status khác nhau
+        -- Create disputes with different statuses
         FOR i IN 1..15
             LOOP
                 v_dispute_date := NOW() - (i || ' days')::INTERVAL;
 
-                -- Kiểm tra xem dispute với title tương tự đã tồn tại chưa
-                IF NOT EXISTS (SELECT 1 FROM "Dispute" WHERE "Title" = 'Khiếu nại Dashboard mẫu ' || i) THEN
+                -- Check if a dispute with a similar title already exists
+                IF NOT EXISTS (SELECT 1 FROM "Dispute" WHERE "Title" = 'Dashboard sample dispute ' || i) THEN
                     INSERT INTO "Dispute" ("GroupId",
                                            "CreatedBy",
                                            "DisputeType",
@@ -304,8 +304,8 @@ $$
                                 WHEN RANDOM() > 0.1 THEN 'DECISION' -- 10% decision
                                 ELSE 'OTHERS' -- 10% others
                                 END,
-                            'Khiếu nại Dashboard mẫu ' || i,
-                            'Mô tả khiếu nại Dashboard mẫu số ' || i,
+                            'Dashboard sample dispute ' || i,
+                            'Dashboard sample dispute description number ' || i,
                             CASE
                                 WHEN RANDOM() > 0.5 THEN 'OPEN' -- 50% open
                                 WHEN RANDOM() > 0.3 THEN 'RESOLVED' -- 20% resolved
@@ -336,13 +336,13 @@ $$
             RETURN;
         END IF;
 
-        -- Tạo incidents với các status khác nhau
+        -- Create incidents with different statuses
         FOR i IN 1..20
             LOOP
                 v_incident_date := NOW() - (i || ' days')::INTERVAL;
 
-                -- Kiểm tra xem incident với description tương tự đã tồn tại chưa
-                IF NOT EXISTS (SELECT 1 FROM "Incident" WHERE "Description" = 'Mô tả sự cố Dashboard mẫu số ' || i) THEN
+                -- Check if an incident with a similar description already exists
+                IF NOT EXISTS (SELECT 1 FROM "Incident" WHERE "Description" = 'Dashboard sample incident description number ' || i) THEN
                     INSERT INTO "Incident" ("BookingId",
                                             "UserId",
                                             "Description",
@@ -352,7 +352,7 @@ $$
                                             "UpdatedAt")
                     VALUES (v_booking_id,
                             v_user_id,
-                            'Mô tả sự cố Dashboard mẫu số ' || i,
+                            'Dashboard sample incident description number ' || i,
                             (300000 + RANDOM() * 1500000)::NUMERIC(12, 2), -- 300K - 1.8M
                             CASE
                                 WHEN RANDOM() > 0.5 THEN 'APPROVED' -- 50% approved
@@ -384,15 +384,15 @@ $$
             RETURN;
         END IF;
 
-        -- Tạo maintenances với các status khác nhau
+        -- Create maintenances with different statuses
         FOR i IN 1..18
             LOOP
                 v_maintenance_date := NOW() - (i || ' days')::INTERVAL;
 
-                -- Kiểm tra xem maintenance với description tương tự đã tồn tại chưa
+                -- Check if a maintenance with a similar description already exists
                 IF NOT EXISTS (SELECT 1
                                FROM "Maintenance"
-                               WHERE "Description" = 'Mô tả bảo dưỡng Dashboard mẫu số ' || i) THEN
+                               WHERE "Description" = 'Dashboard sample maintenance description number ' || i) THEN
                     INSERT INTO "Maintenance" ("VehicleId",
                                                "RequestedBy",
                                                "Description",
@@ -404,7 +404,7 @@ $$
                                                "UpdatedAt")
                     VALUES (v_vehicle_id,
                             v_user_id,
-                            'Mô tả bảo dưỡng Dashboard mẫu số ' || i,
+                            'Dashboard sample maintenance description number ' || i,
                             (500000 + RANDOM() * 2000000)::NUMERIC(12, 2), -- 500K - 2.5M
                             CASE
                                 WHEN RANDOM() > 0.5 THEN 'COMPLETED' -- 50% completed
