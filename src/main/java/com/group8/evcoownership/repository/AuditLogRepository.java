@@ -28,8 +28,7 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
            "(:userId IS NULL OR a.user.userId = :userId) AND " +
            "(:actionType IS NULL OR a.actionType = :actionType) AND " +
            "(:entityType IS NULL OR a.entityType = :entityType) AND " +
-           "(:from IS NULL OR a.createdAt >= :from) AND " +
-           "(:to IS NULL OR a.createdAt <= :to)")
+           "a.createdAt >= :from AND a.createdAt <= :to")
     Page<AuditLog> findWithFilters(
             @Param("userId") Long userId,
             @Param("actionType") String actionType,

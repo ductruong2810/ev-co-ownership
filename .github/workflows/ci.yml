@@ -42,7 +42,9 @@ jobs:
         if: success() || failure()
         with:
           name: Maven Tests
-          path: target/surefire-reports/*.xml
+          path: |
+            **/target/surefire-reports/*.xml
+            **/target/failsafe-reports/*.xml
           reporter: java-junit
 
       - name: Upload build artifact

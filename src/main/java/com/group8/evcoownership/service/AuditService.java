@@ -88,6 +88,14 @@ public class AuditService {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
 
+        // Chuẩn hoá khoảng thời gian nếu null
+        LocalDateTime normalizedFrom = (from != null)
+                ? from
+                : LocalDateTime.of(1970, 1, 1, 0, 0);
+        LocalDateTime normalizedTo = (to != null)
+                ? to
+                : LocalDateTime.of(2100, 12, 31, 23, 59, 59);
+
         // Normalize filter values
         String normalizedActionType = (actionType != null && !actionType.isEmpty() && !actionType.equals("ALL")) 
                 ? actionType : null;
@@ -101,8 +109,8 @@ public class AuditService {
                     userId,
                     normalizedActionType,
                     normalizedEntityType,
-                    from,
-                    to,
+                    normalizedFrom,
+                    normalizedTo,
                     null,
                     pageable
             );
@@ -124,8 +132,8 @@ public class AuditService {
                 userId,
                 normalizedActionType,
                 normalizedEntityType,
-                from,
-                to,
+                normalizedFrom,
+                normalizedTo,
                 normalizedSearch,
                 Pageable.unpaged()
         );
