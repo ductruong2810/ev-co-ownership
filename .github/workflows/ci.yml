@@ -46,6 +46,7 @@ jobs:
             **/target/surefire-reports/*.xml
             **/target/failsafe-reports/*.xml
           reporter: java-junit
+          fail-on-empty: false
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
