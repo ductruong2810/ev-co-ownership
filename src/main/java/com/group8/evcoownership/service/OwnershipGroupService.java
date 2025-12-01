@@ -42,7 +42,6 @@ public class OwnershipGroupService {
     private final UserRepository userRepository;
     private final UserDocumentRepository userDocumentRepository;
     private final ContractRepository contractRepository;
-    private final ContractFeedbackRepository contractFeedbackRepository;
     private final VehicleService vehicleService;
     private final NotificationOrchestrator notificationOrchestrator;
     private final FundService fundService;
@@ -653,7 +652,7 @@ public class OwnershipGroupService {
                                                    LocalDate toDate,
                                                    Pageable pageable) {
         boolean hasKeyword = keyword != null && !keyword.isBlank();
-        boolean hasStatus = status != null;
+        String statusName = (status != null) ? status.name() : null;
 
         LocalDateTime SQLSERVER_MIN = LocalDateTime.of(1753, 1, 1, 0, 0);
         LocalDateTime SQLSERVER_MAX = LocalDateTime.of(9999, 12, 31, 23, 59, 59, 999_000_000);
@@ -665,7 +664,7 @@ public class OwnershipGroupService {
 
         return repo.findSortedGroups(
                 hasKeyword ? keyword : null,
-                hasStatus ? status.name() : null,
+                statusName,
                 start,
                 end,
                 pageable

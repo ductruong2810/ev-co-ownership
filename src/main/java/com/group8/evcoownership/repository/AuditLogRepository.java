@@ -31,8 +31,8 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
            "(:from IS NULL OR a.createdAt >= :from) AND " +
            "(:to IS NULL OR a.createdAt <= :to) AND " +
            "(:search IS NULL OR " +
-           "LOWER(a.user.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-           "LOWER(a.actionType) LIKE LOWER(CONCAT('%', :search, '%')))")
+           "a.user.fullName LIKE CONCAT('%', :search, '%') OR " +
+           "a.actionType LIKE CONCAT('%', :search, '%'))")
     Page<AuditLog> findWithFilters(
             @Param("userId") Long userId,
             @Param("actionType") String actionType,

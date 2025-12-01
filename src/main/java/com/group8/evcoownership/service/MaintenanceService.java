@@ -7,7 +7,6 @@ import com.group8.evcoownership.entity.Maintenance;
 import com.group8.evcoownership.entity.User;
 import com.group8.evcoownership.entity.Vehicle;
 import com.group8.evcoownership.enums.MaintenanceCoverageType;
-import com.group8.evcoownership.repository.ExpenseRepository;
 import com.group8.evcoownership.repository.MaintenanceRepository;
 import com.group8.evcoownership.repository.UserRepository;
 import com.group8.evcoownership.repository.VehicleRepository;
@@ -30,7 +29,6 @@ public class MaintenanceService {
     private final MaintenanceRepository maintenanceRepository;
     private final VehicleRepository vehicleRepository;
     private final UserRepository userRepository;
-    private final ExpenseRepository expenseRepository;
 
     // =================== CREATE ===================
     public MaintenanceResponseDTO create(MaintenanceCreateRequestDTO req, String username) {
@@ -81,9 +79,6 @@ public class MaintenanceService {
 
     // =================== UPDATE ===================
     public MaintenanceResponseDTO update(Long id, MaintenanceUpdateRequestDTO req, String username) {
-        User user = userRepository.findByEmail(username)
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
-
         Maintenance maintenance = maintenanceRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Maintenance not found"));
 
@@ -210,9 +205,6 @@ public class MaintenanceService {
         Maintenance m = maintenanceRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Maintenance not found"));
 
-        User staff = userRepository.findByEmail(staffEmail)
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
-
         if (!"FUNDED".equals(m.getStatus())) {
             throw new IllegalStateException("Only FUNDED maintenance can be started.");
         }
@@ -235,9 +227,6 @@ public class MaintenanceService {
     public MaintenanceResponseDTO completeMaintenance(Long id, LocalDate nextDueDate, String staffEmail) {
         Maintenance m = maintenanceRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Maintenance not found"));
-
-        User staff = userRepository.findByEmail(staffEmail)
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
         if (!"IN_PROGRESS".equals(m.getStatus())) {
             throw new IllegalStateException("Only IN_PROGRESS maintenance can be completed.");
