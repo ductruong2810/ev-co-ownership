@@ -67,7 +67,8 @@ public class SecurityConfig {
                                 "/api/bookings/**",        // bookings (công khai)
                                 "/api/test/**",            // test endpoint
                                 "/api/ocr/**",             // OCR public
-                                "/api/deposits/deposit-callback" // callback cho deposit
+                                "/api/deposits/deposit-callback", // callback cho deposit
+                                "/ws/**"                   // WebSocket endpoint - handshake cần permit, auth xử lý ở WebSocketAuthChannelInterceptor
                         ).permitAll() // tất cả các path trên sẽ không cần authentication
 
                         // 3. Role-based endpoints - ĐẶT TRƯỚC .anyRequest()

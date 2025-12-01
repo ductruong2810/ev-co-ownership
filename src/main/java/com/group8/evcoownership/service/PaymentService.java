@@ -100,7 +100,6 @@ public class PaymentService {
                 .build();
     }
 
-
     // Map Entity -> DTO
     private PaymentResponseDTO toDto(Payment p) {
         Long uId = null;
