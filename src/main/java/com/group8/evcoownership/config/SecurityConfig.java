@@ -49,39 +49,28 @@ public class SecurityConfig {
                         // 1. OPTIONS requests (CORS preflight) - ĐẶT ĐẦU
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // 2. Public endpoints
+                        // 2. Public endpoints (thực sự không cần login)
                         .requestMatchers(
-                                "/swagger-ui/**", // Swagger UI cho tài liệu API
-                                "/v3/api-docs/**", // OpenAPI JSON
-                                "/api/auth/**",  // Login/Register/refresh token...
-                                "/api/funds/**", // endpoint quỹ (được public theo thiết kế)
-                                "/api/funds/payments/**", // các payment liên quan fund
-                                "/api/payments/**", // payment chung (public)
-                                "/api/auth/vnpay/**", // callback or public vnpay endpoints
-                                // "/api/disputes/**", // tranh chấp - đã có authentication trong controller
-                                "/api/expenses/**",       // chi phí (public theo thiết kế)
-                                "/api/user/profile/**",    // profile công khai
-                                "/api/shares/**",          // shares (cổ phần)
-                                "/api/vehicles/**",        // vehicles (công khai)
-                                "/api/contracts/**",       // contracts (công khai)
-                                "/api/bookings/**",        // bookings (công khai)
-                                "/api/test/**",            // test endpoint
-                                "/api/ocr/**",             // OCR public
-                                "/api/deposits/deposit-callback", // callback cho deposit
-                                "/ws/**"                   // WebSocket endpoint - handshake cần permit, auth xử lý ở WebSocketAuthChannelInterceptor
-                        ).permitAll() // tất cả các path trên sẽ không cần authentication
+                                "/swagger-ui/**",          // Swagger UI cho tài liệu API
+                                "/v3/api-docs/**",         // OpenAPI JSON
+                                "/api/auth/**",            // Login/Register/refresh/forgot-password...
+                                "/api/auth/vnpay/**",      // VNPAY public endpoints
+                                "/api/deposits/deposit-callback", // callback cho deposit (VNPAY redirect)
+                                "/api/test/**"             // test endpoint (giữ public cho dev)
+                        ).permitAll()
 
-                        // 3. Role-based endpoints - ĐẶT TRƯỚC .anyRequest()
+                        // 3. Role-based endpoints (coarse-grained, chi tiết hơn dùng @PreAuthorize)
+                        .requestMatchers("/api/staff/**").hasAnyRole("STAFF", "ADMIN")
+                        // Feedback contract endpoints cho group admin (Co-owner), dù đang nằm trong AdminContractController
+                        .requestMatchers("/api/admin/contracts/feedbacks/**").hasRole("CO_OWNER")
+                        // Các endpoint admin còn lại
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/vehicle-checks/**")
                         .hasAnyRole("CO_OWNER", "ADMIN", "STAFF", "TECHNICIAN")
-                        // Chỉ những role này mới được truy cập /api/vehicle-checks/**
 
-                        .requestMatchers("/api/staff/**")
-                        .hasAnyRole("STAFF", "ADMIN")
-                        // Chỉ STAFF hoặc ADMIN truy cập các endpoint staff/admin
-
-                        // 4. Authenticated endpoints - ĐẶT CUỐI CÙNG
-                        .anyRequest().authenticated() // Các request khác phải xác thực mới được truy cập
+                        // 4. Các endpoint còn lại yêu cầu đã đăng nhập,
+                        // phân quyền chi tiết dựa trên @PreAuthorize ở controller/service
+                        .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex
                                 .authenticationEntryPoint(jwtAuthenticationEntryPoint)

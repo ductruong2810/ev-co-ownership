@@ -42,11 +42,8 @@ jobs:
         if: success() || failure()
         with:
           name: Maven Tests
-          path: |
-            **/target/surefire-reports/*.xml
-            **/target/failsafe-reports/*.xml
+          path: target/surefire-reports/*.xml
           reporter: java-junit
-          fail-on-empty: false
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4

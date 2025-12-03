@@ -28,7 +28,11 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
            "(:userId IS NULL OR a.user.userId = :userId) AND " +
            "(:actionType IS NULL OR a.actionType = :actionType) AND " +
            "(:entityType IS NULL OR a.entityType = :entityType) AND " +
-           "a.createdAt >= :from AND a.createdAt <= :to")
+           "(:from IS NULL OR a.createdAt >= :from) AND " +
+           "(:to IS NULL OR a.createdAt <= :to) AND " +
+           "(:search IS NULL OR LOWER(a.message) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(a.user.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(a.actionType) LIKE LOWER(CONCAT('%', :search, '%')))")
     Page<AuditLog> findWithFilters(
             @Param("userId") Long userId,
             @Param("actionType") String actionType,
