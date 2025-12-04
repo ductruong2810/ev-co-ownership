@@ -89,7 +89,8 @@ public class UserDocumentService {
             Long userId = user.getUserId();
             long startTime = System.currentTimeMillis();
 
-            // 4. Gọi OCR để extract text mặt trước — bất đồng bộ để tránh block luồng xử lý
+            // 4. Gọi OCR để extract text mặt trước — bất đồng bộ để tránh block luồng xử lý.
+            //    Nếu OCR thất bại (timeout, lỗi dịch vụ), fallback sang dùng editedInfo (nếu có) để vẫn cho upload.
             return ocrService.extractTextFromImage(frontFile)
                     .thenApply(extractedText ->
                             // Dùng TransactionTemplate run processUpload trong transaction
@@ -111,8 +112,24 @@ public class UserDocumentService {
                             })
                     )
                     .exceptionally(ex -> {
-                        log.error("Async upload failed: {}", ex.getMessage(), ex);
-                        throw new FileProcessingException("Upload failed: " + ex.getMessage());
+                        log.error("Async OCR or upload failed, trying fallback with editedInfo if available: {}", ex.getMessage(), ex);
+                        return transactionTemplate.execute(status -> {
+                            try {
+                                // Fallback: không có extractedText, processUpload sẽ dựa trên editedInfo (nếu có)
+                                return processUpload(
+                                        userId,
+                                        documentType,
+                                        frontFile,
+                                        backFile,
+                                        null,
+                                        startTime,
+                                        editedInfo
+                                );
+                            } catch (Exception e) {
+                                log.error("Fallback upload failed: {}", e.getMessage(), e);
+                                throw new FileProcessingException("Upload failed: " + e.getMessage());
+                            }
+                        });
                     });
 
         } catch (InvalidDocumentException e) {
@@ -149,38 +166,47 @@ public class UserDocumentService {
             long startTime,
             UserDocumentInfoDTO editedInfo) {
 
-        if (extractedText == null || extractedText.trim().isEmpty()) {
+        boolean hasOcrText = extractedText != null && !extractedText.trim().isEmpty();
+
+        // Nếu không có text OCR và cũng không có editedInfo từ FE => không có nguồn dữ liệu nào để bóc thông tin
+        if (!hasOcrText && editedInfo == null) {
             throw new InvalidDocumentException("Unable to extract text from image");
         }
 
-        // Xác định loại giấy tờ từ text OCR
-        String detectedType = detectDocumentType(extractedText);
+        // Xác định loại giấy tờ:
+        // - Nếu có OCR text: dùng OCR để detect & validate như cũ
+        // - Nếu OCR fail nhưng có editedInfo: tin tưởng documentType FE gửi lên
+        String detectedType = documentType;
 
-        if ("UNKNOWN".equals(detectedType)) {
-            throw new InvalidDocumentException(
-                    "Unable to identify document type from image. Please ensure the image is clear and shows a valid document."
-            );
-        }
+        if (hasOcrText) {
+            detectedType = detectDocumentType(extractedText);
 
-        // Nếu loại giấy tờ FE gửi lên khác loại nhận dạng từ OCR ⇒ báo lỗi để người dùng upload đúng
-        if (!detectedType.equals(documentType)) {
-            String expectedTypeName = "CITIZEN_ID".equals(documentType)
-                    ? "Citizen ID (CCCD)"
-                    : "Driver License (GPLX)";
-            String detectedTypeName = "CITIZEN_ID".equals(detectedType)
-                    ? "Citizen ID (CCCD)"
-                    : "Driver License (GPLX)";
+            if ("UNKNOWN".equals(detectedType)) {
+                throw new InvalidDocumentException(
+                        "Unable to identify document type from image. Please ensure the image is clear and shows a valid document."
+                );
+            }
 
-            throw new InvalidDocumentException(
-                    String.format(
-                            "Document type mismatch. You selected %s but the image is %s. Please upload the correct document type.",
-                            expectedTypeName, detectedTypeName
-                    )
-            );
+            // Nếu loại giấy tờ FE gửi lên khác loại nhận dạng từ OCR ⇒ báo lỗi để người dùng upload đúng
+            if (!detectedType.equals(documentType)) {
+                String expectedTypeName = "CITIZEN_ID".equals(documentType)
+                        ? "Citizen ID (CCCD)"
+                        : "Driver License (GPLX)";
+                String detectedTypeName = "CITIZEN_ID".equals(detectedType)
+                        ? "Citizen ID (CCCD)"
+                        : "Driver License (GPLX)";
+
+                throw new InvalidDocumentException(
+                        String.format(
+                                "Document type mismatch. You selected %s but the image is %s. Please upload the correct document type.",
+                                expectedTypeName, detectedTypeName
+                        )
+                );
+            }
         }
 
         // Bóc tách dữ liệu từ text ảnh: số giấy tờ, tên, ngày sinh, v.v.
-        // Nếu có editedInfo từ FE thì dùng, nếu không thì extract từ OCR
+        // Nếu có editedInfo từ FE thì dùng, nếu không thì extract từ OCR (khi có OCR text)
         UserDocumentInfoDTO documentInfo = editedInfo != null ? editedInfo :
                 (documentType.equals("CITIZEN_ID")
                         ? extractCitizenIdInfo(extractedText)
