@@ -68,6 +68,11 @@ public class AuthService {
     // Token reset mật khẩu -> email (để đổi mật khẩu sau khi xác thực OTP)
     private final Map<String, String> resetTokens = new ConcurrentHashMap<>();
 
+    // Flow đổi email: newEmail -> currentEmail đang yêu cầu đổi
+    private final Map<String, String> pendingEmailChanges = new ConcurrentHashMap<>();
+    // Flow đổi email: otp -> newEmail
+    private final Map<String, String> changeEmailOtpToEmailMap = new ConcurrentHashMap<>();
+
     // ================= Login =================
     public LoginResponseDTO login(LoginRequestDTO request) {
         // Tìm user theo email nếu không tồn tại,
@@ -215,6 +220,9 @@ public class AuthService {
             } else if (type == OtpType.PASSWORD_RESET) {
                 log.info("Verifying PASSWORD_RESET OTP");
                 return verifyPasswordResetOtp(otp);
+            } else if (type == OtpType.CHANGE_EMAIL) {
+                log.info("Verifying CHANGE_EMAIL OTP");
+                return verifyChangeEmailOtp(otp);
             } else {
                 // Bắt case enum không hợp lệ (phòng sai input phía client)
                 throw new IllegalArgumentException("Invalid OTP type");
@@ -376,6 +384,8 @@ public class AuthService {
             return resendRegistrationOtp(email);
         } else if (type == OtpType.PASSWORD_RESET) {
             return resendPasswordResetOtp(email);
+        } else if (type == OtpType.CHANGE_EMAIL) {
+            return resendChangeEmailOtp(email);
         } else {
             throw new IllegalArgumentException("Invalid OTP type");
         }
@@ -457,6 +467,149 @@ public class AuthService {
         } catch (Exception e) {
             // Bắt các lỗi còn lại, ghi log đầy đủ và trả thông báo tổng quát
             log.error("Unexpected error while resending password reset OTP to {}: {}", email, e.getMessage(), e);
+            throw new RuntimeException("Unable to resend OTP. Please try again later");
+        }
+    }
+
+    // ================= Request change-email OTP =================
+    public OtpResponseDTO requestChangeEmailOtp(String currentEmail, String newEmail) {
+        log.info("Processing change email request from {} to {}", currentEmail, newEmail);
+
+        if (newEmail == null || newEmail.trim().isEmpty()) {
+            throw new IllegalArgumentException("New email cannot be empty");
+        }
+
+        if (currentEmail.equalsIgnoreCase(newEmail.trim())) {
+            throw new IllegalArgumentException("New email must be different from current email");
+        }
+
+        // Ensure current user exists
+        User user = userRepository.findByEmail(currentEmail)
+                .orElseThrow(() -> new IllegalArgumentException("Account not found"));
+
+        // New email must not be used by another user
+        if (userRepository.existsByEmail(newEmail)) {
+            throw new IllegalArgumentException("New email is already registered by another account");
+        }
+
+        String otp = null;
+
+        try {
+            otp = otpUtil.generateOtp(newEmail);
+            emailService.sendChangeEmailOtpEmail(currentEmail, newEmail, otp);
+
+            pendingEmailChanges.put(newEmail, currentEmail);
+            changeEmailOtpToEmailMap.put(otp, newEmail);
+
+            log.info("Change-email OTP sent to new email: {}", newEmail);
+
+            return OtpResponseDTO.builder()
+                    .email(newEmail)
+                    .message("OTP has been sent to your new email")
+                    .type(OtpType.CHANGE_EMAIL)
+                    .expiresIn(300)
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to send change-email OTP to {}: {}", newEmail, e.getMessage());
+            if (otp != null) {
+                otpUtil.invalidateOtp(newEmail);
+            }
+            pendingEmailChanges.remove(newEmail);
+            if (otp != null) {
+                changeEmailOtpToEmailMap.remove(otp);
+            }
+            throw new RuntimeException("Unable to send verification email. Please try again later");
+        }
+    }
+
+    // ================= Verify change-email OTP =================
+    private VerifyOtpResponseDTO verifyChangeEmailOtp(String otp) {
+        log.info("Verifying change-email OTP");
+
+        String newEmail = changeEmailOtpToEmailMap.get(otp);
+        if (newEmail == null) {
+            log.error("Change-email OTP not found or expired: {}", otp);
+            throw new IllegalArgumentException("OTP is invalid or has expired");
+        }
+
+        String currentEmail = pendingEmailChanges.get(newEmail);
+        if (currentEmail == null) {
+            log.error("No pending email change found for newEmail: {}", newEmail);
+            changeEmailOtpToEmailMap.remove(otp);
+            throw new IllegalStateException("Email change request not found. Please request a new OTP");
+        }
+
+        boolean isOtpValid = otpUtil.verifyOtp(newEmail, otp);
+        if (!isOtpValid) {
+            int remainingAttempts = otpUtil.getRemainingAttempts(newEmail);
+            if (remainingAttempts == 0) {
+                pendingEmailChanges.remove(newEmail);
+                changeEmailOtpToEmailMap.remove(otp);
+                log.error("Change-email OTP verification failed - no attempts remaining for {}", newEmail);
+                throw new IllegalStateException("You have entered an incorrect OTP too many times. Please request a new OTP");
+            }
+            log.error("Invalid change-email OTP. Remaining attempts: {}", remainingAttempts);
+            throw new IllegalArgumentException("Invalid OTP. You have " + remainingAttempts + " attempts remaining");
+        }
+
+        // OTP hợp lệ: tiến hành đổi email
+        User user = userRepository.findByEmail(currentEmail)
+                .orElseThrow(() -> new IllegalStateException("Account not found"));
+
+        // Đảm bảo không có user khác vừa dùng newEmail trong lúc chờ OTP
+        if (userRepository.existsByEmail(newEmail)) {
+            log.error("New email {} is already registered by another user", newEmail);
+            pendingEmailChanges.remove(newEmail);
+            changeEmailOtpToEmailMap.remove(otp);
+            throw new IllegalStateException("New email is already registered by another account");
+        }
+
+        user.setEmail(newEmail);
+        userRepository.save(user);
+
+        pendingEmailChanges.remove(newEmail);
+        changeEmailOtpToEmailMap.remove(otp);
+
+        log.info("Email changed successfully from {} to {}", currentEmail, newEmail);
+
+        return VerifyOtpResponseDTO.builder()
+                .email(newEmail)
+                .message("Email changed successfully")
+                .type(OtpType.CHANGE_EMAIL)
+                .build();
+    }
+
+    // ================= Resend change-email OTP =================
+    private OtpResponseDTO resendChangeEmailOtp(String newEmail) {
+        log.info("Resending change-email OTP for newEmail: {}", newEmail);
+
+        String currentEmail = pendingEmailChanges.get(newEmail);
+        if (currentEmail == null) {
+            log.warn("Resend change-email OTP attempt for non-pending newEmail: {}", newEmail);
+            throw new IllegalStateException("Email change request not found. Please request again from the beginning");
+        }
+
+        String newOtp = null;
+
+        try {
+            newOtp = otpUtil.generateOtp(newEmail);
+            changeEmailOtpToEmailMap.values().removeIf(e -> e.equals(newEmail));
+            changeEmailOtpToEmailMap.put(newOtp, newEmail);
+            emailService.sendChangeEmailOtpEmail(currentEmail, newEmail, newOtp);
+
+            log.info("Change-email OTP resent successfully to newEmail: {}", newEmail);
+
+            return OtpResponseDTO.builder()
+                    .email(newEmail)
+                    .message("A new OTP has been sent to your new email")
+                    .type(OtpType.CHANGE_EMAIL)
+                    .expiresIn(300)
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to resend change-email OTP to {}: {}", newEmail, e.getMessage());
+            if (newOtp != null) {
+                otpUtil.invalidateOtp(newEmail);
+            }
             throw new RuntimeException("Unable to resend OTP. Please try again later");
         }
     }

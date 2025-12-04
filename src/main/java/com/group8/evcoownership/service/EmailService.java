@@ -94,8 +94,6 @@ public class EmailService {
         }
     }
 
-    // ========== THÊM METHOD NÀY ==========
-
     /**
      * Gửi OTP email cho đặt lại mật khẩu
      */
@@ -125,6 +123,34 @@ public class EmailService {
 
         } catch (MessagingException e) {
             log.error("Failed to send password reset email to: {}", to, e);
+            throw new RuntimeException("Unable to send email. Please try again later.");
+        }
+    }
+
+    /**
+     * Gửi OTP xác nhận đổi email tới email mới
+     */
+    public void sendChangeEmailOtpEmail(String currentEmail, String newEmail, String otp) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            Context context = new Context();
+            context.setVariable("currentEmail", currentEmail);
+            context.setVariable("newEmail", newEmail);
+            context.setVariable("otp", otp);
+            context.setVariable("expiryMinutes", 5);
+
+            String htmlContent = templateEngine.process("otp-change-email", context);
+
+            helper.setTo(newEmail);
+            helper.setSubject("Confirm your new email address");
+            helper.setText(htmlContent, true);
+
+            mailSender.send(message);
+            log.info("Change-email OTP sent to new email: {}", newEmail);
+        } catch (MessagingException e) {
+            log.error("Failed to send change-email OTP to: {}", newEmail, e);
             throw new RuntimeException("Unable to send email. Please try again later.");
         }
     }

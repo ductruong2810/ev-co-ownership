@@ -133,5 +133,24 @@ public class AuthController {
         // Trả về thông báo kết quả
         return ResponseEntity.ok(Map.of("message", message));
     }
+
+    // 10. YÊU CẦU ĐỔI EMAIL (GỬI OTP)
+    @PostMapping("/change-email/request-otp")
+    @Operation(summary = "Request change email OTP", description = "Send OTP to new email to confirm email change")
+    public ResponseEntity<OtpResponseDTO> requestChangeEmailOtp(
+            @Valid @RequestBody ChangeEmailRequestDTO request,
+            Authentication authentication) {
+
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new IllegalStateException("You need to login to perform this action");
+        }
+
+        String currentEmail = AuthUtils.getCurrentUserEmail(authentication);
+        if (currentEmail == null || currentEmail.trim().isEmpty()) {
+            throw new IllegalStateException("Unable to authenticate user");
+        }
+
+        return ResponseEntity.ok(authService.requestChangeEmailOtp(currentEmail, request.getNewEmail()));
+    }
 }
 
