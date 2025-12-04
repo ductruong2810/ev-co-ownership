@@ -167,10 +167,12 @@ public class UserDocumentService {
             UserDocumentInfoDTO editedInfo) {
 
         boolean hasOcrText = extractedText != null && !extractedText.trim().isEmpty();
+        boolean hasEditedInfo = hasEssentialInfo(editedInfo);
 
-        // Nếu không có text OCR và cũng không có editedInfo từ FE => không có nguồn dữ liệu nào để bóc thông tin
-        if (!hasOcrText && editedInfo == null) {
-            throw new InvalidDocumentException("Unable to extract text from image");
+        // Nếu không có text OCR và cũng không có editedInfo hợp lệ từ FE
+        // => không có nguồn dữ liệu tin cậy nào để bóc thông tin
+        if (!hasOcrText && !hasEditedInfo) {
+            throw new InvalidDocumentException("Unable to extract or provide valid document information. Please try again.");
         }
 
         // Xác định loại giấy tờ:
@@ -182,26 +184,32 @@ public class UserDocumentService {
             detectedType = detectDocumentType(extractedText);
 
             if ("UNKNOWN".equals(detectedType)) {
-                throw new InvalidDocumentException(
-                        "Unable to identify document type from image. Please ensure the image is clear and shows a valid document."
-                );
-            }
+                // Nếu OCR không xác định được loại giấy tờ nhưng người dùng đã nhập tay thông tin hợp lệ
+                // ⇒ tin tưởng documentType từ FE, ghi log cảnh báo nhưng không chặn flow
+                if (!hasEditedInfo) {
+                    throw new InvalidDocumentException(
+                            "Unable to identify document type from image. Please ensure the image is clear and shows a valid document."
+                    );
+                }
+                log.warn("OCR could not determine document type for userId {}. Falling back to FE documentType {}", userId, documentType);
+                detectedType = documentType;
+            } else {
+                // Nếu loại giấy tờ FE gửi lên khác loại nhận dạng từ OCR ⇒ báo lỗi để người dùng upload đúng
+                if (!detectedType.equals(documentType)) {
+                    String expectedTypeName = "CITIZEN_ID".equals(documentType)
+                            ? "Citizen ID (CCCD)"
+                            : "Driver License (GPLX)";
+                    String detectedTypeName = "CITIZEN_ID".equals(detectedType)
+                            ? "Citizen ID (CCCD)"
+                            : "Driver License (GPLX)";
 
-            // Nếu loại giấy tờ FE gửi lên khác loại nhận dạng từ OCR ⇒ báo lỗi để người dùng upload đúng
-            if (!detectedType.equals(documentType)) {
-                String expectedTypeName = "CITIZEN_ID".equals(documentType)
-                        ? "Citizen ID (CCCD)"
-                        : "Driver License (GPLX)";
-                String detectedTypeName = "CITIZEN_ID".equals(detectedType)
-                        ? "Citizen ID (CCCD)"
-                        : "Driver License (GPLX)";
-
-                throw new InvalidDocumentException(
-                        String.format(
-                                "Document type mismatch. You selected %s but the image is %s. Please upload the correct document type.",
-                                expectedTypeName, detectedTypeName
-                        )
-                );
+                    throw new InvalidDocumentException(
+                            String.format(
+                                    "Document type mismatch. You selected %s but the image is %s. Please upload the correct document type.",
+                                    expectedTypeName, detectedTypeName
+                            )
+                    );
+                }
             }
         }
 
@@ -507,6 +515,19 @@ public class UserDocumentService {
         if (contentType == null || !contentType.startsWith("image/")) {
             throw new InvalidDocumentException("File must be an image (jpg, png, ...)");
         }
+    }
+
+    // ========= Helper: kiểm tra thông tin giấy tờ do user nhập tay có đủ “cốt lõi” không =========
+    private boolean hasEssentialInfo(UserDocumentInfoDTO info) {
+        if (info == null) return false;
+
+        String idNumber = info.idNumber();
+        String fullName = info.fullName();
+
+        boolean hasId = idNumber != null && !idNumber.trim().isEmpty();
+        boolean hasName = fullName != null && !fullName.trim().isEmpty();
+
+        return hasId && hasName;
     }
 
     // ========= Preview OCR extraction (không lưu vào DB) =========
