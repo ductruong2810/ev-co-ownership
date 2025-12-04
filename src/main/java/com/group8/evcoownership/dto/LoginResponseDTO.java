@@ -13,5 +13,6 @@ public class LoginResponseDTO {
     private String accessToken;
     private String refreshToken;
     private String role;
+    // userId is already in JWT token, no need to include in response
     //bo sung de nhan biet staff, coowner, admin, technician
 }
