@@ -11,8 +11,11 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/user/profile")
@@ -45,6 +48,20 @@ public class UserProfileController {
     public ResponseEntity<UserProfileResponseDTO> getUserProfileById(@PathVariable Long userId) {
         log.info("Fetching profile for userId: {}", userId);
         UserProfileResponseDTO profile = userProfileService.getUserProfileById(userId);
+        return ResponseEntity.ok(profile);
+    }
+
+    /**
+     * POST /api/user/profile/avatar
+     * Cập nhật avatar cho user hiện tại
+     */
+    @PostMapping("/avatar")
+    @Operation(summary = "Cập nhật avatar", description = "Upload avatar mới cho người dùng hiện tại")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<UserProfileResponseDTO> updateAvatar(
+            @AuthenticationPrincipal String email,
+            @RequestPart("file") MultipartFile avatarFile) {
+        UserProfileResponseDTO profile = userProfileService.updateAvatar(email, avatarFile);
         return ResponseEntity.ok(profile);
     }
 }

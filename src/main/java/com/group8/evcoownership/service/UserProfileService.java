@@ -10,6 +10,7 @@ import com.group8.evcoownership.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -23,13 +24,16 @@ public class UserProfileService {
     private final UserDocumentRepository userDocumentRepository;
 
     private final OwnershipShareRepository ownershipShareRepository;
+    private final CloudflareR2StorageService r2StorageService;
 
     public UserProfileService(UserRepository userRepository,
                               UserDocumentRepository userDocumentRepository,
-                              OwnershipShareRepository ownershipShareRepository) {
+                              OwnershipShareRepository ownershipShareRepository,
+                              CloudflareR2StorageService r2StorageService) {
         this.userRepository = userRepository;
         this.userDocumentRepository = userDocumentRepository;
         this.ownershipShareRepository = ownershipShareRepository;
+        this.r2StorageService = r2StorageService;
     }
 
 
@@ -51,6 +55,35 @@ public class UserProfileService {
                 ));
 
         return buildProfileResponse(user);
+    }
+
+    @Transactional
+    public UserProfileResponseDTO updateAvatar(String email, MultipartFile avatarFile) {
+        log.info("Updating avatar for user: {}", email);
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        try {
+            // Delete old avatar if exists
+            if (user.getAvatarUrl() != null && !user.getAvatarUrl().isEmpty()) {
+                try {
+                    r2StorageService.deleteFile(user.getAvatarUrl());
+                } catch (Exception e) {
+                    log.warn("Failed to delete old avatar for user {}: {}", email, e.getMessage());
+                }
+            }
+
+            // Upload new avatar
+            String newAvatarUrl = r2StorageService.uploadFile(avatarFile);
+            user.setAvatarUrl(newAvatarUrl);
+            userRepository.save(user);
+
+            return buildProfileResponse(user);
+        } catch (Exception e) {
+            log.error("Failed to update avatar for user {}: {}", email, e.getMessage(), e);
+            throw new RuntimeException("Failed to update avatar. Please try again later.");
+        }
     }
 
 
