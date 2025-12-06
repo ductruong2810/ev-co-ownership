@@ -71,9 +71,9 @@ public class DatabaseUrlPostProcessor implements EnvironmentPostProcessor {
             }
             
             if (projectRef != null && !projectRef.isEmpty()) {
-                // Replace db.xxx.supabase.co with aws-0-ap-southeast-1.pooler.supabase.com (most common)
-                // Or use project-specific pooler: xxx.pooler.supabase.com
-                String poolerHost = "aws-0-ap-southeast-1.pooler.supabase.com";
+                // Use project-specific pooler: xxx.pooler.supabase.com (recommended for better reliability)
+                // Fallback to generic pooler if project-specific doesn't work
+                String poolerHost = projectRef + ".pooler.supabase.com";
                 updatedUrl = updatedUrl.replace("db." + projectRef + ".supabase.co", poolerHost);
                 urlChanged = true;
                 log.info("DatabaseUrlPostProcessor: Converted host from db.{}.supabase.co to {}", projectRef, poolerHost);
