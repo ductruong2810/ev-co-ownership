@@ -35,7 +35,7 @@ jobs:
           restore-keys: ${{ runner.os }}-m2
 
       - name: Verify with Maven (tests + package)
-        run: ./mvnw -B clean verify -Dspring.profiles.active=test
+        run: ./mvnw -B clean verify -Dspring.profiles.active=test -DskipTests=false -Dmaven.test.skip=false
 
       - name: List test report files
         if: always()
