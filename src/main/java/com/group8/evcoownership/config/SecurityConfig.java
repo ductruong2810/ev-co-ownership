@@ -57,7 +57,8 @@ public class SecurityConfig {
                                 "/api/auth/vnpay/**",      // VNPAY public endpoints
                                 "/api/deposits/deposit-callback", // callback cho deposit (VNPAY redirect)
                                 "/api/test/**",            // test endpoint (giữ public cho dev)
-                                "/ws/**"                   // SockJS/WebSocket handshake + info endpoint
+                                "/ws/**",                  // SockJS/WebSocket handshake + info endpoint
+                                "/actuator/**"             // Spring Actuator endpoints (health check cho Render)
                         ).permitAll()
 
                         // 3. Role-based endpoints (coarse-grained, chi tiết hơn dùng @PreAuthorize)
