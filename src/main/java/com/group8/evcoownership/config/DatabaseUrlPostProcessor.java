@@ -49,6 +49,41 @@ public class DatabaseUrlPostProcessor implements EnvironmentPostProcessor {
 
         String updatedUrl = datasourceUrl;
         boolean urlChanged = false;
+        
+        // Convert postgresql:// URI format to jdbc:postgresql:// JDBC format if needed
+        if (updatedUrl.startsWith("postgresql://")) {
+            log.info("DatabaseUrlPostProcessor: Detected postgresql:// URI format. Converting to JDBC format.");
+            try {
+                // Parse: postgresql://user:password@host:port/database
+                // Convert to: jdbc:postgresql://host:port/database?user=user&password=password
+                String uri = updatedUrl.replace("postgresql://", "");
+                String[] parts = uri.split("@");
+                if (parts.length == 2) {
+                    String credentials = parts[0];
+                    String hostAndDb = parts[1];
+                    
+                    String[] credParts = credentials.split(":");
+                    String username = credParts[0];
+                    String password = credParts.length > 1 ? credParts[1] : "";
+                    
+                    // Build JDBC URL
+                    updatedUrl = "jdbc:postgresql://" + hostAndDb;
+                    if (!updatedUrl.contains("?")) {
+                        updatedUrl += "?";
+                    } else {
+                        updatedUrl += "&";
+                    }
+                    updatedUrl += "user=" + username;
+                    if (!password.isEmpty()) {
+                        updatedUrl += "&password=" + password;
+                    }
+                    urlChanged = true;
+                    log.info("DatabaseUrlPostProcessor: Converted URI format to JDBC format");
+                }
+            } catch (Exception e) {
+                log.warn("DatabaseUrlPostProcessor: Failed to parse postgresql:// URI format: {}. Using as-is.", e.getMessage());
+            }
+        }
 
         // Fix hostname: Convert direct connection (db.xxx.supabase.co) to pooler (xxx.pooler.supabase.com)
         // Direct connection is NOT IPv4 compatible on Render, must use pooler
@@ -85,12 +120,16 @@ public class DatabaseUrlPostProcessor implements EnvironmentPostProcessor {
             }
         }
         
-        // Fix port: Supabase direct connection (5432) should use pooler (6543) for production
-        // Check if URL contains direct connection port 5432
-        if (updatedUrl.contains(":5432/") || updatedUrl.contains(":5432?")) {
-            log.warn("DatabaseUrlPostProcessor: Detected direct connection port 5432. Converting to pooler port 6543 for better reliability.");
-            updatedUrl = updatedUrl.replace(":5432/", ":6543/").replace(":5432?", ":6543?");
-            urlChanged = true;
+        // Port handling:
+        // - Transaction pooler uses port 6543 (for serverless/stateless apps) - NOT recommended for Spring Boot
+        // - Session pooler uses port 5432 (for long-lived apps with connection pooling) - RECOMMENDED
+        // - Direct connection uses port 5432 but host is db.xxx.supabase.co (IPv4 incompatible on Render)
+        // For Spring Boot apps, we keep port 5432 if using pooler host (session pooler)
+        // Only convert to 6543 if explicitly using transaction pooler
+        if (updatedUrl.contains(".pooler.supabase.com") && (updatedUrl.contains(":6543/") || updatedUrl.contains(":6543?"))) {
+            log.info("DatabaseUrlPostProcessor: Using transaction pooler (port 6543). Consider switching to Session pooler (port 5432) for better connection limits.");
+        } else if (updatedUrl.contains(".pooler.supabase.com") && (updatedUrl.contains(":5432/") || updatedUrl.contains(":5432?"))) {
+            log.info("DatabaseUrlPostProcessor: Using session pooler (port 5432) - recommended for Spring Boot applications.");
         }
 
         // Check if URL already contains sslmode parameter
