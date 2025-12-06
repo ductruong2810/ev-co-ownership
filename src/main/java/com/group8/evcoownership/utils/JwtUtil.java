@@ -59,7 +59,11 @@ public class JwtUtil {
         Map<String, Object> claims = new HashMap<>();
         // Tạo payload chứa các thông tin muốn embed vào token
 
-        claims.put("userId", user.getUserId());   // lưu id người dùng để backend dễ lấy ra
+        Long userId = user.getUserId();
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID cannot be null when generating token");
+        }
+        claims.put("userId", userId);   // lưu id người dùng để backend dễ lấy ra
         claims.put("email", user.getEmail());     // lưu thêm email
         if (user.getRole() != null) {
             claims.put("role", user.getRole().getRoleName()); // lưu tên role để phục vụ phân quyền nếu cần
