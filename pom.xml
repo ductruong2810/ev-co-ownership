@@ -240,6 +240,9 @@
                     <forkCount>1</forkCount>
                     <reuseForks>true</reuseForks>
                     <argLine>-Xmx512m</argLine>
+                    <!-- Ensure test reports are always generated -->
+                    <reportFormat>xml</reportFormat>
+                    <outputDirectory>${project.build.directory}/surefire-reports</outputDirectory>
                 </configuration>
             </plugin>
         </plugins>

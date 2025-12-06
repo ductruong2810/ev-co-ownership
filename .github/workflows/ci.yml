@@ -37,13 +37,23 @@ jobs:
       - name: Verify with Maven (tests + package)
         run: ./mvnw -B clean verify -Dspring.profiles.active=test
 
+      - name: List test report files
+        if: always()
+        run: |
+          echo "Checking for test reports..."
+          find target -name "*.xml" -type f || echo "No XML files found"
+          ls -la target/surefire-reports/ || echo "surefire-reports directory does not exist"
+
       - name: Generate test report
         uses: dorny/test-reporter@v1
-        if: success() || failure()
+        if: always()
         with:
           name: Maven Tests
           path: target/surefire-reports/*.xml
           reporter: java-junit
+          fail-on-error: false
+          list-suites: all
+          list-tests: all
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
