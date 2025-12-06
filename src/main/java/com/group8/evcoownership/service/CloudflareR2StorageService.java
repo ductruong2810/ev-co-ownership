@@ -47,6 +47,84 @@ public class CloudflareR2StorageService {
         log.info("========================================");
     }
 
+    /**
+     * Upload avatar file to avatars/ folder
+     */
+    public String uploadAvatar(MultipartFile file) {
+        if (!enabled || s3Client == null) {
+            throw new IllegalStateException("R2 storage is not enabled or S3Client is not initialized");
+        }
+
+        // VALIDATION 1: Check null/empty
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("File cannot be empty");
+        }
+
+        // VALIDATION 2: Check file size (avatars should be smaller)
+        long maxAvatarSize = 5 * 1024 * 1024; // 5MB for avatars
+        if (file.getSize() > maxAvatarSize) {
+            throw new IllegalArgumentException("Avatar size must not exceed 5MB");
+        }
+
+        // VALIDATION 3: Check content type (only images for avatars)
+        String contentType = file.getContentType();
+        List<String> allowedAvatarTypes = Arrays.asList("image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp");
+        if (contentType == null || !allowedAvatarTypes.contains(contentType.toLowerCase())) {
+            throw new IllegalArgumentException("Avatar only accepts image files: JPG, PNG, GIF, WEBP");
+        }
+
+        try {
+            String originalFileName = file.getOriginalFilename();
+            String fileExtension = getFileExtension(originalFileName);
+            // Upload to avatars/ folder with unique name
+            String objectKey = "avatars/" + UUID.randomUUID() + "_" + System.currentTimeMillis() + fileExtension;
+
+            log.info("Uploading avatar to R2: {} (size: {} bytes)", originalFileName, file.getSize());
+            log.info("Object key: {}", objectKey);
+
+            // Build PutObjectRequest
+            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(objectKey)
+                    .contentType(contentType)
+                    .contentDisposition("inline") // Display in browser instead of download
+                    .build();
+
+            // Upload file
+            s3Client.putObject(putObjectRequest, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
+
+            // Build public URL
+            String fileUrl = buildPublicUrl(objectKey);
+            log.info("Avatar uploaded successfully to R2: {}", fileUrl);
+
+            // Verify file exists
+            HeadObjectRequest headRequest = HeadObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(objectKey)
+                    .build();
+
+            try {
+                s3Client.headObject(headRequest);
+                log.info("Avatar verified successfully: {}", objectKey);
+            } catch (NoSuchKeyException e) {
+                log.error("CRITICAL: Avatar not found after upload! Key: {}", objectKey);
+                throw new RuntimeException("Upload failed - avatar verification failed");
+            }
+
+            return fileUrl;
+
+        } catch (S3Exception e) {
+            log.error("R2 S3 error: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to upload avatar to R2: " + e.getMessage());
+        } catch (IOException e) {
+            log.error("IO error during avatar upload: {}", e.getMessage(), e);
+            throw new RuntimeException("Error reading file: " + e.getMessage());
+        } catch (Exception e) {
+            log.error("Unexpected error during avatar upload: {}", e.getMessage(), e);
+            throw new RuntimeException("Unexpected error during avatar upload");
+        }
+    }
+
     public String uploadFile(MultipartFile file) {
         if (!enabled || s3Client == null) {
             throw new IllegalStateException("R2 storage is not enabled or S3Client is not initialized");
@@ -54,18 +132,18 @@ public class CloudflareR2StorageService {
 
         // VALIDATION 1: Check null/empty
         if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("File không được để trống");
+            throw new IllegalArgumentException("File cannot be empty");
         }
 
         // VALIDATION 2: Check file size
         if (file.getSize() > MAX_FILE_SIZE) {
-            throw new IllegalArgumentException("File không được vượt quá 50MB");
+            throw new IllegalArgumentException("File size must not exceed 50MB");
         }
 
         // VALIDATION 3: Check content type
         String contentType = file.getContentType();
         if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType.toLowerCase())) {
-            throw new IllegalArgumentException("Chỉ chấp nhận file: JPG, PNG, GIF, WEBP, PDF");
+            throw new IllegalArgumentException("Only accepts files: JPG, PNG, GIF, WEBP, PDF");
         }
 
         try {
@@ -109,13 +187,13 @@ public class CloudflareR2StorageService {
 
         } catch (S3Exception e) {
             log.error("R2 S3 error: {}", e.getMessage(), e);
-            throw new RuntimeException("Không thể upload file lên R2: " + e.getMessage());
+            throw new RuntimeException("Failed to upload file to R2: " + e.getMessage());
         } catch (IOException e) {
             log.error("IO error during upload: {}", e.getMessage(), e);
-            throw new RuntimeException("Lỗi đọc file: " + e.getMessage());
+            throw new RuntimeException("Error reading file: " + e.getMessage());
         } catch (Exception e) {
             log.error("Unexpected error during upload: {}", e.getMessage(), e);
-            throw new RuntimeException("Lỗi không xác định khi upload file");
+            throw new RuntimeException("Unexpected error during file upload");
         }
     }
 
@@ -173,23 +251,45 @@ public class CloudflareR2StorageService {
 
     private String extractObjectKey(String fileUrl) {
         // Extract object key from URL
-        // Example: https://pub-xxx.r2.dev/user-documents/123/abc.jpg -> user-documents/123/abc.jpg
-        // Or: https://your-domain.com/user-documents/123/abc.jpg -> user-documents/123/abc.jpg
+        // Example: https://pub-xxx.r2.dev/avatars/dylan.png -> avatars/dylan.png
+        // Or: https://pub-xxx.r2.dev/user-documents/123/abc.jpg -> user-documents/123/abc.jpg
+        
+        // If publicUrl is configured, extract path after publicUrl
+        if (publicUrl != null && !publicUrl.isEmpty()) {
+            String baseUrl = publicUrl.endsWith("/") ? publicUrl.substring(0, publicUrl.length() - 1) : publicUrl;
+            if (fileUrl.startsWith(baseUrl + "/")) {
+                return fileUrl.substring(baseUrl.length() + 1);
+            }
+        }
+        
+        // Fallback: if URL contains bucket name
         if (fileUrl.contains(bucketName + "/")) {
             return fileUrl.substring(fileUrl.indexOf(bucketName + "/") + bucketName.length() + 1);
         }
-        // Fallback: extract from last part of URL
-        return fileUrl.substring(fileUrl.lastIndexOf("/") + 1);
+        
+        // Fallback: extract from URL path (preserve folder structure)
+        // Example: https://pub-xxx.r2.dev/avatars/dylan.png -> avatars/dylan.png
+        try {
+            java.net.URL url = new java.net.URL(fileUrl);
+            String path = url.getPath();
+            // Remove leading slash
+            return path.startsWith("/") ? path.substring(1) : path;
+        } catch (Exception e) {
+            // Last resort: extract from last part (but this loses folder structure)
+            return fileUrl.substring(fileUrl.lastIndexOf("/") + 1);
+        }
     }
 
     private String buildPublicUrl(String objectKey) {
         if (publicUrl != null && !publicUrl.isEmpty()) {
             // Remove trailing slash if present
             String baseUrl = publicUrl.endsWith("/") ? publicUrl.substring(0, publicUrl.length() - 1) : publicUrl;
+            // Build URL: https://pub-xxx.r2.dev/avatars/filename.png
             return baseUrl + "/" + objectKey;
         }
         // Fallback: build URL from endpoint and bucket
         // This might not work if public URL is not configured
+        // Format: https://bucket-name.r2.dev/objectKey
         return "https://" + bucketName + ".r2.dev/" + objectKey;
     }
 }

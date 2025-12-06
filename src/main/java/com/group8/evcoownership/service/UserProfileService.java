@@ -74,8 +74,8 @@ public class UserProfileService {
                 }
             }
 
-            // Upload new avatar
-            String newAvatarUrl = r2StorageService.uploadFile(avatarFile);
+            // Upload new avatar to avatars/ folder
+            String newAvatarUrl = r2StorageService.uploadAvatar(avatarFile);
             user.setAvatarUrl(newAvatarUrl);
             userRepository.save(user);
 
