@@ -2,6 +2,7 @@ package com.group8.evcoownership.controller;
 
 import com.group8.evcoownership.dto.FlexibleBookingRequestDTO;
 import com.group8.evcoownership.dto.FlexibleBookingResponseDTO;
+import com.group8.evcoownership.dto.SmartSuggestionResponseDTO;
 import com.group8.evcoownership.dto.UsageAnalyticsDTO;
 import com.group8.evcoownership.dto.WeeklyCalendarResponseDTO;
 import com.group8.evcoownership.exception.ResourceNotFoundException;
@@ -85,6 +86,20 @@ public class WeeklyCalendarController {
         Long userId = getUserIdByEmail(email);
 
         UsageAnalyticsDTO response = weeklyCalendarService.getUsageReport(groupId, userId);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/groups/{groupId}/smart-insights")
+    @Operation(summary = "Lấy smart insights", description = "Lấy smart insights bao gồm analytics, suggestions và AI insights cho user trong group")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN', 'CO_OWNER')")
+    public ResponseEntity<SmartSuggestionResponseDTO> getSmartInsights(
+            @PathVariable Long groupId,
+            @AuthenticationPrincipal String email) {
+
+        // Lấy userId từ JWT
+        Long userId = getUserIdByEmail(email);
+
+        SmartSuggestionResponseDTO response = weeklyCalendarService.getSmartInsights(groupId, userId);
         return ResponseEntity.ok(response);
     }
 

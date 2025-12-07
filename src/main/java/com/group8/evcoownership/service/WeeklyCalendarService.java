@@ -1,6 +1,7 @@
 package com.group8.evcoownership.service;
 
 import com.group8.evcoownership.dto.*;
+import com.group8.evcoownership.dto.SmartSuggestionResponseDTO;
 import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.enums.BookingStatus;
 import com.group8.evcoownership.exception.BookingValidationException;
@@ -835,5 +836,25 @@ public class WeeklyCalendarService {
         BigDecimal bd = BigDecimal.valueOf(value);
         bd = bd.setScale(places, RoundingMode.HALF_UP);
         return bd.doubleValue();
+    }
+
+    /**
+     * Lấy smart insights bao gồm analytics, suggestions và AI insights
+     */
+    public SmartSuggestionResponseDTO getSmartInsights(Long groupId, Long userId) {
+        // Lấy analytics từ usage report
+        UsageAnalyticsDTO analytics = getUsageReport(groupId, userId);
+
+        // Lấy AI insights từ booking suggestions
+        List<String> aiInsights = getBookingSuggestions(groupId, userId, LocalDate.now());
+
+        // Tạo empty suggestions list (có thể implement sau)
+        List<SmartSuggestionResponseDTO.BookingSuggestionDTO> suggestions = new ArrayList<>();
+
+        return SmartSuggestionResponseDTO.builder()
+                .analytics(analytics)
+                .suggestions(suggestions)
+                .aiInsights(aiInsights)
+                .build();
     }
 }
