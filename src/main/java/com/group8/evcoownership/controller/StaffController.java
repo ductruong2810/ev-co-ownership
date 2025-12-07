@@ -78,13 +78,14 @@ public class StaffController {
         return ResponseEntity.ok(groups);
     }
 
-    // ========= Lấy danh sách user có document pending =========
+    // ========= Lấy danh sách user có document (tất cả status) =========
     @GetMapping("/documents/pending")
     @PreAuthorize("hasRole('STAFF') or hasRole('ADMIN')")
-    @Operation(summary = "Tài liệu chờ duyệt", description = "Lấy danh sách người dùng có tài liệu chờ duyệt")
+    @Operation(summary = "Danh sách người dùng và tài liệu", description = "Lấy danh sách tất cả người dùng với tài liệu (bao gồm PENDING, APPROVED, REJECTED). Frontend sẽ tự filter theo status nếu cần.")
     public ResponseEntity<List<UserProfileResponseDTO>> getUsersWithPendingDocuments() {
-        log.info("Staff fetching users with pending documents");
-        // Gọi service lấy các user có document đang ở trạng thái PENDING
+        log.info("Staff fetching all users with documents");
+        // Gọi service lấy tất cả users (không filter theo document status)
+        // Frontend sẽ tự filter theo status dropdown
         List<UserProfileResponseDTO> users = staffService.getUsersWithPendingDocuments();
         return ResponseEntity.ok(users);
     }

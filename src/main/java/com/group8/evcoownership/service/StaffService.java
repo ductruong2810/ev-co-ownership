@@ -86,10 +86,10 @@ public class StaffService {
         // Lấy tất cả co-owner
         List<User> allUsers = userRepository.findByRoleRoleName(RoleName.CO_OWNER);
 
-        // Map sang profile và giữ lại những user có tài liệu trạng thái PENDING
+        // Map sang profile - trả về tất cả users (không filter theo status)
+        // Frontend sẽ tự filter theo status nếu cần
         return allUsers.stream()
                 .map(user -> userProfileService.getUserProfile(user.getEmail()))
-                .filter(profile -> hasDocumentWithStatus(profile, "PENDING"))
                 .collect(Collectors.toList());
     }
 
