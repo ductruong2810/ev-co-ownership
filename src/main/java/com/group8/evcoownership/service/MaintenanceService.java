@@ -79,7 +79,7 @@ public class MaintenanceService {
 
     // =================== UPDATE ===================
     public MaintenanceResponseDTO update(Long id, MaintenanceUpdateRequestDTO req, String username) {
-        User user = userRepository.findByEmail(username)
+        userRepository.findByEmail(username)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
         Maintenance maintenance = maintenanceRepository.findById(id)
@@ -208,7 +208,7 @@ public class MaintenanceService {
         Maintenance m = maintenanceRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Maintenance not found"));
 
-        User staff = userRepository.findByEmail(staffEmail)
+        userRepository.findByEmail(staffEmail)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
         if (!"FUNDED".equals(m.getStatus())) {
@@ -234,7 +234,7 @@ public class MaintenanceService {
         Maintenance m = maintenanceRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Maintenance not found"));
 
-        User staff = userRepository.findByEmail(staffEmail)
+        userRepository.findByEmail(staffEmail)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
         if (!"IN_PROGRESS".equals(m.getStatus())) {

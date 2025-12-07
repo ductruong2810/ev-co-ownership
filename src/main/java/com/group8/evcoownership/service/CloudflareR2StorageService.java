@@ -281,15 +281,23 @@ public class CloudflareR2StorageService {
     }
 
     private String buildPublicUrl(String objectKey) {
-        if (publicUrl != null && !publicUrl.isEmpty()) {
+        if (publicUrl != null && !publicUrl.trim().isEmpty()) {
             // Remove trailing slash if present
-            String baseUrl = publicUrl.endsWith("/") ? publicUrl.substring(0, publicUrl.length() - 1) : publicUrl;
+            String baseUrl = publicUrl.trim().endsWith("/") 
+                ? publicUrl.trim().substring(0, publicUrl.trim().length() - 1) 
+                : publicUrl.trim();
             // Build URL: https://pub-xxx.r2.dev/avatars/filename.png
-            return baseUrl + "/" + objectKey;
+            String fullUrl = baseUrl + "/" + objectKey;
+            log.debug("Built public URL using R2_PUBLIC_URL: {}", fullUrl);
+            return fullUrl;
         }
-        // Fallback: build URL from endpoint and bucket
-        // This might not work if public URL is not configured
+        
+        // Fallback: build URL from bucket name (may not work if bucket doesn't have public domain)
         // Format: https://bucket-name.r2.dev/objectKey
-        return "https://" + bucketName + ".r2.dev/" + objectKey;
+        log.warn("R2_PUBLIC_URL is not configured. Using fallback URL format. " +
+                 "Please set R2_PUBLIC_URL environment variable to: https://pub-e922aa007fc24596b6f1d69eb6b6a4b8.r2.dev");
+        String fallbackUrl = "https://" + bucketName + ".r2.dev/" + objectKey;
+        log.debug("Built fallback URL: {}", fallbackUrl);
+        return fallbackUrl;
     }
 }

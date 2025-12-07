@@ -484,7 +484,7 @@ public class AuthService {
         }
 
         // Ensure current user exists
-        User user = userRepository.findByEmail(currentEmail)
+        userRepository.findByEmail(currentEmail)
                 .orElseThrow(() -> new IllegalArgumentException("Account not found"));
 
         // New email must not be used by another user

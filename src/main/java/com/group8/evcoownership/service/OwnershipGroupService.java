@@ -652,7 +652,6 @@ public class OwnershipGroupService {
                                                    LocalDate toDate,
                                                    Pageable pageable) {
         boolean hasKeyword = keyword != null && !keyword.isBlank();
-        boolean hasStatus = status != null;
 
         LocalDateTime SQLSERVER_MIN = LocalDateTime.of(1753, 1, 1, 0, 0);
         LocalDateTime SQLSERVER_MAX = LocalDateTime.of(9999, 12, 31, 23, 59, 59, 999_000_000);
@@ -664,7 +663,7 @@ public class OwnershipGroupService {
 
         return repo.findSortedGroups(
                 hasKeyword ? keyword : null,
-                hasStatus ? status.name() : null,
+                status != null ? status.name() : null,
                 start,
                 end,
                 pageable
