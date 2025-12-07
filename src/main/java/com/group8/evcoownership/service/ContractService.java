@@ -56,9 +56,8 @@ public class ContractService {
         // ------------------------------------------------------------
         // Mỗi nhóm chỉ có 1 hợp đồng đang hoạt động.
         // Nếu không tìm thấy -> ném lỗi để controller trả HTTP 404.
-        Contract contract = contractRepository.findByGroupGroupId(groupId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Không tìm thấy hợp đồng cho groupId " + groupId));
+        Contract contract = getLatestContractByGroupId(groupId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hợp đồng cho groupId " + groupId));
 
         //  Lấy thông tin nhóm sở hữu
         // ------------------------------------------------------------
@@ -234,7 +233,7 @@ public class ContractService {
     private Contract createNewContractIfNotExists(Long groupId) {
         OwnershipGroup group = getGroupById(groupId);
 
-        Optional<Contract> contractOpt = contractRepository.findByGroupGroupId(groupId);
+        Optional<Contract> contractOpt = getLatestContractByGroupId(groupId);
         if (contractOpt.isPresent()) {
             return contractOpt.get();
         }
@@ -317,7 +316,8 @@ public class ContractService {
         OwnershipGroup group = getGroupById(groupId);
 
         // Kiểm tra có contract không
-        Contract contract = contractRepository.findByGroupGroupId(groupId).orElse(null);
+        // Xử lý trường hợp có nhiều contract cho cùng groupId - lấy contract mới nhất
+        Contract contract = getLatestContractByGroupId(groupId).orElse(null);
 
         ContractInfoResponseDTO.ContractInfoResponseDTOBuilder builder = ContractInfoResponseDTO.builder()
                 .contractId(contract != null ? contract.getId() : null)
@@ -472,7 +472,7 @@ public class ContractService {
                 "\n- All co-owners have agreed to the contract terms." +
                 "\n- This electronic signature holds full legal validity under applicable laws." +
                 "\n- Signing time: " + timestamp +
-                "\n- Contract ID: " + contractRepository.findByGroupGroupId(groupId)
+                "\n- Contract ID: " + getLatestContractByGroupId(groupId)
                 .map(Contract::getId)
                 .orElse(null);
 
@@ -518,7 +518,7 @@ public class ContractService {
         boolean hasVehicle = vehicle != null && vehicle.getVehicleValue() != null && vehicle.getVehicleValue().compareTo(BigDecimal.ZERO) > 0;
 
         // Kiểm tra contract status
-        Contract contract = contractRepository.findByGroupGroupId(groupId).orElse(null);
+        Contract contract = getLatestContractByGroupId(groupId).orElse(null);
         boolean canSign = contract == null || contract.getApprovalStatus() == ContractApprovalStatus.PENDING;
 
         // Tổng kết
@@ -553,7 +553,7 @@ public class ContractService {
         validateContractGeneration(groupId);
 
         // Kiểm tra xem contract đã tồn tại trong database chưa
-        Optional<Contract> existingContract = contractRepository.findByGroupGroupId(groupId);
+        Optional<Contract> existingContract = getLatestContractByGroupId(groupId);
 
         // Tự động tính toán ngày hiệu lực và ngày kết thúc
         LocalDate startDate = LocalDate.now();
@@ -785,7 +785,7 @@ public class ContractService {
     private String generateContractTerms(Long groupId) {
         OwnershipGroup group = getGroupById(groupId);
         Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group).orElse(null);
-        Contract existingContract = contractRepository.findByGroupGroupId(groupId).orElse(null);
+        Contract existingContract = getLatestContractByGroupId(groupId).orElse(null);
 
         LocalDate startDate = existingContract != null ? existingContract.getStartDate() : LocalDate.now();
         LocalDate endDate = existingContract != null ? existingContract.getEndDate()
@@ -915,6 +915,31 @@ public class ContractService {
     private OwnershipGroup getGroupById(Long groupId) {
         return groupRepository.findById(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
+    }
+
+    /**
+     * Helper method để lấy contract mới nhất của group
+     * Xử lý trường hợp có nhiều contract cho cùng groupId - lấy contract mới nhất (theo ID)
+     */
+    private Optional<Contract> getLatestContractByGroupId(Long groupId) {
+        List<Contract> contracts = contractRepository.findAllByGroup_GroupId(groupId);
+        if (contracts.isEmpty()) {
+            return Optional.empty();
+        }
+        // Lấy contract mới nhất (theo ID hoặc createdAt)
+        Contract latestContract = contracts.stream()
+                .max((c1, c2) -> {
+                    // Ưu tiên contract có ID lớn hơn (mới hơn)
+                    int idCompare = Long.compare(c1.getId(), c2.getId());
+                    if (idCompare != 0) return idCompare;
+                    // Nếu ID bằng nhau, so sánh theo createdAt
+                    if (c1.getCreatedAt() != null && c2.getCreatedAt() != null) {
+                        return c1.getCreatedAt().compareTo(c2.getCreatedAt());
+                    }
+                    return idCompare;
+                })
+                .orElse(null);
+        return Optional.ofNullable(latestContract);
     }
 
     /**
