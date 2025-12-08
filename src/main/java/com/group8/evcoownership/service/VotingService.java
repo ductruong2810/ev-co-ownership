@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -200,17 +201,10 @@ public class VotingService {
     // ========= Map entity → Reponse DTO=========
     private VotingResponseDTO mapToResponse(Voting voting, Long userId) {
         try {
-            // Parse JSON options trong Voting thành Map để trả về cho client
-            Map<String, Object> options = objectMapper.readValue(
-                    voting.getOptions(),
-                    new TypeReference<>() {
-                    }
-            );
-
-            // Nếu có kết quả thì parse JSON results thành Map, nếu chưa có thì dùng HashMap rỗng
+            // Parse options/results linh hoạt: hỗ trợ cả Map hoặc mảng [{key,label}]
+            Map<String, Object> options = parseOptionsToMap(voting.getOptions());
             Map<String, Object> results = voting.getResults() != null
-                    ? objectMapper.readValue(voting.getResults(), new TypeReference<>() {
-            })
+                    ? parseResultsToMap(voting.getResults())
                     : new HashMap<>();
 
             // Tìm bản ghi vote của user trong voting này (nếu đã vote)
@@ -288,4 +282,49 @@ public class VotingService {
         return days + " days";
     }
 
+    /**
+     * Parse options JSON sang Map, hỗ trợ cả dạng object lẫn array (dữ liệu cũ)
+     */
+    private Map<String, Object> parseOptionsToMap(String json) throws Exception {
+        try {
+            return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {
+            });
+        } catch (Exception ex) {
+            // Fallback: array [{key, label}] -> Map<key, label>
+            List<Map<String, Object>> list = objectMapper.readValue(json, new TypeReference<List<Map<String, Object>>>() {
+            });
+            Map<String, Object> map = new LinkedHashMap<>();
+            for (Map<String, Object> item : list) {
+                Object key = item.get("key");
+                Object label = item.getOrDefault("label", item.get("value"));
+                if (key != null) {
+                    map.put(String.valueOf(key), label);
+                }
+            }
+            return map;
+        }
+    }
+
+    /**
+     * Parse results JSON sang Map, hỗ trợ cả dạng object lẫn array (dữ liệu cũ)
+     */
+    private Map<String, Object> parseResultsToMap(String json) throws Exception {
+        try {
+            return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {
+            });
+        } catch (Exception ex) {
+            // Fallback: array [{key, count}] -> Map<key, count>
+            List<Map<String, Object>> list = objectMapper.readValue(json, new TypeReference<List<Map<String, Object>>>() {
+            });
+            Map<String, Object> map = new LinkedHashMap<>();
+            for (Map<String, Object> item : list) {
+                Object key = item.get("key");
+                Object count = item.getOrDefault("count", item.get("value"));
+                if (key != null) {
+                    map.put(String.valueOf(key), count);
+                }
+            }
+            return map;
+        }
+    }
 }
