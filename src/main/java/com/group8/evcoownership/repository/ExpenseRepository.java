@@ -68,8 +68,8 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
                where e.fund.group.groupId = :groupId
                  and (:fundType is null or e.fund.fundType = :fundType)
                  and e.status = 'COMPLETED'
-                 and (:from is null or e.expenseDate >= :from)
-                 and (:to   is null or e.expenseDate <  :to)
+                 and (:from is null or e.expenseDate >= cast(:from as timestamp))
+                 and (:to   is null or e.expenseDate <  cast(:to   as timestamp))
             """)
     BigDecimal sumApprovedOut(Long groupId,
                               @Param("fundType") FundType fundType,
