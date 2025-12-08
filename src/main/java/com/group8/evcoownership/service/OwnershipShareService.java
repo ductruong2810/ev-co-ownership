@@ -2,6 +2,7 @@ package com.group8.evcoownership.service;
 
 
 import com.group8.evcoownership.dto.*;
+import com.group8.evcoownership.entity.Contract;
 import com.group8.evcoownership.entity.OwnershipShare;
 import com.group8.evcoownership.entity.OwnershipShareId;
 import com.group8.evcoownership.enums.*;
@@ -15,6 +16,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -119,7 +121,7 @@ public class OwnershipShareService {
     }
 
     private void ensureContractAllowsRemoval(Long groupId) {
-        contractRepository.findByGroupGroupId(groupId).ifPresent(contract -> {
+        getLatestContractByGroupId(groupId).ifPresent(contract -> {
             var status = contract.getApprovalStatus();
             boolean contractLocked = status == ContractApprovalStatus.SIGNED
                     || status == ContractApprovalStatus.APPROVED
@@ -242,7 +244,7 @@ public class OwnershipShareService {
                 .orElseThrow(() -> new EntityNotFoundException("User is not a member of this group"));
 
         // Kiểm tra contract đã ký chưa - nếu đã ký thì không cho sửa tỷ lệ
-        var contract = contractRepository.findByGroupGroupId(groupId).orElse(null);
+        var contract = getLatestContractByGroupId(groupId).orElse(null);
         if (contract != null && contract.getApprovalStatus() == com.group8.evcoownership.enums.ContractApprovalStatus.SIGNED) {
             throw new IllegalStateException("Không thể sửa tỷ lệ sở hữu sau khi hợp đồng đã được ký");
         }
@@ -317,7 +319,7 @@ public class OwnershipShareService {
                 : "UNKNOWN";
 
         // Lấy trạng thái contract từ group
-        String contractStatus = contractRepository.findByGroupGroupId(groupId)
+        String contractStatus = getLatestContractByGroupId(groupId)
                 .map(contract -> contract.getApprovalStatus().name())
                 .orElse(null);
 
@@ -542,7 +544,7 @@ public class OwnershipShareService {
 
 
     private boolean isOwnershipLockedByContract(Long groupId) {
-        var c = contractRepository.findByGroupGroupId(groupId).orElse(null);
+        var c = getLatestContractByGroupId(groupId).orElse(null);
         if (c == null) return false;
         var st = c.getApprovalStatus();
         boolean lockedByStatus =
@@ -553,4 +555,20 @@ public class OwnershipShareService {
         return lockedByStatus || Boolean.TRUE.equals(c.getIsActive());
     }
 
+    /**
+     * Helper: lấy contract mới nhất của group để tránh lỗi Optional khi có nhiều contract
+     */
+    private Optional<Contract> getLatestContractByGroupId(Long groupId) {
+        List<Contract> contracts = contractRepository.findAllByGroup_GroupId(groupId);
+        if (contracts.isEmpty()) return Optional.empty();
+        return contracts.stream()
+                .max((c1, c2) -> {
+                    int idCompare = Long.compare(c1.getId(), c2.getId());
+                    if (idCompare != 0) return idCompare;
+                    if (c1.getCreatedAt() != null && c2.getCreatedAt() != null) {
+                        return c1.getCreatedAt().compareTo(c2.getCreatedAt());
+                    }
+                    return idCompare;
+                });
+    }
 }
