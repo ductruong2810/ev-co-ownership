@@ -290,18 +290,34 @@ public class VotingService {
             return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {
             });
         } catch (Exception ex) {
-            // Fallback: array [{key, label}] -> Map<key, label>
-            List<Map<String, Object>> list = objectMapper.readValue(json, new TypeReference<List<Map<String, Object>>>() {
-            });
             Map<String, Object> map = new LinkedHashMap<>();
-            for (Map<String, Object> item : list) {
-                Object key = item.get("key");
-                Object label = item.getOrDefault("label", item.get("value"));
-                if (key != null) {
-                    map.put(String.valueOf(key), label);
+            // Fallback 1: array [{key, label}] -> Map<key, label>
+            try {
+                List<Map<String, Object>> list = objectMapper.readValue(json, new TypeReference<List<Map<String, Object>>>() {
+                });
+                for (Map<String, Object> item : list) {
+                    Object key = item.get("key");
+                    Object label = item.getOrDefault("label", item.get("value"));
+                    if (key != null) {
+                        map.put(String.valueOf(key), label);
+                    }
                 }
+                if (!map.isEmpty()) return map;
+            } catch (Exception ignored) {
             }
-            return map;
+
+            // Fallback 2: array of primitives ["Option A","Option B"]
+            try {
+                List<String> list = objectMapper.readValue(json, new TypeReference<List<String>>() {
+                });
+                for (String val : list) {
+                    map.put(val, val);
+                }
+                if (!map.isEmpty()) return map;
+            } catch (Exception ignored) {
+            }
+
+            throw ex;
         }
     }
 
@@ -313,18 +329,34 @@ public class VotingService {
             return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {
             });
         } catch (Exception ex) {
-            // Fallback: array [{key, count}] -> Map<key, count>
-            List<Map<String, Object>> list = objectMapper.readValue(json, new TypeReference<List<Map<String, Object>>>() {
-            });
             Map<String, Object> map = new LinkedHashMap<>();
-            for (Map<String, Object> item : list) {
-                Object key = item.get("key");
-                Object count = item.getOrDefault("count", item.get("value"));
-                if (key != null) {
-                    map.put(String.valueOf(key), count);
+            // Fallback 1: array [{key, count}] -> Map<key, count>
+            try {
+                List<Map<String, Object>> list = objectMapper.readValue(json, new TypeReference<List<Map<String, Object>>>() {
+                });
+                for (Map<String, Object> item : list) {
+                    Object key = item.get("key");
+                    Object count = item.getOrDefault("count", item.get("value"));
+                    if (key != null) {
+                        map.put(String.valueOf(key), count);
+                    }
                 }
+                if (!map.isEmpty()) return map;
+            } catch (Exception ignored) {
             }
-            return map;
+
+            // Fallback 2: array of primitives -> treat as key=value with count=1
+            try {
+                List<String> list = objectMapper.readValue(json, new TypeReference<List<String>>() {
+                });
+                for (String val : list) {
+                    map.put(val, 1);
+                }
+                if (!map.isEmpty()) return map;
+            } catch (Exception ignored) {
+            }
+
+            throw ex;
         }
     }
 }
