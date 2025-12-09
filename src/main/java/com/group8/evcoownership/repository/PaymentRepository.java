@@ -68,8 +68,8 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
                where p.fund.group.groupId = :groupId
                  and (:fundType is null or p.fund.fundType = :fundType)
                  and p.status = com.group8.evcoownership.enums.PaymentStatus.COMPLETED
-                 and (:from is null or p.paidAt >= :from)
-                 and (:to   is null or p.paidAt <  :to)
+                 and p.paidAt >= coalesce(:from, p.paidAt)
+                 and p.paidAt <  coalesce(:to,   p.paidAt)
             """)
     BigDecimal sumCompletedIn(Long groupId,
                               @Param("fundType") FundType fundType,
