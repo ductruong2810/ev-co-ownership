@@ -30,10 +30,10 @@ public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long
 
     //Tính quota limit dựa trên ownership percentage (168h/tuần * ownership%)
     @Query(value = """
-                SELECT CAST(168 * (os.OwnershipPercentage / 100.0) AS INT)
-                FROM OwnershipShare os
-                INNER JOIN Vehicle v ON v.GroupId = os.GroupId
-                WHERE os.UserId = :userId AND v.VehicleId = :vehicleId
+                SELECT CAST(168 * (os."OwnershipPercentage" / 100.0) AS INT)
+                FROM "OwnershipShare" os
+                INNER JOIN "Vehicle" v ON v."GroupId" = os."GroupId"
+                WHERE os."UserId" = :userId AND v."VehicleId" = :vehicleId
             """, nativeQuery = true)
     Long getQuotaLimitByOwnershipPercentage(@Param("userId") Long userId,
                                             @Param("vehicleId") Long vehicleId);
