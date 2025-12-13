@@ -669,4 +669,159 @@ public class WeeklyCalendarService {
                 endTime
         );
     }
+
+    /**
+     * Lấy báo cáo sử dụng xe cho người dùng trong nhóm
+     * Tính toán các metrics về sử dụng, quota, và fairness
+     */
+    public UsageAnalyticsDTO getUsageReport(Long groupId, Long userId) {
+        // Kiểm tra nhóm có tồn tại không
+        OwnershipGroup group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new IllegalArgumentException("Group not found"));
+
+        // Lấy xe của nhóm
+        Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group)
+                .orElseThrow(() -> new IllegalArgumentException("Vehicle not found for this group"));
+
+        // Lấy tỷ lệ sở hữu của người dùng
+        Double ownershipPercentage = ownershipShareRepository.findById_UserIdAndGroup_GroupId(userId, groupId)
+                .map(share -> share.getOwnershipPercentage().doubleValue())
+                .orElse(0.0);
+
+        // Tính toán thời gian 4 tuần trước
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime fourWeeksAgo = now.minusWeeks(4);
+        LocalDateTime weekStart = now.with(DayOfWeek.MONDAY).with(LocalTime.MIN);
+
+        // Tính tổng giờ đã sử dụng trong 4 tuần qua (chỉ CONFIRMED và COMPLETED)
+        List<UsageBooking> bookingsLast4Weeks = usageBookingRepository.findAllBookingsByGroupId(groupId)
+                .stream()
+                .filter(b -> b.getUser() != null && b.getUser().getUserId().equals(userId))
+                .filter(b -> b.getStartDateTime() != null && b.getStartDateTime().isAfter(fourWeeksAgo))
+                .filter(b -> b.getStatus() == BookingStatus.CONFIRMED || b.getStatus() == BookingStatus.COMPLETED)
+                .toList();
+
+        double actualHoursLast4Weeks = bookingsLast4Weeks.stream()
+                .mapToDouble(b -> {
+                    if (b.getStartDateTime() != null && b.getEndDateTime() != null) {
+                        return Duration.between(b.getStartDateTime(), b.getEndDateTime()).toHours();
+                    }
+                    return 0.0;
+                })
+                .sum();
+
+        // Tính giờ mong đợi dựa trên ownership percentage (4 tuần = 672 giờ)
+        double expectedHoursLast4Weeks = 672.0 * (ownershipPercentage / 100.0);
+
+        // Tính utilization percent
+        double utilizationPercent = expectedHoursLast4Weeks > 0
+                ? (actualHoursLast4Weeks / expectedHoursLast4Weeks) * 100.0
+                : 0.0;
+
+        // Tính usage gap
+        double usageGapHours = actualHoursLast4Weeks - expectedHoursLast4Weeks;
+
+        // Tính booking và giờ trong tuần này
+        LocalDateTime weekEnd = weekStart.plusWeeks(1);
+        List<UsageBooking> bookingsThisWeek = usageBookingRepository.findBookingsByUserInWeekAndGroup(
+                userId, groupId, weekStart, weekEnd);
+
+        int bookingsThisWeekCount = bookingsThisWeek.size();
+        double hoursThisWeek = bookingsThisWeek.stream()
+                .mapToDouble(b -> {
+                    if (b.getStartDateTime() != null && b.getEndDateTime() != null) {
+                        return Duration.between(b.getStartDateTime(), b.getEndDateTime()).toHours();
+                    }
+                    return 0.0;
+                })
+                .sum();
+
+        // Tính weekly average hours
+        double weeklyAverageHours = actualHoursLast4Weeks / 4.0;
+
+        // Tính quota slots
+        Long totalQuota = usageBookingRepository.getQuotaLimitByOwnershipPercentage(userId, vehicle.getId());
+        int slotDurationHour = 3;
+        long totalQuotaHour = totalQuota != null ? totalQuota : 0L;
+        int totalQuotaSlots = (int) (totalQuotaHour / slotDurationHour);
+
+        // Đếm used slots trong tuần này
+        WeeklyCalendarResponseDTO calendar = getWeeklyCalendar(groupId, userId, weekStart.toLocalDate());
+        int usedQuotaSlots = calendar.getUserQuota().getUsedSlots();
+        int remainingQuotaSlots = calendar.getUserQuota().getRemainingSlots();
+
+        // Xác định fairness status
+        String fairnessStatus;
+        if (utilizationPercent < 80) {
+            fairnessStatus = "UNDER_UTILIZED";
+        } else if (utilizationPercent > 120) {
+            fairnessStatus = "OVER_UTILIZED";
+        } else {
+            fairnessStatus = "ON_TRACK";
+        }
+
+        // Tạo action items
+        List<String> actionItems = new ArrayList<>();
+        if (fairnessStatus.equals("UNDER_UTILIZED")) {
+            actionItems.add("You are using less than your share. Consider booking more slots.");
+        } else if (fairnessStatus.equals("OVER_UTILIZED")) {
+            actionItems.add("You are using more than your share. Please reduce bookings.");
+        }
+        if (remainingQuotaSlots < 5) {
+            actionItems.add("You have only " + remainingQuotaSlots + " slots remaining this week.");
+        }
+
+        // Tính leaderboard (top 5 users by total hours in last 4 weeks)
+        List<UsageAnalyticsDTO.UsageLeaderboardEntryDTO> leaderboard = ownershipShareRepository
+                .findByGroup_GroupId(groupId)
+                .stream()
+                .map(share -> {
+                    List<UsageBooking> userBookings = usageBookingRepository.findAllBookingsByGroupId(groupId)
+                            .stream()
+                            .filter(b -> b.getUser() != null && b.getUser().getUserId().equals(share.getUser().getUserId()))
+                            .filter(b -> b.getStartDateTime() != null && b.getStartDateTime().isAfter(fourWeeksAgo))
+                            .filter(b -> b.getStatus() == BookingStatus.CONFIRMED || b.getStatus() == BookingStatus.COMPLETED)
+                            .toList();
+
+                    double totalHours = userBookings.stream()
+                            .mapToDouble(b -> {
+                                if (b.getStartDateTime() != null && b.getEndDateTime() != null) {
+                                    return Duration.between(b.getStartDateTime(), b.getEndDateTime()).toHours();
+                                }
+                                return 0.0;
+                            })
+                            .sum();
+
+                    double userOwnershipPercent = share.getOwnershipPercentage().doubleValue();
+                    double usageToShareRatio = userOwnershipPercent > 0 ? (totalHours / (672.0 * userOwnershipPercent / 100.0)) * 100.0 : 0.0;
+
+                    return UsageAnalyticsDTO.UsageLeaderboardEntryDTO.builder()
+                            .userId(share.getUser().getUserId())
+                            .userName(share.getUser().getFullName())
+                            .totalHours(totalHours)
+                            .ownershipPercentage(userOwnershipPercent)
+                            .usageToShareRatio(usageToShareRatio)
+                            .build();
+                })
+                .sorted((a, b) -> Double.compare(b.getTotalHours(), a.getTotalHours()))
+                .limit(5)
+                .toList();
+
+        return UsageAnalyticsDTO.builder()
+                .ownershipPercentage(ownershipPercentage)
+                .actualHoursLast4Weeks(actualHoursLast4Weeks)
+                .expectedHoursLast4Weeks(expectedHoursLast4Weeks)
+                .utilizationPercent(utilizationPercent)
+                .usageGapHours(usageGapHours)
+                .bookingsThisWeek(bookingsThisWeekCount)
+                .hoursThisWeek(hoursThisWeek)
+                .weeklyAverageHours(weeklyAverageHours)
+                .totalQuotaSlots(totalQuotaSlots)
+                .usedQuotaSlots(usedQuotaSlots)
+                .remainingQuotaSlots(remainingQuotaSlots)
+                .fairnessStatus(fairnessStatus)
+                .actionItems(actionItems)
+                .leaderboard(leaderboard)
+                .build();
+    }
 }

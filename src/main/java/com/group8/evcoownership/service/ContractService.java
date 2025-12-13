@@ -316,8 +316,11 @@ public class ContractService {
     public ContractInfoResponseDTO getContractInfo(Long groupId) {
         OwnershipGroup group = getGroupById(groupId);
 
-        // Kiểm tra có contract không
-        Contract contract = contractRepository.findByGroupGroupId(groupId).orElse(null);
+        // Kiểm tra có contract không - lấy contract mới nhất nếu có nhiều
+        Contract contract = contractRepository.findByGroupGroupIdOrderByCreatedAtDesc(groupId)
+                .stream()
+                .findFirst()
+                .orElse(null);
 
         ContractInfoResponseDTO.ContractInfoResponseDTOBuilder builder = ContractInfoResponseDTO.builder()
                 .contractId(contract != null ? contract.getId() : null)
