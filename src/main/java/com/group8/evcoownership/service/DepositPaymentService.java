@@ -89,11 +89,8 @@ public class DepositPaymentService {
         }
 
         // Kiểm tra contract tồn tại
-        // Xử lý trường hợp có nhiều contract cho cùng groupId - chỉ cần kiểm tra tồn tại
-        List<Contract> contracts = contractRepository.findAllByGroup_GroupId(groupId);
-        if (contracts.isEmpty()) {
-            throw new EntityNotFoundException("Contract not found for this group");
-        }
+        contractRepository.findByGroupGroupId(groupId)
+                .orElseThrow(() -> new EntityNotFoundException("Contract not found for this group"));
 
         // kiem tra xem group nay da co fund loai deposit chua
         SharedFund reserveFund = sharedFundRepository
@@ -259,14 +256,7 @@ public class DepositPaymentService {
         OwnershipShare share = shareRepository.findById(new OwnershipShareId(userId, groupId))
                 .orElseThrow(() -> new EntityNotFoundException("User is not a member of this group"));
 
-        // Xử lý trường hợp có nhiều contract cho cùng groupId - lấy contract mới nhất
-        List<Contract> contracts = contractRepository.findAllByGroup_GroupId(groupId);
-        if (contracts.isEmpty()) {
-            throw new EntityNotFoundException("Contract not found");
-        }
-        Contract contract = contracts.stream()
-                .max(Comparator.comparing(Contract::getId)
-                        .thenComparing(Contract::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())))
+        Contract contract = contractRepository.findByGroupGroupId(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Contract not found"));
 
         // Tính toán số tiền cọc dựa trên tỷ lệ sở hữu
@@ -355,17 +345,10 @@ public class DepositPaymentService {
     }
 
     private String getContractStatus(Long groupId) {
-        // Xử lý trường hợp có nhiều contract cho cùng groupId - lấy contract mới nhất
-        List<Contract> contracts = contractRepository.findAllByGroup_GroupId(groupId);
-        if (contracts.isEmpty()) {
-            return "NO_CONTRACT";
-        }
-        Contract contract = contracts.stream()
-                .max(Comparator.comparing(Contract::getId)
-                        .thenComparing(Contract::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())))
-                .orElse(null);
+        Optional<Contract> contract = contractRepository.findByGroupGroupId(groupId);
 
-        return contract != null ? contract.getApprovalStatus().name() : "NO_CONTRACT";
+        return contract.map(value -> value.getApprovalStatus().name()).orElse("NO_CONTRACT");
+
     }
 
     /**

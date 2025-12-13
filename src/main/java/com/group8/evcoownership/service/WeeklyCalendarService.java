@@ -1,7 +1,6 @@
 package com.group8.evcoownership.service;
 
 import com.group8.evcoownership.dto.*;
-import com.group8.evcoownership.dto.SmartSuggestionResponseDTO;
 import com.group8.evcoownership.entity.*;
 import com.group8.evcoownership.enums.BookingStatus;
 import com.group8.evcoownership.exception.BookingValidationException;
@@ -12,12 +11,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -672,189 +668,5 @@ public class WeeklyCalendarService {
                 startTime,
                 endTime
         );
-    }
-
-    /**
-     * Lấy báo cáo sử dụng cho user trong group
-     * Tính toán fairness status, quota usage, và action items
-     */
-    public UsageAnalyticsDTO getUsageReport(Long groupId, Long userId) {
-        // Lấy thông tin group và vehicle
-        OwnershipGroup group = groupRepository.findById(groupId)
-                .orElseThrow(() -> new EntityNotFoundException("Group not found"));
-
-        Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group)
-                .orElseThrow(() -> new EntityNotFoundException("Vehicle not found for this group"));
-
-        // Lấy ownership percentage của user
-        OwnershipShare ownershipShare = ownershipShareRepository.findById_UserIdAndGroup_GroupId(userId, groupId)
-                .orElseThrow(() -> new EntityNotFoundException("User is not a member of this group"));
-
-        Double ownershipPercentage = ownershipShare.getOwnershipPercentage().doubleValue();
-
-        // Tính toán thời gian 4 tuần gần nhất
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime fourWeeksAgo = now.minusWeeks(4);
-
-        // Tính actual hours trong 4 tuần gần nhất
-        List<UsageBooking> bookingsLast4Weeks = usageBookingRepository.findAffectedBookings(
-                vehicle.getId(), fourWeeksAgo, now);
-
-        double actualHoursLast4Weeks = bookingsLast4Weeks.stream()
-                .filter(b -> b.getUser() != null && b.getUser().getUserId().equals(userId))
-                .filter(b -> b.getStatus() == BookingStatus.COMPLETED || b.getStatus() == BookingStatus.CONFIRMED)
-                .mapToDouble(b -> {
-                    if (b.getStartDateTime() != null && b.getEndDateTime() != null) {
-                        return Duration.between(b.getStartDateTime(), b.getEndDateTime()).toHours();
-                    }
-                    return 0.0;
-                })
-                .sum();
-
-        // Expected hours = 168 hours/week * 4 weeks * ownership percentage
-        double expectedHoursLast4Weeks = 168.0 * 4.0 * (ownershipPercentage / 100.0);
-
-        // Utilization percent
-        double utilizationPercent = expectedHoursLast4Weeks > 0
-                ? (actualHoursLast4Weeks / expectedHoursLast4Weeks) * 100.0
-                : 0.0;
-
-        // Usage gap
-        double usageGapHours = actualHoursLast4Weeks - expectedHoursLast4Weeks;
-
-        // Tính toán cho tuần này
-        LocalDateTime weekStart = LocalDate.now().with(DayOfWeek.MONDAY).atStartOfDay();
-        LocalDateTime weekEnd = weekStart.plusWeeks(1);
-
-        List<UsageBooking> bookingsThisWeek = usageBookingRepository.findAffectedBookings(
-                vehicle.getId(), weekStart, weekEnd);
-
-        int bookingsThisWeekCount = (int) bookingsThisWeek.stream()
-                .filter(b -> b.getUser() != null && b.getUser().getUserId().equals(userId))
-                .count();
-
-        double hoursThisWeek = bookingsThisWeek.stream()
-                .filter(b -> b.getUser() != null && b.getUser().getUserId().equals(userId))
-                .mapToDouble(b -> {
-                    if (b.getStartDateTime() != null && b.getEndDateTime() != null) {
-                        return Duration.between(b.getStartDateTime(), b.getEndDateTime()).toHours();
-                    }
-                    return 0.0;
-                })
-                .sum();
-
-        // Weekly average
-        double weeklyAverageHours = actualHoursLast4Weeks / 4.0;
-
-        // Quota slots (mỗi slot = 3 giờ)
-        Long quotaLimit = usageBookingRepository.getQuotaLimitByOwnershipPercentage(userId, vehicle.getId());
-        int slotDurationHour = 3;
-        long totalQuotaHour = quotaLimit != null ? quotaLimit : 0L;
-        int totalQuotaSlots = (int) (totalQuotaHour / slotDurationHour);
-
-        // Tính used slots từ weekly calendar
-        WeeklyCalendarResponseDTO weeklyCalendar = getWeeklyCalendar(groupId, userId, LocalDate.now());
-        int usedQuotaSlots = weeklyCalendar.getUserQuota().getUsedSlots();
-        int remainingQuotaSlots = weeklyCalendar.getUserQuota().getRemainingSlots();
-
-        // Determine fairness status
-        String fairnessStatus;
-        if (utilizationPercent < 80) {
-            fairnessStatus = "UNDER_UTILIZED";
-        } else if (utilizationPercent > 120) {
-            fairnessStatus = "OVER_UTILIZED";
-        } else {
-            fairnessStatus = "ON_TRACK";
-        }
-
-        // Generate action items
-        List<String> actionItems = new ArrayList<>();
-        if (fairnessStatus.equals("UNDER_UTILIZED")) {
-            actionItems.add("Bạn đang sử dụng ít hơn quyền sở hữu. Hãy chủ động đặt thêm slot.");
-        } else if (fairnessStatus.equals("OVER_UTILIZED")) {
-            actionItems.add("Mức sử dụng vượt quyền. Nên chuyển sang khung giờ vắng hơn.");
-        } else {
-            actionItems.add("Bạn đang sử dụng cân bằng với tỷ lệ sở hữu.");
-        }
-
-        if (remainingQuotaSlots < 5) {
-            actionItems.add("Bạn chỉ còn " + remainingQuotaSlots + " slot. Hãy đặt cẩn thận!");
-        }
-
-        // Leaderboard - tính toán cho tất cả members trong group
-        List<OwnershipShare> allShares = ownershipShareRepository.findByGroup_GroupId(groupId);
-        List<UsageAnalyticsDTO.UsageLeaderboardEntryDTO> leaderboard = allShares.stream()
-                .map(share -> {
-                    Long memberUserId = share.getUser().getUserId();
-                    double memberHours = bookingsLast4Weeks.stream()
-                            .filter(b -> b.getUser() != null && b.getUser().getUserId().equals(memberUserId))
-                            .filter(b -> b.getStatus() == BookingStatus.COMPLETED || b.getStatus() == BookingStatus.CONFIRMED)
-                            .mapToDouble(b -> {
-                                if (b.getStartDateTime() != null && b.getEndDateTime() != null) {
-                                    return Duration.between(b.getStartDateTime(), b.getEndDateTime()).toHours();
-                                }
-                                return 0.0;
-                            })
-                            .sum();
-
-                    double memberOwnership = share.getOwnershipPercentage().doubleValue();
-                    double memberExpected = 168.0 * 4.0 * (memberOwnership / 100.0);
-                    double usageToShareRatio = memberExpected > 0 ? (memberHours / memberExpected) : 0.0;
-
-                    return UsageAnalyticsDTO.UsageLeaderboardEntryDTO.builder()
-                            .userId(memberUserId)
-                            .userName(share.getUser().getFullName())
-                            .totalHours(memberHours)
-                            .ownershipPercentage(memberOwnership)
-                            .usageToShareRatio(usageToShareRatio)
-                            .build();
-                })
-                .sorted((a, b) -> Double.compare(b.getUsageToShareRatio(), a.getUsageToShareRatio()))
-                .collect(Collectors.toList());
-
-        // Round values to 1 decimal place
-        return UsageAnalyticsDTO.builder()
-                .ownershipPercentage(round(ownershipPercentage, 1))
-                .actualHoursLast4Weeks(round(actualHoursLast4Weeks, 1))
-                .expectedHoursLast4Weeks(round(expectedHoursLast4Weeks, 1))
-                .utilizationPercent(round(utilizationPercent, 1))
-                .usageGapHours(round(usageGapHours, 1))
-                .bookingsThisWeek(bookingsThisWeekCount)
-                .hoursThisWeek(round(hoursThisWeek, 1))
-                .weeklyAverageHours(round(weeklyAverageHours, 1))
-                .totalQuotaSlots(totalQuotaSlots)
-                .usedQuotaSlots(usedQuotaSlots)
-                .remainingQuotaSlots(remainingQuotaSlots)
-                .fairnessStatus(fairnessStatus)
-                .actionItems(actionItems)
-                .leaderboard(leaderboard)
-                .build();
-    }
-
-    private Double round(double value, int places) {
-        if (places < 0) throw new IllegalArgumentException();
-        BigDecimal bd = BigDecimal.valueOf(value);
-        bd = bd.setScale(places, RoundingMode.HALF_UP);
-        return bd.doubleValue();
-    }
-
-    /**
-     * Lấy smart insights bao gồm analytics, suggestions và AI insights
-     */
-    public SmartSuggestionResponseDTO getSmartInsights(Long groupId, Long userId) {
-        // Lấy analytics từ usage report
-        UsageAnalyticsDTO analytics = getUsageReport(groupId, userId);
-
-        // Lấy AI insights từ booking suggestions
-        List<String> aiInsights = getBookingSuggestions(groupId, userId, LocalDate.now());
-
-        // Tạo empty suggestions list (có thể implement sau)
-        List<SmartSuggestionResponseDTO.BookingSuggestionDTO> suggestions = new ArrayList<>();
-
-        return SmartSuggestionResponseDTO.builder()
-                .analytics(analytics)
-                .suggestions(suggestions)
-                .aiInsights(aiInsights)
-                .build();
     }
 }

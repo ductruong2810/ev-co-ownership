@@ -74,12 +74,11 @@ public class FundController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
-            @RequestParam(required = false) String preset,
             @RequestParam(required = false, defaultValue = "false") Boolean export) {
 
         if (Boolean.TRUE.equals(export)) {
             // Export CSV
-            String csvContent = fundService.generateGroupLedgerCSV(groupId, fundType, from, to, preset);
+            String csvContent = fundService.generateGroupLedgerCSV(groupId, fundType, from, to);
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.TEXT_PLAIN);
             headers.setContentDispositionFormData("attachment", "ledger_group_" + groupId + ".csv");
@@ -89,7 +88,7 @@ public class FundController {
         }
 
         // Return JSON
-        return ResponseEntity.ok(fundService.getLedgerSummary(groupId, fundType, from, to, preset));
+        return ResponseEntity.ok(fundService.getLedgerSummary(groupId, fundType, from, to));
     }
 
 

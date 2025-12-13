@@ -49,12 +49,10 @@ public class FundService {
     public LedgerSummaryDTO getLedgerSummary(Long groupId,
                                              @Nullable FundType fundType,
                                              @Nullable LocalDateTime from,
-                                             @Nullable LocalDateTime to,
-                                             @Nullable String preset) {
-        LocalDateTimeRange range = resolveRange(from, to, preset);
+                                             @Nullable LocalDateTime to) {
         // 1) Tổng thu / chi trong khoản thời gian
-        BigDecimal totalIn = nz(PaymentRepository.sumCompletedIn(groupId, fundType, range.from(), range.to()));
-        BigDecimal totalOut = nz(expenseRepository.sumApprovedOut(groupId, fundType, range.from(), range.to()));
+        BigDecimal totalIn = nz(PaymentRepository.sumCompletedIn(groupId, fundType, from, to));
+        BigDecimal totalOut = nz(expenseRepository.sumApprovedOut(groupId, fundType, from, to));
 
         // 2) Số dư hiện tại của 2 quỹ
         BigDecimal operatingBal = fundRepo
@@ -67,8 +65,8 @@ public class FundService {
 
         // 3) Lấy danh sách dòng sổ quỹ (tái dùng hàm getLedger bạn đã có)
         List<LedgerRowDTO> rows = getLedger(groupId, fundType,
-                (range.from() != null ? range.from().toLocalDate() : null),
-                (range.to() != null ? range.to().toLocalDate() : null));
+                (from != null ? from.toLocalDate() : null),
+                (to != null ? to.toLocalDate() : null));
 
         return new LedgerSummaryDTO(totalIn, totalOut, operatingBal, depositBal, rows);
     }
@@ -217,37 +215,6 @@ public class FundService {
      */
     private BigDecimal nz(BigDecimal x) {
         return x == null ? BigDecimal.ZERO : x;
-    }
-
-    private record LocalDateTimeRange(LocalDateTime from, LocalDateTime to) {
-    }
-
-    private LocalDateTimeRange resolveRange(@Nullable LocalDateTime from,
-                                            @Nullable LocalDateTime to,
-                                            @Nullable String preset) {
-        if (from != null || to != null || preset == null) {
-            return new LocalDateTimeRange(from, to);
-        }
-        LocalDateTime now = LocalDateTime.now();
-        return switch (preset.toUpperCase()) {
-            case "MONTH" -> {
-                LocalDateTime start = now.withDayOfMonth(1).toLocalDate().atStartOfDay();
-                LocalDateTime end = now.plusDays(1).toLocalDate().atStartOfDay();
-                yield new LocalDateTimeRange(start, end);
-            }
-            case "WEEK" -> {
-                LocalDateTime start = now.with(java.time.DayOfWeek.MONDAY).toLocalDate().atStartOfDay();
-                LocalDateTime end = now.plusDays(1).toLocalDate().atStartOfDay();
-                yield new LocalDateTimeRange(start, end);
-            }
-            case "YEAR" -> {
-                LocalDateTime start = now.withDayOfYear(1).toLocalDate().atStartOfDay();
-                LocalDateTime end = now.plusDays(1).toLocalDate().atStartOfDay();
-                yield new LocalDateTimeRange(start, end);
-            }
-            case "ALL" -> new LocalDateTimeRange(null, null);
-            default -> new LocalDateTimeRange(null, null);
-        };
     }
 
 
@@ -426,12 +393,11 @@ public class FundService {
     public String generateGroupLedgerCSV(Long groupId,
                                          @Nullable FundType fundType,
                                          @Nullable LocalDateTime from,
-                                         @Nullable LocalDateTime to,
-                                         @Nullable String preset) {
+                                         @Nullable LocalDateTime to) {
         OwnershipGroup group = groupRepo.findById(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
 
-        LedgerSummaryDTO summary = getLedgerSummary(groupId, fundType, from, to, preset);
+        LedgerSummaryDTO summary = getLedgerSummary(groupId, fundType, from, to);
 
         StringBuilder csv = new StringBuilder();
         csv.append("Financial Report - Group: ").append(group.getGroupName()).append(" (ID: ").append(groupId).append(")\n");
@@ -501,7 +467,7 @@ public class FundService {
 
         for (OwnershipGroup group : allGroups) {
             try {
-                LedgerSummaryDTO summary = getLedgerSummary(group.getGroupId(), fundType, from, to, null);
+                LedgerSummaryDTO summary = getLedgerSummary(group.getGroupId(), fundType, from, to);
                 BigDecimal netBalance = summary.totalIn().subtract(summary.totalOut());
 
                 csv.append(group.getGroupId()).append(",");
