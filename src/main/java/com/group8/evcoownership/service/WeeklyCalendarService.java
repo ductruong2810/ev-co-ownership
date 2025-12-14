@@ -723,12 +723,25 @@ public class WeeklyCalendarService {
 
                 String reason = generateSuggestionReason(availableSlots.size(), calendar.getUserQuota().getRemainingSlots());
 
+                // Tính recommendationLevel từ score
+                String recommendationLevel = calculateRecommendationLevel(score);
+
+                // Tính suitability từ thời gian và số slot
+                String suitability = calculateSuitability(availableSlots.get(0).getTime(), availableSlots.size());
+
+                // Kiểm tra xem có phải overnight booking không (qua 22:00 hoặc kéo dài qua ngày)
+                boolean overnight = isOvernightBooking(availableSlots.get(0).getTime(), 
+                        availableSlots.get(availableSlots.size() - 1).getTime());
+
                 suggestions.add(BookingSuggestionDTO.builder()
                         .date(date.format(dateFormatter))
                         .dayOfWeek(dayOfWeek)
                         .timeRange(timeRange)
                         .score(score)
                         .reason(reason)
+                        .recommendationLevel(recommendationLevel)
+                        .suitability(suitability)
+                        .overnight(overnight)
                         .build());
             }
         }
@@ -759,6 +772,62 @@ public class WeeklyCalendarService {
             return "Good time to book with " + availableSlots + " slots available. " + remainingQuota + " quota left.";
         } else {
             return "Limited availability: " + availableSlots + " slots. Only " + remainingQuota + " quota remaining.";
+        }
+    }
+
+    /**
+     * Tính recommendationLevel từ score
+     */
+    private String calculateRecommendationLevel(double score) {
+        if (score >= 70) {
+            return "HIGH";
+        } else if (score >= 40) {
+            return "MEDIUM";
+        } else {
+            return "LOW";
+        }
+    }
+
+    /**
+     * Tính suitability từ thời gian và số slot
+     */
+    private String calculateSuitability(String startTime, int slotCount) {
+        // Parse thời gian (format: "HH:mm")
+        try {
+            String[] parts = startTime.split(":");
+            int hour = Integer.parseInt(parts[0]);
+            
+            // PRIME: 9:00-17:00 và có nhiều slot
+            if (hour >= 9 && hour < 17 && slotCount >= 4) {
+                return "PRIME";
+            }
+            // OFF_PEAK: 22:00-6:00
+            else if (hour >= 22 || hour < 6) {
+                return "OFF_PEAK";
+            }
+            // BALANCED: các thời gian khác
+            else {
+                return "BALANCED";
+            }
+        } catch (Exception e) {
+            return "BALANCED";
+        }
+    }
+
+    /**
+     * Kiểm tra xem có phải overnight booking không
+     */
+    private boolean isOvernightBooking(String startTime, String endTime) {
+        try {
+            String[] startParts = startTime.split(":");
+            String[] endParts = endTime.split(":");
+            int startHour = Integer.parseInt(startParts[0]);
+            int endHour = Integer.parseInt(endParts[0]);
+            
+            // Overnight nếu bắt đầu sau 22:00 hoặc kết thúc trước 6:00
+            return startHour >= 22 || endHour < 6;
+        } catch (Exception e) {
+            return false;
         }
     }
 
