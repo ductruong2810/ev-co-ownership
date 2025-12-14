@@ -96,9 +96,9 @@ public class DepositPaymentService {
         SharedFund reserveFund = sharedFundRepository
                 .findByGroup_GroupIdAndFundType(groupId, FundType.DEPOSIT_RESERVE)
                 .orElseThrow(() -> new EntityNotFoundException("Reserve fund not found for group: " + groupId));
-        // Tính toán số tiền cần đặt cọc
+        // Tính toán số tiền cần đặt cọc - dùng groupId để tránh lazy loading issues
         BigDecimal requiredAmount;
-        Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group).orElse(null);
+        Vehicle vehicle = vehicleRepository.findByOwnershipGroup_GroupId(groupId).orElse(null);
 
         if (vehicle != null && vehicle.getVehicleValue() != null) {
             requiredAmount = depositCalculationService.calculateRequiredDepositAmount(
@@ -315,8 +315,8 @@ public class DepositPaymentService {
      * Tính toán số tiền cọc cho user dựa trên tỷ lệ sở hữu
      */
     private BigDecimal calculateDepositAmountForUser(OwnershipGroup group, OwnershipShare share) {
-        // Tìm Vehicle của group để lấy giá trị xe (sử dụng VehicleRepository)
-        Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group).orElse(null);
+        // Tìm Vehicle của group để lấy giá trị xe - dùng groupId để tránh lazy loading issues
+        Vehicle vehicle = vehicleRepository.findByOwnershipGroup_GroupId(group.getGroupId()).orElse(null);
 
         if (vehicle != null) {
             // Sử dụng công thức mới: vehicleValue * 10% * ownershipPercentage / 100

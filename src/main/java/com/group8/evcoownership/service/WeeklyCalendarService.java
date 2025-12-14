@@ -48,8 +48,8 @@ public class WeeklyCalendarService {
         OwnershipGroup group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new IllegalArgumentException("Group not found"));
 
-        // Lấy xe của nhóm
-        Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group)
+        // Lấy xe của nhóm - dùng groupId để tránh lazy loading issues
+        Vehicle vehicle = vehicleRepository.findByOwnershipGroup_GroupId(groupId)
                 .orElseThrow(() -> new IllegalArgumentException("Vehicle not found for this group"));
 
         // Tính toán quota của người dùng (dựa trên tỷ lệ sở hữu)
@@ -676,11 +676,12 @@ public class WeeklyCalendarService {
      */
     public UsageAnalyticsDTO getUsageReport(Long groupId, Long userId) {
         // Kiểm tra nhóm có tồn tại không
-        OwnershipGroup group = groupRepository.findById(groupId)
-                .orElseThrow(() -> new IllegalArgumentException("Group not found"));
+        if (!groupRepository.existsById(groupId)) {
+            throw new IllegalArgumentException("Group not found");
+        }
 
-        // Lấy xe của nhóm
-        Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group)
+        // Lấy xe của nhóm - dùng groupId để tránh lazy loading issues
+        Vehicle vehicle = vehicleRepository.findByOwnershipGroup_GroupId(groupId)
                 .orElseThrow(() -> new IllegalArgumentException("Vehicle not found for this group"));
 
         // Lấy tỷ lệ sở hữu của người dùng

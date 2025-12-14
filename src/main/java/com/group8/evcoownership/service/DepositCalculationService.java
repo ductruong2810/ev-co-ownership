@@ -58,8 +58,8 @@ public class DepositCalculationService {
             return BASE_DEPOSIT_AMOUNT;
         }
 
-        // Tìm Vehicle của group
-        Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group).orElse(null);
+        // Tìm Vehicle của group - dùng groupId để tránh lazy loading issues
+        Vehicle vehicle = vehicleRepository.findByOwnershipGroup_GroupId(group.getGroupId()).orElse(null);
 
         if (vehicle != null && vehicle.getVehicleValue() != null && vehicle.getVehicleValue().compareTo(BigDecimal.ZERO) > 0) {
             // Có vehicleValue, tính tổng deposit = 10% giá trị xe

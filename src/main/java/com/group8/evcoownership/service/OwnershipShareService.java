@@ -183,7 +183,7 @@ public class OwnershipShareService {
         var share = shareRepo.findById(new OwnershipShareId(userId, groupId))
                 .orElseThrow(() -> new EntityNotFoundException("User is not a member of this group"));
 
-        var vehicle = vehicleRepository.findByOwnershipGroup(group)
+        var vehicle = vehicleRepository.findByOwnershipGroup_GroupId(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Vehicle not found for this group"));
 
         // Tính tổng tỷ lệ đã phân bổ
@@ -258,7 +258,7 @@ public class OwnershipShareService {
         // Tính lại tổng tỷ lệ
         BigDecimal totalAllocated = calculateTotalAllocatedPercentage(groupId);
 
-        var vehicle = vehicleRepository.findByOwnershipGroup(group)
+        var vehicle = vehicleRepository.findByOwnershipGroup_GroupId(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Vehicle not found"));
 
         BigDecimal investmentAmount = calculateInvestmentAmount(vehicle.getVehicleValue(), share.getOwnershipPercentage());
@@ -297,7 +297,7 @@ public class OwnershipShareService {
         var group = groupRepo.findById(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
 
-        var vehicle = vehicleRepository.findByOwnershipGroup(group)
+        var vehicle = vehicleRepository.findByOwnershipGroup_GroupId(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Vehicle not found"));
 
         var shares = shareRepo.findByGroup_GroupId(groupId);
@@ -386,7 +386,7 @@ public class OwnershipShareService {
 
         BigDecimal totalAllocated = calculateTotalAllocatedPercentage(groupId);
 
-        var vehicle = vehicleRepository.findByOwnershipGroup(group)
+        var vehicle = vehicleRepository.findByOwnershipGroup_GroupId(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Vehicle not found"));
 
         // Sau khi reset về 0%, status sẽ là PENDING
@@ -506,10 +506,14 @@ public class OwnershipShareService {
      * Lấy thông tin xe của group (bao gồm biển số)
      */
     public VehicleResponseDTO getVehicleInfo(Long groupId) {
-        var group = groupRepo.findById(groupId)
-                .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
+        // Kiểm tra group tồn tại
+        if (!groupRepo.existsById(groupId)) {
+            throw new EntityNotFoundException("Group not found: " + groupId);
+        }
 
-        var vehicle = vehicleRepository.findByOwnershipGroup(group)
+        // Sử dụng findByOwnershipGroup_GroupId để tránh lazy loading issues
+        // Nếu có nhiều vehicles, lấy vehicle đầu tiên
+        var vehicle = vehicleRepository.findByOwnershipGroup_GroupId(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Vehicle not found for group: " + groupId));
 
         return new VehicleResponseDTO(

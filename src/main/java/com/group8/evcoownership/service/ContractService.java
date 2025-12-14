@@ -516,8 +516,8 @@ public class ContractService {
         boolean hasCorrectOwnershipPercentage = hasValidOwnershipPercentages &&
                 totalOwnershipPercentage.compareTo(expectedTotal) == 0;
 
-        // Kiểm tra có vehicle không
-        Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group).orElse(null);
+        // Kiểm tra có vehicle không - dùng groupId để tránh lazy loading issues
+        Vehicle vehicle = vehicleRepository.findByOwnershipGroup_GroupId(groupId).orElse(null);
         boolean hasVehicle = vehicle != null && vehicle.getVehicleValue() != null && vehicle.getVehicleValue().compareTo(BigDecimal.ZERO) > 0;
 
         // Kiểm tra contract status
@@ -682,7 +682,8 @@ public class ContractService {
      */
     private ContractGenerationResponseDTO prepareContractData(Long groupId, Optional<Contract> existingContract) {
         OwnershipGroup group = getGroupById(groupId);
-        Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group).orElse(null);
+        // Dùng groupId để tránh lazy loading issues
+        Vehicle vehicle = vehicleRepository.findByOwnershipGroup_GroupId(groupId).orElse(null);
         List<OwnershipShare> shares = getSharesByGroupId(groupId);
 
         // Contract info
@@ -787,7 +788,8 @@ public class ContractService {
      */
     private String generateContractTerms(Long groupId) {
         OwnershipGroup group = getGroupById(groupId);
-        Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group).orElse(null);
+        // Dùng groupId để tránh lazy loading issues
+        Vehicle vehicle = vehicleRepository.findByOwnershipGroup_GroupId(groupId).orElse(null);
         Contract existingContract = contractRepository.findByGroupGroupId(groupId).orElse(null);
 
         LocalDate startDate = existingContract != null ? existingContract.getStartDate() : LocalDate.now();
