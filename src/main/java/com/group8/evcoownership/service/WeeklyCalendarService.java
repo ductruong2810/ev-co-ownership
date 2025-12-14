@@ -671,6 +671,135 @@ public class WeeklyCalendarService {
     }
 
     /**
+     * Lấy smart insights bao gồm analytics, suggestions và AI insights
+     */
+    public SmartSuggestionResponseDTO getSmartInsights(Long groupId, Long userId, LocalDate weekStart) {
+        // Lấy analytics
+        UsageAnalyticsDTO analytics = getUsageReport(groupId, userId);
+
+        // Lấy calendar để tạo booking suggestions
+        WeeklyCalendarResponseDTO calendar = getWeeklyCalendar(groupId, userId, weekStart);
+
+        // Tạo booking suggestions từ calendar
+        List<BookingSuggestionDTO> suggestions = generateBookingSuggestions(calendar, weekStart);
+
+        // Tạo AI insights từ analytics
+        List<String> aiInsights = generateAIInsights(analytics);
+
+        return SmartSuggestionResponseDTO.builder()
+                .analytics(analytics)
+                .suggestions(suggestions)
+                .aiInsights(aiInsights)
+                .build();
+    }
+
+    /**
+     * Tạo booking suggestions từ calendar data
+     */
+    private List<BookingSuggestionDTO> generateBookingSuggestions(WeeklyCalendarResponseDTO calendar, LocalDate weekStart) {
+        List<BookingSuggestionDTO> suggestions = new ArrayList<>();
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        DateTimeFormatter dayFormatter = DateTimeFormatter.ofPattern("EEEE");
+
+        // Tìm các slot available trong tuần
+        for (DailySlotResponseDTO dailySlot : calendar.getDailySlots()) {
+            LocalDate date = dailySlot.getDate();
+            String dayOfWeek = date.format(dayFormatter);
+
+            // Tìm các slot available trong ngày
+            List<TimeSlotResponseDTO> availableSlots = dailySlot.getSlots().stream()
+                    .filter(TimeSlotResponseDTO::isBookable)
+                    .toList();
+
+            if (!availableSlots.isEmpty()) {
+                // Tạo suggestion cho mỗi nhóm slot liên tiếp
+                String timeRange = availableSlots.get(0).getTime();
+                if (availableSlots.size() > 1) {
+                    timeRange += " - " + availableSlots.get(availableSlots.size() - 1).getTime();
+                }
+
+                // Tính score dựa trên số slot available và quota
+                double score = calculateSuggestionScore(availableSlots.size(), calendar.getUserQuota().getRemainingSlots());
+
+                String reason = generateSuggestionReason(availableSlots.size(), calendar.getUserQuota().getRemainingSlots());
+
+                suggestions.add(BookingSuggestionDTO.builder()
+                        .date(date.format(dateFormatter))
+                        .dayOfWeek(dayOfWeek)
+                        .timeRange(timeRange)
+                        .score(score)
+                        .reason(reason)
+                        .build());
+            }
+        }
+
+        // Sắp xếp theo score giảm dần
+        suggestions.sort((a, b) -> Double.compare(b.getScore(), a.getScore()));
+
+        // Chỉ trả về top 5 suggestions
+        return suggestions.stream().limit(5).toList();
+    }
+
+    /**
+     * Tính score cho suggestion (0-100)
+     */
+    private double calculateSuggestionScore(int availableSlots, int remainingQuota) {
+        double slotScore = Math.min(availableSlots * 10, 50); // Tối đa 50 điểm cho số slot
+        double quotaScore = Math.min(remainingQuota * 2, 50); // Tối đa 50 điểm cho quota
+        return slotScore + quotaScore;
+    }
+
+    /**
+     * Tạo lý do cho suggestion
+     */
+    private String generateSuggestionReason(int availableSlots, int remainingQuota) {
+        if (remainingQuota > 20) {
+            return "Great availability with " + availableSlots + " slots. You have " + remainingQuota + " quota remaining.";
+        } else if (remainingQuota > 10) {
+            return "Good time to book with " + availableSlots + " slots available. " + remainingQuota + " quota left.";
+        } else {
+            return "Limited availability: " + availableSlots + " slots. Only " + remainingQuota + " quota remaining.";
+        }
+    }
+
+    /**
+     * Tạo AI insights từ analytics
+     */
+    private List<String> generateAIInsights(UsageAnalyticsDTO analytics) {
+        List<String> insights = new ArrayList<>();
+
+        // Insights về utilization
+        if (analytics.getUtilizationPercent() < 50) {
+            insights.add("You're underutilizing your ownership share. Consider booking more to maximize value.");
+        } else if (analytics.getUtilizationPercent() > 100) {
+            insights.add("You're using more than your allocated share. Great usage efficiency!");
+        } else {
+            insights.add("Your usage is well-balanced with your ownership percentage.");
+        }
+
+        // Insights về fairness
+        if ("UNDER_UTILIZED".equals(analytics.getFairnessStatus())) {
+            insights.add("You have room to increase bookings. Your current usage is below expected levels.");
+        } else if ("OVER_UTILIZED".equals(analytics.getFairnessStatus())) {
+            insights.add("You're maximizing your ownership share. Keep up the good usage!");
+        }
+
+        // Insights về quota
+        if (analytics.getRemainingQuotaSlots() != null && analytics.getRemainingQuotaSlots() > 20) {
+            insights.add("You have plenty of quota remaining. Plan your bookings strategically.");
+        } else if (analytics.getRemainingQuotaSlots() != null && analytics.getRemainingQuotaSlots() < 5) {
+            insights.add("You're running low on quota. Make each booking count!");
+        }
+
+        // Insights về weekly usage
+        if (analytics.getHoursThisWeek() != null && analytics.getHoursThisWeek() > analytics.getWeeklyAverageHours() * 1.5) {
+            insights.add("This week you're using significantly more hours than your average. Great activity!");
+        }
+
+        return insights;
+    }
+
+    /**
      * Lấy báo cáo sử dụng xe cho người dùng trong nhóm
      * Tính toán các metrics về sử dụng, quota, và fairness
      */
