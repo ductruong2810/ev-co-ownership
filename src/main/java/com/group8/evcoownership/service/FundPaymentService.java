@@ -72,8 +72,10 @@ public class FundPaymentService {
             throw new DepositPaymentException("You can only create fund top-up for your own account");
         }
 
-        // Kiểm tra contract tồn tại
-        contractRepository.findByGroupGroupId(groupId)
+        // Kiểm tra contract tồn tại - lấy contract mới nhất nếu có nhiều
+        contractRepository.findByGroupGroupIdOrderByCreatedAtDesc(groupId)
+                .stream()
+                .findFirst()
                 .orElseThrow(() -> new EntityNotFoundException("Contract not found for this group"));
 
 

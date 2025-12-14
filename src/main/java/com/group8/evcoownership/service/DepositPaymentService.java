@@ -88,8 +88,10 @@ public class DepositPaymentService {
             throw new DepositPaymentException("Deposit has already been paid for this user in this group.");
         }
 
-        // Kiểm tra contract tồn tại
-        contractRepository.findByGroupGroupId(groupId)
+        // Kiểm tra contract tồn tại - lấy contract mới nhất nếu có nhiều
+        contractRepository.findByGroupGroupIdOrderByCreatedAtDesc(groupId)
+                .stream()
+                .findFirst()
                 .orElseThrow(() -> new EntityNotFoundException("Contract not found for this group"));
 
         // kiem tra xem group nay da co fund loai deposit chua
@@ -256,7 +258,10 @@ public class DepositPaymentService {
         OwnershipShare share = shareRepository.findById(new OwnershipShareId(userId, groupId))
                 .orElseThrow(() -> new EntityNotFoundException("User is not a member of this group"));
 
-        Contract contract = contractRepository.findByGroupGroupId(groupId)
+        // Lấy contract mới nhất nếu có nhiều
+        Contract contract = contractRepository.findByGroupGroupIdOrderByCreatedAtDesc(groupId)
+                .stream()
+                .findFirst()
                 .orElseThrow(() -> new EntityNotFoundException("Contract not found"));
 
         // Tính toán số tiền cọc dựa trên tỷ lệ sở hữu
@@ -345,7 +350,10 @@ public class DepositPaymentService {
     }
 
     private String getContractStatus(Long groupId) {
-        Optional<Contract> contract = contractRepository.findByGroupGroupId(groupId);
+        // Lấy contract mới nhất nếu có nhiều
+        Optional<Contract> contract = contractRepository.findByGroupGroupIdOrderByCreatedAtDesc(groupId)
+                .stream()
+                .findFirst();
 
         return contract.map(value -> value.getApprovalStatus().name()).orElse("NO_CONTRACT");
 

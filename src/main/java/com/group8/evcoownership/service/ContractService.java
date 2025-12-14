@@ -52,11 +52,13 @@ public class ContractService {
      * - Danh sách thành viên (userId, họ tên, email, vai trò, % sở hữu,...)
      */
     public ContractDetailResponseDTO getContractInfoDetail(Long groupId) {
-        // Lấy hợp đồng của group
+        // Lấy hợp đồng của group - lấy contract mới nhất nếu có nhiều
         // ------------------------------------------------------------
         // Mỗi nhóm chỉ có 1 hợp đồng đang hoạt động.
         // Nếu không tìm thấy -> ném lỗi để controller trả HTTP 404.
-        Contract contract = contractRepository.findByGroupGroupId(groupId)
+        Contract contract = contractRepository.findByGroupGroupIdOrderByCreatedAtDesc(groupId)
+                .stream()
+                .findFirst()
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Không tìm thấy hợp đồng cho groupId " + groupId));
 
@@ -234,7 +236,10 @@ public class ContractService {
     private Contract createNewContractIfNotExists(Long groupId) {
         OwnershipGroup group = getGroupById(groupId);
 
-        Optional<Contract> contractOpt = contractRepository.findByGroupGroupId(groupId);
+        // Lấy contract mới nhất nếu có nhiều
+        Optional<Contract> contractOpt = contractRepository.findByGroupGroupIdOrderByCreatedAtDesc(groupId)
+                .stream()
+                .findFirst();
         if (contractOpt.isPresent()) {
             return contractOpt.get();
         }
@@ -475,7 +480,9 @@ public class ContractService {
                 "\n- All co-owners have agreed to the contract terms." +
                 "\n- This electronic signature holds full legal validity under applicable laws." +
                 "\n- Signing time: " + timestamp +
-                "\n- Contract ID: " + contractRepository.findByGroupGroupId(groupId)
+                "\n- Contract ID: " + contractRepository.findByGroupGroupIdOrderByCreatedAtDesc(groupId)
+                .stream()
+                .findFirst()
                 .map(Contract::getId)
                 .orElse(null);
 
@@ -520,8 +527,11 @@ public class ContractService {
         Vehicle vehicle = vehicleRepository.findByOwnershipGroup_GroupId(groupId).orElse(null);
         boolean hasVehicle = vehicle != null && vehicle.getVehicleValue() != null && vehicle.getVehicleValue().compareTo(BigDecimal.ZERO) > 0;
 
-        // Kiểm tra contract status
-        Contract contract = contractRepository.findByGroupGroupId(groupId).orElse(null);
+        // Kiểm tra contract status - lấy contract mới nhất nếu có nhiều
+        Contract contract = contractRepository.findByGroupGroupIdOrderByCreatedAtDesc(groupId)
+                .stream()
+                .findFirst()
+                .orElse(null);
         boolean canSign = contract == null || contract.getApprovalStatus() == ContractApprovalStatus.PENDING;
 
         // Tổng kết
@@ -555,8 +565,10 @@ public class ContractService {
         // Kiểm tra điều kiện generate contract
         validateContractGeneration(groupId);
 
-        // Kiểm tra xem contract đã tồn tại trong database chưa
-        Optional<Contract> existingContract = contractRepository.findByGroupGroupId(groupId);
+        // Kiểm tra xem contract đã tồn tại trong database chưa - lấy contract mới nhất nếu có nhiều
+        Optional<Contract> existingContract = contractRepository.findByGroupGroupIdOrderByCreatedAtDesc(groupId)
+                .stream()
+                .findFirst();
 
         // Tự động tính toán ngày hiệu lực và ngày kết thúc
         LocalDate startDate = LocalDate.now();
@@ -790,7 +802,11 @@ public class ContractService {
         OwnershipGroup group = getGroupById(groupId);
         // Dùng groupId để tránh lazy loading issues
         Vehicle vehicle = vehicleRepository.findByOwnershipGroup_GroupId(groupId).orElse(null);
-        Contract existingContract = contractRepository.findByGroupGroupId(groupId).orElse(null);
+        // Lấy contract mới nhất nếu có nhiều
+        Contract existingContract = contractRepository.findByGroupGroupIdOrderByCreatedAtDesc(groupId)
+                .stream()
+                .findFirst()
+                .orElse(null);
 
         LocalDate startDate = existingContract != null ? existingContract.getStartDate() : LocalDate.now();
         LocalDate endDate = existingContract != null ? existingContract.getEndDate()
