@@ -119,10 +119,7 @@ public class OwnershipShareService {
     }
 
     private void ensureContractAllowsRemoval(Long groupId) {
-        contractRepository.findByGroupGroupIdOrderByCreatedAtDesc(groupId)
-                .stream()
-                .findFirst()
-                .ifPresent(contract -> {
+        contractRepository.findByGroupGroupId(groupId).ifPresent(contract -> {
             var status = contract.getApprovalStatus();
             boolean contractLocked = status == ContractApprovalStatus.SIGNED
                     || status == ContractApprovalStatus.APPROVED
@@ -186,7 +183,7 @@ public class OwnershipShareService {
         var share = shareRepo.findById(new OwnershipShareId(userId, groupId))
                 .orElseThrow(() -> new EntityNotFoundException("User is not a member of this group"));
 
-        var vehicle = vehicleRepository.findByOwnershipGroup_GroupId(groupId)
+        var vehicle = vehicleRepository.findByOwnershipGroup(group)
                 .orElseThrow(() -> new EntityNotFoundException("Vehicle not found for this group"));
 
         // Tính tổng tỷ lệ đã phân bổ
@@ -245,11 +242,7 @@ public class OwnershipShareService {
                 .orElseThrow(() -> new EntityNotFoundException("User is not a member of this group"));
 
         // Kiểm tra contract đã ký chưa - nếu đã ký thì không cho sửa tỷ lệ
-        // Lấy contract mới nhất nếu có nhiều
-        var contract = contractRepository.findByGroupGroupIdOrderByCreatedAtDesc(groupId)
-                .stream()
-                .findFirst()
-                .orElse(null);
+        var contract = contractRepository.findByGroupGroupId(groupId).orElse(null);
         if (contract != null && contract.getApprovalStatus() == com.group8.evcoownership.enums.ContractApprovalStatus.SIGNED) {
             throw new IllegalStateException("Không thể sửa tỷ lệ sở hữu sau khi hợp đồng đã được ký");
         }
@@ -265,7 +258,7 @@ public class OwnershipShareService {
         // Tính lại tổng tỷ lệ
         BigDecimal totalAllocated = calculateTotalAllocatedPercentage(groupId);
 
-        var vehicle = vehicleRepository.findByOwnershipGroup_GroupId(groupId)
+        var vehicle = vehicleRepository.findByOwnershipGroup(group)
                 .orElseThrow(() -> new EntityNotFoundException("Vehicle not found"));
 
         BigDecimal investmentAmount = calculateInvestmentAmount(vehicle.getVehicleValue(), share.getOwnershipPercentage());
@@ -304,7 +297,7 @@ public class OwnershipShareService {
         var group = groupRepo.findById(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
 
-        var vehicle = vehicleRepository.findByOwnershipGroup_GroupId(groupId)
+        var vehicle = vehicleRepository.findByOwnershipGroup(group)
                 .orElseThrow(() -> new EntityNotFoundException("Vehicle not found"));
 
         var shares = shareRepo.findByGroup_GroupId(groupId);
@@ -323,10 +316,8 @@ public class OwnershipShareService {
                 ? currentUserShare.getGroupRole().name()
                 : "UNKNOWN";
 
-        // Lấy trạng thái contract từ group - lấy contract mới nhất nếu có nhiều
-        String contractStatus = contractRepository.findByGroupGroupIdOrderByCreatedAtDesc(groupId)
-                .stream()
-                .findFirst()
+        // Lấy trạng thái contract từ group
+        String contractStatus = contractRepository.findByGroupGroupId(groupId)
                 .map(contract -> contract.getApprovalStatus().name())
                 .orElse(null);
 
@@ -395,7 +386,7 @@ public class OwnershipShareService {
 
         BigDecimal totalAllocated = calculateTotalAllocatedPercentage(groupId);
 
-        var vehicle = vehicleRepository.findByOwnershipGroup_GroupId(groupId)
+        var vehicle = vehicleRepository.findByOwnershipGroup(group)
                 .orElseThrow(() -> new EntityNotFoundException("Vehicle not found"));
 
         // Sau khi reset về 0%, status sẽ là PENDING
@@ -515,14 +506,10 @@ public class OwnershipShareService {
      * Lấy thông tin xe của group (bao gồm biển số)
      */
     public VehicleResponseDTO getVehicleInfo(Long groupId) {
-        // Kiểm tra group tồn tại
-        if (!groupRepo.existsById(groupId)) {
-            throw new EntityNotFoundException("Group not found: " + groupId);
-        }
+        var group = groupRepo.findById(groupId)
+                .orElseThrow(() -> new EntityNotFoundException("Group not found: " + groupId));
 
-        // Sử dụng findByOwnershipGroup_GroupId để tránh lazy loading issues
-        // Nếu có nhiều vehicles, lấy vehicle đầu tiên
-        var vehicle = vehicleRepository.findByOwnershipGroup_GroupId(groupId)
+        var vehicle = vehicleRepository.findByOwnershipGroup(group)
                 .orElseThrow(() -> new EntityNotFoundException("Vehicle not found for group: " + groupId));
 
         return new VehicleResponseDTO(
@@ -555,11 +542,7 @@ public class OwnershipShareService {
 
 
     private boolean isOwnershipLockedByContract(Long groupId) {
-        // Lấy contract mới nhất nếu có nhiều
-        var c = contractRepository.findByGroupGroupIdOrderByCreatedAtDesc(groupId)
-                .stream()
-                .findFirst()
-                .orElse(null);
+        var c = contractRepository.findByGroupGroupId(groupId).orElse(null);
         if (c == null) return false;
         var st = c.getApprovalStatus();
         boolean lockedByStatus =

@@ -10,10 +10,10 @@
         <relativePath/> <!-- lookup parent from a repository -->
     </parent>
     <groupId>com.group8</groupId>
-    <artifactId>ev-co-ownership</artifactId>
+    <artifactId>ev-co-ownership-be</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>ev-co-ownership</name>
-    <description>ev-co-ownership</description>
+    <name>ev-co-ownership-be</name>
+    <description>ev-co-ownership-be</description>
     <properties>
         <java.version>17</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

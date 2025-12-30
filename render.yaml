@@ -1,11 +1,11 @@
 services:
   - type: web
-    name: ev-co-ownership
+    name: ev-co-ownership-be
     runtime: java
     plan: free
     # Optimized build: parallel build with 2 threads, skip tests for faster deployment
     buildCommand: ./mvnw clean package -DskipTests -T 2C
-    startCommand: java -jar target/ev-co-ownership-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
+    startCommand: java -jar target/ev-co-ownership-be-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
     envVars:
       - key: SPRING_PROFILES_ACTIVE
         value: prod

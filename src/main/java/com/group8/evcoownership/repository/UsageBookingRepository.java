@@ -14,26 +14,26 @@ import java.util.Optional;
 
 public interface UsageBookingRepository extends JpaRepository<UsageBooking, Long> {
 
-    //Tổng số giờ user đã đặt trong tuần (để kiểm tra quota) - PostgreSQL compatible
+    //Tổng số giờ user đã đặt trong tuần (để kiểm tra quota)
     @Query(value = """
-                SELECT COALESCE(SUM(EXTRACT(EPOCH FROM ("EndDateTime" - "StartDateTime")) / 3600), 0)::BIGINT
-                FROM "UsageBooking"
-                WHERE "UserId" = :userId
-                  AND "VehicleId" = :vehicleId
-                  AND "Status" = 'CONFIRMED'
-                  AND EXTRACT(WEEK FROM "StartDateTime") = EXTRACT(WEEK FROM CAST(:weekStart AS timestamp))
-                  AND EXTRACT(YEAR FROM "StartDateTime") = EXTRACT(YEAR FROM CAST(:weekStart AS timestamp))
+                SELECT COALESCE(SUM(DATEDIFF(HOUR, StartDateTime, EndDateTime)), 0)
+                FROM UsageBooking
+                WHERE UserId = :userId
+                  AND VehicleId = :vehicleId
+                  AND Status = 'CONFIRMED'
+                  AND DATEPART(ISO_WEEK, StartDateTime) = DATEPART(ISO_WEEK, :weekStart)
+                  AND YEAR(StartDateTime) = YEAR(:weekStart)
             """, nativeQuery = true)
     Long getTotalBookedHoursThisWeek(@Param("userId") Long userId,
                                      @Param("vehicleId") Long vehicleId,
                                      @Param("weekStart") LocalDateTime weekStart);
 
-    //Tính quota limit dựa trên ownership percentage (168h/tuần * ownership%) - PostgreSQL compatible
+    //Tính quota limit dựa trên ownership percentage (168h/tuần * ownership%)
     @Query(value = """
-                SELECT CAST(168 * (os."OwnershipPercentage" / 100.0) AS INTEGER)
-                FROM "OwnershipShare" os
-                INNER JOIN "Vehicle" v ON v."GroupId" = os."GroupId"
-                WHERE os."UserId" = :userId AND v."VehicleId" = :vehicleId
+                SELECT CAST(168 * (os.OwnershipPercentage / 100.0) AS INT)
+                FROM OwnershipShare os
+                INNER JOIN Vehicle v ON v.GroupId = os.GroupId
+                WHERE os.UserId = :userId AND v.VehicleId = :vehicleId
             """, nativeQuery = true)
     Long getQuotaLimitByOwnershipPercentage(@Param("userId") Long userId,
                                             @Param("vehicleId") Long vehicleId);

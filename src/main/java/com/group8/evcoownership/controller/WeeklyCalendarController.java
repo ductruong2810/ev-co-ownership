@@ -2,8 +2,6 @@ package com.group8.evcoownership.controller;
 
 import com.group8.evcoownership.dto.FlexibleBookingRequestDTO;
 import com.group8.evcoownership.dto.FlexibleBookingResponseDTO;
-import com.group8.evcoownership.dto.SmartSuggestionResponseDTO;
-import com.group8.evcoownership.dto.UsageAnalyticsDTO;
 import com.group8.evcoownership.dto.WeeklyCalendarResponseDTO;
 import com.group8.evcoownership.exception.ResourceNotFoundException;
 import com.group8.evcoownership.repository.UserRepository;
@@ -58,35 +56,6 @@ public class WeeklyCalendarController {
 
         List<String> suggestions = weeklyCalendarService.getBookingSuggestions(groupId, userId, weekStart);
         return ResponseEntity.ok(suggestions);
-    }
-
-    @GetMapping("/groups/{groupId}/usage-report")
-    @Operation(summary = "Lấy báo cáo sử dụng", description = "Lấy báo cáo phân tích sử dụng xe cho người dùng trong nhóm")
-    @PreAuthorize("hasAnyRole('STAFF','ADMIN', 'CO_OWNER')")
-    public ResponseEntity<UsageAnalyticsDTO> getUsageReport(
-            @PathVariable Long groupId,
-            @AuthenticationPrincipal String email) {
-
-        // Lấy userId từ JWT
-        Long userId = getUserIdByEmail(email);
-
-        UsageAnalyticsDTO response = weeklyCalendarService.getUsageReport(groupId, userId);
-        return ResponseEntity.ok(response);
-    }
-
-    @GetMapping("/groups/{groupId}/smart-insights")
-    @Operation(summary = "Lấy smart insights", description = "Lấy smart insights bao gồm analytics, booking suggestions và AI insights")
-    @PreAuthorize("hasAnyRole('STAFF','ADMIN', 'CO_OWNER')")
-    public ResponseEntity<SmartSuggestionResponseDTO> getSmartInsights(
-            @PathVariable Long groupId,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart,
-            @AuthenticationPrincipal String email) {
-
-        // Lấy userId từ JWT
-        Long userId = getUserIdByEmail(email);
-
-        SmartSuggestionResponseDTO response = weeklyCalendarService.getSmartInsights(groupId, userId, weekStart);
-        return ResponseEntity.ok(response);
     }
 
     //======= Tạo booking linh hoạt =======

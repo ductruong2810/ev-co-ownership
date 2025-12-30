@@ -15,7 +15,7 @@ FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 
 # Copy JAR from build stage
-COPY --from=build /app/target/ev-co-ownership-0.0.1-SNAPSHOT.jar app.jar
+COPY --from=build /app/target/ev-co-ownership-be-0.0.1-SNAPSHOT.jar app.jar
 
 # Expose port (Render sets PORT env var)
 EXPOSE 8080

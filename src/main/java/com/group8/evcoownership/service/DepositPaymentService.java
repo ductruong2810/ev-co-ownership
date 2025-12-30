@@ -88,19 +88,17 @@ public class DepositPaymentService {
             throw new DepositPaymentException("Deposit has already been paid for this user in this group.");
         }
 
-        // Kiểm tra contract tồn tại - lấy contract mới nhất nếu có nhiều
-        contractRepository.findByGroupGroupIdOrderByCreatedAtDesc(groupId)
-                .stream()
-                .findFirst()
+        // Kiểm tra contract tồn tại
+        contractRepository.findByGroupGroupId(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Contract not found for this group"));
 
         // kiem tra xem group nay da co fund loai deposit chua
         SharedFund reserveFund = sharedFundRepository
                 .findByGroup_GroupIdAndFundType(groupId, FundType.DEPOSIT_RESERVE)
                 .orElseThrow(() -> new EntityNotFoundException("Reserve fund not found for group: " + groupId));
-        // Tính toán số tiền cần đặt cọc - dùng groupId để tránh lazy loading issues
+        // Tính toán số tiền cần đặt cọc
         BigDecimal requiredAmount;
-        Vehicle vehicle = vehicleRepository.findByOwnershipGroup_GroupId(groupId).orElse(null);
+        Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group).orElse(null);
 
         if (vehicle != null && vehicle.getVehicleValue() != null) {
             requiredAmount = depositCalculationService.calculateRequiredDepositAmount(
@@ -258,10 +256,7 @@ public class DepositPaymentService {
         OwnershipShare share = shareRepository.findById(new OwnershipShareId(userId, groupId))
                 .orElseThrow(() -> new EntityNotFoundException("User is not a member of this group"));
 
-        // Lấy contract mới nhất nếu có nhiều
-        Contract contract = contractRepository.findByGroupGroupIdOrderByCreatedAtDesc(groupId)
-                .stream()
-                .findFirst()
+        Contract contract = contractRepository.findByGroupGroupId(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Contract not found"));
 
         // Tính toán số tiền cọc dựa trên tỷ lệ sở hữu
@@ -320,8 +315,8 @@ public class DepositPaymentService {
      * Tính toán số tiền cọc cho user dựa trên tỷ lệ sở hữu
      */
     private BigDecimal calculateDepositAmountForUser(OwnershipGroup group, OwnershipShare share) {
-        // Tìm Vehicle của group để lấy giá trị xe - dùng groupId để tránh lazy loading issues
-        Vehicle vehicle = vehicleRepository.findByOwnershipGroup_GroupId(group.getGroupId()).orElse(null);
+        // Tìm Vehicle của group để lấy giá trị xe (sử dụng VehicleRepository)
+        Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group).orElse(null);
 
         if (vehicle != null) {
             // Sử dụng công thức mới: vehicleValue * 10% * ownershipPercentage / 100
@@ -350,10 +345,7 @@ public class DepositPaymentService {
     }
 
     private String getContractStatus(Long groupId) {
-        // Lấy contract mới nhất nếu có nhiều
-        Optional<Contract> contract = contractRepository.findByGroupGroupIdOrderByCreatedAtDesc(groupId)
-                .stream()
-                .findFirst();
+        Optional<Contract> contract = contractRepository.findByGroupGroupId(groupId);
 
         return contract.map(value -> value.getApprovalStatus().name()).orElse("NO_CONTRACT");
 

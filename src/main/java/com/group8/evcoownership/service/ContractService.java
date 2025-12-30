@@ -52,13 +52,11 @@ public class ContractService {
      * - Danh sách thành viên (userId, họ tên, email, vai trò, % sở hữu,...)
      */
     public ContractDetailResponseDTO getContractInfoDetail(Long groupId) {
-        // Lấy hợp đồng của group - lấy contract mới nhất nếu có nhiều
+        // Lấy hợp đồng của group
         // ------------------------------------------------------------
         // Mỗi nhóm chỉ có 1 hợp đồng đang hoạt động.
         // Nếu không tìm thấy -> ném lỗi để controller trả HTTP 404.
-        Contract contract = contractRepository.findByGroupGroupIdOrderByCreatedAtDesc(groupId)
-                .stream()
-                .findFirst()
+        Contract contract = contractRepository.findByGroupGroupId(groupId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Không tìm thấy hợp đồng cho groupId " + groupId));
 
@@ -236,10 +234,7 @@ public class ContractService {
     private Contract createNewContractIfNotExists(Long groupId) {
         OwnershipGroup group = getGroupById(groupId);
 
-        // Lấy contract mới nhất nếu có nhiều
-        Optional<Contract> contractOpt = contractRepository.findByGroupGroupIdOrderByCreatedAtDesc(groupId)
-                .stream()
-                .findFirst();
+        Optional<Contract> contractOpt = contractRepository.findByGroupGroupId(groupId);
         if (contractOpt.isPresent()) {
             return contractOpt.get();
         }
@@ -321,11 +316,8 @@ public class ContractService {
     public ContractInfoResponseDTO getContractInfo(Long groupId) {
         OwnershipGroup group = getGroupById(groupId);
 
-        // Kiểm tra có contract không - lấy contract mới nhất nếu có nhiều
-        Contract contract = contractRepository.findByGroupGroupIdOrderByCreatedAtDesc(groupId)
-                .stream()
-                .findFirst()
-                .orElse(null);
+        // Kiểm tra có contract không
+        Contract contract = contractRepository.findByGroupGroupId(groupId).orElse(null);
 
         ContractInfoResponseDTO.ContractInfoResponseDTOBuilder builder = ContractInfoResponseDTO.builder()
                 .contractId(contract != null ? contract.getId() : null)
@@ -480,9 +472,7 @@ public class ContractService {
                 "\n- All co-owners have agreed to the contract terms." +
                 "\n- This electronic signature holds full legal validity under applicable laws." +
                 "\n- Signing time: " + timestamp +
-                "\n- Contract ID: " + contractRepository.findByGroupGroupIdOrderByCreatedAtDesc(groupId)
-                .stream()
-                .findFirst()
+                "\n- Contract ID: " + contractRepository.findByGroupGroupId(groupId)
                 .map(Contract::getId)
                 .orElse(null);
 
@@ -523,15 +513,12 @@ public class ContractService {
         boolean hasCorrectOwnershipPercentage = hasValidOwnershipPercentages &&
                 totalOwnershipPercentage.compareTo(expectedTotal) == 0;
 
-        // Kiểm tra có vehicle không - dùng groupId để tránh lazy loading issues
-        Vehicle vehicle = vehicleRepository.findByOwnershipGroup_GroupId(groupId).orElse(null);
+        // Kiểm tra có vehicle không
+        Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group).orElse(null);
         boolean hasVehicle = vehicle != null && vehicle.getVehicleValue() != null && vehicle.getVehicleValue().compareTo(BigDecimal.ZERO) > 0;
 
-        // Kiểm tra contract status - lấy contract mới nhất nếu có nhiều
-        Contract contract = contractRepository.findByGroupGroupIdOrderByCreatedAtDesc(groupId)
-                .stream()
-                .findFirst()
-                .orElse(null);
+        // Kiểm tra contract status
+        Contract contract = contractRepository.findByGroupGroupId(groupId).orElse(null);
         boolean canSign = contract == null || contract.getApprovalStatus() == ContractApprovalStatus.PENDING;
 
         // Tổng kết
@@ -565,10 +552,8 @@ public class ContractService {
         // Kiểm tra điều kiện generate contract
         validateContractGeneration(groupId);
 
-        // Kiểm tra xem contract đã tồn tại trong database chưa - lấy contract mới nhất nếu có nhiều
-        Optional<Contract> existingContract = contractRepository.findByGroupGroupIdOrderByCreatedAtDesc(groupId)
-                .stream()
-                .findFirst();
+        // Kiểm tra xem contract đã tồn tại trong database chưa
+        Optional<Contract> existingContract = contractRepository.findByGroupGroupId(groupId);
 
         // Tự động tính toán ngày hiệu lực và ngày kết thúc
         LocalDate startDate = LocalDate.now();
@@ -694,8 +679,7 @@ public class ContractService {
      */
     private ContractGenerationResponseDTO prepareContractData(Long groupId, Optional<Contract> existingContract) {
         OwnershipGroup group = getGroupById(groupId);
-        // Dùng groupId để tránh lazy loading issues
-        Vehicle vehicle = vehicleRepository.findByOwnershipGroup_GroupId(groupId).orElse(null);
+        Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group).orElse(null);
         List<OwnershipShare> shares = getSharesByGroupId(groupId);
 
         // Contract info
@@ -800,13 +784,8 @@ public class ContractService {
      */
     private String generateContractTerms(Long groupId) {
         OwnershipGroup group = getGroupById(groupId);
-        // Dùng groupId để tránh lazy loading issues
-        Vehicle vehicle = vehicleRepository.findByOwnershipGroup_GroupId(groupId).orElse(null);
-        // Lấy contract mới nhất nếu có nhiều
-        Contract existingContract = contractRepository.findByGroupGroupIdOrderByCreatedAtDesc(groupId)
-                .stream()
-                .findFirst()
-                .orElse(null);
+        Vehicle vehicle = vehicleRepository.findByOwnershipGroup(group).orElse(null);
+        Contract existingContract = contractRepository.findByGroupGroupId(groupId).orElse(null);
 
         LocalDate startDate = existingContract != null ? existingContract.getStartDate() : LocalDate.now();
         LocalDate endDate = existingContract != null ? existingContract.getEndDate()
